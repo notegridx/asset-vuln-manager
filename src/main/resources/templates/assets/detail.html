@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Asset Detail</title>
+</head>
+<body>
+  <p><a th:href="@{/assets}">Back</a></p>
+  
+  <h1>Asset Detail</h1>
+  
+  <div>
+    <div><b>ID:</b> <span th:text="${asset.id}">1</span></div>
+    <div><b>Name:</b> <span th:text="${asset.name}">Example</span></div>
+    <div><b>Asset Type:</b> <span th:text="${asset.assetType}">type</span></div>
+    <div><b>Owner:</b> <span th:text="${asset.owner}">owner</span></div>
+    <div><b>Note:</b> <span th:text="${asset.note}">note</span></div>
+  </div>
+  
+  <hr/>
+  
+  <h2>Software Installs</h2>
+  <p>
+    <a th:href="@{/assets/{id}/software/new(id=${asset.id})}">Add software</a>
+  </p>
+  
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Vendor</th>
+        <th>Product</th>
+        <th>Version</th>
+        <th>CPE</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:if="${#lists.isEmpty(installs)}">
+        <td colspan="5">No software installs</td>
+      </tr>
+      <tr th:each="s : ${installs}">
+        <td th:text="${s.id}">1</td>
+        <td th:text="${s.vendor}">vendor</td>
+        <td th:text="${s.product}">product</td>
+        <td th:text="${s.version}">1.0</td>
+        <td th:text="${s.cpeName}">cpe:2.3:...</td>
+      </tr>
+    </tbody>
+  </table>
+  
+  
+
+</body>
+</html>

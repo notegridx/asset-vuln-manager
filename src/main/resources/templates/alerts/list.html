@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Alerts</title>
+</head>
+
+<body>
+  <h1>Alerts (OPEN)</h1>
+
+  <p>
+    <a th:href="@{/assets}">Assets</a> |
+    <a th:href="@{/admin/sync}">Admin Sync</a>
+  </p>
+
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>SoftwareInstall</th>
+        <th>Vulnerability</th>
+        <th>Status</th>
+        <th>First Seen</th>
+        <th>Last Seen</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr th:if="${#lists.isEmpty(alerts)}">
+        <td colspan="6">No OPEN alerts</td>
+      </tr>
+      <tr th:each="a : ${alerts}">
+        <td th:text="${a.id}">1</td>
+        <td th:text="${a.softwareInstall.id}">10</td>
+        <td th:text="${a.vulnerability.externalId}">CVE-2025-xxxx</td>
+        <td th:text="${a.status}">OPEN</td>
+        <td th:text="${a.firstSeenAt}">2026-02-09T00:00</td>
+        <td th:text="${a.lastSeenAt}">2026-02-09T00:00</td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>
+
+</html>

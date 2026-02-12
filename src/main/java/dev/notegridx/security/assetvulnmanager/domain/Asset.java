@@ -1,15 +1,22 @@
 package dev.notegridx.security.assetvulnmanager.domain;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
 
 import lombok.Getter;
 
@@ -17,45 +24,57 @@ import lombok.Getter;
 @Table(name = "assets")
 @Getter
 public class Asset {
-	
-	@Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	
-	@Column(nullable = false) private String name;
-	private String vendor;
-	
-	@Column(nullable = false) private String version;
-	
+
+	@NotBlank
+	@Column(nullable = false)
+	private String name;
+
 	@Column(name = "asset_type")
 	private String assetType;
+
 	private String owner;
+
+	@Lob
+	private String note;
+
+	@Column(name = "created_at", nullable = false)
+	private LocalDateTime createdAt;
+
+	@Column(name = "updated_at", nullable = false)
+	private LocalDateTime updatedAt;
+
+	@OneToMany(mappedBy = "asset", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<SoftwareInstall> softwareInstalls = new ArrayList<>();
 	
-	@Column(name = "created_at", nullable = false) private LocalDateTime createdAt = LocalDateTime.now();
-	@Column(name = "updated_at", nullable = false) private LocalDateTime updatedAt = LocalDateTime.now();
+	protected Asset() {
+	}
+	
+	public Asset(String name) {
+		this.name = name;
+	}
+	
+	public void updateDetails(String assetType, String owner, String note) {
+		this.assetType = assetType;
+		this.owner = owner;
+		this.note = note;
+	}
 	
 	@PrePersist
-	void onCreate() {
-		createdAt = LocalDateTime.now();
-		updatedAt = LocalDateTime.now();
+	void prePersist() {
+		LocalDateTime now = LocalDateTime.now();
+		this.createdAt = now;
+		this.updatedAt = now;
 	}
 	
 	@PreUpdate
-	void onUpdate() {
-		updatedAt = LocalDateTime.now();
-	}
-	
-	protected Asset() {}
-	
-	public Asset(String name, String vendor, String version, String assetType, String owner) {
-		this.name = name;
-		this.vendor = vendor;
-		this.version = version;
-		this.assetType = assetType;
-		this.owner = owner;
-	}
-	
-	public void touchUpdatedAt() {
+	void preUpdate() {
 		this.updatedAt = LocalDateTime.now();
 	}
-	
+
+
+
 }

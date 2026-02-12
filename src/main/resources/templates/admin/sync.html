@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Sync</title>
+</head>
+
+<body>
+  <h1>Admin Sync</h1>
+
+  <p>
+    <a th:href="@{/assets}">Assets</a> |
+    <a th:href="@{/alerts}">Alerts</a>
+  </p>
+  
+  <h2>Run sync (Fetch -> Persist -> Match -> Upsert)</h2>
+
+  <form th:action="@{/admin/sync}" method="post">
+    <div>
+      <label>daysBack (lastModified range) :</label>
+      <input type="number" name="daysBack" min="1" max="120" th:value="${daysBack != null ? daysBack : 7}">
+    </div>
+    <div>
+      <label>maxResults (CVE fetch cap) :</label>
+      <input type="number" name="maxResults" min="1" max="2000" th:value="${maxResults != null ? maxResults : 200}">
+    </div>
+    <div style="margin-top: 8px;">
+      <button type="submit">Run sync</button>
+    </div>
+
+  </form>
+
+  <div th:if="${result != null}">
+    <hr />
+    <h2>Result</h2>
+    <ul>
+      <li>fetched: <span th:text="${result.fetched}">0</span></li>
+      <li>vulnerabilitiesUpserted: <span th:text="${result.vulnerabilitiesUpserted}">0</span></li>
+      <li>affectedCpesInserted: <span th:text="${result.affectedCpesInserted}">0</span></li>
+      <li>pairsFound: <span th:text="${result.pairsFound}">0</span></li>
+      <li>alertsInserted: <span th:text="${result.alertsInserted}">0</span></li>
+      <li>alertsTouched: <span th:text="${result.alertsTouched}">0</span></li>
+    </ul>
+    <p>※ MVP方針により「今回見つからなかった既存OPENの自動CLOSE」は行いません。</p>
+  </div>
+</body>
+
+</html>

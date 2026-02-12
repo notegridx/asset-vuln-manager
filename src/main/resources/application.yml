@@ -27,3 +27,9 @@ spring:
 logging:
   level:
     org.hibernate.SQL: debug
+    dev.notegridx.security.assetvulnmanager: info
+    
+app:
+  nvd:
+    base-url: https://services.nvd.nist.gov
+    api-key: ${NVD_API_KEY:}
