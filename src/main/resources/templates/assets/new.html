@@ -1,37 +1,36 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-<head>
-<meta charset="UTF-8">
-<title>Create Asset</title>
-</head>
-<body>
+<head th:replace="~{layout/base :: head('Create Asset')}"></head>
+
+<body th:replace="~{layout/base :: layout('Create Asset', 'assets', ~{::main})}">
+  <main>
   <h1>Create Asset</h1>
   
   <form th:action="@{/assets}" th:object="${assetForm}" method="post">
-    <div>
+    <div class="field">
       <label>Name *</label>
       <input type="text" th:field="*{name}" />
-      <div th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name error</div>
+      <div class="error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name error</div>
     </div>
     
-    <div>
+    <div class="field">
       <label>Asset Type</label>
       <input type="text" th:field="*{assetType}" />
     </div>
-    <div>
+    <div class="field">
       <label>Owner</label>
       <input type="text" th:field="*{owner}" />
     </div>
-    <div>
+    <div class="field">
       <label>Note</label>
       <textarea th:field="*{note}"></textarea>
     </div>
     
-    <div>
+    <div class="actions" style="margin-top: 14px;">
       <button type="submit">Create</button>
       <a th:href="@{/assets}">Back</a>
     </div>
   </form>
-
+  </main>
 </body>
 </html>

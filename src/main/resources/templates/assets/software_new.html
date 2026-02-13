@@ -1,45 +1,49 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-<head>
-<meta charset="UTF-8">
-<title>Add Software</title>
-</head>
-<body>
-  <p><a th:href="@{/assets/{id}(id=${asset.id})}">Back</a></p>
-  
-  <h1>Add Software</h1>
-  <div>
-    <b>Asset:</b> <span th:text="${asset.name}">AssetName</span>
-    (ID: <span th:text="${asset.id}">1</span>)
-  </div>
-  
-  <form th:action="@{/assets/{id}/software(id=${asset.id})}" th:object="${softwareInstallForm}" method="post">
-    <div>
-      <label>Vendor</label>
-      <input type="text" th:field="*{vendor}"/>
-    </div>
-    
-    <div>
-      <label>Product *</label>
-      <input type="text" th:field="*{product}"/>
-      <div th:if="${#fields.hasErrors('product')}" th:errors="*{product}">Product error</div>
-    </div>
-    
-    <div>
-      <label>Version</label>
-      <input type="text" th:field="*{version}"/>
-    </div>
-    
-    <div>
-      <label>CPE</label>
-      <input type="text" th:field="*{cpeName}" placeholder="cpe:2.3:... (optional)"/>
-    </div>
-    
-    <div>
-      <button type="submit">Create</button>
-    </div>
-    
-  </form>
 
+<head th:replace="~{layout/base :: head('Add Software')}"></head>
+
+<body th:replace="~{layout/base :: layout('Add Software', 'assets', ~{::main})}">
+  <main>
+    <div class="actions">
+      <h1 style="margin: 0;">Add Software</h1>
+      <a th:href="@{/assets/{id}(id=${asset.id})}"><- Back</a>
+    </div>
+
+    <p class="muted">
+      Asset: <b th:text="${asset.name}">AssetName</b>
+      (ID: <span th:text="${asset.id}">1</span>)
+    </p>
+
+    <form th:action="@{/assets/{id}/software(id=${asset.id})}" th:object="${softwareInstallForm}" method="post">
+      <div class="field">
+        <label>Vendor</label>
+        <input type="text" th:field="*{vendor}" />
+      </div>
+
+      <div class="field">
+        <label>Product *</label>
+        <input type="text" th:field="*{product}" />
+        <div class="error" th:if="${#fields.hasErrors('product')}" th:errors="*{product}">Product error</div>
+      </div>
+
+      <div class="field">
+        <label>Version</label>
+        <input type="text" th:field="*{version}" />
+      </div>
+
+      <div class="field">
+        <label>CPE</label>
+        <input type="text" th:field="*{cpeName}" placeholder="cpe:2.3:... (optional)"/>
+      </div>
+
+      <div class="actions" style="margin-top: 14px;">
+        <button type="submit">Create</button>
+        <a th:href="@{/assets/{id}(id=${asset.id})}">Cancel</a>
+      </div>
+
+    </form>
+  </main>
 </body>
+
 </html>

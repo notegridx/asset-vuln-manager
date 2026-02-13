@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head th:fragment="head(title)">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${title}">asset-vuln-manager</title>
+
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --panel: #121826;
+      --text: #e6e8ee;
+      --muted: #a6adbb;
+      --line: #2a3550;
+      --accent: #8ab4ff;
+
+      /* subtle semantic accents (keep the same design language) */
+      --ok: #8ab4ff;
+      /* reuse accent */
+      --warn: #ffd37a;
+      --danger: #ff9aa5;
+      --neutral: #a6adbb;
+      /* muted */
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: radial-gradient(1200px 700px at 20% -10%, rgba(138, 180, 255, 0.12), transparent 40%),
+        radial-gradient(900px 600px at 90% 0%, rgba(255, 211, 122, 0.08), transparent 42%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(18, 24, 38, 0.75);
+      backdrop-filter: blur(6px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      line-height: 1;
+    }
+
+    .brand .title {
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .brand .sub {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .nav-link:hover {
+      border-color: rgba(138, 180, 255, 0.35);
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-link.active {
+      border-color: rgba(138, 180, 255, 0.55);
+      color: var(--text);
+      background: rgba(138, 180, 255, 0.10);
+    }
+
+    main {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(18, 24, 38, 0.65);
+      backdrop-filter: blur(6px);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0 0 12px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0;
+      margin-top: 10px;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(42, 53, 80, 0.7);
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    thead th {
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    tbody tr:hover {
+      background: rgba(138, 180, 255, 0.06);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin: 12px 0;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text);
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: rgba(138, 180, 255, 0.55);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(138, 180, 255, 0.55);
+      background: rgba(138, 180, 255, 0.14);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: rgba(138, 180, 255, 0.20);
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* Badges: status / severity / unmapped */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+
+    .badge--status-open {
+      color: var(--text);
+      border-color: rgba(138, 180, 255, 0.45);
+      background: rgba(138, 180, 255, 0.10);
+    }
+
+    .badge--status-closed {
+      color: var(--muted);
+      background: rgba(166, 173, 187, 0.06);
+    }
+
+    .badge--sev-none {
+      color: var(--muted);
+      background: rgba(166, 173, 187, 0.06);
+    }
+
+    .badge--sev-low {
+      color: var(--text);
+      border-color: rgba(138, 180, 255, 0.40);
+      background: rgba(138, 180, 255, 0.08);
+    }
+
+    .badge--sev-medium {
+      color: var(--text);
+      border-color: rgba(255, 211, 122, 0.45);
+      background: rgba(255, 211, 122, 0.10);
+    }
+
+    .badge--sev-high,
+    .badge--sev-critical {
+      color: var(--text);
+      border-color: rgba(255, 154, 165, 0.45);
+      background: rgba(255, 154, 165, 0.10);
+    }
+
+    .badge--unmapped {
+      color: var(--text);
+      border-color: rgba(255, 211, 122, 0.45);
+      background: rgba(255, 211, 122, 0.10);
+    }
+
+    /* KV display (used by asset detail etc.) */
+    .kv {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 8px 14px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .kv .k {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .kv .v {
+      color: var(--text);
+    }
+
+    footer {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+
+<body th:fragment="layout(title, active, content)">
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="title">asset-vuln-manager</div>
+        <div class="sub" th:text="${title}">page</div>
+
+      </div>
+
+      <nav>
+        <a class="nav-link" th:classappend="${active == 'assets'} ? ' active' : ''" th:href="@{/assets}">Assets</a>
+
+        <a class="nav-link" th:classappend="${active == 'alerts'} ? ' active' : ''" th:href="@{/alerts}">Alerts</a>
+
+        <a class="nav-link" th:classappend="${active == 'admin'} ? ' active' : ''" th:href="@{/admin/sync}">Admin</a>
+      </nav>
+    </header>
+
+    <div th:replace="${content}"></div>
+
+    <footer>local MVP • Thymeleaf + Spring Boot + H2</footer>
+  </div>
+
+</body>
+
+</html>

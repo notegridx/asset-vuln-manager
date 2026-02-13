@@ -1,49 +1,72 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 
-<head>
-  <meta charset="UTF-8">
-  <title>Admin Sync</title>
-</head>
+<head th:replace="~{layout/base :: head('Admin Sync')}"></head>
 
-<body>
-  <h1>Admin Sync</h1>
+<body th:replace="~{layout/base :: layout('Admin Sync', 'admin', ~{::main})}">
+  <main>
 
-  <p>
-    <a th:href="@{/assets}">Assets</a> |
-    <a th:href="@{/alerts}">Alerts</a>
-  </p>
-  
-  <h2>Run sync (Fetch -> Persist -> Match -> Upsert)</h2>
+    <h1>Admin Sync</h1>
+    <p class="muted">Execute Fetch, Persist, Match, and Alert upsert operations in a single batch.</p>
 
-  <form th:action="@{/admin/sync}" method="post">
-    <div>
-      <label>daysBack (lastModified range) :</label>
-      <input type="number" name="daysBack" min="1" max="120" th:value="${daysBack != null ? daysBack : 7}">
+    <h2>Run sync</h2>
+
+    <form th:action="@{/admin/sync}" method="post">
+      <div class="field">
+        <label>daysBack (lastModified range)</label>
+        <input type="number" name="daysBack" min="1" max="120" th:value="${daysBack != null ? daysBack : 7}">
+      </div>
+      <div class="field">
+        <label>maxResults (CVE fetch cap) :</label>
+        <input type="number" name="maxResults" min="1" max="2000" th:value="${maxResults != null ? maxResults : 200}">
+      </div>
+      <div class="actions" style="margin-top: 14px;">
+        <button type="submit">Run sync</button>
+      </div>
+
+    </form>
+
+    <div th:if="${result != null}">
+      <hr />
+      <h2>Result</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>fetched</td>
+            <td th:text="${result.fetched}">0</td>
+          </tr>
+          <tr>
+            <td>vulnerabilitiesUpserted</td>
+            <td th:text="${result.vulnerabilitiesUpserted}">0</td>
+          </tr>
+          <tr>
+            <td>affectedCpesInserted</td>
+            <td th:text="${result.affectedCpesInserted}">0</td>
+          </tr>
+          <tr>
+            <td>pairsFound</td>
+            <td th:text="${result.pairsFound}">0</td>
+          </tr>
+          <tr>
+            <td>alertsInserted</td>
+            <td th:text="${result.alertsInserted}">0</td>
+          </tr>
+          <tr>
+            <td>alertsTouched</td>
+            <td th:text="${result.alertsTouched}">0</td>
+          </tr>
+        </tbody>
+
+      </table>
+
     </div>
-    <div>
-      <label>maxResults (CVE fetch cap) :</label>
-      <input type="number" name="maxResults" min="1" max="2000" th:value="${maxResults != null ? maxResults : 200}">
-    </div>
-    <div style="margin-top: 8px;">
-      <button type="submit">Run sync</button>
-    </div>
-
-  </form>
-
-  <div th:if="${result != null}">
-    <hr />
-    <h2>Result</h2>
-    <ul>
-      <li>fetched: <span th:text="${result.fetched}">0</span></li>
-      <li>vulnerabilitiesUpserted: <span th:text="${result.vulnerabilitiesUpserted}">0</span></li>
-      <li>affectedCpesInserted: <span th:text="${result.affectedCpesInserted}">0</span></li>
-      <li>pairsFound: <span th:text="${result.pairsFound}">0</span></li>
-      <li>alertsInserted: <span th:text="${result.alertsInserted}">0</span></li>
-      <li>alertsTouched: <span th:text="${result.alertsTouched}">0</span></li>
-    </ul>
-    <p>※ MVP方針により「今回見つからなかった既存OPENの自動CLOSE」は行いません。</p>
-  </div>
+  </main>
 </body>
 
 </html>
