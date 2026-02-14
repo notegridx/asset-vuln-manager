@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS software_installs
     VARCHAR
 (
     255
-),
+) NOT NULL DEFAULT '',
     product VARCHAR
 (
     255
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS software_installs
     version VARCHAR
 (
     64
-),
+) NOT NULL DEFAULT '',
     cpe_name VARCHAR
 (
     512
