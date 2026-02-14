@@ -3,6 +3,8 @@ package dev.notegridx.security.assetvulnmanager.web.form;
 import jakarta.validation.constraints.NotBlank;
 
 public class AssetForm {
+
+	private String externalKey;
 	
 	@NotBlank(message = "Name is required")
 	private String name;
@@ -10,6 +12,9 @@ public class AssetForm {
 	private String assetType;
 	private String owner;
 	private String note;
+
+	public String getExternalKey() { return externalKey; }
+	public void setExternalKey(String externalKey) { this.externalKey = externalKey; }
 	
 	public String getName() { return name; }
 	public void setName(String name ) {this.name = name; }

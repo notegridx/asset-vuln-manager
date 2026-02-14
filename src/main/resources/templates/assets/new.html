@@ -3,34 +3,50 @@
 <head th:replace="~{layout/base :: head('Create Asset')}"></head>
 
 <body th:replace="~{layout/base :: layout('Create Asset', 'assets', ~{::main})}">
-  <main>
-  <h1>Create Asset</h1>
-  
-  <form th:action="@{/assets}" th:object="${assetForm}" method="post">
-    <div class="field">
-      <label>Name *</label>
-      <input type="text" th:field="*{name}" />
-      <div class="error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name error</div>
-    </div>
-    
-    <div class="field">
-      <label>Asset Type</label>
-      <input type="text" th:field="*{assetType}" />
-    </div>
-    <div class="field">
-      <label>Owner</label>
-      <input type="text" th:field="*{owner}" />
-    </div>
-    <div class="field">
-      <label>Note</label>
-      <textarea th:field="*{note}"></textarea>
-    </div>
-    
-    <div class="actions" style="margin-top: 14px;">
-      <button type="submit">Create</button>
-      <a th:href="@{/assets}">Back</a>
-    </div>
-  </form>
-  </main>
+<main>
+    <h1>Create Asset</h1>
+
+    <form th:action="@{/assets}" th:object="${assetForm}" method="post">
+
+        <!-- External Key -->
+        <div class="field">
+            <label>External Key</label>
+            <input type="text"
+                    th:field="*{externalKey}"
+                    placeholder="e.g. ASSET-001">
+
+                <!-- Field error -->
+                <div class="error"
+                     th:if="${#fields.hasErrors('externalKey')}"
+                     th:errors="*{externalKey}">
+                    External Key error
+                </div>
+
+        </div>
+        <div class="field">
+            <label>Name *</label>
+            <input type="text" th:field="*{name}"/>
+            <div class="error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">Name error</div>
+        </div>
+
+        <div class="field">
+            <label>Asset Type</label>
+            <input type="text" th:field="*{assetType}"/>
+        </div>
+        <div class="field">
+            <label>Owner</label>
+            <input type="text" th:field="*{owner}"/>
+        </div>
+        <div class="field">
+            <label>Note</label>
+            <textarea th:field="*{note}"></textarea>
+        </div>
+
+        <div class="actions" style="margin-top: 14px;">
+            <button type="submit">Create</button>
+            <a th:href="@{/assets}">Back</a>
+        </div>
+    </form>
+</main>
 </body>
 </html>

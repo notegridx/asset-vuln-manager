@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -56,7 +57,18 @@ public class AssetController {
 			return "assets/new";
 		}
 		
-		assetService.create(form.getName(), form.getAssetType(), form.getOwner(), form.getNote());
+		try {
+			assetService.create(
+					form.getExternalKey(),
+					form.getName(),
+					form.getAssetType(),
+					form.getOwner(),
+					form.getNote()
+			);
+		} catch (DataIntegrityViolationException e) {
+			bindingResult.rejectValue("externalKey", "duplicate", "External Key is already used.");
+			return "assets/new";
+		}
 		return "redirect:/assets";
 	}
 	
@@ -93,7 +105,13 @@ public class AssetController {
 			return "assets/software_new";
 		}
 		
-		softwareInstallService.addToAsset(asset, form.getVendor(), form.getProduct(), form.getVersion(), form.getCpeName());
+		try {
+			softwareInstallService.addToAsset(asset, form.getVendor(), form.getProduct(), form.getVersion(), form.getCpeName());
+		} catch (DataIntegrityViolationException e) {
+			bindingResult.reject("duplicate", "This software is already registered for this asset");
+			model.addAttribute("asset", asset);
+			return "assets/software_new";
+		}
 		return "redirect:/assets/" + assetId;
 	}
 	

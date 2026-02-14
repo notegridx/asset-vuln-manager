@@ -2,6 +2,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import jakarta.validation.Valid;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -57,8 +58,14 @@ public class SoftwareController {
 			return "software/edit";
 		}
 		
-		softwareInstallService.updateDetails(id, form.getVendor(), form.getProduct(), form.getVersion(), form.getCpeName());
-		
+		try {
+			softwareInstallService.updateDetails(id, form.getVendor(), form.getProduct(), form.getVersion(), form.getCpeName());
+		} catch (DataIntegrityViolationException e) {
+			bindingResult.reject("duplicate", "This software is already registered for this asset.");
+			model.addAttribute("softwareId", s.getId());
+			model.addAttribute("assetId", s.getAsset().getId());
+			return "software/edit";
+		}
 		return "redirect:/assets/" + s.getAsset().getId();
 	}
 

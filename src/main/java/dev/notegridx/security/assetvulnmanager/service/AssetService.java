@@ -31,9 +31,9 @@ public class AssetService {
 	}
 	
 	@Transactional
-	public Asset create(String name, String assetType, String owner, String note) {
+	public Asset create(String externalKey, String name, String assetType, String owner, String note) {
 		Asset asset = new Asset(name);
-		asset.updateDetails(assetType, owner, note);
+		asset.updateDetails(externalKey, assetType, owner, note);
 		return assetRepository.save(asset);
 	}
 

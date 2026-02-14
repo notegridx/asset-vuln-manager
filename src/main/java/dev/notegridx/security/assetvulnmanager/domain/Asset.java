@@ -4,77 +4,80 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 
 import lombok.Getter;
 
 @Entity
-@Table(name = "assets")
+@Table(
+        name = "assets",
+uniqueConstraints = @UniqueConstraint(
+        name = "uq_assets_external_key",
+        columnNames = {"external_key"}
+))
 @Getter
 public class Asset {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	@NotBlank
-	@Column(nullable = false)
-	private String name;
+    @Column(name = "external_key", length = 128)
+    private String externalKey;
 
-	@Column(name = "asset_type")
-	private String assetType;
+    @NotBlank
+    @Column(nullable = false)
+    private String name;
 
-	private String owner;
+    @Column(name = "asset_type")
+    private String assetType;
 
-	@Lob
-	private String note;
+    private String owner;
 
-	@Column(name = "created_at", nullable = false)
-	private LocalDateTime createdAt;
+    @Lob
+    private String note;
 
-	@Column(name = "updated_at", nullable = false)
-	private LocalDateTime updatedAt;
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
 
-	@OneToMany(mappedBy = "asset", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-	private List<SoftwareInstall> softwareInstalls = new ArrayList<>();
-	
-	protected Asset() {
-	}
-	
-	public Asset(String name) {
-		this.name = name;
-	}
-	
-	public void updateDetails(String assetType, String owner, String note) {
-		this.assetType = assetType;
-		this.owner = owner;
-		this.note = note;
-	}
-	
-	@PrePersist
-	void prePersist() {
-		LocalDateTime now = LocalDateTime.now();
-		this.createdAt = now;
-		this.updatedAt = now;
-	}
-	
-	@PreUpdate
-	void preUpdate() {
-		this.updatedAt = LocalDateTime.now();
-	}
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @OneToMany(mappedBy = "asset", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SoftwareInstall> softwareInstalls = new ArrayList<>();
+
+    protected Asset() {
+    }
+
+    public Asset(String name) {
+        this.name = name;
+    }
+
+    public void updateDetails(String externalKey, String assetType, String owner, String note) {
+        this.externalKey = normalizeNullable(externalKey);
+        this.assetType = assetType;
+        this.owner = owner;
+        this.note = note;
+    }
+
+    private static String normalizeNullable(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    @PrePersist
+    void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 
 
 }
