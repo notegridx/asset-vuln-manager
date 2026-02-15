@@ -29,14 +29,15 @@ public class SoftwareInstall {
     @JoinColumn(name = "asset_id", nullable = false)
     private Asset asset;
 
-    private String vendor;
+    @Column(nullable = false)
+    private String vendor = "";
 
     @NotBlank
     @Column(nullable = false)
     private String product;
 
-    @Column(length = 64)
-    private String version;
+    @Column(nullable = false, length = 64)
+    private String version = "";
 
     @Column(name = "cpe_name", length = 512)
     private String cpeName;
@@ -60,14 +61,16 @@ public class SoftwareInstall {
     public SoftwareInstall(Asset asset, String product) {
         this.asset = asset;
         this.product = requireNotBlank(product, "product");
+        this.vendor = "";
+        this.version = "";
     }
 
     public void updateDetails(String vendor, String product, String version, String cpeName) {
         String p = requireNotBlank(product, "product");
         this.product = p;
 
-        this.vendor = normalizeNullable(vendor);
-        this.version = normalizeNullable(version);
+        this.vendor = normalizeToEmpty(vendor);
+        this.version = normalizeToEmpty(version);
 
         String cpe = normalizeNullable(cpeName);
         this.cpeName = (cpe == null) ? null : cpe;
@@ -80,6 +83,12 @@ public class SoftwareInstall {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private static String normalizeToEmpty(String s) {
+        if (s == null) return "";
+        String t = s.trim();
+        return t.isEmpty() ?  "" : t;
     }
 
     private static String normalizeForKey(String s) {
@@ -101,6 +110,10 @@ public class SoftwareInstall {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
+
+        if (this.vendor == null) this.vendor = "";
+        if (this.version == null) this.version = "";
+
         if (this.normalizedVendor == null) this.normalizedVendor = normalizeForKey(this.vendor);
         if (this.normalizedProduct == null) this.normalizedProduct = normalizeForKey(this.product);
     }
@@ -108,6 +121,10 @@ public class SoftwareInstall {
     @PreUpdate
     void preUpdate() {
         this.updatedAt = LocalDateTime.now();
+
+        if (this.vendor == null) this.vendor = "";
+        if (this.version == null) this.version = "";
+
         if (this.normalizedVendor == null) this.normalizedVendor = normalizeForKey(this.vendor);
         if (this.normalizedProduct == null) this.normalizedProduct = normalizeForKey(this.product);
     }

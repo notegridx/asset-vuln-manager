@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('Admin Import')}"></head>
+
+<body th:replace="~{layout/base :: layout('Admin Import', 'admin', ~{::main})}">
+<main>
+    <h1>Admin Import</h1>
+    <p class="muted">
+        CSV import for operational ledger. Default is Dry-run. No delete (insert/update only).
+    </p>
+
+    <hr/>
+
+    <h2>1) Import Assets (by external_key)</h2>
+    <p class="muted">
+        Required columns: <b>external_key</b>, <b>name</b>.
+        Optional: asset_type, owner, note.
+        external_key will be normalized by trim + uppercase.
+    </p>
+
+    <form th:action="@{/admin/import/assets}" method="post" enctype="multipart/form-data">
+        <div class="field">
+            <label>CSV file</label>
+            <input type="file" name="file" accept=".csv, text/csv" required/>
+        </div>
+
+        <div class="field">
+            <label>Mode</label>
+            <select name="commit">
+                <option value="false" selected>Dry-run (recommended)</option>
+                <option value="true">Commit (write to DB)</option>
+            </select>
+        </div>
+
+
+        <div class="actions" style="margin-top: 14px;">
+            <button type="submit">Run Asset Import</button>
+        </div>
+    </form>
+
+    <div th:if="${assetResult != null}">
+        <hr/>
+        <h3>Asset Import Result</h3>
+
+        <table>
+            <tbody>
+            <tr>
+                <td>dryRun</td>
+                <td th:text="${assetResult.dryRun}">true</td>
+            </tr>
+            <tr>
+                <td>linesRead</td>
+                <td th:text="${assetResult.linesRead}">0</td>
+            </tr>
+            <tr>
+                <td>ok</td>
+                <td th:text="${assetResult.ok}">0</td>
+            </tr>
+            <tr>
+                <td>inserted</td>
+                <td th:text="${assetResult.inserted}">0</td>
+            </tr>
+            <tr>
+                <td>updated</td>
+                <td th:text="${assetResult.updated}">0</td>
+            </tr>
+            <tr>
+                <td>skipped</td>
+                <td th:text="${assetResult.skipped}">0</td>
+            </tr>
+            <tr>
+                <td>errors</td>
+                <td th:text="${assetResult.errors}">0</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${assetResult.errors > 0}">
+            <h4>Errors (line-based)</h4>
+            <table>
+                <thead>
+                <tr>
+                    <th style="width: 90px;">Line</th>
+                    <th style="width: 160px;">Code</th>
+                    <th>Message</th>
+                    <th>Raw</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="e : ${assetResult.errorList}">
+                    <td th:text="${e.lineNo}">2</td>
+                    <td th:text="${e.code}">INVALID</td>
+                    <td th:text="${e.message}">...</td>
+                    <td class="muted" th:text="${e.rawLine}">...</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <hr/>
+
+    <h2>2) Import Software Installs (by external_key + vendor/product/version)</h2>
+    <p class="muted">
+        Required columns: <b>external_key</b>, <b>product</b>.
+        Optional: vendor, version, cpe_name.
+        vendor/version will be normalized to empty string "" (no null).
+    </p>
+
+    <form th:action="@{/admin/import/software}" method="post" enctype="multipart/form-data">
+        <div class="field">
+            <label>CSV file</label>
+            <input type="file" name="file" accept=".csv, text/csv" required/>
+        </div>
+
+        <div class="field">
+            <label>Mode</label>
+            <select name="commit">
+                <option value="false" selected>Dry-run (recommended)</option>
+                <option value="true">Commit (write to DB)</option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label>
+                <input type="checkbox" name="recalc" th:value="true">
+                Recalculate Alerts after import (Commit only)
+            </label>
+            <div class="muted" style="font-size: 12px">
+                Runs MatchingService.matchAndUpsertAlerts() after successful commit with no errors.
+            </div>
+        </div>
+
+        <div class="actions" style="margin-top: 14px;">
+            <button type="submit">Run Software Import</button>
+            <a th:href="@{/admin/sync}">Go to Admin Sync</a>
+        </div>
+    </form>
+
+    <div th:if="${softwareResult != null}">
+        <hr/>
+        <h3>Software Import Result</h3>
+
+        <table>
+            <tbody>
+            <tr>
+                <td>dryRun</td>
+                <td th:text="${softwareResult.dryRun}">true</td>
+            </tr>
+            <tr>
+                <td>linesRead</td>
+                <td th:text="${softwareResult.linesRead}">0</td>
+            </tr>
+            <tr>
+                <td>ok</td>
+                <td th:text="${softwareResult.ok}">0</td>
+            </tr>
+            <tr>
+                <td>inserted</td>
+                <td th:text="${softwareResult.inserted}">0</td>
+            </tr>
+            <tr>
+                <td>updated</td>
+                <td th:text="${softwareResult.updated}">0</td>
+            </tr>
+            <tr>
+                <td>skipped</td>
+                <td th:text="${softwareResult.skipped}">0</td>
+            </tr>
+            <tr>
+                <td>errors</td>
+                <td th:text="${softwareResult.errors}">0</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${softwareResult.errors > 0}">
+            <h4>Errors (line-based)</h4>
+            <table>
+                <thead>
+                <tr>
+                    <th style="width: 90px;">Line</th>
+                    <th style="width: 160px;">Code</th>
+                    <th>Message</th>
+                    <th>Raw</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="e : ${softwareResult.errorList}">
+                    <td th:text="${e.lineNo}">2</td>
+                    <td th:text="${e.code}">INVALID</td>
+                    <td th:text="${e.message}">...</td>
+                    <td class="muted" th:text="${e.rawLine}">...</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${matchSkippedMessage != null}">
+            <p class="muted" th:text="${matchSkippedMessage}">Recalc skipped</p>
+        </div>
+
+        <div th:if="${matchResult != null}">
+            <hr/>
+            <h3>Alert Recalculation Result</h3>
+            <table>
+                <tbody>
+                <tr>
+                    <td>pairsFound</td>
+                    <td th:text="${matchResult.pairsFound}">0</td>
+                </tr>
+                <tr>
+                    <td>alertInserted</td>
+                    <td th:text="${matchResult.alertsInserted}">0</td>
+                </tr>
+                <tr>
+                    <td>alertsTouched</td>
+                    <td th:text="${matchResult.alertsTouched}">0</td>
+                </tr>
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+</main>
+
+</body>
+</html>
