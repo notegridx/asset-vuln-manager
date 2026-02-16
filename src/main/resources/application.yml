@@ -33,3 +33,9 @@ app:
   nvd:
     base-url: https://services.nvd.nist.gov
     api-key: ${NVD_API_KEY:}
+
+    cpe:
+      base-url: https://nvd.nist.gov
+
+      meta-path: /feeds/json/cpe/1.0/nvdcpematch-1.0.meta
+      gz-path: /feeds/json/cpe/1.0/nvdcpematch-1.0.json.gz
