@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('Vulnerabilities')}"></head>
+<body th:replace="~{layout/base :: layout('Vulnerabilities', 'vulns', ~{::main})}">
+<main>
+    <div class="actions">
+        <h1 style="margin: 0;">Vulnerabilities</h1>
+        <span class="pill" th:text="'count: ' + ${#lists.size(vulns)}">count: 0</span>
+    </div>
+
+    <p class="muted">Imported CVE list (local cache). Latest 500 by lastModified.</p>
+
+    <table>
+        <thead>
+        <tr>
+            <th style="width: 90px;">ID</th>
+            <th style="width: 210px;">CVE</th>
+            <th style="width: 160px;">Severity / CVSS</th>
+            <th style="width: 200px;">Last Modified</th>
+            <th>Title</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:if="${#lists.isEmpty(vulns)}">
+            <td colspan="5" class="muted">No vulnerabilities imported yet. Run Admin Sync.</td>
+        </tr>
+
+        <tr th:each="x : ${vulns}">
+            <td th:text="${x.id}">1</td>
+
+            <td>
+                <a th:href="@{/vulnerabilities/{id}(id=${x.id})}" th:text="${x.externalId}">CVE-2026-XXXX</a>
+                <div class="muted" style="font-size: 12px;" th:text="${x.source}">NVD</div>
+            </td>
+
+            <td>
+                <span class="badge"
+                      th:classappend="${x.severity != null ? (x.severity.toString() == 'CRITICAL' ? ' badge--sev-critical' : x.severity.toString() == 'HIGH' ? ' badge--sev-high' : x.severity.toString() == 'MEDIUM' ? ' badge--sev-medium' : x.severity.toString() == 'LOW' ? ' badge--sev-low' : ' badge--sev-none') : ' badge--sev-none'}"
+                      th:text="${x.severity != null ? x.severity : 'NONE'}">HIGH</span>
+
+                <div class="muted" style="font-size: 12px; margin-top: 6px;"
+                     th:text="${(x.cvssVersion != null ? x.cvssVersion : '-') + ' / ' + (x.cvssScore != null ? x.cvssScore : '-')}">
+                    3.1 / 7.5
+                </div>
+            </td>
+
+            <td th:text="${x.lastModifiedAt != null ? x.lastModifiedAt : '-'}">2026-02-16T00:00</td>
+
+            <td>
+                <div th:text="${x.title != null ? x.title : '-'}">title</div>
+                <div class="muted" style="font-size: 12px;"
+                     th:text="${x.description != null ? (#strings.length(x.description) > 120 ? #strings.substring(x.description, 0, 120) + '…' : x.description) : ''}">
+                    desc…
+                </div>
+            </td>
+
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+</body>
+</html>
