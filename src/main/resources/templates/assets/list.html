@@ -18,20 +18,40 @@
     <table>
       <thead>
         <tr>
-          <th style="width:120px;">ID</th>
-          <th>Name</th>
+          <th style="width: 80px;">ID</th>
+          <th style="width: 160px;">External Key</th>
+          <th style="width: 240px;">Name</th>
+          <th style="width: 140px;">Type</th>
+          <th style="width: 160px;">Owner</th>
+          <th>Note</th>
+          <th style="width: 190px;">Updated</th>
         </tr>
       </thead>
       <tbody>
         <tr th:if="${#lists.isEmpty(assets)}">
-          <td colspan="2" class="muted">No assets</td>
+          <td colspan="7" class="muted">No assets</td>
         </tr>
 
         <tr th:each="a : ${assets}">
           <td th:text="${a.id}">1</td>
+
+          <td>
+            <span th:text="${a.externalKey != null ? a.externalKey : '-'}">ASSET-001</span>
+          </td>
+
           <td>
             <a th:href="@{/assets/{id}(id=${a.id})}" th:text="${a.name}">Example</a>
           </td>
+
+          <td th:text="${a.assetType != null ? a.assetType : '-'}">server</td>
+
+          <td th:text="${a.owner != null ? a.owner : '-'}">owner</td>
+
+          <td class="muted">
+            <span th:text="${a.note != null ? a.note : ''}"></span>
+          </td>
+
+          <td th:text="${a.updatedAt}">2026-02-16T08:00</td>
         </tr>
       </tbody>
     </table>
