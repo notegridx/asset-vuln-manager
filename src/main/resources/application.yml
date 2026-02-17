@@ -36,5 +36,5 @@ app:
 
     cpe:
       base-url: https://nvd.nist.gov
-      meta-path: /feeds/json/cpe/2.0/nvdcpematch-2.0.json.gz.meta
-      gz-path: /feeds/json/cpe/2.0/nvdcpematch-2.0.json.gz
+      meta-path: /feeds/json/cpe/2.0/nvdcpe-2.0.meta
+      feed-path: /feeds/json/cpe/2.0/nvdcpe-2.0.tar.gz
