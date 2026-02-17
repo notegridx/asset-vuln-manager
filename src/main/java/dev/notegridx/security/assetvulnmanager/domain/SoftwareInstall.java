@@ -54,8 +54,13 @@ public class SoftwareInstall {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    protected SoftwareInstall() {
+    @Column(name = "cpe_vendor_id")
+    private Long cpeVendorId;
 
+    @Column(name = "cpe_product_id")
+    private Long cpeProductId;
+
+    protected SoftwareInstall() {
     }
 
     public SoftwareInstall(Asset asset, String product) {
@@ -77,6 +82,16 @@ public class SoftwareInstall {
 
         this.normalizedVendor = normalizeForKey(this.vendor);
         this.normalizedProduct = normalizeForKey(this.product);
+    }
+
+    public void linkCanonical(Long vendorId, Long productId) {
+        this.cpeVendorId = vendorId;
+        this.cpeProductId = productId;
+    }
+
+    public void unlinkCanonical() {
+        this.cpeVendorId = null;
+        this.cpeProductId = null;
     }
 
     private static String normalizeNullable(String s) {

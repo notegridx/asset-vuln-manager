@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('CPE Dictionary Sync')}"></head>
+<body th:replace="~{layout/base :: layout('CPE Dictionary Sync', 'admin', ~{::main})}">
+<main>
+    <h1>CPE Dictionary Sync</h1>
+    <p class="muted">
+        Sync NVD CPE Dictionary feed into local DB (vendors/products). Large-feed safe, idempotent.
+    </p>
+
+    <h2>Run sync</h2>
+
+    <form th:action="@{/admin/cpe/sync}" method="post">
+        <div class="field">
+            <label>
+                <input type="checkbox" name="force" th:checked="${force != null and force}">
+                force (ignore meta cache)
+            </label>
+        </div>
+
+        <div class="field">
+            <label>maxItems (cap)</label>
+            <input type="number" name="maxItems" min="1" max="5000000"
+                   th:value="${maxItems != null ? maxItems : 2000000}">
+        </div>
+
+        <div class="actions" style="margin-top: 14px;">
+            <button type="submit">Run CPE sync</button>
+        </div>
+    </form>
+
+    <div th:if="${result != null}">
+        <hr/>
+        <h2>Result</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>skipped</td>
+                <td th:text="${result.skipped}">false</td>
+            </tr>
+            <tr>
+                <td>sha256</td>
+                <td th:text="${result.sha256}">-</td>
+            </tr>
+            <tr>
+                <td>lastModified</td>
+                <td th:text="${result.lastModified}">-</td>
+            </tr>
+            <tr>
+                <td>size</td>
+                <td th:text="${result.size}">0</td>
+            </tr>
+
+            <tr th:if="${result.vendorsInserted != null}">
+                <td>vendorsInserted</td>
+                <td th:text="${result.vendorsInserted}">0</td>
+            </tr>
+            <tr th:if="${result.productsInserted != null}">
+                <td>productsInserted</td>
+                <td th:text="${result.productsInserted}">0</td>
+            </tr>
+            <tr th:if="${result.cpeParsed ! = null}">
+                <td>cpeParsed</td>
+                <td th:text="${result.cpeParsed}">0</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+</body>
+</html>

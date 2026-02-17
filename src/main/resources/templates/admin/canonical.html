@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('Admin Canonical')}"></head>
+<body th:replace="~{layout/base :: layout('Admin Canonical', 'admin', ~{::main})}">
+<main>
+    <h1>Admin Canonical Linking</h1>
+    <p class="muted">Matches vendor/product entries in software_installs against the CPE dictionary and visualizes
+        unconfirmed entries. </p>
+
+    <div th:if="${summary != null}" class="kv">
+        <b>checked</b> <span th:text="${summary.checked}">0</span>
+        <b>hit</b> <span th:text="${summary.hit}">0</span>
+        <b>miss</b> <span th:text="${summary.miss}">0</span>
+        <b>needsNormalization</b> <span th:text="${summary.needsNormalization}">0</span>
+    </div>
+
+    <hr/>
+
+    <table>
+        <thead>
+        <tr>
+            <th style="width: 90px;">SW ID</th>
+            <th>Raw</th>
+            <th style="width: 260px;">Normalized</th>
+            <th style="width: 120px;">Result</th>
+            <th>Reason</th>
+            <th style="width: 90px;">Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:if="${#lists.isEmpty(rows)}">
+            <td colspan="6" class="muted">No rows</td>
+        </tr>
+
+        <tr th:each="r : ${rows}">
+            <td th:text="${r.softwareId}">1</td>
+
+            <td>
+                <div><span th:text="${r.vendor}">vendor</span> / <b th:text="${r.product}">product</b></div>
+                <div class="muted" style="font-size: 12px;" th:text="${r.version}">1.0</div>
+            </td>
+
+            <td>
+                <div class="muted" style="font-size: 12px;">
+                    v: <span th:text="${r.normalizedVendor != null ? r.normalizedVendor : '-'}">-</span>
+                </div>
+                <div class="muted" style="font-size: 12px;">
+                    p: <span th:text="${r.normalizedProduct != null ? r.normalizedProduct : '-'}">-</span>
+                </div>
+            </td>
+
+            <td>
+            <span class="badge"
+                  th:classappend="${r.resolve.hit ? ' badge--status-open' : ' badge--unmapped'}"
+                  th:text="${r.resolve.hit ? 'HIT' : 'MISS'}">MISS</span>
+            </td>
+
+            <td class="muted" th:text="${r.resolve.reason != null ? r.resolve.reason : '-'}">reason</td>
+
+            <td>
+                <a th:href="@{/software/{id}/edit(id=${r.softwareId})}">Edit</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>
