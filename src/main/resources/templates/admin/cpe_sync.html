@@ -46,15 +46,15 @@
             </tr>
             <tr>
                 <td>sha256</td>
-                <td th:text="${result.sha256}">-</td>
+                <td th:text="${result.metaSha256}">-</td>
             </tr>
             <tr>
                 <td>lastModified</td>
-                <td th:text="${result.lastModified}">-</td>
+                <td th:text="${result.metaLastModified}">-</td>
             </tr>
             <tr>
                 <td>size</td>
-                <td th:text="${result.size}">0</td>
+                <td th:text="${result.metaSize}">0</td>
             </tr>
 
             <tr th:if="${result.vendorsInserted != null}">
@@ -65,7 +65,7 @@
                 <td>productsInserted</td>
                 <td th:text="${result.productsInserted}">0</td>
             </tr>
-            <tr th:if="${result.cpeParsed ! = null}">
+            <tr th:if="${result.cpeParsed != null}">
                 <td>cpeParsed</td>
                 <td th:text="${result.cpeParsed}">0</td>
             </tr>

@@ -13,6 +13,8 @@ import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeSyncStateRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import jakarta.persistence.EntityManager;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -22,8 +24,11 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
@@ -41,6 +46,9 @@ public class CpeFeedSyncService {
     private static final int FLUSH_EVERY = 5_000;
     private static final int TX_CHUNK = 10_000;
 
+    // peek-log safety
+    private static final int PEEK_KEYS_LIMIT = 80;
+
     // caches (LRU)
     private final Map<String, Long> vendorIdCache = new LruMap<>(200_000);
     private final Map<Long, Set<String>> productKeyCache = new LruMap<>(200_000);
@@ -56,7 +64,9 @@ public class CpeFeedSyncService {
 
     private final CpeFeedMetaParser metaParser = new CpeFeedMetaParser();
     private final CpeNameParser cpeNameParser = new CpeNameParser();
-    private final JsonFactory jsonFactory = new JsonFactory();
+
+    // IMPORTANT: prevent JsonParser.close() from closing TarArchiveInputStream
+    private final JsonFactory jsonFactory;
 
     public CpeFeedSyncService(
             NvdCpeFeedClient feedClient,
@@ -75,13 +85,17 @@ public class CpeFeedSyncService {
         TransactionTemplate tt = new TransactionTemplate(txManager);
         tt.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.chunkTx = tt;
+
+        JsonFactory jf = new JsonFactory();
+        jf.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
+        this.jsonFactory = jf;
     }
 
     public SyncResult sync(boolean force, int maxItems) throws IOException {
         int safeMax = clamp(maxItems, 1, 5_000_000);
         LocalDateTime now = LocalDateTime.now();
 
-        // 1) META fetch
+        // 1) META fetch (small)
         CpeFeedMetaParser.FeedMeta meta = feedClient.fetchMeta(metaParser);
 
         // 2) compare with sync_state
@@ -95,49 +109,151 @@ public class CpeFeedSyncService {
             return SyncResult.skipped(meta.sha256(), meta.lastModified(), meta.size());
         }
 
-        // 3) download gz
-        byte[] gz = feedClient.downloadGz();
-        log.info("CPE feed downloaded: bytes={}, force={}, cap={}", gz.length, force, safeMax);
+        // 3) download tar.gz -> temp file (streaming, no byte[])
+        Path tmp = null;
+        long bytes = 0;
+        try {
+            tmp = feedClient.downloadTarGzToTempFile();
+            bytes = Files.size(tmp);
+            log.info("CPE feed downloaded to temp: file={}, bytes={}, force={}, cap={}", tmp, bytes, force, safeMax);
 
-        // 4) parse & upsert with chunked transactions
-        ParseUpsertResult r = parseAndUpsertChunked(gz, safeMax);
+            // 4) parse & upsert with chunked transactions
+            try (InputStream in = Files.newInputStream(tmp)) {
+                ParseUpsertResult r = parseAndUpsertTarGzChunked(in, safeMax);
 
-        // 5) update sync state
-        state.updateMeta(meta.sha256(), meta.lastModified(), meta.size(), now);
-        syncStateRepository.save(state);
+                // 5) update sync state
+                state.updateMeta(meta.sha256(), meta.lastModified(), meta.size(), now);
+                syncStateRepository.save(state);
 
-        log.info("CPE feed sync done: vendorsInserted={}, productsInserted={}, cpeParsed={}, vendorCache={}, productCache={}",
-                r.vendorsInserted, r.productsInserted, r.cpeParsed, vendorIdCache.size(), productKeyCache.size());
+                log.info("CPE feed sync done: vendorsInserted={}, productsInserted={}, cpeParsed={}, vendorCache={}, productCache={}",
+                        r.vendorsInserted, r.productsInserted, r.cpeParsed, vendorIdCache.size(), productKeyCache.size());
 
-        return SyncResult.executed(r.vendorsInserted, r.productsInserted, r.cpeParsed,
-                meta.sha256(), meta.lastModified(), meta.size());
+                return SyncResult.executed(r.vendorsInserted, r.productsInserted, r.cpeParsed,
+                        meta.sha256(), meta.lastModified(), meta.size());
+            }
+        } finally {
+            if (tmp != null) {
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (Exception e) {
+                    log.warn("Failed to delete temp file (ignored). file={}, err={}", tmp, safeMsg(e));
+                }
+            }
+        }
     }
 
-    private ParseUpsertResult parseAndUpsertChunked(byte[] gzBytes, int maxItems) throws IOException {
+    /**
+     * tar.gz -> (GZIPInputStream) -> (TarArchiveInputStream)
+     * For first tar entry only:
+     * - readAllEntryBytes (cannot re-read stream)
+     * - peek keys(depth<=2, limit<=80) and log
+     * - parse from byte[] (ByteArrayInputStream)
+     * Remaining entries:
+     * - parse directly from tar stream
+     */
+    private ParseUpsertResult parseAndUpsertTarGzChunked(InputStream tarGzStream, int maxItems) throws IOException {
         final int[] vendorsInserted = {0};
         final int[] productsInserted = {0};
         final int[] parsed = {0};
 
-        try (InputStream bin = new ByteArrayInputStream(gzBytes);
-             GZIPInputStream gin = new GZIPInputStream(bin);
-             JsonParser p = jsonFactory.createParser(gin)) {
+        // streaming buffer
+        List<CpeNameParser.VendorProduct> buffer = new ArrayList<>(TX_CHUNK);
 
-            // streaming loop
-            List<CpeNameParser.VendorProduct> buffer = new ArrayList<>(TX_CHUNK);
+        try (GZIPInputStream gin = new GZIPInputStream(tarGzStream);
+             TarArchiveInputStream tin = new TarArchiveInputStream(gin)) {
+
+            boolean firstEntryPeeked = false;
+
+            TarArchiveEntry entry;
+            while ((entry = tin.getNextTarEntry()) != null) {
+                if (!entry.isFile()) continue;
+
+                String entryName = entry.getName();
+                log.info("CPE tar entry: name={}, size={}", entryName, entry.getSize());
+
+                if (!firstEntryPeeked) {
+                    // 1st entry: read all bytes, peek keys, then parse from byte[]
+                    byte[] entryBytes = readAllEntryBytes(tin);
+
+                    Set<String> keys = collectKeysDepthLe2(entryBytes, PEEK_KEYS_LIMIT);
+                    log.info("CPE entry peek keys (depth<=2, limit={}): {}", PEEK_KEYS_LIMIT, keys);
+
+                    // Optional: quick sanity (kept lightweight)
+                    // log.info("CPE entry contains: cpe23Uri?={} cpeName?={}",
+                    //         new String(entryBytes, java.nio.charset.StandardCharsets.UTF_8).contains("\"cpe23Uri\""),
+                    //         new String(entryBytes, java.nio.charset.StandardCharsets.UTF_8).contains("\"cpeName\""));
+
+                    parseCpeJsonStream(new ByteArrayInputStream(entryBytes), maxItems, parsed, buffer, vendorsInserted, productsInserted);
+                    firstEntryPeeked = true;
+
+                } else {
+                    // subsequent entries: parse directly from tar stream
+                    parseCpeJsonStream(tin, maxItems, parsed, buffer, vendorsInserted, productsInserted);
+                }
+
+                if (parsed[0] >= maxItems) break;
+            }
+
+            // tail flush
+            if (!buffer.isEmpty() && parsed[0] > 0) {
+                List<CpeNameParser.VendorProduct> chunk = new ArrayList<>(buffer);
+                buffer.clear();
+
+                chunkTx.execute(status -> {
+                    var r = upsertChunk(chunk, parsed[0]);
+                    vendorsInserted[0] += r.vendorsInserted;
+                    productsInserted[0] += r.productsInserted;
+                    return null;
+                });
+            }
+
+        }
+
+        return new ParseUpsertResult(vendorsInserted[0], productsInserted[0], parsed[0]);
+    }
+
+    /**
+     * Parse one JSON stream (one tar entry) with Jackson streaming,
+     * extracting CPE name strings.
+     * <p>
+     * Feed/API2 often uses "cpeName" (not "cpe23Uri").
+     * We accept both keys and only count valid "cpe:2.3:" strings.
+     * <p>
+     * NOTE: JsonFactory is configured with AUTO_CLOSE_SOURCE disabled,
+     * so closing parser won't close underlying TarArchiveInputStream.
+     */
+
+    private void parseCpeJsonStream(
+            InputStream jsonStream,
+            int maxItems,
+            int[] parsed,
+            List<CpeNameParser.VendorProduct> buffer,
+            int[] vendorsInserted,
+            int[] productsInserted
+    ) throws IOException {
+
+        try (JsonParser p = jsonFactory.createParser(jsonStream)) {
 
             while (p.nextToken() != null) {
+
                 if (p.currentToken() != JsonToken.FIELD_NAME) continue;
 
                 String field = p.currentName();
                 JsonToken v = p.nextToken();
 
-                if (!(v == JsonToken.VALUE_STRING && "cpe23Uri".equals(field))) continue;
+                if (v != JsonToken.VALUE_STRING) continue;
 
-                String cpe23 = p.getValueAsString();
+                boolean isCpeField = "cpe23Uri".equals(field) || "cpeName".equals(field);
+                if (!isCpeField) continue;
+
+                String cpe = p.getValueAsString();
+                if (cpe == null || !cpe.startsWith("cpe:2.3:")) continue;
+
                 parsed[0]++;
+
                 if (parsed[0] > maxItems) break;
 
-                Optional<CpeNameParser.VendorProduct> vpOpt = cpeNameParser.parseVendorProduct(cpe23);
+                Optional<CpeNameParser.VendorProduct> vpOpt = cpeNameParser.parseVendorProduct(cpe);
                 if (vpOpt.isEmpty()) continue;
 
                 buffer.add(vpOpt.get());
@@ -152,6 +268,7 @@ public class CpeFeedSyncService {
                         productsInserted[0] += r.productsInserted;
                         return null;
                     });
+
                 }
 
                 if (parsed[0] % LOG_EVERY == 0) {
@@ -159,22 +276,50 @@ public class CpeFeedSyncService {
                             parsed[0], vendorsInserted[0], productsInserted[0]);
                 }
             }
+        }
+    }
 
-            // tail
-            if (!buffer.isEmpty()) {
-                List<CpeNameParser.VendorProduct> chunk = new ArrayList<>(buffer);
-                buffer.clear();
+    /**
+     * Collect FIELD_NAME keys for a "peek" log, limited depth <= 2.
+     * Implementation is bst-effort, safe, and bounded.
+     */
+    private Set<String> collectKeysDepthLe2(byte[] jsonBytes, int limit) {
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        if (jsonBytes == null || jsonBytes.length == 0) return out;
 
-                chunkTx.execute(status -> {
-                    var r = upsertChunk(chunk, parsed[0]);
-                    vendorsInserted[0] += r.vendorsInserted;
-                    productsInserted[0] += r.productsInserted;
-                    return null;
-                });
+        try (JsonParser p = jsonFactory.createParser(new ByteArrayInputStream(jsonBytes))) {
+            int objectDepth = 0;
+            while (p.nextToken() != null && out.size() < limit) {
+                JsonToken t = p.currentToken();
+
+                if (t == JsonToken.START_OBJECT) {
+                    objectDepth++;
+                } else if (t == JsonToken.END_OBJECT) {
+                    objectDepth = Math.max(0, objectDepth - 1);
+                } else if (t == JsonToken.FIELD_NAME) {
+                    // depth<=2 means root object (1) and its direct nested object (2)
+                    if (objectDepth <= 2) out.add(p.currentName());
+                }
             }
+        } catch (Exception e) {
+            log.warn("CPE peek keys failed (ignored). err={}", safeMsg(e));
         }
 
-        return new ParseUpsertResult(vendorsInserted[0], productsInserted[0], parsed[0]);
+        return out;
+    }
+
+    /**
+     * Reads current tar entry bytes fully from TarArchiveInputStream.
+     * (Required because tar entry cannot be rewound.)
+     */
+    private static byte[] readAllEntryBytes(TarArchiveInputStream tin) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(1024 * 1024);
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = tin.read(buf)) != -1) {
+            bos.write(buf, 0, n);
+        }
+        return bos.toByteArray();
     }
 
     private ChunkResult upsertChunk(List<CpeNameParser.VendorProduct> chunk, int parsedSoFar) {
@@ -273,6 +418,12 @@ public class CpeFeedSyncService {
         if (v > max) return max;
         return v;
     }
+
+    private static String safeMsg(Throwable t) {
+        String m = t.getMessage();
+        return (m == null) ? t.getClass().getSimpleName() : m;
+    }
+
 
     private record ChunkResult(int vendorsInserted, int productsInserted) {
     }
