@@ -24,6 +24,10 @@ spring:
   thymeleaf:
     cache: false
 
+  http:
+    codecs:
+      max-in-memory-size: 2MB
+
 logging:
   level:
     org.hibernate.SQL: debug
