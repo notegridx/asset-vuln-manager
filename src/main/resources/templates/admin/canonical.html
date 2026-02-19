@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout/base :: head('Admin Canonical')}"></head>
-<body th:replace="~{layout/base :: layout('Admin Canonical', 'admin', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Admin Canonical', 'canonical', ~{::main})}">
 <main>
     <h1>Admin Canonical Linking</h1>
     <p class="muted">Matches vendor/product entries in software_installs against the CPE dictionary and visualizes
