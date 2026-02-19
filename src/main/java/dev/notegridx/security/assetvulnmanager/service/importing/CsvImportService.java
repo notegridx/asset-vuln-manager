@@ -4,11 +4,12 @@ import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+import dev.notegridx.security.assetvulnmanager.service.SoftwareDictionaryValidator;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.BufferedReader;
@@ -23,20 +24,39 @@ public class CsvImportService {
 
     private final AssetRepository assetRepository;
     private final SoftwareInstallRepository softwareInstallRepository;
+    private final SoftwareDictionaryValidator dictValidator;
 
     private final TransactionTemplate rowTx;
+
+    private final DictMode dictMode;
+
+    public enum DictMode { STRICT, LENIENT }
 
     public CsvImportService(
             AssetRepository assetRepository,
             SoftwareInstallRepository softwareInstallRepository,
-            PlatformTransactionManager txManager
+            SoftwareDictionaryValidator dictValidator,
+            PlatformTransactionManager txManager,
+            @Value("${app.software.dict-mode:LENIENT}") String dictMode
     ) {
         this.assetRepository = assetRepository;
         this.softwareInstallRepository = softwareInstallRepository;
+        this.dictValidator = dictValidator;
 
         TransactionTemplate tt = new TransactionTemplate(txManager);
         tt.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.rowTx = tt;
+
+        this.dictMode = parseDictMode(dictMode);
+    }
+
+    private static DictMode parseDictMode(String s) {
+        if (s == null) return DictMode.LENIENT;
+        try {
+            return DictMode.valueOf(s.trim().toUpperCase(Locale.ROOT));
+        } catch (Exception e) {
+            return DictMode.LENIENT;
+        }
     }
 
 // =========================
@@ -160,7 +180,11 @@ public class CsvImportService {
             Map<String, Integer> idx = headerIndex(header);
 
             // required columns
-            requireColumns(idx, errors, 1, headerLine, "external_key", "product");
+            if (dictMode == DictMode.STRICT) {
+                requireColumns(idx, errors, 1, headerLine, "external_key", "vendor", "product");
+            } else {
+                requireColumns(idx, errors, 1, headerLine, "external_key", "product");
+            }
 
             String line;
             int lineNo = 1;
@@ -182,18 +206,29 @@ public class CsvImportService {
                 String cpeName = normalizeNullable(get(cols, idx, "cpe_name"));
 
                 if (externalKey == null) {
-                    errors.add(new ImportError(lineNo, "INVALID_EXTERNAL_KEY", "external_key is required (trim+uppercase).", line));
-
+                    errors.add(new ImportError(lineNo, "INVALID_EXTERNAL_KEY",
+                            "external_key is required (trim+uppercase).", line));
                     continue;
                 }
                 if (product == null) {
-                    errors.add(new ImportError(lineNo, "INVALID_PRODUCT", "product is required.", line));
+                    errors.add(new ImportError(lineNo, "INVALID_PRODUCT",
+                            "product is required.", line));
+                    continue;
+                }
+
+                // --- dictionary validation (STRICT: must pass / LENIENT: try resolve and link if possible) ---
+                SoftwareDictionaryValidator.Resolve dictResolve = dictValidator.resolve(vendor, product);
+                if (dictMode == DictMode.STRICT && !dictResolve.hit()) {
+                    String code = (dictResolve.code() == null) ? "DICT_VALIDATION_FAILED" : dictResolve.code().name();
+                    String msg = (dictResolve.message() == null) ? "Dictionary validation failed." : dictResolve.message();
+                    errors.add(new ImportError(lineNo, code, msg, line));
                     continue;
                 }
 
                 Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
                 if (asset == null) {
-                    errors.add(new ImportError(lineNo, "ASSET_NOT_FOUND", "Asset not found for external_key=" + externalKey, line));
+                    errors.add(new ImportError(lineNo, "ASSET_NOT_FOUND",
+                            "Asset not found for external_key=" + externalKey, line));
                     continue;
                 }
 
@@ -211,13 +246,30 @@ public class CsvImportService {
 
                 try {
                     final SoftwareInstall ex = existing;
+                    final SoftwareDictionaryValidator.Resolve rFinal = dictResolve;
+
                     rowTx.execute(status -> {
                         if (ex == null) {
                             SoftwareInstall si = new SoftwareInstall(asset, product);
                             si.updateDetails(vendor, product, version, cpeName);
+
+                            if (rFinal != null && rFinal.hit()) {
+                                si.linkCanonical(rFinal.vendorId(), rFinal.productId());
+                            } else {
+                                si.unlinkCanonical();
+                            }
+
                             softwareInstallRepository.save(si);
+
                         } else {
                             ex.updateDetails(vendor, product, version, cpeName);
+
+                            if (rFinal != null && rFinal.hit()) {
+                                ex.linkCanonical(rFinal.vendorId(), rFinal.productId());
+                            } else {
+                                ex.unlinkCanonical();
+                            }
+
                             softwareInstallRepository.save(ex);
                         }
                         return null;
@@ -228,9 +280,11 @@ public class CsvImportService {
                     else updated++;
 
                 } catch (DataIntegrityViolationException e) {
-                    errors.add(new ImportError(lineNo, "DB_CONSTRAINT", "DB constraint violation. " + safeMsg(e), line));
+                    errors.add(new ImportError(lineNo, "DB_CONSTRAINT",
+                            "DB constraint violation. " + safeMsg(e), line));
                 } catch (Exception e) {
-                    errors.add(new ImportError(lineNo, "UNEXPECTED", "Unexpected error. " + safeMsg(e), line));
+                    errors.add(new ImportError(lineNo, "UNEXPECTED",
+                            "Unexpected error. " + safeMsg(e), line));
                 }
             }
         }
@@ -347,6 +401,3 @@ public class CsvImportService {
         return out;
     }
 }
-
-
-

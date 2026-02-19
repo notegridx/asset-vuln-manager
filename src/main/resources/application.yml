@@ -34,6 +34,10 @@ logging:
     dev.notegridx.security.assetvulnmanager: info
     
 app:
+
+  software:
+    dict-mode: STRICT  # or LENIENT
+
   nvd:
     base-url: https://services.nvd.nist.gov
     api-key: ${NVD_API_KEY:}
@@ -42,3 +46,6 @@ app:
       base-url: https://nvd.nist.gov
       meta-path: /feeds/json/cpe/2.0/nvdcpe-2.0.meta
       gz-path: /feeds/json/cpe/2.0/nvdcpe-2.0.tar.gz
+
+    software:
+      dict-mode: STRICT  # or LENIENT
