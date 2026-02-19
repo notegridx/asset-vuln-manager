@@ -4,18 +4,21 @@ import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+
+
 import dev.notegridx.security.assetvulnmanager.service.SoftwareDictionaryValidator;
+import dev.notegridx.security.assetvulnmanager.service.importing.ImportError;
+import dev.notegridx.security.assetvulnmanager.service.importing.ImportResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.TransactionException;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -30,7 +33,7 @@ public class CsvImportService {
 
     private final DictMode dictMode;
 
-    public enum DictMode { STRICT, LENIENT }
+    public enum DictMode {STRICT, LENIENT}
 
     public CsvImportService(
             AssetRepository assetRepository,
@@ -59,10 +62,9 @@ public class CsvImportService {
         }
     }
 
-// =========================
-// Asset CSV Import
-// =========================
-
+    // =========================================================
+    // Assets CSV import
+    // =========================================================
     public ImportResult importAssetsCsv(InputStream in, boolean commit) throws IOException {
         List<ImportError> errors = new ArrayList<>();
 
@@ -83,7 +85,6 @@ public class CsvImportService {
             List<String> header = parseCsvLine(headerLine);
             Map<String, Integer> idx = headerIndex(header);
 
-            // required columns
             requireColumns(idx, errors, 1, headerLine, "external_key", "name");
 
             String line;
@@ -116,7 +117,6 @@ public class CsvImportService {
                     continue;
                 }
 
-                // upsert decision
                 Asset existing = assetRepository.findByExternalKey(externalKey).orElse(null);
 
                 if (!commit) {
@@ -128,13 +128,26 @@ public class CsvImportService {
 
                 try {
                     final Asset ex = existing;
+
                     rowTx.execute(status -> {
                         if (ex == null) {
+                            // Asset(name) がある前提（あなたのプロジェクトではこれで作っているはず）
                             Asset a = new Asset(name);
+
+                            // external_key / assetType / owner / note の更新は既存仕様に合わせて
+                            // updateDetails がある前提（無い場合はここをあなたのAsset実装に合わせて直して）
                             a.updateDetails(externalKey, assetType, owner, note);
+
                             assetRepository.save(a);
                         } else {
+                            // 既存Assetの更新
                             ex.updateDetails(externalKey, assetType, owner, note);
+
+                            // ⚠️ name更新をしたい場合：
+                            // - Asset に setName(String) があるなら ex.setName(name);
+                            // - nameを変えない設計なら何もしない
+                            // ex.setName(name);
+
                             assetRepository.save(ex);
                         }
                         return null;
@@ -145,7 +158,8 @@ public class CsvImportService {
                     else updated++;
 
                 } catch (DataIntegrityViolationException e) {
-                    errors.add(new ImportError(lineNo, "DB_CONSTRAINT", "DB constraint violation. " + safeMsg(e), line));
+                    errors.add(new ImportError(lineNo, "DB_CONSTRAINT",
+                            "DB constraint violation. " + safeMsg(e), line));
                 } catch (Exception e) {
                     errors.add(new ImportError(lineNo, "UNEXPECTED",
                             "Unexpected error. " + safeMsg(e), line));
@@ -156,10 +170,22 @@ public class CsvImportService {
         return new ImportResult(!commit, linesRead, ok, inserted, updated, skipped, errors.size(), errors);
     }
 
-    // =========================
-    // SoftwareInstall CSV Import
-    // =========================
+    // =========================================================
+    // Software CSV import
+    // =========================================================
+
+    // 互換維持：2引数版は残す
     public ImportResult importSoftwareCsv(InputStream in, boolean commit) throws IOException {
+        return importSoftwareCsv(in, commit, Collections.emptySet());
+    }
+
+    /**
+     * overrideLineNos に含まれる行番号は、STRICTでも辞書missを許容してDB登録する。
+     * <p>
+     * また「すでにDBに存在する行」は、次回のoverride実行で再読込されても
+     * DICT_* エラーとして再表示されないようにする（既存行は辞書チェックで落とさない）。
+     */
+    public ImportResult importSoftwareCsv(InputStream in, boolean commit, Set<Integer> overrideLineNos) throws IOException {
         List<ImportError> errors = new ArrayList<>();
 
         int linesRead = 0;
@@ -167,6 +193,8 @@ public class CsvImportService {
         int inserted = 0;
         int updated = 0;
         int skipped = 0;
+
+        final Set<Integer> override = (overrideLineNos == null) ? Collections.emptySet() : overrideLineNos;
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             String headerLine = br.readLine();
@@ -180,11 +208,8 @@ public class CsvImportService {
             Map<String, Integer> idx = headerIndex(header);
 
             // required columns
-            if (dictMode == DictMode.STRICT) {
-                requireColumns(idx, errors, 1, headerLine, "external_key", "vendor", "product");
-            } else {
-                requireColumns(idx, errors, 1, headerLine, "external_key", "product");
-            }
+            // STRICTでも override があるため vendor/product は必須としておく（運用上安全）
+            requireColumns(idx, errors, 1, headerLine, "external_key", "vendor", "product");
 
             String line;
             int lineNo = 1;
@@ -216,15 +241,9 @@ public class CsvImportService {
                     continue;
                 }
 
-                // --- dictionary validation (STRICT: must pass / LENIENT: try resolve and link if possible) ---
-                SoftwareDictionaryValidator.Resolve dictResolve = dictValidator.resolve(vendor, product);
-                if (dictMode == DictMode.STRICT && !dictResolve.hit()) {
-                    String code = (dictResolve.code() == null) ? "DICT_VALIDATION_FAILED" : dictResolve.code().name();
-                    String msg = (dictResolve.message() == null) ? "Dictionary validation failed." : dictResolve.message();
-                    errors.add(new ImportError(lineNo, code, msg, line));
-                    continue;
-                }
+                boolean overrideThisLine = override.contains(lineNo);
 
+                // (重要) 先に Asset / existing を確定する
                 Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
                 if (asset == null) {
                     errors.add(new ImportError(lineNo, "ASSET_NOT_FOUND",
@@ -237,6 +256,42 @@ public class CsvImportService {
                         .findByAssetIdAndVendorAndProductAndVersion(assetId, vendor, product, version)
                         .orElse(null);
 
+                // ---- 辞書チェック方針 ----
+                // 1) override行：STRICTでも辞書missを許容（resolveしない = canonicalは触らない/新規はnull）
+                // 2) 既存行：次回再実行時に DICT_* でまた落ちて再表示されるのを防ぐため、辞書missで落とさない
+                // 3) 新規行＆overrideでない：STRICTなら辞書HIT必須、LENIENTならHIT時のみリンク
+                SoftwareDictionaryValidator.Resolve dictResolve = null;
+                boolean touchCanonical = false; // canonical を変更するか（勝手にunlinkしないためのガード）
+
+                if (!overrideThisLine && existing == null) {
+                    // 新規行：ここでのみ辞書を評価
+                    dictResolve = dictValidator.resolve(vendor, product);
+
+                    if (dictMode == DictMode.STRICT && !dictResolve.hit()) {
+                        String code = (dictResolve.code() == null) ? "DICT_VALIDATION_FAILED" : dictResolve.code().name();
+                        String msg = (dictResolve.message() == null) ? "Dictionary validation failed." : dictResolve.message();
+                        errors.add(new ImportError(lineNo, code, msg, line));
+                        continue;
+                    }
+
+                    // LENIENTでもHITしたならリンクしたいので、触る対象にする
+                    if (dictResolve.hit()) {
+                        touchCanonical = true;
+                    }
+
+                } else if (!overrideThisLine && existing != null) {
+                    // 既存行：辞書missで落とさない（再表示防止）
+                    // canonical は “触らない” (touchCanonical=false) をデフォルトにして現状維持
+                    dictResolve = null;
+                    touchCanonical = false;
+
+                } else {
+                    // override行：辞書missを許容。canonicalは基本触らない。
+                    // 新規 insert の場合 canonical は null のまま。既存 update の場合も現状維持。
+                    dictResolve = null;
+                    touchCanonical = false;
+                }
+
                 if (!commit) {
                     ok++;
                     if (existing == null) inserted++;
@@ -247,29 +302,27 @@ public class CsvImportService {
                 try {
                     final SoftwareInstall ex = existing;
                     final SoftwareDictionaryValidator.Resolve rFinal = dictResolve;
+                    final boolean touchCanonicalFinal = touchCanonical;
 
                     rowTx.execute(status -> {
                         if (ex == null) {
                             SoftwareInstall si = new SoftwareInstall(asset, product);
                             si.updateDetails(vendor, product, version, cpeName);
 
-                            if (rFinal != null && rFinal.hit()) {
+                            // 新規は “HITした場合のみ link”。miss/override は何もしない（= nullのまま）
+                            if (touchCanonicalFinal && rFinal != null && rFinal.hit()) {
                                 si.linkCanonical(rFinal.vendorId(), rFinal.productId());
-                            } else {
-                                si.unlinkCanonical();
                             }
-
                             softwareInstallRepository.save(si);
 
                         } else {
                             ex.updateDetails(vendor, product, version, cpeName);
 
-                            if (rFinal != null && rFinal.hit()) {
+                            // 既存は “触るべき” と判断した時だけ canonical を更新
+                            // （dict miss や override で勝手に unlink しない）
+                            if (touchCanonicalFinal && rFinal != null && rFinal.hit()) {
                                 ex.linkCanonical(rFinal.vendorId(), rFinal.productId());
-                            } else {
-                                ex.unlinkCanonical();
                             }
-
                             softwareInstallRepository.save(ex);
                         }
                         return null;
@@ -292,9 +345,9 @@ public class CsvImportService {
         return new ImportResult(!commit, linesRead, ok, inserted, updated, skipped, errors.size(), errors);
     }
 
-// =========================
-// Helpers (CSV)
-// =========================
+    // =========================================================
+    // Helpers
+    // =========================================================
 
     private static boolean isBlankLine(String s) {
         return s == null || s.trim().isEmpty();
@@ -358,10 +411,10 @@ public class CsvImportService {
         return t.toUpperCase(Locale.ROOT);
     }
 
-    /*
-      Minimal CSV parser supporting:
-      - comma separated
-      - quoted fields with "" escape
+    /**
+     * Minimal CSV parser supporting:
+     * - comma separated
+     * - quoted fields with "" escape
      */
     private static List<String> parseCsvLine(String line) {
         List<String> out = new ArrayList<>();
@@ -375,7 +428,6 @@ public class CsvImportService {
 
             if (inQuotes) {
                 if (c == '"') {
-                    // escaped quote?
                     if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
                         cur.append('"');
                         i++;
@@ -385,7 +437,6 @@ public class CsvImportService {
                 } else {
                     cur.append(c);
                 }
-
             } else {
                 if (c == ',') {
                     out.add(cur.toString());

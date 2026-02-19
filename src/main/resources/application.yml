@@ -32,11 +32,18 @@ logging:
   level:
     org.hibernate.SQL: debug
     dev.notegridx.security.assetvulnmanager: info
-    
+
 app:
 
+  # software dictionary behavior used by CsvImportService
   software:
     dict-mode: STRICT  # or LENIENT
+
+  # (optional) import session settings for override-import
+  import:
+    session-ttl-minutes: 30
+    # 空なら ImportSessionStore が java.io.tmpdir を使う
+    session-dir:
 
   nvd:
     base-url: https://services.nvd.nist.gov
