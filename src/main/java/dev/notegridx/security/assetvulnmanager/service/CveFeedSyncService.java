@@ -1,406 +1,223 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Objects;
 
-import dev.notegridx.security.assetvulnmanager.domain.CveSyncState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
 import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityAffectedCpe;
-import dev.notegridx.security.assetvulnmanager.infra.nvd.CveFeedMetaParser;
-import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient;
-import dev.notegridx.security.assetvulnmanager.repository.CveSyncStateRepository;
+import dev.notegridx.security.assetvulnmanager.infra.nvd.CpeNameParser;
+import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdClient;
+import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient; // ★ FeedKind の型
+import dev.notegridx.security.assetvulnmanager.infra.nvd.dto.NvdCveResponse;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
 
-import jakarta.persistence.EntityManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.TransactionTemplate;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.LinkedHashSet;
-import java.util.Objects;
-import java.util.Set;
-import java.util.zip.GZIPInputStream;
-
 /**
- * CVE feed sync for NVD JSON 2.0 feeds (modified/recent).
- *
- * Strategy:
- * - fetch meta
- * - compare with cve_sync_state
- * - if changed (or force), download json.gz to temp file
- * - stream-parse JSON and upsert vulnerabilities + affected cpes
- * - update sync_state
+ * CVE sync:
+ * - 互換のため AdminCveController が呼ぶ sync(FeedKind, force, maxItems) を提供する
+ * - 実処理は NvdImportService に寄せる
  */
 @Service
 public class CveFeedSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(CveFeedSyncService.class);
 
-    private static final String SOURCE = "NVD";
-
-    // tuning
-    private static final int LOG_EVERY = 5_000;
-    private static final int FLUSH_EVERY = 2_000;
-
-    private final NvdCveFeedClient feedClient;
+    private final NvdClient nvdClient;
     private final VulnerabilityRepository vulnerabilityRepository;
     private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
-    private final CveSyncStateRepository syncStateRepository;
-    private final EntityManager em;
 
-    private final TransactionTemplate chunkTx;
-    private final CveFeedMetaParser metaParser = new CveFeedMetaParser();
+    private final CpeNameParser cpeNameParser;
+    private final VendorProductNormalizer normalizer;
+    private final CpeVendorRepository cpeVendorRepository;
+    private final CpeProductRepository cpeProductRepository;
 
-    // prevent JsonParser.close() from closing underlying streams, if you ever wrap layered streams
-    private final JsonFactory jsonFactory;
+    private final NvdImportService nvdImportService;
 
     public CveFeedSyncService(
-            NvdCveFeedClient feedClient,
+            NvdClient nvdClient,
             VulnerabilityRepository vulnerabilityRepository,
             VulnerabilityAffectedCpeRepository affectedCpeRepository,
-            CveSyncStateRepository syncStateRepository,
-            EntityManager em,
-            PlatformTransactionManager txManager
+            CpeNameParser cpeNameParser,
+            VendorProductNormalizer normalizer,
+            CpeVendorRepository cpeVendorRepository,
+            CpeProductRepository cpeProductRepository,
+            NvdImportService nvdImportService
     ) {
-        this.feedClient = feedClient;
+        this.nvdClient = nvdClient;
         this.vulnerabilityRepository = vulnerabilityRepository;
         this.affectedCpeRepository = affectedCpeRepository;
-        this.syncStateRepository = syncStateRepository;
-        this.em = em;
-
-        TransactionTemplate tt = new TransactionTemplate(txManager);
-        tt.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        this.chunkTx = tt;
-
-        this.jsonFactory = new JsonFactory();
-        // (optional) jsonFactory.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
+        this.cpeNameParser = cpeNameParser;
+        this.normalizer = normalizer;
+        this.cpeVendorRepository = cpeVendorRepository;
+        this.cpeProductRepository = cpeProductRepository;
+        this.nvdImportService = nvdImportService;
     }
 
-    public SyncResult sync(NvdCveFeedClient.FeedKind kind, boolean force, int maxItems) throws IOException {
-        int safeMax = clamp(maxItems, 1, 5_000_000);
-        LocalDateTime now = LocalDateTime.now();
+    /**
+     * ★互換メソッド★
+     * AdminCveController が呼んでいるシグネチャを復活させる。
+     *
+     * NOTE:
+     * - “feed kind” によって同期範囲を切り替える（最小限の実装）
+     * - force の扱いは、現状の importFromNvd が「lastModified範囲で取得」前提なので
+     *   ここでは範囲を広げる方向で吸収する（必要なら cve_sync_state と連携して最適化）
+     */
+    @Transactional
+    public SyncResult sync(NvdCveFeedClient.FeedKind kind, boolean force, int maxItems) {
+        // いまの実装は NVD API の lastModifiedRange を使うので、FeedKind を “範囲” に変換する
+        // RECENT: 直近（例: 8日）
+        // MODIFIED: 直近（例: 8日）だが force=true なら広げる（例: 30日）
+        OffsetDateTime end = OffsetDateTime.now();
+        OffsetDateTime start = defaultStartFor(kind, force, end);
 
-        String feedName = "nvd-cve-2.0-" + kind.name().toLowerCase();
+        int safeMax = Math.max(1, Math.min(maxItems, 2000)); // NVD API運用の安全側
+        log.info("CVE sync: kind={}, force={}, range={}..{}, maxItems={}", kind, force, start, end, safeMax);
 
-        // 1) META
-        CveFeedMetaParser.FeedMeta meta = feedClient.fetchMeta(kind, metaParser);
-
-        // 2) compare
-        CveSyncState state = syncStateRepository.findByFeedName(feedName)
-                .orElseGet(() -> new CveSyncState(feedName));
-
-        boolean same = state.isSameMeta(meta.sha256(), meta.lastModified(), meta.size());
-        if (!force && same) {
-            log.info("CVE feed sync skipped (meta unchanged). feedName={}, sha256={}, lastModified={}, size={}",
-                    feedName, meta.sha256(), meta.lastModified(), meta.size());
-            return SyncResult.skipped(meta.sha256(), meta.lastModified(), meta.size());
-        }
-
-        // 3) download json.gz -> temp
-        Path tmp = null;
-        try {
-            tmp = feedClient.downloadJsonGzToTempFile(kind);
-            long bytes = Files.size(tmp);
-            log.info("CVE feed downloaded: kind={}, file={}, bytes={}, force={}, cap={}", kind, tmp, bytes, force, safeMax);
-
-            // 4) parse + upsert
-            ParseResult r;
-            try (InputStream fin = Files.newInputStream(tmp);
-                 GZIPInputStream gin = new GZIPInputStream(fin)) {
-
-                r = parseAndUpsert(gin, safeMax);
-            }
-
-            // 5) update state
-            state.updateMeta(meta.sha256(), meta.lastModified(), meta.size(), now);
-            syncStateRepository.save(state);
-
-            log.info("CVE feed sync done: kind={}, parsed={}, vulnUpserted={}, affectedInserted={}",
-                    kind, r.parsed, r.vulnUpserted, r.affectedInserted);
-
-            return SyncResult.executed(r.vulnUpserted, r.affectedInserted, r.parsed,
-                    meta.sha256(), meta.lastModified(), meta.size());
-
-        } finally {
-            if (tmp != null) {
-                try { Files.deleteIfExists(tmp); } catch (Exception ignore) {}
-            }
-        }
+        var r = nvdImportService.importFromNvd(start, end, safeMax);
+        return new SyncResult(r.vulnerabilitiesUpserted(), r.affectedCpesInserted(), r.fetched());
     }
 
-    private ParseResult parseAndUpsert(InputStream jsonStream, int maxItems) throws IOException {
-        int parsed = 0;
+    private static OffsetDateTime defaultStartFor(NvdCveFeedClient.FeedKind kind, boolean force, OffsetDateTime end) {
+        // enum名が RECENT/MODIFIED 以外でも落ちないように name() ベースで吸収
+        String k = (kind == null) ? "" : kind.name().toUpperCase();
+
+        // “最近”の既定幅（NVDのRECENTが「8日」運用であることが多いので 8日を既定に）
+        // ※ここはあなたの運用に合わせて調整してください
+        int daysRecent = 8;
+
+        if (k.contains("RECENT")) {
+            return end.minusDays(daysRecent);
+        }
+
+        if (k.contains("MODIFIED")) {
+            // MODIFIED は通常も recent幅でOKだが、force なら広げる（取りこぼし救済）
+            return force ? end.minusDays(30) : end.minusDays(daysRecent);
+        }
+
+        // 不明なFeedKindは安全側（recent幅）
+        return end.minusDays(daysRecent);
+    }
+
+    // ---- 既存：lastModifiedRange を明示的に指定して同期したい場合 ----
+    @Transactional
+    public SyncResult syncByLastModifiedRange(OffsetDateTime start, OffsetDateTime end, int maxResults) {
+        var r = nvdImportService.importFromNvd(start, end, maxResults);
+        return new SyncResult(r.vulnerabilitiesUpserted(), r.affectedCpesInserted(), r.fetched());
+    }
+
+    // ---- 既存：もし旧ロジックが残っている場合の直接同期（残してもOK）----
+    @Transactional
+    public SyncResult syncDirect(OffsetDateTime start, OffsetDateTime end, int maxResults) {
+
+        List<NvdCveResponse.VulnerabilityItem> items =
+                nvdClient.fetchByLastModifiedRange(start, end, Math.max(1, Math.min(maxResults, 2000)));
+
         int vulnUpserted = 0;
         int affectedInserted = 0;
 
-        // NOTE: this is a skeleton. We parse streaming and:
-        // - pick cve.id
-        // - pick description (en)
-        // - pick cvss v31/v30 baseScore + version
-        // - pick published/lastModified
-        // - extract vulnerable cpeMatch.criteria
-        //
-        // Implementation detail: The feed JSON structure includes nested objects/arrays.
-        // In production, you'd implement robust token navigation.
-        try (JsonParser p = jsonFactory.createParser(jsonStream)) {
+        for (var item : items) {
+            if (item == null || item.cve() == null) continue;
 
-            // very lightweight state machine (best-effort skeleton)
-            String currentCveId = null;
-            String descEn = null;
-            String published = null;
-            String lastModified = null;
-            String cvssVersion = null;
-            java.math.BigDecimal cvssScore = null;
-            Set<String> cpes = new LinkedHashSet<>();
+            String cveId = norm(item.cve().id());
+            if (cveId == null) continue;
 
-            while (p.nextToken() != null) {
-                JsonToken t = p.currentToken();
+            Vulnerability v = vulnerabilityRepository.findBySourceAndExternalId("NVD", cveId)
+                    .orElseGet(() -> new Vulnerability("NVD", cveId));
 
-                if (t == JsonToken.FIELD_NAME) {
-                    String field = p.currentName();
-                    JsonToken v = p.nextToken();
+            vulnerabilityRepository.save(v);
+            vulnUpserted++;
 
-                    // ---- CVE id ----
-                    if ("id".equals(field) && v == JsonToken.VALUE_STRING) {
-                        // This "id" may appear in many places; in a full implementation
-                        // you should confirm path. For skeleton we accept first seen while inside a CVE block.
-                        String id = normalize(p.getValueAsString());
-                        if (id != null && id.startsWith("CVE-")) {
-                            currentCveId = id;
-                        }
-                    }
+            var configs = item.cve().configurations();
+            if (configs == null) continue;
 
-                    // ---- description ----
-                    // Feed has descriptions[] with lang/value. Skeleton: if we see "lang":"en" then next "value".
-                    if ("published".equals(field) && v == JsonToken.VALUE_STRING) {
-                        published = p.getValueAsString();
-                    }
-                    if ("lastModified".equals(field) && v == JsonToken.VALUE_STRING) {
-                        lastModified = p.getValueAsString();
-                    }
-
-                    if ("lang".equals(field) && v == JsonToken.VALUE_STRING) {
-                        String lang = p.getValueAsString();
-                        // naive: if "en", try to find a nearby "value"
-                        if ("en".equalsIgnoreCase(lang)) {
-                            // look ahead a bit (best-effort)
-                            String maybeValue = tryFindNextValueField(p, 32);
-                            if (maybeValue != null) descEn = maybeValue;
-                        }
-                    }
-
-                    // ---- CVSS baseScore + version (best-effort) ----
-                    if ("baseScore".equals(field) && (v == JsonToken.VALUE_NUMBER_FLOAT || v == JsonToken.VALUE_NUMBER_INT)) {
-                        try {
-                            cvssScore = p.getDecimalValue();
-                        } catch (Exception ignore) {}
-                    }
-                    if ("version".equals(field) && v == JsonToken.VALUE_STRING) {
-                        String ver = normalize(p.getValueAsString());
-                        if (ver != null && (ver.startsWith("3.") || ver.startsWith("2.") || ver.startsWith("4."))) {
-                            cvssVersion = ver;
-                        }
-                    }
-
-                    // ---- affected CPE ----
-                    // In NVD JSON, vulnerable CPE criteria often appears under configurations nodes cpeMatch criteria.
-                    if ("criteria".equals(field) && v == JsonToken.VALUE_STRING) {
-                        String cpe = normalize(p.getValueAsString());
-                        if (cpe != null && cpe.startsWith("cpe:2.3:")) {
-                            // in full impl: also check vulnerable==true for this cpeMatch
-                            cpes.add(cpe);
-                        }
-                    }
-
-                    // ---- crude boundary detection ----
-                    // When we detect end of one CVE item, we should flush.
-                    // Proper detection requires path-based parsing (e.g., on END_OBJECT at correct depth).
-                    // Skeleton trigger: when we see field "cve" start object? (not implemented)
-                }
-
-                // Skeleton flush heuristic:
-                // If we have a CVE id and have collected some data, and we hit END_OBJECT at depth ~??,
-                // we'd flush. Here we provide a very conservative approach:
-                // When cpes grows beyond threshold OR parsed count is close to max, we may flush on END_ARRAY etc.
-                // For a real impl, replace this with path-aware flush.
-                if (currentCveId != null && !cpes.isEmpty() && parsed < maxItems && parsed % 200 == 0) {
-                    // no-op
-                }
-
-                // In a real implementation, you would flush when finishing each CVE item.
-                // This skeleton instead flushes ONLY when it seems "complete enough" and sees next CVE id.
-                // (Implemented by looking for another CVE id; handled above by overwriting currentCveId.)
-                //
-                // For skeleton completeness, we won't actually persist until we detect at least an END_OBJECT
-                // AND currentCveId is set; a placeholder approach is to persist at END_OBJECT when currentCveId exists.
-                if (t == JsonToken.END_OBJECT && currentCveId != null) {
-                    // persist one CVE (best-effort)
-                    final String cveIdFinal = currentCveId;
-                    final String descFinal = descEn;
-                    final String cvssVerFinal = cvssVersion;
-                    final java.math.BigDecimal cvssScoreFinal = cvssScore;
-                    final LocalDateTime pubFinal = parseNvdDateTime(published);
-                    final LocalDateTime lastModFinal = parseNvdDateTime(lastModified);
-                    final Set<String> cpesFinal = new LinkedHashSet<>(cpes);
-
-                    // reset accumulators for next item
-                    currentCveId = null;
-                    descEn = null;
-                    published = null;
-                    lastModified = null;
-                    cvssVersion = null;
-                    cvssScore = null;
-                    cpes.clear();
-
-                    parsed++;
-                    if (parsed > maxItems) break;
-
-                    // per-item tx (safe)
-                    ParseDelta d = chunkTx.execute(status -> upsertOne(cveIdFinal, descFinal, cvssVerFinal, cvssScoreFinal, pubFinal, lastModFinal, cpesFinal));
-                    if (d != null) {
-                        vulnUpserted += d.vulnUpserted;
-                        affectedInserted += d.affectedInserted;
-                    }
-
-                    if (parsed % LOG_EVERY == 0) {
-                        log.info("CVE feed progress: parsed={}, vulnUpserted={}, affectedInserted={}",
-                                parsed, vulnUpserted, affectedInserted);
-                    }
-
-//                    if (parsed % FLUSH_EVERY == 0) {
-//                        em.flush();
-//                        em.clear();
-//                    }
+            for (var cfg : configs) {
+                if (cfg == null || cfg.nodes() == null) continue;
+                for (var node : cfg.nodes()) {
+                    affectedInserted += collectAndSaveAffected(v, node);
                 }
             }
         }
 
-//        em.flush();
-//        em.clear();
-
-        return new ParseResult(parsed, vulnUpserted, affectedInserted);
+        return new SyncResult(vulnUpserted, affectedInserted, items.size());
     }
 
-    private ParseDelta upsertOne(
-            String cveId,
-            String description,
-            String cvssVersion,
-            java.math.BigDecimal cvssScore,
-            LocalDateTime publishedAt,
-            LocalDateTime lastModifiedAt,
-            Set<String> cpes
-    ) {
-        if (cveId == null) return new ParseDelta(0, 0);
+    private int collectAndSaveAffected(Vulnerability v, NvdCveResponse.Node node) {
+        if (node == null) return 0;
+        int inserted = 0;
 
-        Vulnerability v = vulnerabilityRepository.findBySourceAndExternalId(SOURCE, cveId)
-                .orElseGet(() -> new Vulnerability(SOURCE, cveId));
+        if (node.cpeMatch() != null) {
+            for (var m : node.cpeMatch()) {
+                if (m == null) continue;
+                if (Boolean.FALSE.equals(m.vulnerable())) continue;
 
-        v.applyNvdDetails(
-                null,
-                description,
-                cvssVersion,
-                cvssScore,
-                publishedAt,
-                lastModifiedAt
-        );
+                String criteria = norm(m.criteria());
+                if (criteria == null || !criteria.startsWith("cpe:2.3:")) continue;
 
-        vulnerabilityRepository.save(v);
+                Long vendorId = null;
+                Long productId = null;
+                String vendorNorm = null;
+                String productNorm = null;
 
-        int affectedInserted = 0;
-        if (cpes != null) {
-            for (String cpe : cpes) {
-                if (cpe == null || !cpe.startsWith("cpe:2.3:")) continue;
+                var vpOpt = cpeNameParser.parseVendorProduct(criteria);
+                if (vpOpt.isPresent()) {
+                    var vp = vpOpt.get();
+                    vendorNorm = normalizer.normalizeVendor(vp.vendor());
+                    productNorm = normalizer.normalizeProduct(vp.product());
 
-                boolean exists;
-                try {
-                    exists = affectedCpeRepository.existsByVulnerabilityIdAndCpeName(v.getId(), cpe);
-                } catch (Exception ignore) {
-                    exists = false;
+                    if (vendorNorm != null && productNorm != null) {
+                        vendorId = cpeVendorRepository.findByNameNorm(vendorNorm).map(x -> x.getId()).orElse(null);
+                        if (vendorId != null) {
+                            productId = cpeProductRepository.findByVendorIdAndNameNorm(vendorId, productNorm)
+                                    .map(x -> x.getId()).orElse(null);
+                        }
+                    }
                 }
-                if (exists) continue;
+
+                VulnerabilityAffectedCpe vac = new VulnerabilityAffectedCpe(
+                        v,
+                        criteria,
+                        vendorId,
+                        productId,
+                        vendorNorm,
+                        productNorm,
+                        norm(m.versionStartIncluding()),
+                        norm(m.versionStartExcluding()),
+                        norm(m.versionEndIncluding()),
+                        norm(m.versionEndExcluding())
+                );
 
                 try {
-                    affectedCpeRepository.save(new VulnerabilityAffectedCpe(v, cpe));
-                    affectedInserted++;
-                } catch (DataIntegrityViolationException dup) {
-                    // ignore
+                    affectedCpeRepository.save(vac);
+                    inserted++;
+                } catch (DataIntegrityViolationException e) {
+                    log.debug("VAC duplicate ignored: vulnId={}, criteria={}", v.getId(), criteria);
                 }
             }
         }
 
-        return new ParseDelta(1, affectedInserted);
-    }
-
-    private static String tryFindNextValueField(JsonParser p, int maxSteps) throws IOException {
-        // best-effort lookahead within bounds. Do not rely on this for correctness.
-        for (int i = 0; i < maxSteps; i++) {
-            JsonToken t = p.nextToken();
-            if (t == null) return null;
-            if (t == JsonToken.FIELD_NAME && "value".equals(p.currentName())) {
-                JsonToken v = p.nextToken();
-                if (v == JsonToken.VALUE_STRING) {
-                    return normalize(p.getValueAsString());
-                }
+        if (node.children() != null) {
+            for (var c : node.children()) {
+                inserted += collectAndSaveAffected(v, c);
             }
         }
-        return null;
+
+        return inserted;
     }
 
-    private static LocalDateTime parseNvdDateTime(String s) {
-        String v = normalize(s);
-        if (v == null) return null;
-        try {
-            return OffsetDateTime.parse(v).toLocalDateTime();
-        } catch (DateTimeParseException e) {
-            return null;
-        }
-    }
-
-    private static String normalize(String s) {
+    private static String norm(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
 
-    private static int clamp(int v, int min, int max) {
-        if (v < min) return min;
-        if (v > max) return max;
-        return v;
-    }
-
-    private record ParseResult(int parsed, int vulnUpserted, int affectedInserted) {}
-    private record ParseDelta(int vulnUpserted, int affectedInserted) {}
-
-    public record SyncResult(
-            boolean skipped,
-            int vulnerabilitiesUpserted,
-            int affectedCpesInserted,
-            int parsed,
-            String metaSha256,
-            String metaLastModified,
-            Long metaSize
-    ) {
-        public static SyncResult skipped(String sha256, String lastModified, Long size) {
-            return new SyncResult(true, 0, 0, 0, sha256, lastModified, size);
-        }
-
-        public static SyncResult executed(int vUp, int aIns, int parsed, String sha256, String lastModified, Long size) {
-            return new SyncResult(false, vUp, aIns, parsed, sha256, lastModified, size);
-        }
-    }
+    public record SyncResult(int vulnerabilitiesUpserted, int affectedCpesInserted, int fetched) {}
 }

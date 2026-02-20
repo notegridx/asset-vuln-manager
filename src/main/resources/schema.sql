@@ -289,7 +289,21 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
 (
     512
 ) NOT NULL,
+
+    -- Phase1: dict-id / normalized
+    cpe_vendor_id BIGINT,
+    cpe_product_id BIGINT,
+    vendor_norm VARCHAR(255),
+    product_norm VARCHAR(255),
+
+    -- version range
+    version_start_including VARCHAR(128),
+    version_start_excluding VARCHAR(128),
+    version_end_including VARCHAR(128),
+    version_end_excluding VARCHAR(128),
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
     CONSTRAINT fk_vac_vuln FOREIGN KEY
 (
     vulnerability_id
@@ -297,15 +311,38 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
 (
     id
 ),
-    CONSTRAINT uq_vuln_cpe UNIQUE
+
+    CONSTRAINT fk_vac_cpe_vendor FOREIGN KEY
+(
+    cpe_vendor_id
+) REFERENCES cpe_vendors
+(
+    id
+),
+
+    CONSTRAINT fk_vac_cpe_product FOREIGN KEY
+(
+    cpe_product_id
+) REFERENCES cpe_products
+(
+    id
+),
+
+    CONSTRAINT uq_vac_vuln_criteria_range UNIQUE
 (
     vulnerability_id,
-    cpe_name
+    cpe_name,
+    version_start_including,
+    version_start_excluding,
+    version_end_including,
+    version_end_excluding
 )
     );
 
 CREATE INDEX IF NOT EXISTS idx_vac_cpe ON vulnerability_affected_cpes(cpe_name);
 CREATE INDEX IF NOT EXISTS idx_vac_vuln ON vulnerability_affected_cpes(vulnerability_id);
+CREATE INDEX IF NOT EXISTS idx_vac_vendor_product_id ON vulnerability_affected_cpes(cpe_vendor_id, cpe_product_id);
+CREATE INDEX IF NOT EXISTS idx_vac_vendor_product_norm ON vulnerability_affected_cpes(vendor_norm, product_norm);
 
 CREATE TABLE IF NOT EXISTS alerts
 (
