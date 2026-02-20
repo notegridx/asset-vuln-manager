@@ -1,27 +1,41 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('Recalculate Alerts')}"></head>
+<head th:replace="~{layout/base :: head('Run Vulnerability Matching')}"></head>
 
-<body th:replace="~{layout/base :: layout('Recalculate Alerts', 'admin', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Run Vulnerability Matching', 'admin', ~{::main})}">
 <main>
 
-  <h1>Recalculate Alerts</h1>
+  <h1>Run Vulnerability Matching</h1>
+
   <p class="muted">
-    SoftwareInstall と VulnerabilityAffectedCpe の突合のみを実行し、alerts を upsert します。
-    （CVE取り込みやCPE辞書同期は行いません）
+    Match installed software against stored vulnerability data and update security alerts.
+    This operation only performs matching and alert upsert.
+    It does <b>not</b> import CVEs or update the CPE dictionary.
   </p>
 
-  <h2>Run</h2>
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="muted" style="font-size:12px;">
+      When to use this:
+      <ul style="margin:6px 0 0 18px;">
+        <li>After importing software via CSV</li>
+        <li>After updating product mappings</li>
+        <li>After updating CVE or CPE data (if full sync was not used)</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Execute</h2>
+
   <form th:action="@{/admin/alerts/recalculate}" method="post">
     <div class="actions" style="margin-top: 14px;">
-      <button type="submit">Recalculate Alerts</button>
+      <button type="submit">Run Matching and Update Alerts</button>
     </div>
   </form>
 
   <div th:if="${matchResult != null}">
     <hr/>
-    <h2>Result</h2>
+    <h2>Matching Result</h2>
 
     <table>
       <thead>
@@ -32,32 +46,21 @@
       </thead>
       <tbody>
       <tr>
-        <td>pairsFound</td>
+        <td>matches found</td>
         <td th:text="${matchResult.pairsFound}">0</td>
       </tr>
       <tr>
-        <td>alertsInserted</td>
+        <td>new alerts created</td>
         <td th:text="${matchResult.alertsInserted}">0</td>
       </tr>
       <tr>
-        <td>alertsTouched</td>
+        <td>alerts updated</td>
         <td th:text="${matchResult.alertsTouched}">0</td>
       </tr>
       </tbody>
     </table>
   </div>
 
-  <hr/>
-  <h2>Admin Tools</h2>
-  <ul>
-    <li><a th:href="@{/admin/sync}">Admin Sync</a></li>
-    <li><a th:href="@{/admin/import}">CSV Import</a></li>
-    <li><a th:href="@{/admin/cpe/sync}">CPE Dictionary Sync</a></li>
-    <li><a th:href="@{/admin/canonical}">Canonical Linking</a></li>
-    <li><a th:href="@{/admin/cve/sync}">CVE Feed Sync (JSON 2.0)</a></li>
-  </ul>
-
 </main>
 </body>
-
 </html>

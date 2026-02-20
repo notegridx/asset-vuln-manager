@@ -5,62 +5,94 @@
 <nav th:fragment="nav(active)">
   <div class="nav-wrap" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
 
-    <!-- Brand -->
+    <!-- Primary -->
     <a class="nav-link"
        th:classappend="${active == 'dashboard'} ? ' active' : ''"
        th:href="@{/dashboard}">Dashboard</a>
 
-    <!-- Primary -->
     <a class="nav-link"
        th:classappend="${active == 'assets'} ? ' active' : ''"
        th:href="@{/assets}">Assets</a>
 
     <a class="nav-link"
        th:classappend="${active == 'vulns'} ? ' active' : ''"
-       th:href="@{/vulnerabilities}">Vulnerabilities</a>
+       th:href="@{/vulnerabilities}">CVEs</a>
 
     <a class="nav-link"
        th:classappend="${active == 'alerts'} ? ' active' : ''"
        th:href="@{/alerts}">Alerts</a>
 
-    <!-- Admin dropdown (no JS) -->
-    <details class="nav-admin" th:classappend="${active == 'admin'} ? ' is-active' : ''"
+    <!-- Admin dropdown -->
+    <details class="nav-admin"
+             th:classappend="${active == 'admin'} ? ' is-active' : ''"
              style="position:relative;">
       <summary class="nav-link"
                th:classappend="${active == 'admin'} ? ' active' : ''"
                style="list-style:none; cursor:pointer;">
-        Admin
+        Data
         <span aria-hidden="true" style="opacity:.7; margin-left:4px;">▾</span>
       </summary>
 
+      <!-- ✅ Overflow-safe dropdown -->
       <div class="nav-admin-menu"
-           style="position:absolute; z-index:2000; margin-top:8px; min-width:260px;
-                  border:1px solid var(--line); border-radius:14px;
-                  background: rgba(20, 22, 26, 0.98); padding:10px;
-                  box-shadow: 0 12px 40px rgba(0,0,0,0.35);">
+           style="
+             position:absolute;
+             z-index:2000;
+             margin-top:8px;
+             right:0; left:auto;               /* ✅ align to right edge */
+             width:min(360px, 92vw);           /* ✅ never exceed viewport */
+             max-width:92vw;
+             border:1px solid var(--line);
+             border-radius:14px;
+             background: rgba(20, 22, 26, 0.98);
+             padding:10px;
+             box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+           ">
+
+        <!-- Section: Setup -->
         <div class="muted" style="font-size:12px; margin:2px 6px 8px;">
-          Data sync / import / linking
+          Setup
         </div>
 
-        <a class="nav-link" style="display:block; padding:6px 10px;"
-           th:href="@{/admin/sync}">Run Admin Sync</a>
+        <a class="nav-link nav-admin-item"
+           style="display:block; padding:8px 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
+           th:href="@{/admin/cpe/sync}">Update CPE Dictionary</a>
 
-        <a class="nav-link" style="display:block; padding:6px 10px;"
-           th:href="@{/admin/import}">CSV Import</a>
+        <a class="nav-link nav-admin-item"
+           style="display:block; padding:8px 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
+           th:href="@{/admin/cve/sync}">Update CVE Data</a>
 
-        <a class="nav-link" style="display:block; padding:6px 10px;"
-           th:href="@{/admin/cpe/sync}">CPE Dictionary Sync</a>
-
-        <a class="nav-link" style="display:block; padding:6px 10px;"
-           th:href="@{/admin/canonical}">Canonical Linking</a>
-
-        <a class="nav-link" style="display:block; padding:6px 10px;"
-           th:href="@{/admin/cve/sync}">CVE Feed Sync</a>
+        <a class="nav-link nav-admin-item"
+           style="display:block; padding:8px 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
+           th:href="@{/admin/import}">Import Inventory (CSV)</a>
 
         <hr style="border:none; border-top:1px solid var(--line); margin:10px 0; opacity:.6;"/>
 
-        <a class="nav-link" style="display:block; padding:6px 10px;"
-           th:href="@{/admin/alerts/recalculate}">Recalculate Alerts</a>
+        <!-- Section: Review -->
+        <div class="muted" style="font-size:12px; margin:2px 6px 8px;">
+          Review
+        </div>
+
+        <a class="nav-link nav-admin-item"
+           style="display:block; padding:8px 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
+           th:href="@{/admin/canonical}">Review Product Mapping</a>
+
+        <hr style="border:none; border-top:1px solid var(--line); margin:10px 0; opacity:.6;"/>
+
+        <!-- Section: Actions -->
+        <div class="muted" style="font-size:12px; margin:2px 6px 8px;">
+          Actions
+        </div>
+
+        <a class="nav-link nav-admin-item"
+           style="display:block; padding:8px 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
+           th:href="@{/admin/alerts/recalculate}">Run Matching & Update Alerts</a>
+
+        <!-- Optional: full sync entry (if you want it visible) -->
+        <a class="nav-link nav-admin-item"
+           style="display:block; padding:8px 10px; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
+           th:href="@{/admin/sync}">CVE Delta Processing (API) & Alert Update</a>
+
       </div>
     </details>
 

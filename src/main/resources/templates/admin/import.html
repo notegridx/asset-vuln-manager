@@ -1,28 +1,49 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('Admin Import')}"></head>
+<head th:replace="~{layout/base :: head('Import Inventory')}"></head>
 
-<body th:replace="~{layout/base :: layout('Admin Import', 'admin', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Import Inventory', 'admin', ~{::main})}">
 <main>
 
-    <h1>Admin Import</h1>
-    <p class="muted">Import assets.csv / software.csv. Software import supports STRICT dictionary validation and optional override for DICT_* errors.</p>
+    <h1>Import Inventory</h1>
+    <p class="muted">
+        Upload CSV files to register assets and installed software.
+        Installed software is used to match against CVEs and generate alerts.
+    </p>
 
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="muted" style="font-size:12px;">
+            Tips:
+            <ul style="margin:6px 0 0 18px;">
+                <li><b>Preview only</b> runs validation without saving changes.</li>
+                <li><b>Apply changes</b> writes to the database.</li>
+                <li>If dictionary validation is enabled, unknown vendor/product pairs may be rejected.
+                    You can selectively override <b>DICT_*</b> errors after review.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- Assets -->
+    <!-- ======================================================= -->
     <h2>Import Assets</h2>
 
     <form th:action="@{/admin/import/assets}" method="post" enctype="multipart/form-data">
         <div class="field">
             <label>assets.csv</label>
             <input type="file" name="file" accept=".csv,text/csv" required>
+            <div class="muted" style="font-size:12px; margin-top:4px;">
+                Registers or updates assets by <b>external_key</b>.
+            </div>
         </div>
 
         <div class="field">
             <label>
                 <input type="checkbox" name="commit" value="true">
-                Commit (write to DB)
+                Apply changes to database
             </label>
-            <div class="muted" style="font-size: 12px;">Unchecked = Dry-run (no DB write)</div>
+            <div class="muted" style="font-size: 12px;">Unchecked = Preview only (no changes saved)</div>
         </div>
 
         <div class="actions" style="margin-top: 14px;">
@@ -31,8 +52,8 @@
     </form>
 
     <div th:if="${assetResult != null}">
-        <hr />
-        <h3>Asset Import Result</h3>
+        <hr/>
+        <h3>Asset Import Summary</h3>
 
         <table>
             <thead>
@@ -42,9 +63,9 @@
             </tr>
             </thead>
             <tbody>
-            <tr><td>dryRun</td><td th:text="${assetResult.dryRun}">false</td></tr>
-            <tr><td>linesRead</td><td th:text="${assetResult.linesRead}">0</td></tr>
-            <tr><td>ok</td><td th:text="${assetResult.ok}">0</td></tr>
+            <tr><td>preview only</td><td th:text="${assetResult.dryRun}">false</td></tr>
+            <tr><td>lines read</td><td th:text="${assetResult.linesRead}">0</td></tr>
+            <tr><td>processed</td><td th:text="${assetResult.ok}">0</td></tr>
             <tr><td>inserted</td><td th:text="${assetResult.inserted}">0</td></tr>
             <tr><td>updated</td><td th:text="${assetResult.updated}">0</td></tr>
             <tr><td>skipped</td><td th:text="${assetResult.skipped}">0</td></tr>
@@ -53,7 +74,7 @@
         </table>
 
         <div th:if="${assetResult.errors > 0}">
-            <h4>Errors (line-based)</h4>
+            <h4>Errors (by line)</h4>
             <table>
                 <thead>
                 <tr>
@@ -75,30 +96,38 @@
         </div>
     </div>
 
-    <hr />
+    <hr/>
 
-    <h2>Import Software</h2>
+    <!-- ======================================================= -->
+    <!-- Software -->
+    <!-- ======================================================= -->
+    <h2>Import Installed Software</h2>
 
     <form th:action="@{/admin/import/software}" method="post" enctype="multipart/form-data">
         <div class="field">
             <label>software.csv</label>
             <input type="file" name="file" accept=".csv,text/csv" required>
+            <div class="muted" style="font-size:12px; margin-top:4px;">
+                Adds software entries to assets via <b>external_key</b> (asset lookup key).
+            </div>
         </div>
 
         <div class="field">
             <label>
                 <input type="checkbox" name="commit" value="true">
-                Commit (write to DB)
+                Apply changes to database
             </label>
-            <div class="muted" style="font-size: 12px;">Unchecked = Dry-run (no DB write)</div>
+            <div class="muted" style="font-size: 12px;">Unchecked = Preview only (no changes saved)</div>
         </div>
 
         <div class="field">
             <label>
                 <input type="checkbox" name="recalc" value="true">
-                Recalculate Alerts after successful software import (Commit)
+                Automatically run vulnerability matching after a successful import
             </label>
-            <div class="muted" style="font-size: 12px;">Only runs when Commit=true and import has no errors.</div>
+            <div class="muted" style="font-size: 12px;">
+                Runs only when “Apply changes” is checked and the import completes without errors.
+            </div>
         </div>
 
         <div class="actions" style="margin-top: 14px;">
@@ -107,11 +136,11 @@
     </form>
 
     <div th:if="${softwareResult != null}">
-        <hr />
-        <h3>Software Import Result</h3>
+        <hr/>
+        <h3>Software Import Summary</h3>
 
         <div th:if="${matchSkippedMessage != null}">
-            <p class="muted" th:text="${matchSkippedMessage}">Recalculation skipped ...</p>
+            <p class="muted" th:text="${matchSkippedMessage}">Matching skipped ...</p>
         </div>
 
         <table>
@@ -122,9 +151,9 @@
             </tr>
             </thead>
             <tbody>
-            <tr><td>dryRun</td><td th:text="${softwareResult.dryRun}">false</td></tr>
-            <tr><td>linesRead</td><td th:text="${softwareResult.linesRead}">0</td></tr>
-            <tr><td>ok</td><td th:text="${softwareResult.ok}">0</td></tr>
+            <tr><td>preview only</td><td th:text="${softwareResult.dryRun}">false</td></tr>
+            <tr><td>lines read</td><td th:text="${softwareResult.linesRead}">0</td></tr>
+            <tr><td>processed</td><td th:text="${softwareResult.ok}">0</td></tr>
             <tr><td>inserted</td><td th:text="${softwareResult.inserted}">0</td></tr>
             <tr><td>updated</td><td th:text="${softwareResult.updated}">0</td></tr>
             <tr><td>skipped</td><td th:text="${softwareResult.skipped}">0</td></tr>
@@ -132,27 +161,28 @@
             </tbody>
         </table>
 
-        <!-- エラー時：チェックボックスで override 可能（DICT_* のみ） -->
+        <!-- Errors + Override -->
         <div th:if="${softwareResult.errors > 0}">
-            <h4>Errors (line-based)</h4>
+            <h4>Errors (by line)</h4>
 
             <form th:action="@{/admin/import/software/override}" method="post" th:if="${importSessionId != null}">
-                <input type="hidden" name="sessionId" th:value="${importSessionId}" />
+                <input type="hidden" name="sessionId" th:value="${importSessionId}"/>
 
                 <div class="field">
                     <label>
                         <input type="checkbox" name="recalc" value="true">
-                        Recalculate Alerts after successful override import (Commit)
+                        Automatically run vulnerability matching after a successful override import
                     </label>
                     <div class="muted" style="font-size: 12px;">
-                        Checked rows will be imported even if vendor/product is not in CPE dictionary. Only DICT_* errors are overrideable.
+                        Selected rows will be imported even if vendor/product is not found in the CPE dictionary.
+                        Only <b>DICT_*</b> errors can be overridden.
                     </div>
                 </div>
 
                 <table>
                     <thead>
                     <tr>
-                        <th style="width: 90px;">Override</th>
+                        <th style="width: 110px;">Override</th>
                         <th style="width: 90px;">Line</th>
                         <th style="width: 160px;">Code</th>
                         <th>Message</th>
@@ -177,33 +207,34 @@
                 </table>
 
                 <div class="actions" style="margin-top: 14px;">
-                    <button type="submit">Import selected DICT_* rows anyway (Commit)</button>
+                    <button type="submit">Import selected DICT_* rows (override)</button>
                 </div>
             </form>
 
             <div th:if="${importSessionId == null}">
                 <p class="muted">
-                    Override import is unavailable because importSessionId is missing. Please upload CSV again.
+                    Override import is unavailable because the upload session has expired.
+                    Please upload the CSV again.
                 </p>
             </div>
         </div>
-
     </div>
 
+    <!-- Matching result -->
     <div th:if="${matchResult != null}">
-        <h3>Recalculate Result</h3>
+        <h3>Vulnerability Matching Result</h3>
         <table>
             <tbody>
             <tr>
-                <td>pairsFound</td>
+                <td>matches found</td>
                 <td th:text="${matchResult.pairsFound}">0</td>
             </tr>
             <tr>
-                <td>alertsInserted</td>
+                <td>new alerts created</td>
                 <td th:text="${matchResult.alertsInserted}">0</td>
             </tr>
             <tr>
-                <td>alertsTouched</td>
+                <td>alerts updated</td>
                 <td th:text="${matchResult.alertsTouched}">0</td>
             </tr>
             </tbody>
@@ -212,5 +243,4 @@
 
 </main>
 </body>
-
 </html>

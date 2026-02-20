@@ -1,45 +1,73 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout/base :: head('CVE Feed Sync')}"></head>
-<body th:replace="~{layout/base :: layout('CVE Feed Sync', 'admin', ~{::main})}">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('CVE Data Update')}"></head>
+
+<body th:replace="~{layout/base :: layout('CVE Data Update', 'admin', ~{::main})}">
 <main>
-  <h1>CVE Feed Sync</h1>
+
+  <h1>CVE Data Update</h1>
+
   <p class="muted">
-    Sync NVD CVE JSON 2.0 feed into local DB (vulnerabilities / affected_cpes). Large-feed safe, idempotent.
+    Download and refresh vulnerability data from the NVD CVE JSON 2.0 feed.
+    This will update stored CVEs and their affected product/version ranges used for matching and alerts.
   </p>
 
-  <h2>Run sync</h2>
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="muted" style="font-size:12px;">
+      Notes:
+      <ul style="margin:6px 0 0 18px;">
+        <li>Safe for large feeds (streaming + chunked transactions).</li>
+        <li>Idempotent: re-running will not create duplicates.</li>
+        <li>If the selected feed has not changed since the last run, the sync may be skipped unless forced.</li>
+        <li><b>MODIFIED</b> is typically used for routine updates; <b>RECENT</b> is a smaller feed for quick setup/testing.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Run update</h2>
 
   <form th:action="@{/admin/cve/sync}" method="post">
+
     <div class="field">
-      <label>feed kind</label>
+      <label>Feed selection</label>
       <select name="kind">
-        <option value="MODIFIED" th:selected="${kind == null or kind == 'MODIFIED'}">MODIFIED</option>
-        <option value="RECENT" th:selected="${kind == 'RECENT'}">RECENT</option>
+        <option value="MODIFIED" th:selected="${kind == null or kind == 'MODIFIED'}">MODIFIED (latest changes)</option>
+        <option value="RECENT" th:selected="${kind == 'RECENT'}">RECENT (most recent CVEs)</option>
       </select>
+      <div class="muted" style="font-size: 12px; margin-top: 4px;">
+        Choose which NVD feed to import.
+      </div>
     </div>
 
     <div class="field">
       <label>
         <input type="checkbox" name="force" th:checked="${force != null and force}">
-        force (ignore meta cache)
+        Force update (ignore previous sync state)
       </label>
+      <div class="muted" style="font-size: 12px; margin-top: 4px;">
+        Use this if you suspect the local sync state is out of date or you want to re-process the feed.
+      </div>
     </div>
 
     <div class="field">
-      <label>maxItems (cap)</label>
+      <label>Maximum items to process</label>
       <input type="number" name="maxItems" min="1" max="5000000"
              th:value="${maxItems != null ? maxItems : 2000000}">
+      <div class="muted" style="font-size: 12px; margin-top: 4px;">
+        Safety cap for processing. Increase only if you intentionally want to ingest more entries.
+      </div>
     </div>
 
     <div class="actions" style="margin-top: 14px;">
-      <button type="submit">Run CVE feed sync</button>
+      <button type="submit">Update CVE Data</button>
     </div>
   </form>
 
   <div th:if="${result != null}">
     <hr/>
-    <h2>Result</h2>
+    <h2>Update result</h2>
+
     <table>
       <thead>
       <tr>
@@ -48,21 +76,43 @@
       </tr>
       </thead>
       <tbody>
-      <tr><td>skipped</td><td th:text="${result.skipped}">false</td></tr>
-      <tr><td>vulnerabilitiesUpserted</td><td th:text="${result.vulnerabilitiesUpserted}">0</td></tr>
-      <tr><td>affectedCpesInserted</td><td th:text="${result.affectedCpesInserted}">0</td></tr>
-      <tr><td>parsed</td><td th:text="${result.vulnerabilitiesParsed}">0</td></tr>
-      <tr><td>sha256</td><td th:text="${result.metaSha256}">-</td></tr>
-      <tr><td>lastModified</td><td th:text="${result.metaLastModified}">-</td></tr>
-      <tr><td>size</td><td th:text="${result.metaSize}">0</td></tr>
+      <tr>
+        <td>skipped (feed unchanged)</td>
+        <td th:text="${result.skipped}">false</td>
+      </tr>
+      <tr>
+        <td>vulnerabilities stored (upserted)</td>
+        <td th:text="${result.vulnerabilitiesUpserted}">0</td>
+      </tr>
+      <tr>
+        <td>affected entries added</td>
+        <td th:text="${result.affectedCpesInserted}">0</td>
+      </tr>
+      <tr>
+        <td>vulnerabilities parsed</td>
+        <td th:text="${result.vulnerabilitiesParsed}">0</td>
+      </tr>
+      <tr>
+        <td>meta sha256</td>
+        <td th:text="${result.metaSha256}">-</td>
+      </tr>
+      <tr>
+        <td>meta last modified</td>
+        <td th:text="${result.metaLastModified}">-</td>
+      </tr>
+      <tr>
+        <td>meta size (bytes)</td>
+        <td th:text="${result.metaSize}">0</td>
+      </tr>
       </tbody>
     </table>
   </div>
 
   <hr/>
   <div class="actions">
-    <a th:href="@{/admin/sync}"><- Back to Admin Sync</a>
+    <a th:href="@{/admin/sync}"><- Back to Full Sync</a>
   </div>
+
 </main>
 </body>
 </html>

@@ -1,61 +1,69 @@
 <!doctype html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('Assets')}"></head>
+<head th:replace="~{layout/base :: head('Asset Inventory')}"></head>
 
-<body th:replace="~{layout/base :: layout('Assets', 'assets', ~{::main})}">
-  <main>
-    <div class="actions">
-      <h1 style="margin:0;">Assets</h1>
-      <span class="pill" th:text="'count: ' + ${#lists.size(assets)}">count: 0</span>
-    </div>
-    <p class="muted">Asset List. Click Name to view details.</p>
+<body th:replace="~{layout/base :: layout('Asset Inventory', 'assets', ~{::main})}">
+<main>
 
-    <div class="actions">
-      <a th:href="@{/assets/new}">+ Create new</a>
-    </div>
+  <div class="actions">
+    <h1 style="margin:0;">Asset Inventory</h1>
+    <span class="pill" th:text="'Total: ' + ${#lists.size(assets)}">Total: 0</span>
+  </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 80px;">ID</th>
-          <th style="width: 160px;">External Key</th>
-          <th style="width: 240px;">Name</th>
-          <th style="width: 140px;">Type</th>
-          <th style="width: 160px;">Owner</th>
-          <th>Note</th>
-          <th style="width: 190px;">Updated</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr th:if="${#lists.isEmpty(assets)}">
-          <td colspan="7" class="muted">No assets</td>
-        </tr>
+  <p class="muted">
+    Registered assets under monitoring. Click an asset name to view installed software and related alerts.
+  </p>
 
-        <tr th:each="a : ${assets}">
-          <td th:text="${a.id}">1</td>
+  <div class="actions">
+    <a th:href="@{/assets/new}">+ Register new asset</a>
+  </div>
 
-          <td>
-            <span th:text="${a.externalKey != null ? a.externalKey : '-'}">ASSET-001</span>
-          </td>
+  <table>
+    <thead>
+    <tr>
+      <th style="width: 80px;">ID</th>
+      <th style="width: 170px;">External ID</th>
+      <th style="width: 260px;">Asset Name</th>
+      <th style="width: 160px;">Asset Type</th>
+      <th style="width: 180px;">Owner</th>
+      <th>Notes</th>
+      <th style="width: 190px;">Last Updated</th>
+    </tr>
+    </thead>
 
-          <td>
-            <a th:href="@{/assets/{id}(id=${a.id})}" th:text="${a.name}">Example</a>
-          </td>
+    <tbody>
+    <tr th:if="${#lists.isEmpty(assets)}">
+      <td colspan="7" class="muted">
+        No assets registered yet. Start by registering your first asset.
+      </td>
+    </tr>
 
-          <td th:text="${a.assetType != null ? a.assetType : '-'}">server</td>
+    <tr th:each="a : ${assets}">
+      <td th:text="${a.id}">1</td>
 
-          <td th:text="${a.owner != null ? a.owner : '-'}">owner</td>
+      <td>
+        <span th:text="${a.externalKey != null ? a.externalKey : '-'}">ASSET-001</span>
+      </td>
 
-          <td class="muted">
-            <span th:text="${a.note != null ? a.note : ''}"></span>
-          </td>
+      <td>
+        <a th:href="@{/assets/{id}(id=${a.id})}" th:text="${a.name}">Example</a>
+      </td>
 
-          <td th:text="${a.updatedAt}">2026-02-16T08:00</td>
-        </tr>
-      </tbody>
-    </table>
-  </main>
+      <td th:text="${a.assetType != null ? a.assetType : '-'}">server</td>
+
+      <td th:text="${a.owner != null ? a.owner : '-'}">owner</td>
+
+      <td class="muted">
+        <span th:text="${a.note != null ? a.note : ''}"></span>
+      </td>
+
+      <td th:text="${a.updatedAt}">2026-02-16T08:00</td>
+    </tr>
+    </tbody>
+  </table>
+
+</main>
 </body>
 
 </html>

@@ -340,6 +340,40 @@
   <footer>local MVP • Thymeleaf + Spring Boot + H2</footer>
 </div>
 
+<script>
+  (function () {
+    // Close any open <details> when clicking outside
+    document.addEventListener('click', function (e) {
+      // If the click is inside a <details>, do nothing
+      if (e.target.closest('details')) return;
+
+      // Otherwise close all open <details>
+      document.querySelectorAll('details[open]').forEach(function (d) {
+        d.removeAttribute('open');
+      });
+    });
+
+    // Close on Escape key (nice UX)
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('details[open]').forEach(function (d) {
+        d.removeAttribute('open');
+      });
+    });
+
+    // Optional: close other <details> when opening one (keeps nav tidy)
+    document.addEventListener('toggle', function (e) {
+      var d = e.target;
+      if (!(d instanceof HTMLDetailsElement)) return;
+      if (!d.open) return;
+
+      document.querySelectorAll('details[open]').forEach(function (other) {
+        if (other !== d) other.removeAttribute('open');
+      });
+    }, true);
+  })();
+</script>
+
 </body>
 
 </html>

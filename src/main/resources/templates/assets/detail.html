@@ -1,58 +1,83 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('Asset Detail')}"></head>
+<head th:replace="~{layout/base :: head('Asset Details')}"></head>
 
-<body th:replace="~{layout/base :: layout('Asset Detail', 'assets', ~{::main})}">
-  <main>
-    <div class="actions">
-      <h1 style="margin:0;">Asset Detail</h1>
-      <a th:href="@{/assets}"><- Back to list</a>
-    </div>
+<body th:replace="~{layout/base :: layout('Asset Details', 'assets', ~{::main})}">
+<main>
 
-    <div class="kv">
-      <b>ID</b> <span th:text="${asset.id}">1</span>
-      <b>Name</b> <span th:text="${asset.name}">Example</span>
-    </div>
+  <div class="actions">
+    <h1 style="margin:0;">Asset Details</h1>
+    <a th:href="@{/assets}"><- Back to inventory</a>
+  </div>
 
-    <hr />
+  <p class="muted" style="margin-top:6px;">
+    Review installed software for this asset. Software entries are used to match against CVEs and generate alerts.
+  </p>
 
-    <div class="actions">
-      <h2 style="margin:0;">Software Installs</h2>
-      <a th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add software</a>
+  <div class="kv" style="margin-top:12px;">
+    <b>Asset ID</b> <span th:text="${asset.id}">1</span>
+    <b>Asset Name</b> <span th:text="${asset.name}">Example</span>
+  </div>
 
-    </div>
+  <hr/>
 
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 80px;">ID</th>
-          <th style="width: 160px;">Vendor</th>
-          <th style="width: 220px;">Product</th>
-          <th style="width: 120px;">Version</th>
-          <th>CPE</th>
-          <th style="width: 90px;">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr th:if="${#lists.isEmpty(installs)}">
-          <td colspan="6" class="muted">No software installs</td>
-        </tr>
-        <tr th:each="s : ${installs}">
-          <td th:text="${s.id}">1</td>
-          <td th:text="${s.vendor}">vendor</td>
-          <td th:text="${s.product}">product</td>
-          <td th:text="${s.version}">1.0</td>
-          <td th:text="${s.cpeName}">cpe:2.3:...</td>
-          <td>
-            <a th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="actions">
+    <h2 style="margin:0;">Installed Software</h2>
+    <a th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
+  </div>
 
+  <p class="muted" style="margin-top:6px;">
+    Tip: If CPE is blank, you can map vendor/product via <b>Data → Review Product Mapping</b> to improve matching accuracy.
+  </p>
 
-  </main>
+  <table>
+    <thead>
+    <tr>
+      <th style="width: 80px;">ID</th>
+      <th style="width: 180px;">Vendor</th>
+      <th style="width: 260px;">Product</th>
+      <th style="width: 140px;">Installed Version</th>
+      <th>CPE 2.3 Name</th>
+      <th style="width: 90px;">Action</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr th:if="${#lists.isEmpty(installs)}">
+      <td colspan="6" class="muted">
+        No software registered for this asset yet. Add installed software to enable vulnerability matching.
+      </td>
+    </tr>
+
+    <tr th:each="s : ${installs}">
+      <td th:text="${s.id}">1</td>
+
+      <td th:text="${s.vendor != null && !#strings.isEmpty(s.vendor) ? s.vendor : '-'}">vendor</td>
+
+      <td>
+        <b th:text="${s.product}">product</b>
+      </td>
+
+      <td th:text="${s.version != null && !#strings.isEmpty(s.version) ? s.version : '(not set)'}">1.0</td>
+
+      <td>
+        <span th:if="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
+              class="muted"
+              th:text="${s.cpeName}">cpe:2.3:...</span>
+
+        <span th:unless="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
+              class="badge badge--unmapped">UNMAPPED (CPE)</span>
+      </td>
+
+      <td>
+        <a th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
+      </td>
+    </tr>
+    </tbody>
+  </table>
+
+</main>
 </body>
 
 </html>

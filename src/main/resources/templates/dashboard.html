@@ -1,33 +1,85 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
 <head th:replace="~{layout/base :: head('Dashboard')}"></head>
 
 <body th:replace="~{layout/base :: layout('Dashboard', 'dashboard', ~{::main})}">
 <main>
 
+    <!-- Header -->
     <div class="actions">
         <h1 style="margin: 0;">Dashboard</h1>
         <div class="actions" style="margin:0;">
-            <a class="nav-link" th:href="@{/admin/sync}">Run Admin Sync</a>
+            <a class="nav-link" th:href="@{/alerts}">Alerts</a>
+            <a class="nav-link" th:href="@{/assets}">Assets</a>
             <a class="nav-link" th:href="@{/admin/import}">CSV Import</a>
-            <a class="nav-link" th:href="@{/admin/canonical}">Canonical Linking</a>
         </div>
     </div>
 
     <p class="muted">
-        Quick health view of Assets / Software / Vulnerabilities / Alerts.
+        Quick overview of inventory, vulnerabilities, and alerts.
     </p>
+
+    <!-- First-Time Setup (simple links) -->
+    <div class="card" style="padding:16px; margin-top:12px;">
+        <h2 style="margin: 0 0 8px 0;">First-Time Setup</h2>
+        <p class="muted" style="margin: 0 0 12px 0;">
+            Follow these steps to enable vulnerability detection.
+        </p>
+
+        <div class="kv" style="grid-template-columns: 160px 1fr; gap:10px;">
+            <div class="k">Step 1</div>
+            <div class="v">
+                <b>Sync CPE Dictionary</b>
+                <div class="muted" style="font-size:12px;">Download vendor/product definitions.</div>
+                <div style="margin-top:6px;">
+                    <a th:href="@{/admin/cpe/sync}">Open</a>
+                </div>
+            </div>
+
+            <div class="k">Step 2</div>
+            <div class="v">
+                <b>Sync CVE Feed</b>
+                <div class="muted" style="font-size:12px;">Import CVEs from NVD (JSON 2.0 feed).</div>
+                <div style="margin-top:6px;">
+                    <a th:href="@{/admin/cve/sync}">Open</a>
+                </div>
+            </div>
+
+            <div class="k">Step 3</div>
+            <div class="v">
+                <b>Import Inventory</b>
+                <div class="muted" style="font-size:12px;">Import assets.csv and software.csv.</div>
+                <div style="margin-top:6px;">
+                    <a th:href="@{/admin/import}">Open</a>
+                </div>
+            </div>
+
+            <div class="k">Step 4</div>
+            <div class="v">
+                <b>Recalculate Alerts</b>
+                <div class="muted" style="font-size:12px;">Match software against vulnerabilities.</div>
+                <div style="margin-top:6px;">
+                    <a th:href="@{/admin/alerts/recalculate}">Run</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr/>
+
+    <!-- Health / Counters -->
+    <h2 style="margin-top: 0;">Status</h2>
 
     <div class="kv" style="grid-template-columns: 220px 1fr;">
         <div class="k">Assets</div>
         <div class="v">
             <span class="pill" th:text="${assets}">0</span>
-            <span class="muted">registered</span>
-            <span style="margin-left:10px;"><a th:href="@{/assets}">Open</a></span>
+            <span class="muted">total</span>
+            <span style="margin-left:10px;"><a th:href="@{/assets}">View</a></span>
         </div>
 
-        <div class="k">Software installs</div>
+        <div class="k">Installed software</div>
         <div class="v">
             <span class="pill" th:text="${installs}">0</span>
             <span class="muted">rows</span>
@@ -37,40 +89,36 @@
         <div class="v">
             <span class="pill" th:text="${vulns}">0</span>
             <span class="muted">stored</span>
-            <span style="margin-left:10px;"><a th:href="@{/vulnerabilities}">Open</a></span>
+            <span style="margin-left:10px;"><a th:href="@{/vulnerabilities}">View</a></span>
         </div>
 
-        <div class="k">OPEN alerts</div>
+        <div class="k">Open alerts</div>
         <div class="v">
             <span class="pill" th:text="${openAlerts}">0</span>
-            <span class="muted">active findings</span>
-            <span style="margin-left:10px;"><a th:href="@{/alerts}">Open</a></span>
+            <span class="muted">active</span>
+            <span style="margin-left:10px;"><a th:href="@{/alerts}">View</a></span>
         </div>
 
         <div class="k">Unmapped software (CPE)</div>
         <div class="v">
             <span class="pill" th:text="${unmappedInstalls}">0</span>
-            <span class="muted">need CPE mapping</span>
+            <span class="muted">needs review</span>
             <span style="margin-left:10px;"><a th:href="@{/admin/canonical}">Review</a></span>
         </div>
     </div>
 
     <hr/>
 
-    <h2>Typical flow</h2>
-    <ol class="muted" style="line-height:1.8;">
-        <li>Import Assets / Software (CSV Import)</li>
-        <li>Sync CPE Dictionary (CPE Dictionary Sync)</li>
-        <li>Canonical Linking (resolve vendor/product)</li>
-        <li>Run Admin Sync (fetch CVEs → persist → match → upsert alerts)</li>
-        <li>Work OPEN Alerts</li>
-    </ol>
-
-    <div class="actions" style="margin-top: 14px;">
-        <a th:href="@{/admin/cpe/sync}">CPE Dictionary Sync</a>
-        <a th:href="@{/admin/cve/sync}">CVE Feed Sync (JSON 2.0)</a>
-        <a th:href="@{/admin/sync}">Admin Sync</a>
+    <!-- Quick actions -->
+    <h2>Quick Actions</h2>
+    <div class="actions" style="margin-top: 10px;">
+        <a th:href="@{/admin/sync}">Run CVE Sync + Alert Update</a>
+        <a th:href="@{/admin/canonical}">Canonical Mapping</a>
     </div>
+
+    <p class="muted" style="margin-top:10px;">
+        Tip: If software import fails due to dictionary validation, review Canonical Mapping or use override import for DICT_* errors.
+    </p>
 
 </main>
 </body>
