@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('Alert Detail')}"></head>
+
+<body th:replace="~{layout/base :: layout('Alert Detail', 'alerts', ~{::main})}">
+<main>
+    <div class="actions">
+        <h1 style="margin: 0;">Alert Detail</h1>
+        <a th:href="@{/alerts}"><- Back</a>
+    </div>
+
+    <p class="muted">
+        Alert ID: <b th:text="${alert.id}">1</b>
+    </p>
+
+    <div class="card" style="padding:16px; margin-top:12px;">
+        <h2 style="margin:0 0 10px 0;">Status</h2>
+
+        <div class="actions" style="gap:8px; flex-wrap:wrap;">
+        <span class="badge"
+              th:classappend="${alert.status != null && alert.status.toString() == 'OPEN' ? ' badge--status-open' : ' badge--status-closed'}"
+              th:text="${alert.status != null ? alert.status : '-'}">OPEN</span>
+
+            <span class="badge"
+                  th:classappend="${alert.certainty != null && alert.certainty.toString() == 'UNCONFIRMED' ? ' badge--sev-medium' : ' badge--sev-low'}"
+                  th:text="${alert.certainty != null ? alert.certainty : 'CONFIRMED'}">CONFIRMED</span>
+
+            <span class="badge badge--unmapped" th:if="${alert.matchedBy != null}"
+                  th:text="'matchedBy: ' + ${alert.matchedBy}">matchedBy</span>
+        </div>
+
+        <div class="muted" style="margin-top:10px;"
+             th:if="${alert.certainty != null && alert.certainty.toString() == 'UNCONFIRMED'}">
+            <div th:text="'reason: ' + ${alert.uncertainReason != null ? alert.uncertainReason : '-'}">reason</div>
+            <div style="margin-top:6px;"
+                 th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'MISSING_SOFTWARE_VERSION'}">
+                Software version が未入力のため、version range 判定ができず要確認です。
+            </div>
+            <div style="margin-top:6px;"
+                 th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'UNPARSABLE_SOFTWARE_VERSION'}">
+                Software version の形式が比較ロジックで解釈できず、要確認です。
+            </div>
+        </div>
+
+        <div class="muted" style="margin-top:12px;">
+            <div th:text="'firstSeenAt: ' + ${alert.firstSeenAt}">firstSeenAt</div>
+            <div th:text="'lastSeenAt: ' + ${alert.lastSeenAt}">lastSeenAt</div>
+        </div>
+    </div>
+
+    <div class="card" style="padding:16px; margin-top:12px;">
+        <h2 style="margin:0 0 10px 0;">Asset / Software</h2>
+
+        <div>
+            <div>
+                Asset:
+                <b th:text="${alert.softwareInstall.asset.name}">AssetName</b>
+                <span class="muted" th:text="'(ID: ' + ${alert.softwareInstall.asset.id} + ')'">(ID: 1)</span>
+            </div>
+
+            <div style="margin-top:10px;">
+                Software:
+                <span th:text="${alert.softwareInstall.vendor != null ? alert.softwareInstall.vendor : '-'}">vendor</span>
+                <span> / </span>
+                <b th:text="${alert.softwareInstall.product}">product</b>
+                <span class="muted"
+                      th:text="${alert.softwareInstall.version != null && !#strings.isEmpty(alert.softwareInstall.version) ? ' ' + alert.softwareInstall.version : ' (no version)'}">
+            1.0
+          </span>
+            </div>
+
+            <div style="margin-top:10px;">
+                <div class="muted"
+                     th:text="'cpeName: ' + ${alert.softwareInstall.cpeName != null ? alert.softwareInstall.cpeName : '-'}">
+                    cpeName
+                </div>
+                <div class="muted"
+                     th:text="'normalized: ' + ${alert.softwareInstall.normalizedVendor != null ? alert.softwareInstall.normalizedVendor : '-'} + ' / ' + ${alert.softwareInstall.normalizedProduct != null ? alert.softwareInstall.normalizedProduct : '-'}">
+                    normalized
+                </div>
+                <div class="muted"
+                     th:text="'cpeVendorId: ' + ${alert.softwareInstall.cpeVendorId != null ? alert.softwareInstall.cpeVendorId : '-'}">
+                    cpeVendorId
+                </div>
+                <div class="muted"
+                     th:text="'cpeProductId: ' + ${alert.softwareInstall.cpeProductId != null ? alert.softwareInstall.cpeProductId : '-'}">
+                    cpeProductId
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="padding:16px; margin-top:12px;">
+        <h2 style="margin:0 0 10px 0;">Vulnerability</h2>
+
+        <div>
+            <div>
+                <a th:href="@{'https://nvd.nist.gov/vuln/detail/' + ${alert.vulnerability.externalId}}"
+                   th:text="${alert.vulnerability.externalId}" target="_blank" rel="noopener noreferrer">
+                    CVE-2025-xxxx
+                </a>
+            </div>
+
+            <div class="muted" style="margin-top:8px;"
+                 th:text="${alert.vulnerability.title != null ? alert.vulnerability.title : '-'}">
+                title
+            </div>
+
+            <div style="margin-top:10px;">
+          <span class="badge"
+                th:classappend="${alert.vulnerability.severity != null
+  ? (alert.vulnerability.severity.toString() == 'CRITICAL'
+      ? ' badge--sev-critical'
+      : (alert.vulnerability.severity.toString() == 'HIGH'
+          ? ' badge--sev-high'
+          : (alert.vulnerability.severity.toString() == 'MEDIUM'
+              ? ' badge--sev-medium'
+              : (alert.vulnerability.severity.toString() == 'LOW'
+                  ? ' badge--sev-low'
+                  : ' badge--sev-none'))))
+  : ' badge--sev-none'}"
+                th:text="${alert.vulnerability.severity != null ? alert.vulnerability.severity : 'NONE'}">
+            HIGH
+          </span>
+
+                <span class="muted" style="margin-left:10px;"
+                      th:text="${(alert.vulnerability.cvssVersion != null ? alert.vulnerability.cvssVersion : '-') + ' / ' + (alert.vulnerability.cvssScore != null ? alert.vulnerability.cvssScore : '-')}">
+            3.1 / 7.5
+          </span>
+            </div>
+        </div>
+    </div>
+
+</main>
+</body>
+
+</html>

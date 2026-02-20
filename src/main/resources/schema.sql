@@ -219,8 +219,6 @@ CREATE TABLE IF NOT EXISTS software_installs
 CREATE INDEX IF NOT EXISTS idx_sw_asset_id ON software_installs(asset_id);
 CREATE INDEX IF NOT EXISTS idx_sw_cpe ON software_installs(cpe_name);
 CREATE INDEX IF NOT EXISTS idx_sw_norm ON software_installs(normalized_vendor, normalized_product);
-CREATE INDEX IF NOT EXISTS idx_sw_cpe_vendor_id ON software_installs(cpe_vendor_id);
-CREATE INDEX IF NOT EXISTS idx_sw_cpe_product_id ON software_installs(cpe_product_id);
 
 CREATE TABLE IF NOT EXISTS vulnerabilities
 (
@@ -232,43 +230,52 @@ CREATE TABLE IF NOT EXISTS vulnerabilities
     IDENTITY
     PRIMARY
     KEY,
+
+    -- ★追加: エンティティが参照する列（欠落していたため 500）
     source
     VARCHAR
 (
     32
-) NOT NULL,
-    external_id VARCHAR
+) NOT NULL DEFAULT 'NVD',
+
+    external_id
+    VARCHAR
 (
     64
 ) NOT NULL,
+
     title VARCHAR
 (
-    512
+    1024
 ),
+
+    -- ★追加: エンティティが参照する列（欠落していたため 500）
     description CLOB,
+
     severity VARCHAR
 (
     16
-) NOT NULL,
+),
+
     cvss_version VARCHAR
 (
     16
 ),
-    cvss_score DECIMAL
-(
-    4,
-    1
-),
+
+    cvss_score DOUBLE,
+
     published_at TIMESTAMP,
     last_modified_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT uq_vuln_source_external UNIQUE
+    CONSTRAINT uq_vuln_external_id UNIQUE
 (
-    source,
     external_id
 )
     );
+
+CREATE INDEX IF NOT EXISTS idx_vuln_external_id ON vulnerabilities(external_id);
+CREATE INDEX IF NOT EXISTS idx_vuln_severity ON vulnerabilities(severity);
 
 CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
 (
@@ -284,26 +291,38 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
     BIGINT
     NOT
     NULL,
-    cpe_name
-    VARCHAR
+    cpe_name VARCHAR
 (
     512
-) NOT NULL,
-
-    -- Phase1: dict-id / normalized
+),
     cpe_vendor_id BIGINT,
     cpe_product_id BIGINT,
-    vendor_norm VARCHAR(255),
-    product_norm VARCHAR(255),
-
-    -- version range
-    version_start_including VARCHAR(128),
-    version_start_excluding VARCHAR(128),
-    version_end_including VARCHAR(128),
-    version_end_excluding VARCHAR(128),
-
+    vendor_norm VARCHAR
+(
+    255
+),
+    product_norm VARCHAR
+(
+    255
+),
+    version_start_including VARCHAR
+(
+    64
+),
+    version_start_excluding VARCHAR
+(
+    64
+),
+    version_end_including VARCHAR
+(
+    64
+),
+    version_end_excluding VARCHAR
+(
+    64
+),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT fk_vac_vuln FOREIGN KEY
 (
     vulnerability_id
@@ -311,7 +330,6 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
 (
     id
 ),
-
     CONSTRAINT fk_vac_cpe_vendor FOREIGN KEY
 (
     cpe_vendor_id
@@ -319,7 +337,6 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
 (
     id
 ),
-
     CONSTRAINT fk_vac_cpe_product FOREIGN KEY
 (
     cpe_product_id
@@ -327,11 +344,14 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
 (
     id
 ),
-
-    CONSTRAINT uq_vac_vuln_criteria_range UNIQUE
+    CONSTRAINT uq_vac UNIQUE
 (
     vulnerability_id,
     cpe_name,
+    cpe_vendor_id,
+    cpe_product_id,
+    vendor_norm,
+    product_norm,
     version_start_including,
     version_start_excluding,
     version_end_including,
@@ -367,6 +387,19 @@ CREATE TABLE IF NOT EXISTS alerts
 (
     16
 ) NOT NULL,
+    certainty
+    VARCHAR
+(
+    16
+) NOT NULL DEFAULT 'CONFIRMED',
+    uncertain_reason VARCHAR
+(
+    64
+),
+    matched_by VARCHAR
+(
+    32
+),
     close_reason VARCHAR
 (
     255
@@ -398,8 +431,10 @@ CREATE TABLE IF NOT EXISTS alerts
     );
 
 CREATE INDEX IF NOT EXISTS idx_alert_status ON alerts(status);
+CREATE INDEX IF NOT EXISTS idx_alert_certainty ON alerts(certainty);
 CREATE INDEX IF NOT EXISTS idx_alert_vuln ON alerts(vulnerability_id);
 CREATE INDEX IF NOT EXISTS idx_alert_sw ON alerts(software_install_id);
+CREATE INDEX IF NOT EXISTS idx_alert_status_certainty ON alerts(status, certainty);
 
 -- =========================================================
 -- CVE feed sync state (NVD CVE JSON 2.0 feeds)
@@ -454,12 +489,10 @@ CREATE TABLE IF NOT EXISTS cve_sync_state
     NOT
     NULL,
 
-    CONSTRAINT
-    uq_cve_sync_feed
-    UNIQUE
+    CONSTRAINT uq_cve_sync_state_feed UNIQUE
 (
     feed_name
 )
     );
 
-CREATE INDEX IF NOT EXISTS idx_cve_sync_feed_name ON cve_sync_state(feed_name);
+CREATE INDEX IF NOT EXISTS idx_cve_sync_state_feed ON cve_sync_state(feed_name);

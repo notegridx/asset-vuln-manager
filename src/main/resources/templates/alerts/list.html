@@ -4,107 +4,143 @@
 <head th:replace="~{layout/base :: head('Alerts')}"></head>
 
 <body th:replace="~{layout/base :: layout('Alerts', 'alerts', ~{::main})}">
-  <main>
-    <div class="actions">
-      <h1 style="margin: 0;">Alerts (OPEN)</h1>
-      <span class="pill" th:text="'count: ' + ${#lists.size(alerts)}">count: 0</span>
-    </div>
+<main>
+  <div class="actions">
+    <h1 style="margin: 0;">Alerts (OPEN)</h1>
+    <span class="pill" th:text="'count: ' + ${#lists.size(alerts)}">count: 0</span>
+  </div>
 
-    <p class="muted">OPEN Alert List (asset × software_install × vulnerability)</p>
+  <p class="muted">OPEN Alert List (asset × software_install × vulnerability)</p>
 
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 80px;">ID</th>
-          <th style="width: 200px;">Asset</th>
-          <th>Software</th>
-          <th style="width: 220px;">Vulnerability</th>
-          <th style="width: 160px;">Severity / CVSS</th>
-          <th style="width: 110px;">Status</th>
-          <th style="width: 190px;">Last Seen</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr th:if="${#lists.isEmpty(alerts)}">
-          <td colspan="7" class="muted">No OPEN alerts</td>
-        </tr>
+  <table>
+    <thead>
+    <tr>
+      <th style="width: 80px;">ID</th>
+      <th style="width: 200px;">Asset</th>
+      <th>Software</th>
+      <th style="width: 220px;">Vulnerability</th>
+      <th style="width: 160px;">Severity / CVSS</th>
+      <th style="width: 170px;">Status / Certainty</th>
+      <th style="width: 190px;">Last Seen</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:if="${#lists.isEmpty(alerts)}">
+      <td colspan="7" class="muted">No OPEN alerts</td>
+    </tr>
 
-        <tr th:each="a : ${alerts}">
-          <td th:text="${a.id}">1</td>
+    <tr th:each="a : ${alerts}">
+      <td>
+        <div th:text="${a.id}">1</div>
+        <div style="margin-top:6px;">
+          <a th:href="@{/alerts/{id}(id=${a.id})}" class="muted" style="font-size:12px;">detail</a>
+        </div>
+      </td>
 
-          <!-- Asset -->
-          <td>
-            <div th:text="${a.softwareInstall.asset.name}">Asset A</div>
-            <div class="muted" style="font-size: 12px;" th:text="'assertId: ' + ${a.softwareInstall.asset.id}">
-              assetId: 1
-            </div>
-          </td>
+      <!-- Asset -->
+      <td>
+        <div th:text="${a.softwareInstall.asset.name}">Asset A</div>
+        <div class="muted" style="font-size: 12px;" th:text="'assetId: ' + ${a.softwareInstall.asset.id}">
+          assetId: 1
+        </div>
+      </td>
 
-          <!-- Software -->
-          <td>
-            <div>
-              <span th:text="${a.softwareInstall.vendor != null ? a.softwareInstall.vendor : '-'}">vendor</span>
-              <span> / </span>
-              <b th:text="${a.softwareInstall.product}">product</b>
-              <span class="muted" th:text="${a.softwareInstall.version != null ? ' ' + a.softwareInstall.version : ''}">
+      <!-- Software -->
+      <td>
+        <div>
+          <span th:text="${a.softwareInstall.vendor != null ? a.softwareInstall.vendor : '-'}">vendor</span>
+          <span> / </span>
+          <b th:text="${a.softwareInstall.product}">product</b>
+          <span class="muted"
+                th:text="${a.softwareInstall.version != null && !#strings.isEmpty(a.softwareInstall.version) ? ' ' + a.softwareInstall.version : ' (no version)'}">
                 1.0</span>
-            </div>
+        </div>
 
-            <div class="actions" style="margin-top: 6px;">
+        <div class="actions" style="margin-top: 6px;">
               <span th:if="${a.softwareInstall.cpeName == null || #strings.isEmpty(a.softwareInstall.cpeName)}"
-                class="badge badge--unmapped">UNMAPPED (CPE)</span>
+                    class="badge badge--unmapped">UNMAPPED (CPE)</span>
 
-              <span th:unless="${a.softwareInstall.cpeName == null || #strings.isEmpty(a.softwareInstall.cpeName)}"
+          <span th:unless="${a.softwareInstall.cpeName == null || #strings.isEmpty(a.softwareInstall.cpeName)}"
                 class="muted" style="font-size: 12px;" th:text="${a.softwareInstall.cpeName}">
                 cpe:2.3:a:...
               </span>
-            </div>
-          </td>
+        </div>
 
-          <!-- Vulnerability -->
-          <td>
-            <div>
-              <a th:href="@{'https://nvd.nist.gov/vuln/detail/' + ${a.vulnerability.externalId}}"
-                th:text="${a.vulnerability.externalId}" target="_blank" rel="noopener noreferrer">
-                CVE-2025-xxxx
-              </a>
-            </div>
-            <div class="muted" style="font-size: 12px;"
-              th:text="${a.vulnerability.title != null ? a.vulnerability.title : '-'}">
-              title
-            </div>
-          </td>
+        <div class="muted" style="font-size:12px; margin-top:6px;">
+          <span th:text="'matchedBy: ' + ${a.matchedBy != null ? a.matchedBy : '-'}">matchedBy: -</span>
+        </div>
+      </td>
 
-          <!-- Severity / CVSS -->
-          <td>
+      <!-- Vulnerability -->
+      <td>
+        <div>
+          <a th:href="@{'https://nvd.nist.gov/vuln/detail/' + ${a.vulnerability.externalId}}"
+             th:text="${a.vulnerability.externalId}" target="_blank" rel="noopener noreferrer">
+            CVE-2025-xxxx
+          </a>
+        </div>
+        <div class="muted" style="font-size: 12px;"
+             th:text="${a.vulnerability.title != null ? a.vulnerability.title : '-'}">
+          title
+        </div>
+      </td>
+
+      <!-- Severity / CVSS -->
+      <td>
             <span class="badge"
-              th:classappend="${a.vulnerability.severity != null ? (a.vulnerability.severity.toString() == 'CRITICAL' ? ' badge--sev-critical' : a.vulnerability.severity.toString() == 'HIGH' ? ' badge--sev-high' : a.vulnerability.severity.toString() == 'MEDIUM' ? ' badge--sev-medium' : a.vulnerability.severity.toString() == 'LOW' ? ' badge--sev-low' : ' badge--sev-none') : ' badge--sev-none'}"
-              th:text="${a.vulnerability.severity != null ? a.vulnerability.severity : 'NONE'}">
+                  th:classappend="${a.vulnerability.severity != null
+  ? (a.vulnerability.severity.toString() == 'CRITICAL'
+      ? ' badge--sev-critical'
+      : (a.vulnerability.severity.toString() == 'HIGH'
+          ? ' badge--sev-high'
+          : (a.vulnerability.severity.toString() == 'MEDIUM'
+              ? ' badge--sev-medium'
+              : (a.vulnerability.severity.toString() == 'LOW'
+                  ? ' badge--sev-low'
+                  : ' badge--sev-none'))))
+  : ' badge--sev-none'}"
+                  th:text="${a.vulnerability.severity != null ? a.vulnerability.severity : 'NONE'}">
               HIGH
             </span>
 
-            <div class="muted" style="font-size: 12px; margin-top: 6px;"
-              th:text="${(a.vulnerability.cvssVersion != null ? a.vulnerability.cvssVersion : '-') + ' / ' + (a.vulnerability.cvssScore != null ? a.vulnerability.cvssScore : '-')}">
-              3.1 / 7.5
-            </div>
-          </td>
+        <div class="muted" style="font-size: 12px; margin-top: 6px;"
+             th:text="${(a.vulnerability.cvssVersion != null ? a.vulnerability.cvssVersion : '-') + ' / ' + (a.vulnerability.cvssScore != null ? a.vulnerability.cvssScore : '-')}">
+          3.1 / 7.5
+        </div>
+      </td>
 
-          <!-- Status -->
-          <td>
-            <span class="badge"
-              th:classappend="${a.status != null && a.status.toString() == 'OPEN' ? ' badge--status-open' : ' badge--status-closed'}"
-              th:text="${a.status != null ? a.status : '-'}">
-              OPEN
-            </span>
-          </td>
+      <!-- Status / Certainty -->
+      <td>
+        <div>
+              <span class="badge"
+                    th:classappend="${a.status != null && a.status.toString() == 'OPEN' ? ' badge--status-open' : ' badge--status-closed'}"
+                    th:text="${a.status != null ? a.status : '-'}">
+                OPEN
+              </span>
+        </div>
 
-          <!-- Last Seen -->
-          <td th:text="${a.lastSeenAt}">2026-02-09T00:00</td>
-        </tr>
-      </tbody>
-    </table>
+        <div style="margin-top:6px;">
+              <span class="badge"
+                    th:classappend="${a.certainty != null && a.certainty.toString() == 'UNCONFIRMED' ? ' badge--sev-medium' : ' badge--sev-low'}"
+                    th:text="${a.certainty != null ? a.certainty : 'CONFIRMED'}">
+                CONFIRMED
+              </span>
+        </div>
 
-  </main>
+        <div class="muted" style="font-size:12px; margin-top:6px;"
+             th:if="${a.certainty != null && a.certainty.toString() == 'UNCONFIRMED'}"
+             th:text="${a.uncertainReason != null ? a.uncertainReason : '-'}">
+          MISSING_SOFTWARE_VERSION
+        </div>
+      </td>
+
+      <!-- Last Seen -->
+      <td th:text="${a.lastSeenAt}">2026-02-09T00:00</td>
+    </tr>
+    </tbody>
+  </table>
+
+</main>
 </body>
 
 </html>

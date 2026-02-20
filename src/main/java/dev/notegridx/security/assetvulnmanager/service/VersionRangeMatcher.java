@@ -7,7 +7,14 @@ import java.util.Objects;
 
 public class VersionRangeMatcher {
 
-    public boolean matches(
+    public enum Verdict {
+        MATCH,
+        NO_MATCH,
+        UNKNOWN_VERSION,
+        UNPARSABLE_VERSION
+    }
+
+    public Verdict verdict(
             String version,
             String startIncluding,
             String startExcluding,
@@ -15,24 +22,36 @@ public class VersionRangeMatcher {
             String endExcluding
     ) {
         String v = normalize(version);
-        if (v == null) {
-            // バージョン不明なら「除外はできない」ので match 扱い（厳密にやるなら設定で切替）
-            return true;
-        }
+        boolean hasAnyRange =
+                normalize(startIncluding) != null ||
+                        normalize(startExcluding) != null ||
+                        normalize(endIncluding) != null ||
+                        normalize(endExcluding) != null;
 
-        if (normalize(startIncluding) != null) {
-            if (compare(v, startIncluding) < 0) return false;
+        // range が無いなら version 不要なので確定
+        if (!hasAnyRange) return Verdict.MATCH;
+
+        // range があるのに version が無い：確定できない
+        if (v == null) return Verdict.UNKNOWN_VERSION;
+
+        try {
+            if (normalize(startIncluding) != null) {
+                if (compare(v, startIncluding) < 0) return Verdict.NO_MATCH;
+            }
+            if (normalize(startExcluding) != null) {
+                if (compare(v, startExcluding) <= 0) return Verdict.NO_MATCH;
+            }
+            if (normalize(endIncluding) != null) {
+                if (compare(v, endIncluding) > 0) return Verdict.NO_MATCH;
+            }
+            if (normalize(endExcluding) != null) {
+                if (compare(v, endExcluding) >= 0) return Verdict.NO_MATCH;
+            }
+            return Verdict.MATCH;
+        } catch (Exception e) {
+            // 比較不能な version（例: 変な形式、想定外の文字列など）
+            return Verdict.UNPARSABLE_VERSION;
         }
-        if (normalize(startExcluding) != null) {
-            if (compare(v, startExcluding) <= 0) return false;
-        }
-        if (normalize(endIncluding) != null) {
-            if (compare(v, endIncluding) > 0) return false;
-        }
-        if (normalize(endExcluding) != null) {
-            if (compare(v, endExcluding) >= 0) return false;
-        }
-        return true;
     }
 
     /**
