@@ -6,9 +6,9 @@
   <div class="nav-wrap" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
 
     <!-- Brand -->
-    <a th:href="@{/assets}" class="nav-link" style="font-weight:700;">
-      asset-vuln-manager
-    </a>
+    <a class="nav-link"
+       th:classappend="${active == 'dashboard'} ? ' active' : ''"
+       th:href="@{/dashboard}">Dashboard</a>
 
     <!-- Primary -->
     <a class="nav-link"

@@ -30,4 +30,11 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             or (s.normalizedVendor is null)
             """)
     List<SoftwareInstall> findNeedsNormalization();
+
+    @Query("""
+           select count(s)
+           from SoftwareInstall s
+           where s.cpeName is null or trim(s.cpeName) = ''
+           """)
+    long countUnmappedCpe();
 }

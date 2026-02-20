@@ -13,6 +13,8 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 	Optional<Alert> findBySoftwareInstallIdAndVulnerabilityId(Long softwareInstallId, Long vulnerabilityId);
 	
 	List<Alert> findByStatusOrderByLastSeenAtDesc(AlertStatus status);
+
+	long countByStatus(AlertStatus status);
 	
 	List<Alert> findBySoftwareInstallIdOrderByLastSeenAtDesc(Long softwareInstallId);
 }
