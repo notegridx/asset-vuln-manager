@@ -191,18 +191,21 @@
     </div>
 
     <div th:if="${matchResult != null}">
-        <hr />
-        <h3>Alert Recalculation Result</h3>
+        <h3>Recalculate Result</h3>
         <table>
-            <thead>
-            <tr>
-                <th>Metric</th>
-                <th>Value</th>
-            </tr>
-            </thead>
             <tbody>
-            <tr><td>matched</td><td th:text="${matchResult.matched}">0</td></tr>
-            <tr><td>alertsUpserted</td><td th:text="${matchResult.alertsUpserted}">0</td></tr>
+            <tr>
+                <td>pairsFound</td>
+                <td th:text="${matchResult.pairsFound}">0</td>
+            </tr>
+            <tr>
+                <td>alertsInserted</td>
+                <td th:text="${matchResult.alertsInserted}">0</td>
+            </tr>
+            <tr>
+                <td>alertsTouched</td>
+                <td th:text="${matchResult.alertsTouched}">0</td>
+            </tr>
             </tbody>
         </table>
     </div>
