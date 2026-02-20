@@ -33,7 +33,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
-
 @Service
 public class CpeFeedSyncService {
 
@@ -178,11 +177,6 @@ public class CpeFeedSyncService {
                     Set<String> keys = collectKeysDepthLe2(entryBytes, PEEK_KEYS_LIMIT);
                     log.info("CPE entry peek keys (depth<=2, limit={}): {}", PEEK_KEYS_LIMIT, keys);
 
-                    // Optional: quick sanity (kept lightweight)
-                    // log.info("CPE entry contains: cpe23Uri?={} cpeName?={}",
-                    //         new String(entryBytes, java.nio.charset.StandardCharsets.UTF_8).contains("\"cpe23Uri\""),
-                    //         new String(entryBytes, java.nio.charset.StandardCharsets.UTF_8).contains("\"cpeName\""));
-
                     parseCpeJsonStream(new ByteArrayInputStream(entryBytes), maxItems, parsed, buffer, vendorsInserted, productsInserted);
                     firstEntryPeeked = true;
 
@@ -215,14 +209,13 @@ public class CpeFeedSyncService {
     /**
      * Parse one JSON stream (one tar entry) with Jackson streaming,
      * extracting CPE name strings.
-     * <p>
+     *
      * Feed/API2 often uses "cpeName" (not "cpe23Uri").
      * We accept both keys and only count valid "cpe:2.3:" strings.
-     * <p>
+     *
      * NOTE: JsonFactory is configured with AUTO_CLOSE_SOURCE disabled,
      * so closing parser won't close underlying TarArchiveInputStream.
      */
-
     private void parseCpeJsonStream(
             InputStream jsonStream,
             int maxItems,
@@ -268,7 +261,6 @@ public class CpeFeedSyncService {
                         productsInserted[0] += r.productsInserted;
                         return null;
                     });
-
                 }
 
                 if (parsed[0] % LOG_EVERY == 0) {
@@ -281,7 +273,7 @@ public class CpeFeedSyncService {
 
     /**
      * Collect FIELD_NAME keys for a "peek" log, limited depth <= 2.
-     * Implementation is bst-effort, safe, and bounded.
+     * Implementation is best-effort, safe, and bounded.
      */
     private Set<String> collectKeysDepthLe2(byte[] jsonBytes, int limit) {
         LinkedHashSet<String> out = new LinkedHashSet<>();
@@ -330,8 +322,11 @@ public class CpeFeedSyncService {
         for (var vp : chunk) {
             processed++;
 
-            Long vendorId = ensureVendorId(vp.vendor());
+            VendorEnsureResult vr = ensureVendor(vp.vendor());
+            Long vendorId = vr.id();
             if (vendorId == null) continue;
+
+            if (vr.inserted) vIns++;
 
             boolean productInserted = ensureProduct(vendorId, vp.product());
             if (productInserted) pIns++;
@@ -355,17 +350,22 @@ public class CpeFeedSyncService {
         return new ChunkResult(vIns, pIns);
     }
 
-    private Long ensureVendorId(String vendorKey) {
-        if (vendorKey == null || vendorKey.isBlank()) return null;
+    /**
+     * Ensure vendor exists and return:
+     * - id
+     * - whether this call inserted a new row
+     */
+    private VendorEnsureResult ensureVendor(String vendorKey) {
+        if (vendorKey == null || vendorKey.isBlank()) return VendorEnsureResult.none();
 
         Long cached = vendorIdCache.get(vendorKey);
-        if (cached != null) return cached;
+        if (cached != null) return VendorEnsureResult.existing(cached);
 
         // 1) try DB read
         var existing = vendorRepository.findByNameNorm(vendorKey).orElse(null);
         if (existing != null) {
             vendorIdCache.put(vendorKey, existing.getId());
-            return existing.getId();
+            return VendorEnsureResult.existing(existing.getId());
         }
 
         // 2) try insert, race-safe with unique + exception
@@ -373,15 +373,16 @@ public class CpeFeedSyncService {
             CpeVendor saved = vendorRepository.save(new CpeVendor(vendorKey, null));
             Long id = saved.getId();
             if (id != null) vendorIdCache.put(vendorKey, id);
-            return id;
+            return (id == null) ? VendorEnsureResult.none() : VendorEnsureResult.inserted(id);
+
         } catch (DataIntegrityViolationException dup) {
             // someone inserted concurrently; re-read
             var ex2 = vendorRepository.findByNameNorm(vendorKey).orElse(null);
             if (ex2 != null) {
                 vendorIdCache.put(vendorKey, ex2.getId());
-                return ex2.getId();
+                return VendorEnsureResult.existing(ex2.getId());
             }
-            return null;
+            return VendorEnsureResult.none();
         }
     }
 
@@ -406,6 +407,7 @@ public class CpeFeedSyncService {
             productRepository.save(new CpeProduct(vendorRef, productKey, null));
             known.add(productKey);
             return true;
+
         } catch (DataIntegrityViolationException dup) {
             // inserted by someone else / earlier in tx: treat as exists
             known.add(productKey);
@@ -424,6 +426,11 @@ public class CpeFeedSyncService {
         return (m == null) ? t.getClass().getSimpleName() : m;
     }
 
+    private record VendorEnsureResult(Long id, boolean inserted) {
+        static VendorEnsureResult inserted(Long id) { return new VendorEnsureResult(id, true); }
+        static VendorEnsureResult existing(Long id) { return new VendorEnsureResult(id, false); }
+        static VendorEnsureResult none() { return new VendorEnsureResult(null, false); }
+    }
 
     private record ChunkResult(int vendorsInserted, int productsInserted) {
     }
