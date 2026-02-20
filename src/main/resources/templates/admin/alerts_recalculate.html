@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('Recalculate Alerts')}"></head>
+
+<body th:replace="~{layout/base :: layout('Recalculate Alerts', 'admin', ~{::main})}">
+<main>
+
+  <h1>Recalculate Alerts</h1>
+  <p class="muted">
+    SoftwareInstall と VulnerabilityAffectedCpe の突合のみを実行し、alerts を upsert します。
+    （CVE取り込みやCPE辞書同期は行いません）
+  </p>
+
+  <h2>Run</h2>
+  <form th:action="@{/admin/alerts/recalculate}" method="post">
+    <div class="actions" style="margin-top: 14px;">
+      <button type="submit">Recalculate Alerts</button>
+    </div>
+  </form>
+
+  <div th:if="${matchResult != null}">
+    <hr/>
+    <h2>Result</h2>
+
+    <table>
+      <thead>
+      <tr>
+        <th>Metric</th>
+        <th>Value</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>pairsFound</td>
+        <td th:text="${matchResult.pairsFound}">0</td>
+      </tr>
+      <tr>
+        <td>alertsInserted</td>
+        <td th:text="${matchResult.alertsInserted}">0</td>
+      </tr>
+      <tr>
+        <td>alertsTouched</td>
+        <td th:text="${matchResult.alertsTouched}">0</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr/>
+  <h2>Admin Tools</h2>
+  <ul>
+    <li><a th:href="@{/admin/sync}">Admin Sync</a></li>
+    <li><a th:href="@{/admin/import}">CSV Import</a></li>
+    <li><a th:href="@{/admin/cpe/sync}">CPE Dictionary Sync</a></li>
+    <li><a th:href="@{/admin/canonical}">Canonical Linking</a></li>
+    <li><a th:href="@{/admin/cve/sync}">CVE Feed Sync (JSON 2.0)</a></li>
+  </ul>
+
+</main>
+</body>
+
+</html>

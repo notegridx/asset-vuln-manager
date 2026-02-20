@@ -1,21 +1,26 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 <body>
-  <nav th:fragment="nav(active)">
-    <div class="nav">
-      <div class="nav__brand">
-        <a th:href="@{/assets}">asset-vuln-manager</a>
-      </div>
-
-      <div class="nav__links">
-        <a th:href="@{/assets}" th:classappend="${active == 'assets'} ? ' is-active' : ''">Assets</a>
-
-        <a th:href="@{/alerts}" th:classappend="${active == 'alerts'} ? ' is-active' : ''">Alerts</a>
-
-        <a th:href="@{/admin/sync}" th:classappend="${active == 'admin'} ? ' is-active' : ''">Admin Sync</a>
-      </div>
+<nav th:fragment="nav(active)">
+  <div class="nav">
+    <div class="nav__brand">
+      <a th:href="@{/assets}">asset-vuln-manager</a>
     </div>
-  </nav>
+
+    <div class="nav__links">
+      <a th:href="@{/assets}" th:classappend="${active == 'assets'} ? ' is-active' : ''">Assets</a>
+
+      <a th:href="@{/alerts}" th:classappend="${active == 'alerts'} ? ' is-active' : ''">Alerts</a>
+
+      <a th:href="@{/admin/sync}" th:classappend="${active == 'admin'} ? ' is-active' : ''">Admin Sync</a>
+
+      <!-- ★ Added: standalone alerts recalculation -->
+      <a th:href="@{/admin/alerts/recalculate}" th:classappend="${active == 'admin'} ? ' is-active' : ''">
+        Recalculate Alerts
+      </a>
+    </div>
+  </div>
+</nav>
 </body>
 
 </html>

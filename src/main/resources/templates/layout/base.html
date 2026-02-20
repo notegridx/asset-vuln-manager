@@ -32,8 +32,8 @@
       margin: 0;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif;
       background: radial-gradient(1200px 700px at 20% -10%, rgba(138, 180, 255, 0.12), transparent 40%),
-        radial-gradient(900px 600px at 90% 0%, rgba(255, 211, 122, 0.08), transparent 42%),
-        var(--bg);
+      radial-gradient(900px 600px at 90% 0%, rgba(255, 211, 122, 0.08), transparent 42%),
+      var(--bg);
       color: var(--text);
     }
 
@@ -319,33 +319,33 @@
 </head>
 
 <body th:fragment="layout(title, active, content)">
-  <div class="container">
-    <header>
-      <div class="brand">
-        <div class="title">asset-vuln-manager</div>
-        <div class="sub" th:text="${title}">page</div>
+<div class="container">
+  <header>
+    <div class="brand">
+      <div class="title">asset-vuln-manager</div>
+      <div class="sub" th:text="${title}">page</div>
+    </div>
 
-      </div>
+    <nav>
+      <a class="nav-link" th:classappend="${active == 'assets'} ? ' active' : ''" th:href="@{/assets}">Assets</a>
 
-      <nav>
-        <a class="nav-link" th:classappend="${active == 'assets'} ? ' active' : ''" th:href="@{/assets}">Assets</a>
+      <a class="nav-link" th:classappend="${active == 'vulns'} ? ' active' : ''" th:href="@{/vulnerabilities}">Vulns</a>
 
-        <a class="nav-link" th:classappend="${active == 'vulns'} ? ' active' : ''" th:href="@{/vulnerabilities}">Vulns</a>
+      <a class="nav-link" th:classappend="${active == 'alerts'} ? ' active' : ''" th:href="@{/alerts}">Alerts</a>
 
-        <a class="nav-link" th:classappend="${active == 'alerts'} ? ' active' : ''" th:href="@{/alerts}">Alerts</a>
+      <a class="nav-link" th:classappend="${active == 'admin'} ? ' active' : ''" th:href="@{/admin/sync}">Admin</a>
 
-        <a class="nav-link" th:classappend="${active == 'admin'} ? ' active' : ''" th:href="@{/admin/sync}">Admin</a>
+      <!-- ★ Added: standalone alerts recalculation -->
+      <a class="nav-link" th:classappend="${active == 'admin'} ? ' active' : ''" th:href="@{/admin/alerts/recalculate}">Recalc</a>
 
-        <a class="nav-link" th:classappend="${active == 'import'} ? ' active' : ''" th:href="@{/admin/import}">Import</a>
+      <a class="nav-link" th:classappend="${active == 'import'} ? ' active' : ''" th:href="@{/admin/import}">Import</a>
+    </nav>
+  </header>
 
-        <a class="nav-link" th:classappend="${active == 'canonical'} ? ' active' : ''" th:href="@{/admin/canonical}">Canonical</a>
-      </nav>
-    </header>
+  <div th:replace="${content}"></div>
 
-    <div th:replace="${content}"></div>
-
-    <footer>local MVP • Thymeleaf + Spring Boot + H2</footer>
-  </div>
+  <footer>local MVP • Thymeleaf + Spring Boot + H2</footer>
+</div>
 
 </body>
 
