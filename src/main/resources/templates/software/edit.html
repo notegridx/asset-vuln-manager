@@ -4,27 +4,29 @@
 <head th:replace="~{layout/base :: head('Edit Software')}"></head>
 
 <body th:replace="~{layout/base :: layout('Edit Software', 'assets', ~{::main})}">
-  <main>
-    <div class="actions">
-      <h1 style="margin: 0;">Edit Software</h1>
-      <a th:href="@{/assets/{id}(id=${assetId})}"><- Back</a>
-    </div>
+<main>
+  <div class="actions">
+    <h1 style="margin: 0;">Edit Software</h1>
+    <a th:href="@{/assets/{id}(id=${assetId})}"><- Back</a>
+  </div>
 
-    <p class="muted">
-      SoftwareInstall ID: <b th:text="${softwareId}">1</b>
-    </p>
+  <p class="muted">
+    SoftwareInstall ID: <b th:text="${softwareId}">1</b>
+  </p>
 
-    <form th:action="@{/software/{id}/edit(id=${softwareId})}" th:object="${softwareInstallForm}" method="post">
+  <form th:action="@{/software/{id}/edit(id=${softwareId})}" th:object="${softwareInstallForm}" method="post">
 
     <div class="field">
       <label>Vendor</label>
-      <input type="text" th:field="*{vendor}" placeholder="e.g. microsoft"/>
+      <input type="text" th:field="*{vendor}" list="vendor-suggest" placeholder="e.g. microsoft"/>
+      <datalist id="vendor-suggest"></datalist>
       <div class="error" th:if="${#fields.hasErrors('vendor')}" th:errors="*{vendor}">Vendor error</div>
     </div>
 
     <div class="field">
       <label>Product *</label>
-      <input type="text" th:field="*{product}" placeholder="e.g. edge" />
+      <input type="text" th:field="*{product}" list="product-suggest" placeholder="e.g. edge" />
+      <datalist id="product-suggest"></datalist>
       <div class="error" th:if="${#fields.hasErrors('product')}" th:errors="*{product}">Product error</div>
     </div>
 
@@ -51,8 +53,70 @@
     </div>
 
     </div>
-    </form>
-  </main>
+
+    <script>
+      (function () {
+        const vendorEl = document.getElementById('vendor');
+        const productEl = document.getElementById('product');
+        const vendorList = document.getElementById('vendor-suggest');
+        const productList = document.getElementById('product-suggest');
+
+        if (!vendorEl || !productEl || !vendorList || !productList) return;
+
+        function debounce(fn, wait) {
+          let t = null;
+          return function (...args) {
+            clearTimeout(t);
+            t = setTimeout(() => fn.apply(this, args), wait);
+          };
+        }
+
+        function setOptions(datalist, items) {
+          datalist.innerHTML = '';
+          for (const it of items) {
+            const opt = document.createElement('option');
+            opt.value = it.value;
+            opt.label = it.label || it.value;
+            datalist.appendChild(opt);
+          }
+        }
+
+        async function fetchJson(url) {
+          try {
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
+            if (!res.ok) return [];
+            return await res.json();
+          } catch (e) {
+            return [];
+          }
+        }
+
+        const updateVendors = debounce(async () => {
+          const q = vendorEl.value || '';
+          if (q.length < 2) { vendorList.innerHTML = ''; return; }
+          const items = await fetchJson(`/api/dict/vendors?q=${encodeURIComponent(q)}`);
+          setOptions(vendorList, items);
+        }, 200);
+
+        const updateProducts = debounce(async () => {
+          const vendor = vendorEl.value || '';
+          const q = productEl.value || '';
+          if (!vendor || q.length < 2) { productList.innerHTML = ''; return; }
+          const items = await fetchJson(`/api/dict/products?vendor=${encodeURIComponent(vendor)}&q=${encodeURIComponent(q)}`);
+          setOptions(productList, items);
+        }, 200);
+
+        vendorEl.addEventListener('input', () => {
+          updateVendors();
+          productList.innerHTML = '';
+        });
+
+        productEl.addEventListener('input', updateProducts);
+      })();
+    </script>
+
+  </form>
+</main>
 </body>
 
 </html>

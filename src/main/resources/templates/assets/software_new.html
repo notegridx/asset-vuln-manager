@@ -30,7 +30,8 @@
     <!-- Vendor -->
     <div class="field">
       <label>Vendor</label>
-      <input type="text" th:field="*{vendor}" />
+      <input type="text" th:field="*{vendor}" list="vendor-suggest" placeholder="e.g. microsoft" />
+      <datalist id="vendor-suggest"></datalist>
       <div class="error"
            th:if="${#fields.hasErrors('vendor')}"
            th:errors="*{vendor}">
@@ -41,7 +42,8 @@
     <!-- Product -->
     <div class="field">
       <label>Product *</label>
-      <input type="text" th:field="*{product}" />
+      <input type="text" th:field="*{product}" list="product-suggest" placeholder="e.g. edge" />
+      <datalist id="product-suggest"></datalist>
       <div class="error"
            th:if="${#fields.hasErrors('product')}"
            th:errors="*{product}">
@@ -52,7 +54,7 @@
     <!-- Version -->
     <div class="field">
       <label>Version</label>
-      <input type="text" th:field="*{version}" />
+      <input type="text" th:field="*{version}" placeholder="e.g. 120.0.2210.61" />
     </div>
 
     <!-- CPE -->
@@ -69,6 +71,71 @@
     </div>
 
   </form>
+
+  <script>
+    (function () {
+      // th:field により id="vendor" / id="product" が自動生成される想定
+      const vendorEl = document.getElementById('vendor');
+      const productEl = document.getElementById('product');
+      const vendorList = document.getElementById('vendor-suggest');
+      const productList = document.getElementById('product-suggest');
+
+      if (!vendorEl || !productEl || !vendorList || !productList) return;
+
+      function debounce(fn, wait) {
+        let t = null;
+        return function (...args) {
+          clearTimeout(t);
+          t = setTimeout(() => fn.apply(this, args), wait);
+        };
+      }
+
+      function setOptions(datalist, items) {
+        datalist.innerHTML = '';
+        for (const it of items) {
+          const opt = document.createElement('option');
+          opt.value = it.value;
+          // label はブラウザ依存（出る環境では候補表示に補助的に効く）
+          opt.label = it.label || it.value;
+          datalist.appendChild(opt);
+        }
+      }
+
+      async function fetchJson(url) {
+        try {
+          const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
+          if (!res.ok) return [];
+          return await res.json();
+        } catch (e) {
+          return [];
+        }
+      }
+
+      const updateVendors = debounce(async () => {
+        const q = vendorEl.value || '';
+        if (q.length < 2) { vendorList.innerHTML = ''; return; }
+        const items = await fetchJson(`/api/dict/vendors?q=${encodeURIComponent(q)}`);
+        setOptions(vendorList, items);
+      }, 200);
+
+      const updateProducts = debounce(async () => {
+        const vendor = vendorEl.value || '';
+        const q = productEl.value || '';
+        if (!vendor || q.length < 2) { productList.innerHTML = ''; return; }
+        const items = await fetchJson(`/api/dict/products?vendor=${encodeURIComponent(vendor)}&q=${encodeURIComponent(q)}`);
+        setOptions(productList, items);
+      }, 200);
+
+      vendorEl.addEventListener('input', () => {
+        updateVendors();
+        // vendor が変わったら product候補はリセット（vendor配下が変わるため）
+        productList.innerHTML = '';
+      });
+
+      productEl.addEventListener('input', updateProducts);
+    })();
+  </script>
+
 </main>
 </body>
 
