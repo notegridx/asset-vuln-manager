@@ -35,24 +35,46 @@ logging:
 
 app:
 
-  # software dictionary behavior used by CsvImportService
+  # ---------------------------------------------------------
+  # Software dictionary behavior
+  # ---------------------------------------------------------
   software:
     dict-mode: STRICT  # or LENIENT
 
-  # (optional) import session settings for override-import
+  # ---------------------------------------------------------
+  # Import session settings
+  # ---------------------------------------------------------
   import:
     session-ttl-minutes: 30
-    # 空なら ImportSessionStore が java.io.tmpdir を使う
     session-dir:
 
+  # ---------------------------------------------------------
+  # NVD Settings
+  # ---------------------------------------------------------
   nvd:
+
+    # --- NVD API (差分同期用: 既存) ---
     base-url: https://services.nvd.nist.gov
     api-key: ${NVD_API_KEY:}
 
+    # --- CPE Dictionary Feed (既存) ---
     cpe:
       base-url: https://nvd.nist.gov
       meta-path: /feeds/json/cpe/2.0/nvdcpe-2.0.meta
       gz-path: /feeds/json/cpe/2.0/nvdcpe-2.0.tar.gz
 
+    # --- CVE JSON 2.0 Feed (新規追加) ---
+    cve:
+      base-url: https://nvd.nist.gov
+
+      modified:
+        meta-path: /feeds/json/cve/2.0/nvdcve-2.0-modified.meta
+        gz-path: /feeds/json/cve/2.0/nvdcve-2.0-modified.json.gz
+
+      recent:
+        meta-path: /feeds/json/cve/2.0/nvdcve-2.0-recent.meta
+        gz-path: /feeds/json/cve/2.0/nvdcve-2.0-recent.json.gz
+
+    # software dict-mode (互換維持)
     software:
-      dict-mode: STRICT  # or LENIENT
+      dict-mode: STRICT

@@ -364,3 +364,65 @@ CREATE INDEX IF NOT EXISTS idx_alert_status ON alerts(status);
 CREATE INDEX IF NOT EXISTS idx_alert_vuln ON alerts(vulnerability_id);
 CREATE INDEX IF NOT EXISTS idx_alert_sw ON alerts(software_install_id);
 
+-- =========================================================
+-- CVE feed sync state (NVD CVE JSON 2.0 feeds)
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS cve_sync_state
+(
+    id
+    BIGINT
+    GENERATED
+    BY
+    DEFAULT AS
+    IDENTITY
+    PRIMARY
+    KEY,
+
+    feed_name
+    VARCHAR
+(
+    64
+) NOT NULL,
+
+    meta_sha256
+    VARCHAR
+(
+    128
+),
+
+    meta_last_modified
+    VARCHAR
+(
+    64
+),
+
+    meta_size
+    BIGINT,
+
+    last_synced_at
+    TIMESTAMP,
+
+    created_at
+    TIMESTAMP
+    DEFAULT
+    CURRENT_TIMESTAMP
+    NOT
+    NULL,
+
+    updated_at
+    TIMESTAMP
+    DEFAULT
+    CURRENT_TIMESTAMP
+    NOT
+    NULL,
+
+    CONSTRAINT
+    uq_cve_sync_feed
+    UNIQUE
+(
+    feed_name
+)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_cve_sync_feed_name ON cve_sync_state(feed_name);

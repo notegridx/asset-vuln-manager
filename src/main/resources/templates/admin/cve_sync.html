@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('CVE Feed Sync')}"></head>
+<body th:replace="~{layout/base :: layout('CVE Feed Sync', 'admin', ~{::main})}">
+<main>
+  <h1>CVE Feed Sync</h1>
+  <p class="muted">
+    Sync NVD CVE JSON 2.0 feed into local DB (vulnerabilities / affected_cpes). Large-feed safe, idempotent.
+  </p>
+
+  <h2>Run sync</h2>
+
+  <form th:action="@{/admin/cve/sync}" method="post">
+    <div class="field">
+      <label>feed kind</label>
+      <select name="kind">
+        <option value="MODIFIED" th:selected="${kind == null or kind == 'MODIFIED'}">MODIFIED</option>
+        <option value="RECENT" th:selected="${kind == 'RECENT'}">RECENT</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>
+        <input type="checkbox" name="force" th:checked="${force != null and force}">
+        force (ignore meta cache)
+      </label>
+    </div>
+
+    <div class="field">
+      <label>maxItems (cap)</label>
+      <input type="number" name="maxItems" min="1" max="5000000"
+             th:value="${maxItems != null ? maxItems : 2000000}">
+    </div>
+
+    <div class="actions" style="margin-top: 14px;">
+      <button type="submit">Run CVE feed sync</button>
+    </div>
+  </form>
+
+  <div th:if="${result != null}">
+    <hr/>
+    <h2>Result</h2>
+    <table>
+      <thead>
+      <tr>
+        <th>Metric</th>
+        <th>Value</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr><td>skipped</td><td th:text="${result.skipped}">false</td></tr>
+      <tr><td>vulnerabilitiesUpserted</td><td th:text="${result.vulnerabilitiesUpserted}">0</td></tr>
+      <tr><td>affectedCpesInserted</td><td th:text="${result.affectedCpesInserted}">0</td></tr>
+      <tr><td>parsed</td><td th:text="${result.parsed}">0</td></tr>
+      <tr><td>sha256</td><td th:text="${result.metaSha256}">-</td></tr>
+      <tr><td>lastModified</td><td th:text="${result.metaLastModified}">-</td></tr>
+      <tr><td>size</td><td th:text="${result.metaSize}">0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr/>
+  <div class="actions">
+    <a th:href="@{/admin/sync}"><- Back to Admin Sync</a>
+  </div>
+</main>
+</body>
+</html>

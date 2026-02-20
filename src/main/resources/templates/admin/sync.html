@@ -4,7 +4,7 @@
 <head th:replace="~{layout/base :: head('Admin Sync')}"></head>
 
 <body th:replace="~{layout/base :: layout('Admin Sync', 'admin', ~{::main})}">
-  <main>
+<main>
 
     <h1>Admin Sync</h1>
     <p class="muted">Execute Fetch, Persist, Match, and Alert upsert operations in a single batch.</p>
@@ -12,69 +12,71 @@
     <h2>Run sync</h2>
 
     <form th:action="@{/admin/sync}" method="post">
-      <div class="field">
-        <label>daysBack (lastModified range)</label>
-        <input type="number" name="daysBack" min="1" max="120" th:value="${daysBack != null ? daysBack : 7}">
-      </div>
-      <div class="field">
-        <label>maxResults (CVE fetch cap) :</label>
-        <input type="number" name="maxResults" min="1" max="2000" th:value="${maxResults != null ? maxResults : 200}">
-      </div>
-      <div class="actions" style="margin-top: 14px;">
-        <button type="submit">Run sync</button>
-      </div>
+        <div class="field">
+            <label>daysBack (lastModified range)</label>
+            <input type="number" name="daysBack" min="1" max="120" th:value="${daysBack != null ? daysBack : 7}">
+        </div>
+        <div class="field">
+            <label>maxResults (CVE fetch cap) :</label>
+            <input type="number" name="maxResults" min="1" max="2000"
+                   th:value="${maxResults != null ? maxResults : 200}">
+        </div>
+        <div class="actions" style="margin-top: 14px;">
+            <button type="submit">Run sync</button>
+        </div>
 
     </form>
 
     <div th:if="${result != null}">
-      <hr />
-      <h2>Result</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Metric</th>
-            <th>Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>fetched</td>
-            <td th:text="${result.fetched}">0</td>
-          </tr>
-          <tr>
-            <td>vulnerabilitiesUpserted</td>
-            <td th:text="${result.vulnerabilitiesUpserted}">0</td>
-          </tr>
-          <tr>
-            <td>affectedCpesInserted</td>
-            <td th:text="${result.affectedCpesInserted}">0</td>
-          </tr>
-          <tr>
-            <td>pairsFound</td>
-            <td th:text="${result.pairsFound}">0</td>
-          </tr>
-          <tr>
-            <td>alertsInserted</td>
-            <td th:text="${result.alertsInserted}">0</td>
-          </tr>
-          <tr>
-            <td>alertsTouched</td>
-            <td th:text="${result.alertsTouched}">0</td>
-          </tr>
-        </tbody>
+        <hr/>
+        <h2>Result</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>fetched</td>
+                <td th:text="${result.fetched}">0</td>
+            </tr>
+            <tr>
+                <td>vulnerabilitiesUpserted</td>
+                <td th:text="${result.vulnerabilitiesUpserted}">0</td>
+            </tr>
+            <tr>
+                <td>affectedCpesInserted</td>
+                <td th:text="${result.affectedCpesInserted}">0</td>
+            </tr>
+            <tr>
+                <td>pairsFound</td>
+                <td th:text="${result.pairsFound}">0</td>
+            </tr>
+            <tr>
+                <td>alertsInserted</td>
+                <td th:text="${result.alertsInserted}">0</td>
+            </tr>
+            <tr>
+                <td>alertsTouched</td>
+                <td th:text="${result.alertsTouched}">0</td>
+            </tr>
+            </tbody>
 
-      </table>
+        </table>
 
     </div>
 
     <hr/>
     <h2>Admin Tools</h2>
     <ul>
-      <li><a th:href="@{/admin/import}">CSV Import</a></li>
-      <li><a th:href="@{/admin/cpe/sync}">CPE Dictionary Sync</a></li>
-      <li><a th:href="@{/admin/canonical}">Canonical Linking</a></li>
+        <li><a th:href="@{/admin/import}">CSV Import</a></li>
+        <li><a th:href="@{/admin/cpe/sync}">CPE Dictionary Sync</a></li>
+        <li><a th:href="@{/admin/canonical}">Canonical Linking</a></li>
+        <li><a th:href="@{/admin/cve/sync}">CVE Feed Sync (JSON 2.0)</a></li>
     </ul>
-  </main>
+</main>
 </body>
 
 </html>
