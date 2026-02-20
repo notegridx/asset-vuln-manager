@@ -1,26 +1,71 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
+
 <nav th:fragment="nav(active)">
-  <div class="nav">
-    <div class="nav__brand">
-      <a th:href="@{/assets}">asset-vuln-manager</a>
-    </div>
+  <div class="nav-wrap" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
 
-    <div class="nav__links">
-      <a th:href="@{/assets}" th:classappend="${active == 'assets'} ? ' is-active' : ''">Assets</a>
+    <!-- Brand -->
+    <a th:href="@{/assets}" class="nav-link" style="font-weight:700;">
+      asset-vuln-manager
+    </a>
 
-      <a th:href="@{/alerts}" th:classappend="${active == 'alerts'} ? ' is-active' : ''">Alerts</a>
+    <!-- Primary -->
+    <a class="nav-link"
+       th:classappend="${active == 'assets'} ? ' active' : ''"
+       th:href="@{/assets}">Assets</a>
 
-      <a th:href="@{/admin/sync}" th:classappend="${active == 'admin'} ? ' is-active' : ''">Admin Sync</a>
+    <a class="nav-link"
+       th:classappend="${active == 'vulns'} ? ' active' : ''"
+       th:href="@{/vulnerabilities}">Vulnerabilities</a>
 
-      <!-- ★ Added: standalone alerts recalculation -->
-      <a th:href="@{/admin/alerts/recalculate}" th:classappend="${active == 'admin'} ? ' is-active' : ''">
-        Recalculate Alerts
-      </a>
-    </div>
+    <a class="nav-link"
+       th:classappend="${active == 'alerts'} ? ' active' : ''"
+       th:href="@{/alerts}">Alerts</a>
+
+    <!-- Admin dropdown (no JS) -->
+    <details class="nav-admin" th:classappend="${active == 'admin'} ? ' is-active' : ''"
+             style="position:relative;">
+      <summary class="nav-link"
+               th:classappend="${active == 'admin'} ? ' active' : ''"
+               style="list-style:none; cursor:pointer;">
+        Admin
+        <span aria-hidden="true" style="opacity:.7; margin-left:4px;">▾</span>
+      </summary>
+
+      <div class="nav-admin-menu"
+           style="position:absolute; z-index:2000; margin-top:8px; min-width:260px;
+                  border:1px solid var(--line); border-radius:14px;
+                  background: rgba(20, 22, 26, 0.98); padding:10px;
+                  box-shadow: 0 12px 40px rgba(0,0,0,0.35);">
+        <div class="muted" style="font-size:12px; margin:2px 6px 8px;">
+          Data sync / import / linking
+        </div>
+
+        <a class="nav-link" style="display:block; padding:6px 10px;"
+           th:href="@{/admin/sync}">Run Admin Sync</a>
+
+        <a class="nav-link" style="display:block; padding:6px 10px;"
+           th:href="@{/admin/import}">CSV Import</a>
+
+        <a class="nav-link" style="display:block; padding:6px 10px;"
+           th:href="@{/admin/cpe/sync}">CPE Dictionary Sync</a>
+
+        <a class="nav-link" style="display:block; padding:6px 10px;"
+           th:href="@{/admin/canonical}">Canonical Linking</a>
+
+        <a class="nav-link" style="display:block; padding:6px 10px;"
+           th:href="@{/admin/cve/sync}">CVE Feed Sync</a>
+
+        <hr style="border:none; border-top:1px solid var(--line); margin:10px 0; opacity:.6;"/>
+
+        <a class="nav-link" style="display:block; padding:6px 10px;"
+           th:href="@{/admin/alerts/recalculate}">Recalculate Alerts</a>
+      </div>
+    </details>
+
   </div>
 </nav>
-</body>
 
+</body>
 </html>

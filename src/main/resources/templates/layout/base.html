@@ -62,6 +62,8 @@
       border-radius: 14px;
       background: rgba(18, 24, 38, 0.75);
       backdrop-filter: blur(6px);
+      position: relative;
+      z-index: 1000; /* ← 追加：ドロップダウンを main より前に */
     }
 
     .brand {
@@ -118,6 +120,8 @@
       border: 1px solid var(--line);
       background: rgba(18, 24, 38, 0.65);
       backdrop-filter: blur(6px);
+      position: relative;
+      z-index: 1;
     }
 
     h1,
@@ -320,26 +324,15 @@
 
 <body th:fragment="layout(title, active, content)">
 <div class="container">
+  <!-- 既存の header の <nav>...</nav> を、これに置き換え -->
+
   <header>
     <div class="brand">
       <div class="title">asset-vuln-manager</div>
       <div class="sub" th:text="${title}">page</div>
     </div>
 
-    <nav>
-      <a class="nav-link" th:classappend="${active == 'assets'} ? ' active' : ''" th:href="@{/assets}">Assets</a>
-
-      <a class="nav-link" th:classappend="${active == 'vulns'} ? ' active' : ''" th:href="@{/vulnerabilities}">Vulns</a>
-
-      <a class="nav-link" th:classappend="${active == 'alerts'} ? ' active' : ''" th:href="@{/alerts}">Alerts</a>
-
-      <a class="nav-link" th:classappend="${active == 'admin'} ? ' active' : ''" th:href="@{/admin/sync}">Admin</a>
-
-      <!-- ★ Added: standalone alerts recalculation -->
-      <a class="nav-link" th:classappend="${active == 'admin'} ? ' active' : ''" th:href="@{/admin/alerts/recalculate}">Recalc</a>
-
-      <a class="nav-link" th:classappend="${active == 'import'} ? ' active' : ''" th:href="@{/admin/import}">Import</a>
-    </nav>
+    <div th:replace="~{fragments/nav :: nav(${active})}"></div>
   </header>
 
   <div th:replace="${content}"></div>
