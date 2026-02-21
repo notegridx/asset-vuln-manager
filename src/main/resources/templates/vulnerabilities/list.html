@@ -1,28 +1,122 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout/base :: head('Vulnerabilities')}"></head>
+
 <body th:replace="~{layout/base :: layout('Vulnerabilities', 'vulns', ~{::main})}">
 <main>
-    <div class="actions">
-        <h1 style="margin: 0;">Vulnerabilities</h1>
-        <span class="pill" th:text="'count: ' + ${#lists.size(vulns)}">count: 0</span>
+
+    <div class="actions" style="align-items:flex-end;">
+        <div>
+            <h1 style="margin:0;">Vulnerabilities</h1>
+            <div class="muted" style="margin-top:6px;">
+                Imported CVE list (local cache). Use filters/sort to browse all items.
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="pill" th:text="'Total: ' + ${page.totalElements}">Total: 0</span>
+            <span class="pill" th:text="'Page: ' + ${page.number + 1} + ' / ' + ${page.totalPages}">Page: 1 / 1</span>
+        </div>
     </div>
 
-    <p class="muted">Imported CVE list (local cache). Latest 500 by lastModified.</p>
+    <!-- Filters -->
+    <form th:action="@{/vulnerabilities}" method="get"
+          class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="gap:14px; flex-wrap:wrap; align-items:flex-end;">
 
+            <!-- Size -->
+            <div class="field" style="min-width:160px;">
+                <label>Rows per page</label>
+                <select name="size">
+                    <option th:each="n : ${sizeOptions}"
+                            th:value="${n}"
+                            th:selected="${n == size}"
+                            th:text="${n}">500</option>
+                </select>
+            </div>
+
+            <!-- Sort -->
+            <div class="field" style="min-width:220px;">
+                <label>Sort</label>
+                <select name="sort">
+                    <option th:each="s : ${sortOptions}"
+                            th:value="${s}"
+                            th:selected="${s == sort}"
+                            th:text="${s == 'LAST_MODIFIED' ? 'Last Modified (desc)'
+                        : (s == 'CVSS' ? 'CVSS (desc)'
+                        : 'Severity (Critical → None)')}">
+                        Last Modified (desc)
+                    </option>
+                </select>
+            </div>
+
+            <!-- Severity -->
+            <div class="field" style="min-width:160px;">
+                <label>Severity</label>
+                <select name="severity">
+                    <option th:each="s : ${severityOptions}"
+                            th:value="${s}"
+                            th:selected="${(s == 'ALL' and (severityKey == null or severityKey == '' or severityKey == 'ALL')) or (s == severityKey)}"
+                            th:text="${s}">
+                        ALL
+                    </option>
+                </select>
+            </div>
+
+            <!-- CVSS range -->
+            <div class="field" style="min-width:140px;">
+                <label>Min CVSS</label>
+                <input type="number" step="0.1" min="0" max="10"
+                       name="minCvss" th:value="${minCvss}">
+            </div>
+
+            <div class="field" style="min-width:140px;">
+                <label>Max CVSS</label>
+                <input type="number" step="0.1" min="0" max="10"
+                       name="maxCvss" th:value="${maxCvss}">
+            </div>
+
+            <!-- Include no CVSS -->
+            <div class="field" style="min-width:210px;">
+                <label>
+                    <input type="checkbox" name="includeNoCvss" value="true"
+                           th:checked="${includeNoCvss}">
+                    Include “No CVSS”
+                </label>
+                <div class="muted" style="font-size:12px;">
+                    Uncheck to exclude rows where CVSS is missing.
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="actions" style="gap:10px;">
+                <button type="submit">Apply</button>
+                <a th:href="@{/vulnerabilities}">Reset</a>
+            </div>
+
+        </div>
+
+        <!-- keep page=1 when filter changed -->
+        <input type="hidden" name="page" value="1"/>
+    </form>
+
+    <!-- Table -->
     <table>
         <thead>
         <tr>
             <th style="width: 90px;">ID</th>
             <th style="width: 210px;">CVE</th>
-            <th style="width: 160px;">Severity / CVSS</th>
-            <th style="width: 200px;">Last Modified</th>
+            <th style="width: 170px;">Severity / CVSS</th>
+            <th style="width: 210px;">Last Modified</th>
             <th>Title</th>
         </tr>
         </thead>
+
         <tbody>
         <tr th:if="${#lists.isEmpty(vulns)}">
-            <td colspan="5" class="muted">No vulnerabilities imported yet. Run Admin Sync.</td>
+            <td colspan="5" class="muted">
+                No vulnerabilities found with current filters.
+            </td>
         </tr>
 
         <tr th:each="x : ${vulns}">
@@ -34,12 +128,18 @@
             </td>
 
             <td>
-                <span class="badge"
-                      th:classappend="${x.severity != null ? (x.severity.toString() == 'CRITICAL' ? ' badge--sev-critical' : x.severity.toString() == 'HIGH' ? ' badge--sev-high' : x.severity.toString() == 'MEDIUM' ? ' badge--sev-medium' : x.severity.toString() == 'LOW' ? ' badge--sev-low' : ' badge--sev-none') : ' badge--sev-none'}"
-                      th:text="${x.severity != null ? x.severity : 'NONE'}">HIGH</span>
+        <span class="badge"
+              th:classappend="${x.severity != null ?
+                (x.severity.name() == 'CRITICAL' ? ' badge--sev-critical' :
+                 (x.severity.name() == 'HIGH' ? ' badge--sev-high' :
+                  (x.severity.name() == 'MEDIUM' ? ' badge--sev-medium' :
+                   (x.severity.name() == 'LOW' ? ' badge--sev-low' :
+                    ' badge--sev-none'))))
+                : ' badge--sev-none'}"
+              th:text="${x.severity != null ? x.severity : 'NONE'}">HIGH</span>
 
                 <div class="muted" style="font-size: 12px; margin-top: 6px;"
-                     th:text="${(x.cvssVersion != null ? x.cvssVersion : '-') + ' / ' + (x.cvssScore != null ? x.cvssScore : '-')}">
+                     th:text="${(x.cvssVersion != null ? x.cvssVersion : '-') + ' / ' + (x.cvssScore != null ? x.cvssScore : '-') }">
                     3.1 / 7.5
                 </div>
             </td>
@@ -53,11 +153,54 @@
                     desc…
                 </div>
             </td>
-
         </tr>
         </tbody>
     </table>
-</main>
 
+    <!-- Pager -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="gap:8px; flex-wrap:wrap; align-items:center;">
+
+            <!-- Prev -->
+            <a th:if="${page.hasPrevious()}"
+               th:href="@{/vulnerabilities(page=${page.number}, size=${size}, severity=${severityKey}, minCvss=${minCvss}, maxCvss=${maxCvss}, includeNoCvss=${includeNoCvss}, sort=${sort})}">
+                ← Prev
+            </a>
+            <span th:if="${!page.hasPrevious()}" class="muted">← Prev</span>
+
+            <!-- Full pager: 1 … n … last -->
+            <span th:each="p : ${pagerItems}">
+        <span th:if="${p == -1}" class="muted" style="padding:0 6px;">…</span>
+
+        <a th:if="${p != -1 and p != (page.number + 1)}"
+           th:href="@{/vulnerabilities(page=${p}, size=${size}, severity=${severityKey}, minCvss=${minCvss}, maxCvss=${maxCvss}, includeNoCvss=${includeNoCvss}, sort=${sort})}"
+           th:text="${p}"
+           style="padding:2px 8px; border-radius:10px;">
+          1
+        </a>
+
+        <span th:if="${p != -1 and p == (page.number + 1)}"
+              th:text="${p}"
+              class="pill"
+              style="padding:2px 10px;">
+          1
+        </span>
+      </span>
+
+            <!-- Next -->
+            <a th:if="${page.hasNext()}"
+               th:href="@{/vulnerabilities(page=${page.number + 2}, size=${size}, severity=${severityKey}, minCvss=${minCvss}, maxCvss=${maxCvss}, includeNoCvss=${includeNoCvss}, sort=${sort})}">
+                Next →
+            </a>
+            <span th:if="${!page.hasNext()}" class="muted">Next →</span>
+
+        </div>
+
+        <div class="muted" style="font-size:12px; margin-top:8px;">
+            Tip: Change “Rows per page” to browse faster. Large sizes may be slower depending on DB and browser.
+        </div>
+    </div>
+
+</main>
 </body>
 </html>
