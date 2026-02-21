@@ -115,6 +115,57 @@
         </div>
     </div>
 
+    <hr/>
+
+    <!-- Critical CVEs without CPE -->
+    <h2 style="margin-top: 0;">Critical CVEs without CPE</h2>
+
+    <p class="muted" style="margin-top: 6px;">
+        CRITICAL severity but no affected CPE entries yet. These may become matchable after CVE-Modified updates.
+    </p>
+
+    <div class="kv" style="grid-template-columns: 220px 1fr;">
+        <div class="k">Count</div>
+        <div class="v">
+            <span class="pill" th:text="${criticalNoCpeCount}">0</span>
+            <span class="muted">CVE(s)</span>
+            <span style="margin-left:10px;">
+              <a th:href="@{/vulnerabilities(severity='CRITICAL', size=500, sort='LAST_MODIFIED')}">View CRITICAL</a>
+            </span>
+        </div>
+    </div>
+
+    <div th:if="${#lists.isEmpty(criticalNoCpe)}" class="muted" style="margin-top:8px;">
+        No items.
+    </div>
+
+    <div th:if="${!#lists.isEmpty(criticalNoCpe)}" class="card" style="padding:12px; margin-top:10px;">
+        <table class="table" style="width:100%;">
+            <thead>
+            <tr>
+                <th style="width:170px;">CVE</th>
+                <th style="width:80px;">CVSS</th>
+                <th style="width:170px;">Last Modified</th>
+                <th>Description</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="v : ${criticalNoCpe}">
+                <td>
+                    <a th:href="@{/vulnerabilities/{id}(id=${v.id})}"
+                       th:text="${v.externalId}">CVE-XXXX-YYYY</a>
+                </td>
+                <td th:text="${v.cvssScore != null ? v.cvssScore : '-'}">-</td>
+                <td th:text="${v.lastModifiedAt != null ? #temporals.format(v.lastModifiedAt, 'yyyy-MM-dd HH:mm') : '-'}">-</td>
+                <td class="muted" style="font-size:12px;"
+                    th:text="${v.description != null ? (v.description.length() > 160 ? v.description.substring(0,160) + '…' : v.description) : ''}">
+                    ...
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
 </main>
 </body>
 </html>

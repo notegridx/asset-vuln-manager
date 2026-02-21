@@ -1,13 +1,17 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
 import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import java.util.List;
 
 @Controller
 public class DashboardController {
@@ -50,6 +54,14 @@ public class DashboardController {
         model.addAttribute("vulns", vulns);
         model.addAttribute("openAlerts", openAlerts);
         model.addAttribute("unmappedInstalls", unmappedInstalls);
+
+        long criticalNoCpeCount = vulnerabilityRepository.countCriticalWithoutAffectedCpes();
+        List<Vulnerability> criticalNoCpe = vulnerabilityRepository
+                .findCriticalWithoutAffectedCpes(PageRequest.of(0, 20))
+                .getContent();
+
+        model.addAttribute("criticalNoCpeCount", criticalNoCpeCount);
+        model.addAttribute("criticalNoCpe", criticalNoCpe);
 
         return "dashboard";
     }
