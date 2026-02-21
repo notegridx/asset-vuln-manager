@@ -75,6 +75,9 @@ app:
         meta-path: /feeds/json/cve/2.0/nvdcve-2.0-recent.meta
         gz-path: /feeds/json/cve/2.0/nvdcve-2.0-recent.json.gz
 
+      year:
+        meta-path-pattern: /feeds/json/cve/2.0/nvdcve-2.0-{year}.meta
+        gz-path-pattern: /feeds/json/cve/2.0/nvdcve-2.0-{year}.json.gz
     # software dict-mode (互換維持)
     software:
       dict-mode: STRICT

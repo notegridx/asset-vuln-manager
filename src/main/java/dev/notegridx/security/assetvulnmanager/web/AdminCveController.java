@@ -28,6 +28,7 @@ public class AdminCveController {
     @PostMapping("/admin/cve/sync")
     public String run(
             @RequestParam(name = "kind", defaultValue = "MODIFIED") String kind,
+            @RequestParam(name = "year", required = false) Integer year,
             @RequestParam(name = "force", defaultValue = "false") boolean force,
             @RequestParam(name = "maxItems", defaultValue = "2000000") int maxItems,
             Model model
@@ -40,12 +41,24 @@ public class AdminCveController {
             k = NvdCveFeedClient.FeedKind.MODIFIED;
         }
 
-        var result = cveFeedSyncService.sync(k, force, maxItems);
-        model.addAttribute("result", result);
+        // YEARのときはyear必須
+        if (k == NvdCveFeedClient.FeedKind.YEAR && year == null) {
+            model.addAttribute("kind", kind);
+            model.addAttribute("year", null);
+            model.addAttribute("force", force);
+            model.addAttribute("maxItems", maxItems);
+            model.addAttribute("error", "Year is required when selecting YEAR feed.");
+            return "admin/cve_sync";
+        }
+
+        var result = cveFeedSyncService.sync(k, year, force, maxItems);
+
+        model.addAttribute("kind", k.name());
+        model.addAttribute("year", year);
         model.addAttribute("force", force);
         model.addAttribute("maxItems", maxItems);
-        model.addAttribute("kind", k.name());
-
+        model.addAttribute("result", result);
         return "admin/cve_sync";
     }
+
 }

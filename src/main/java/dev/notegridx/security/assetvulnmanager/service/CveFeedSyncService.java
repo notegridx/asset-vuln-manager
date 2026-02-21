@@ -35,17 +35,17 @@ import java.util.*;
 
 /**
  * CVE Feed Sync (JSON feed .json.gz) - streaming safe, chunked upsert.
- *
+ * <p>
  * - Meta check (sha256/lastModified/size) -> skip unless force
  * - Download json.gz to temp file
  * - GZIPInputStream + Jackson streaming parse
  * - Chunked TX upsert (REQUIRES_NEW) similar to CpeFeedSyncService
- *
+ * <p>
  * Upsert policy aligned with current domain:
  * - Vulnerability unique: (source, external_id) -> update via applyNvdDetails()
  * - VulnerabilityAffectedCpe unique:
- *   (vulnerability_id, cpe_name, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
- *   -> insert-only, duplicates ignored
+ * (vulnerability_id, cpe_name, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
+ * -> insert-only, duplicates ignored
  */
 @Service
 public class CveFeedSyncService {
@@ -181,6 +181,75 @@ public class CveFeedSyncService {
         }
     }
 
+    // 旧呼び出し互換（既存の feedName(kind) 呼び出しが全部生きる）
+    private String feedName(NvdCveFeedClient.FeedKind kind) {
+        return feedName(kind, null);
+    }
+
+    public SyncResult sync(NvdCveFeedClient.FeedKind kind, Integer year, boolean force, int maxItems) throws IOException {
+        int safeMax = clamp(maxItems, 1, 5_000_000);
+        LocalDateTime now = LocalDateTime.now();
+
+        String feedName = feedName(kind, year);
+
+        // 1) META fetch (small)
+        CveFeedMetaParser.FeedMeta meta = feedClient.fetchMeta(kind, year, metaParser);
+
+        // 2) compare with sync_state
+        CveSyncState state = syncStateRepository.findByFeedName(feedName)
+                .orElseGet(() -> new CveSyncState(feedName));
+
+        boolean same = state.isSameMeta(meta.sha256(), meta.lastModified(), meta.size());
+        if (!force && same) {
+            log.info("CVE feed sync skipped (meta unchanged). feedName={}, kind={}, year={}, sha256={}, lastModified={}, size={}",
+                    feedName, kind, year, meta.sha256(), meta.lastModified(), meta.size());
+            return SyncResult.skipped(meta.sha256(), meta.lastModified(), meta.size());
+        }
+
+        // 3) download json.gz -> temp file
+        Path tmp = null;
+        try {
+            tmp = feedClient.downloadJsonGzToTempFile(kind, year);
+            long bytes = Files.size(tmp);
+            log.info("CVE feed downloaded to temp: kind={}, year={}, file={}, bytes={}, force={}, cap={}",
+                    kind, year, tmp, bytes, force, safeMax);
+
+            // 4) parse & upsert with chunked transactions
+            try (InputStream in = Files.newInputStream(tmp)) {
+                ParseUpsertResult r = parseAndUpsertJsonGzChunked(in, safeMax);
+
+                // 5) update sync state
+                state.updateMeta(meta.sha256(), meta.lastModified(), meta.size(), now);
+                syncStateRepository.save(state);
+
+                log.info("CVE feed sync done: kind={}, year={}, feedName={}, vulnerabilitiesUpserted={}, affectedInserted={}, vulnerabilitiesParsed={}, caches(vendor={}, product={})",
+                        kind, year, feedName,
+                        r.vulnerabilitiesUpserted, r.affectedCpesInserted, r.vulnerabilitiesParsed,
+                        vendorIdCache.size(), productIdCache.size()
+                );
+
+                return SyncResult.executed(
+                        r.vulnerabilitiesUpserted,
+                        r.affectedCpesInserted,
+                        r.vulnerabilitiesParsed,
+                        meta.sha256(),
+                        meta.lastModified(),
+                        meta.size()
+                );
+            }
+
+        } finally {
+            if (tmp != null) {
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (Exception e) {
+                    log.warn("Failed to delete temp file (ignored). file={}, err={}", tmp, safeMsg(e));
+                }
+            }
+        }
+    }
+
+
     private ParseUpsertResult parseAndUpsertJsonGzChunked(InputStream jsonGzStream, int maxItems) throws IOException {
         final int[] parsed = {0};
         final int[] vulnUpserted = {0};
@@ -262,11 +331,11 @@ public class CveFeedSyncService {
      * Parse one element of the "vulnerabilities" array.
      * Expected shape (typical NVD 2.0 feed):
      * {
-     *   "cve": { "id": "...", "descriptions":[...], "metrics":{...}, "configurations":[...] , ... },
-     *   "published":"2024-..Z",
-     *   "lastModified":"2024-..Z"
+     * "cve": { "id": "...", "descriptions":[...], "metrics":{...}, "configurations":[...] , ... },
+     * "published":"2024-..Z",
+     * "lastModified":"2024-..Z"
      * }
-     *
+     * <p>
      * This parser is best-effort and tolerant.
      * It consumes the END_OBJECT token of the item.
      */
@@ -399,11 +468,11 @@ public class CveFeedSyncService {
     /**
      * metrics:
      * {
-     *   "cvssMetricV31":[{ "cvssData":{"version":"3.1","baseScore":7.5}, ... }],
-     *   "cvssMetricV30":[...],
-     *   "cvssMetricV2":[{ "cvssData":{"version":"2.0","baseScore":5.0}, ... }]
+     * "cvssMetricV31":[{ "cvssData":{"version":"3.1","baseScore":7.5}, ... }],
+     * "cvssMetricV30":[...],
+     * "cvssMetricV2":[{ "cvssData":{"version":"2.0","baseScore":5.0}, ... }]
      * }
-     *
+     * <p>
      * Pick the best available in order: V31 -> V30 -> V2
      */
     private CvssPick parseMetricsPickBest(JsonParser p) throws IOException {
@@ -730,11 +799,14 @@ public class CveFeedSyncService {
         return id;
     }
 
-    private static String feedName(NvdCveFeedClient.FeedKind kind) {
-        if (kind == null) return "nvd-cve-2.0-unknown";
-        String k = kind.name().toLowerCase(Locale.ROOT);
-        return "nvd-cve-2.0-" + k;
+    private String feedName(NvdCveFeedClient.FeedKind kind, Integer year) {
+        return switch (kind) {
+            case RECENT -> "cve-feed-recent";
+            case MODIFIED -> "cve-feed-modified";
+            case YEAR -> "cve-feed-" + (year == null ? "year" : year);
+        };
     }
+
 
     private static LocalDateTime parseToLocalDateTime(String iso) {
         String s = norm(iso);

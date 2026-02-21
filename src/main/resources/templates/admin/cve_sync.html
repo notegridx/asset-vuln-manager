@@ -31,14 +31,66 @@
 
     <div class="field">
       <label>Feed selection</label>
-      <select name="kind">
+      <select name="kind" id="feedKind">
         <option value="MODIFIED" th:selected="${kind == null or kind == 'MODIFIED'}">MODIFIED (latest changes)</option>
         <option value="RECENT" th:selected="${kind == 'RECENT'}">RECENT (most recent CVEs)</option>
+        <option value="YEAR" th:selected="${kind == 'YEAR'}">YEAR (full year feed)</option>
       </select>
       <div class="muted" style="font-size: 12px; margin-top: 4px;">
         Choose which NVD feed to import.
       </div>
     </div>
+
+    <div class="field" id="yearField" style="display:none;">
+      <label>Year</label>
+      <input type="number" name="year" id="yearInput" min="1999" max="2100"
+             list="yearCandidates" th:value="${year}">
+      <datalist id="yearCandidates"></datalist>
+      <div class="muted" style="font-size: 12px; margin-top: 4px;">
+        Type a year (e.g., 2026). Suggestions are provided, but you can enter any year.
+      </div>
+    </div>
+
+    <div th:if="${error != null}" class="card" style="padding:12px; margin:12px 0; border: 1px solid #c33;">
+      <b>Error</b>
+      <div th:text="${error}"></div>
+    </div>
+
+    <script>
+      (function () {
+        const kindEl = document.getElementById('feedKind');
+        const yearField = document.getElementById('yearField');
+        const yearInput = document.getElementById('yearInput');
+        const datalist = document.getElementById('yearCandidates');
+
+        function toggleYear() {
+          const isYear = (kindEl.value === 'YEAR');
+          yearField.style.display = isYear ? '' : 'none';
+          if (!isYear) return;
+
+          // 候補リスト（固定リスト表示）：今年〜2002を生成（必要なら範囲は調整）
+          if (datalist.childElementCount === 0) {
+            const current = new Date().getFullYear();
+            const start = current;
+            const end = 2002;
+            for (let y = start; y >= end; y--) {
+              const opt = document.createElement('option');
+              opt.value = String(y);
+              datalist.appendChild(opt);
+            }
+          }
+
+          // 未入力なら今年を入れておく（任意）
+          if (!yearInput.value) {
+            yearInput.value = String(new Date().getFullYear());
+          }
+        }
+
+        kindEl.addEventListener('change', toggleYear);
+        toggleYear();
+      })();
+    </script>
+
 
     <div class="field">
       <label>
