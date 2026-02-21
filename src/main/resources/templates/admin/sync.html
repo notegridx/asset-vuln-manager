@@ -38,7 +38,7 @@
         <div class="field">
             <label>Days back (NVD lastModified window)</label>
             <input type="number" name="daysBack" min="1" max="120"
-                   th:value="${daysBack != null ? daysBack : 7}">
+                   th:value="${daysBack != null ? daysBack : 1}">
             <div class="muted" style="font-size: 12px;">
                 Fetches CVEs whose <code>lastModified</code> is within (now - daysBack) … now.
                 Smaller values = faster, larger values = more catch-up.
