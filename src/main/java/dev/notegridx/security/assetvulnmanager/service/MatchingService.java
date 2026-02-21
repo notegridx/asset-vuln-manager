@@ -64,15 +64,24 @@ public class MatchingService {
 			Long vid = si.getCpeVendorId();
 			Long pid = si.getCpeProductId();
 
+			// 1) canonical (DICT_ID)
 			if (vid != null && pid != null) {
 				candidates = affectedCpeRepository.findCandidatesByCanonical(vid, pid);
-				method = AlertMatchMethod.DICT_ID;
-			} else {
+				if (!candidates.isEmpty()) {
+					method = AlertMatchMethod.DICT_ID;
+				}
+			}
+
+			// 2) fallback: normalized (NORM)
+			// affected 側の canonical が未解決(NULL)でも、vendor_norm/product_norm があれば拾えるようにする
+			if (candidates.isEmpty()) {
 				String vn = normalize(si.getNormalizedVendor());
 				String pn = normalize(si.getNormalizedProduct());
 				if (vn != null && pn != null) {
 					candidates = affectedCpeRepository.findCandidatesByNorm(vn, pn);
-					method = AlertMatchMethod.NORM;
+					if (!candidates.isEmpty()) {
+						method = AlertMatchMethod.NORM;
+					}
 				}
 			}
 
