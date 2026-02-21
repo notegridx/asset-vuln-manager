@@ -46,7 +46,51 @@
         <div class="muted" style="margin-top:12px;">
             <div th:text="'firstSeenAt: ' + ${alert.firstSeenAt}">firstSeenAt</div>
             <div th:text="'lastSeenAt: ' + ${alert.lastSeenAt}">lastSeenAt</div>
+            <div th:if="${alert.closedAt != null}" th:text="'closedAt: ' + ${alert.closedAt}">closedAt</div>
+            <div th:if="${alert.closeReason != null}" th:text="'closeReason: ' + ${alert.closeReason}">closeReason</div>
         </div>
+
+        <!-- CLOSE action -->
+        <div style="margin-top:14px;" th:if="${alert.status != null && alert.status.toString() == 'OPEN'}">
+            <h3 style="margin:0 0 8px 0; font-size:16px;">Close this alert</h3>
+
+            <form th:action="@{/alerts/{id}/close(id=${alert.id})}" method="post" th:object="${closeForm}">
+                <div class="actions" style="gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                    <div>
+                        <label class="muted" style="display:block; font-size:12px; margin-bottom:6px;">Close reason</label>
+                        <select th:field="*{closeReason}">
+                            <option value="" disabled selected>Select a reason</option>
+                            <option th:each="r : ${closeReasons}"
+                                    th:value="${r}"
+                                    th:text="${r}">
+                                PATCHED
+                            </option>
+                        </select>
+
+                        <div class="muted" style="margin-top:6px; font-size:12px;"
+                             th:if="${#fields.hasErrors('closeReason')}"
+                             th:errors="*{closeReason}">
+                            Close reason error
+                        </div>
+                    </div>
+
+                    <div style="padding-top:22px;">
+                        <button type="submit">Close Alert</button>
+                    </div>
+                </div>
+
+                <p class="muted" style="margin-top:10px; font-size:12px;">
+                    This will set status to CLOSED and record closedAt + closeReason.
+                </p>
+            </form>
+        </div>
+
+        <div style="margin-top:14px;" th:if="${alert.status != null && alert.status.toString() == 'CLOSED'}">
+            <p class="muted" style="margin:0;">
+                This alert is already CLOSED.
+            </p>
+        </div>
+
     </div>
 
     <div class="card" style="padding:16px; margin-top:12px;">
