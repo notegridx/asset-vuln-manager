@@ -20,7 +20,13 @@
         <b>Severity</b>
         <span>
             <span class="badge"
-                  th:classappend="${v.severity != null ? (v.severity.toString() == 'CRITICAL' ? ' badge--sev-critical' : v.severity.toString() == 'HIGH' ? ' badge--sev-high' : v.severity.toString() == 'MEDIUM' ? ' badge--sev-medium' : v.severity.toString() == 'LOW' ? ' badge--sev-low' : ' badge--sev-none') : ' badge--sev-none'}"
+                  th:classappend="${v.severity != null ?
+  (v.severity.name() == 'CRITICAL' ? ' badge--sev-critical' :
+   (v.severity.name() == 'HIGH' ? ' badge--sev-high' :
+    (v.severity.name() == 'MEDIUM' ? ' badge--sev-medium' :
+     (v.severity.name() == 'LOW' ? ' badge--sev-low' :
+      ' badge--sev-none'))))
+  : ' badge--sev-none'}"
                   th:text="${v.severity != null ? v.severity : 'NONE'}">HIGH</span>
         </span>
 
@@ -47,23 +53,31 @@
     <p class="muted">Imported from NVD configurations -> criteria (vulnerable=true). Stored in
         vulnerability_affected_cpes.</p>
 
-
     <table>
         <thead>
         <tr>
             <th style="width: 90px;">ID</th>
             <th>CPE (cpeName)</th>
+            <th style="width: 170px;">Start (including)</th>
+            <th style="width: 170px;">Start (excluding)</th>
+            <th style="width: 170px;">End (including)</th>
+            <th style="width: 170px;">End (excluding)</th>
         </tr>
         </thead>
         <tbody>
         <tr th:if="${#lists.isEmpty(cpes)}">
-            <td colspan="2" class="muted">No affected CPEs stored for this vulnerability.</td>
+            <td colspan="6" class="muted">No affected CPEs stored for this vulnerability.</td>
         </tr>
+
         <tr th:each="c : ${cpes}">
             <td th:text="${c.id}">1</td>
             <td>
                 <code th:text="${c.cpeName}">cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*</code>
             </td>
+            <td th:text="${c.versionStartIncluding != null ? c.versionStartIncluding : '-'}">-</td>
+            <td th:text="${c.versionStartExcluding != null ? c.versionStartExcluding : '-'}">-</td>
+            <td th:text="${c.versionEndIncluding != null ? c.versionEndIncluding : '-'}">-</td>
+            <td th:text="${c.versionEndExcluding != null ? c.versionEndExcluding : '-'}">-</td>
         </tr>
         </tbody>
     </table>
