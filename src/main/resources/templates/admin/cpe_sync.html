@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('CPE Dictionary Update')}"></head>
+<head th:replace="~{layout/base :: head('Update Product Dictionary')}"></head>
 
-<body th:replace="~{layout/base :: layout('CPE Dictionary Update', 'admin', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Update Product Dictionary', 'admin', ~{::main})}">
 <main>
 
-    <h1>CPE Dictionary Update</h1>
+    <h1>Update Product Dictionary</h1>
 
     <p class="muted">
         Download and refresh the NVD CPE Dictionary in your local database.
-        This dictionary provides canonical vendor/product definitions used for mapping and matching.
+        This dictionary provides canonical vendor/product definitions used for product mapping and alert generation.
     </p>
 
     <div class="card" style="padding:12px; margin:12px 0;">
@@ -19,7 +19,7 @@
             <ul style="margin:6px 0 0 18px;">
                 <li>Safe for large feeds (streaming + chunked transactions).</li>
                 <li>Idempotent: re-running will not create duplicates.</li>
-                <li>If the feed has not changed since the last run, the sync may be skipped unless forced.</li>
+                <li>If the feed has not changed since the last run, the update may be skipped unless forced.</li>
             </ul>
         </div>
     </div>
@@ -34,7 +34,7 @@
                 Force update (ignore previous sync state)
             </label>
             <div class="muted" style="font-size: 12px; margin-top: 4px;">
-                Use this if you suspect the local sync state is out of date or you want to re-process the feed.
+                Use this if you suspect the local sync state is out of date or you want to re-process the dictionary.
             </div>
         </div>
 
@@ -48,7 +48,7 @@
         </div>
 
         <div class="actions" style="margin-top: 14px;">
-            <button type="submit">Update CPE Dictionary</button>
+            <button type="submit">Update Product Dictionary</button>
         </div>
     </form>
 
@@ -65,7 +65,7 @@
             </thead>
             <tbody>
             <tr>
-                <td>skipped (feed unchanged)</td>
+                <td>skipped (dictionary unchanged)</td>
                 <td th:text="${result.skipped}">false</td>
             </tr>
             <tr>
@@ -90,7 +90,7 @@
                 <td th:text="${result.productsInserted}">0</td>
             </tr>
             <tr th:if="${result.cpeParsed != null}">
-                <td>CPE entries parsed</td>
+                <td>dictionary entries parsed</td>
                 <td th:text="${result.cpeParsed}">0</td>
             </tr>
             </tbody>

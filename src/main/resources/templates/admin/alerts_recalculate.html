@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('Run Vulnerability Matching')}"></head>
+<head th:replace="~{layout/base :: head('Generate Alerts')}"></head>
 
-<body th:replace="~{layout/base :: layout('Run Vulnerability Matching', 'admin', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Generate Alerts', 'admin', ~{::main})}">
 <main>
 
-  <h1>Run Vulnerability Matching</h1>
+  <h1>Generate Alerts</h1>
 
   <p class="muted">
-    Match installed software against stored vulnerability data and update security alerts.
+    Analyze installed software against stored vulnerability data and create or update security alerts.
     This operation only performs matching and alert upsert.
-    It does <b>not</b> import CVEs or update the CPE dictionary.
+    It does <b>not</b> import vulnerability data or update the product dictionary.
   </p>
 
   <div class="card" style="padding:12px; margin:12px 0;">
@@ -20,7 +20,7 @@
       <ul style="margin:6px 0 0 18px;">
         <li>After importing software via CSV</li>
         <li>After updating product mappings</li>
-        <li>After updating CVE or CPE data (if full sync was not used)</li>
+        <li>After updating vulnerability or product dictionary data (if full sync was not used)</li>
       </ul>
     </div>
   </div>
@@ -29,13 +29,13 @@
 
   <form th:action="@{/admin/alerts/recalculate}" method="post">
     <div class="actions" style="margin-top: 14px;">
-      <button type="submit">Run Matching and Update Alerts</button>
+      <button type="submit">Generate Alerts</button>
     </div>
   </form>
 
   <div th:if="${matchResult != null}">
     <hr/>
-    <h2>Matching Result</h2>
+    <h2>Alert Generation Result</h2>
 
     <table>
       <thead>

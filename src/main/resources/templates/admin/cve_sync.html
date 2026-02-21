@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('CVE Data Update')}"></head>
+<head th:replace="~{layout/base :: head('Update Vulnerability Data')}"></head>
 
-<body th:replace="~{layout/base :: layout('CVE Data Update', 'admin', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Update Vulnerability Data', 'admin', ~{::main})}">
 <main>
 
-  <h1>CVE Data Update</h1>
+  <h1>Update Vulnerability Data</h1>
 
   <p class="muted">
     Download and refresh vulnerability data from the NVD CVE JSON 2.0 feed.
-    This will update stored CVEs and their affected product/version ranges used for matching and alerts.
+    This will update stored vulnerabilities and their affected product/version ranges used for alert generation.
   </p>
 
   <div class="card" style="padding:12px; margin:12px 0;">
@@ -19,7 +19,7 @@
       <ul style="margin:6px 0 0 18px;">
         <li>Safe for large feeds (streaming + chunked transactions).</li>
         <li>Idempotent: re-running will not create duplicates.</li>
-        <li>If the selected feed has not changed since the last run, the sync may be skipped unless forced.</li>
+        <li>If the selected feed has not changed since the last run, the update may be skipped unless forced.</li>
         <li><b>MODIFIED</b> is typically used for routine updates; <b>RECENT</b> is a smaller feed for quick setup/testing.</li>
       </ul>
     </div>
@@ -112,7 +112,7 @@
     </div>
 
     <div class="actions" style="margin-top: 14px;">
-      <button type="submit">Update CVE Data</button>
+      <button type="submit">Update Vulnerability Data</button>
     </div>
   </form>
 
@@ -162,7 +162,7 @@
 
   <hr/>
   <div class="actions">
-    <a th:href="@{/admin/sync}"><- Back to Full Sync</a>
+    <a th:href="@{/admin/sync}"><- Back to CVE Delta Update (API)</a>
   </div>
 
 </main>

@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout/base :: head('Admin Canonical')}"></head>
-<body th:replace="~{layout/base :: layout('Admin Canonical', 'canonical', ~{::main})}">
+<head th:replace="~{layout/base :: head('Review Product Mapping')}"></head>
+<body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
 <main>
-    <h1>Admin Canonical Linking</h1>
-    <p class="muted">Matches vendor/product entries in software_installs against the CPE dictionary and visualizes
-        unconfirmed entries. </p>
+    <h1>Review Product Mapping</h1>
+    <p class="muted">
+        Matches vendor/product entries in software_installs against the product dictionary and highlights entries that are not yet confirmed.
+    </p>
 
     <div th:if="${summary != null}" class="kv">
         <b>checked</b> <span th:text="${summary.checked}">0</span>
@@ -29,7 +30,7 @@
         </thead>
         <tbody>
         <tr th:if="${#lists.isEmpty(rows)}">
-            <td colspan="6" class="muted">No rows</td>
+            <td colspan="6" class="muted">No entries</td>
         </tr>
 
         <tr th:each="r : ${rows}">
@@ -52,7 +53,7 @@
             <td>
             <span class="badge"
                   th:classappend="${r.resolve.hit ? ' badge--status-open' : ' badge--unmapped'}"
-                  th:text="${r.resolve.hit ? 'HIT' : 'MISS'}">MISS</span>
+                  th:text="${r.resolve.hit ? 'MATCHED' : 'UNMAPPED'}">UNMAPPED</span>
             </td>
 
             <td class="muted" th:text="${r.resolve.reason != null ? r.resolve.reason : '-'}">reason</td>

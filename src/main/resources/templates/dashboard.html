@@ -20,18 +20,20 @@
         Quick overview of inventory, vulnerabilities, and alerts.
     </p>
 
-    <!-- First-Time Setup (simple links) -->
+    <!-- First-Time Setup -->
     <div class="card" style="padding:16px; margin-top:12px;">
         <h2 style="margin: 0 0 8px 0;">First-Time Setup</h2>
         <p class="muted" style="margin: 0 0 12px 0;">
-            Follow these steps to enable vulnerability detection.
+            Complete these steps to start generating alerts from your inventory.
         </p>
 
         <div class="kv" style="grid-template-columns: 160px 1fr; gap:10px;">
             <div class="k">Step 1</div>
             <div class="v">
-                <b>Sync CPE Dictionary</b>
-                <div class="muted" style="font-size:12px;">Download vendor/product definitions.</div>
+                <b>Update Product Dictionary</b>
+                <div class="muted" style="font-size:12px;">
+                    Import NVD CPE dictionary data to normalize vendor and product names.
+                </div>
                 <div style="margin-top:6px;">
                     <a th:href="@{/admin/cpe/sync}">Open</a>
                 </div>
@@ -39,8 +41,10 @@
 
             <div class="k">Step 2</div>
             <div class="v">
-                <b>Sync CVE Feed</b>
-                <div class="muted" style="font-size:12px;">Import CVEs from NVD (JSON 2.0 feed).</div>
+                <b>Update Vulnerability Data</b>
+                <div class="muted" style="font-size:12px;">
+                    Import CVE records from NVD feeds to update the vulnerability database.
+                </div>
                 <div style="margin-top:6px;">
                     <a th:href="@{/admin/cve/sync}">Open</a>
                 </div>
@@ -48,8 +52,10 @@
 
             <div class="k">Step 3</div>
             <div class="v">
-                <b>Import Inventory</b>
-                <div class="muted" style="font-size:12px;">Import assets.csv and software.csv.</div>
+                <b>Import Inventory (CSV)</b>
+                <div class="muted" style="font-size:12px;">
+                    Import assets and installed software from assets.csv and software.csv.
+                </div>
                 <div style="margin-top:6px;">
                     <a th:href="@{/admin/import}">Open</a>
                 </div>
@@ -57,10 +63,12 @@
 
             <div class="k">Step 4</div>
             <div class="v">
-                <b>Recalculate Alerts</b>
-                <div class="muted" style="font-size:12px;">Match software against vulnerabilities.</div>
+                <b>Generate Alerts</b>
+                <div class="muted" style="font-size:12px;">
+                    Match installed software against vulnerabilities and create or update alerts.
+                </div>
                 <div style="margin-top:6px;">
-                    <a th:href="@{/admin/alerts/recalculate}">Run</a>
+                    <a th:href="@{/admin/alerts/recalculate}">Open</a>
                 </div>
             </div>
         </div>
@@ -99,26 +107,13 @@
             <span style="margin-left:10px;"><a th:href="@{/alerts}">View</a></span>
         </div>
 
-        <div class="k">Unmapped software (CPE)</div>
+        <div class="k">Software needs product mapping</div>
         <div class="v">
             <span class="pill" th:text="${unmappedInstalls}">0</span>
-            <span class="muted">needs review</span>
+            <span class="muted">may reduce matching accuracy</span>
             <span style="margin-left:10px;"><a th:href="@{/admin/canonical}">Review</a></span>
         </div>
     </div>
-
-    <hr/>
-
-    <!-- Quick actions -->
-    <h2>Quick Actions</h2>
-    <div class="actions" style="margin-top: 10px;">
-        <a th:href="@{/admin/sync}">Run CVE Sync + Alert Update</a>
-        <a th:href="@{/admin/canonical}">Canonical Mapping</a>
-    </div>
-
-    <p class="muted" style="margin-top:10px;">
-        Tip: If software import fails due to dictionary validation, review Canonical Mapping or use override import for DICT_* errors.
-    </p>
 
 </main>
 </body>

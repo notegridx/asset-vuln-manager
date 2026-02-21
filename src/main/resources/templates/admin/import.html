@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('Import Inventory')}"></head>
+<head th:replace="~{layout/base :: head('Import Inventory (CSV)')}"></head>
 
-<body th:replace="~{layout/base :: layout('Import Inventory', 'admin', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Import Inventory (CSV)', 'admin', ~{::main})}">
 <main>
 
-    <h1>Import Inventory</h1>
+    <h1>Import Inventory (CSV)</h1>
     <p class="muted">
         Upload CSV files to register assets and installed software.
-        Installed software is used to match against CVEs and generate alerts.
+        Installed software is used to match against stored vulnerabilities and generate alerts.
     </p>
 
     <div class="card" style="padding:12px; margin:12px 0;">
@@ -18,7 +18,7 @@
             <ul style="margin:6px 0 0 18px;">
                 <li><b>Preview only</b> runs validation without saving changes.</li>
                 <li><b>Apply changes</b> writes to the database.</li>
-                <li>If dictionary validation is enabled, unknown vendor/product pairs may be rejected.
+                <li>If product dictionary validation is enabled, unknown vendor/product pairs may be rejected.
                     You can selectively override <b>DICT_*</b> errors after review.</li>
             </ul>
         </div>
@@ -108,7 +108,7 @@
             <label>software.csv</label>
             <input type="file" name="file" accept=".csv,text/csv" required>
             <div class="muted" style="font-size:12px; margin-top:4px;">
-                Adds software entries to assets via <b>external_key</b> (asset lookup key).
+                Adds installed software to assets via <b>external_key</b> (asset lookup key).
             </div>
         </div>
 
@@ -123,7 +123,7 @@
         <div class="field">
             <label>
                 <input type="checkbox" name="recalc" value="true">
-                Automatically run vulnerability matching after a successful import
+                Automatically generate alerts after a successful import
             </label>
             <div class="muted" style="font-size: 12px;">
                 Runs only when “Apply changes” is checked and the import completes without errors.
@@ -140,7 +140,7 @@
         <h3>Software Import Summary</h3>
 
         <div th:if="${matchSkippedMessage != null}">
-            <p class="muted" th:text="${matchSkippedMessage}">Matching skipped ...</p>
+            <p class="muted" th:text="${matchSkippedMessage}">Alert generation skipped ...</p>
         </div>
 
         <table>
@@ -171,10 +171,10 @@
                 <div class="field">
                     <label>
                         <input type="checkbox" name="recalc" value="true">
-                        Automatically run vulnerability matching after a successful override import
+                        Automatically generate alerts after a successful override import
                     </label>
                     <div class="muted" style="font-size: 12px;">
-                        Selected rows will be imported even if vendor/product is not found in the CPE dictionary.
+                        Selected rows will be imported even if vendor/product is not found in the product dictionary.
                         Only <b>DICT_*</b> errors can be overridden.
                     </div>
                 </div>
@@ -222,7 +222,7 @@
 
     <!-- Matching result -->
     <div th:if="${matchResult != null}">
-        <h3>Vulnerability Matching Result</h3>
+        <h3>Alert Generation Result</h3>
         <table>
             <tbody>
             <tr>
