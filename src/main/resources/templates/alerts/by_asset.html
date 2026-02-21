@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('Alerts by Asset')}"></head>
+
+<body th:replace="~{layout/base :: layout('Alerts by Asset', 'alerts', ~{::main})}">
+<main>
+
+  <div class="actions">
+    <div>
+      <h1 th:text="'Alerts by Asset (' + ${status} + ')'">Alerts by Asset (OPEN)</h1>
+      <p class="muted">
+        Aggregated view. Click an asset to drill down into the flat list.
+      </p>
+    </div>
+
+    <div class="actions" style="gap:8px;">
+      <a class="nav-link"
+         th:classappend="${status == 'OPEN'} ? ' active' : ''"
+         th:href="@{/alerts/by-asset(status='OPEN')}">OPEN</a>
+
+      <a class="nav-link"
+         th:classappend="${status == 'CLOSED'} ? ' active' : ''"
+         th:href="@{/alerts/by-asset(status='CLOSED')}">CLOSED</a>
+
+      <a class="nav-link"
+         th:classappend="${status == 'ALL'} ? ' active' : ''"
+         th:href="@{/alerts/by-asset(status='ALL')}">ALL</a>
+
+      <span class="pill" th:text="'assets: ' + ${#lists.size(rows)}">assets: 0</span>
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="muted" style="font-size:12px; line-height:1.6;">
+      Tip: Use this page to find the “noisy” assets first. Drill down opens the existing flat list filtered by asset.
+    </div>
+  </div>
+
+  <table>
+    <thead>
+    <tr>
+      <th style="width: 90px;">Asset ID</th>
+      <th>Asset</th>
+      <th style="width: 120px;">Software</th>
+      <th style="width: 120px;">Alerts</th>
+      <th style="width: 220px;">Severity Breakdown</th>
+      <th style="width: 190px;">Last Seen</th>
+      <th style="width: 120px;">Action</th>
+    </tr>
+    </thead>
+
+    <tbody>
+
+    <tr th:if="${#lists.isEmpty(rows)}">
+      <td colspan="7" class="muted">No alerts found.</td>
+    </tr>
+
+    <tr th:each="r : ${rows}">
+      <td th:text="${r.assetId}">1</td>
+
+      <td>
+        <div>
+          <b th:text="${r.assetName}">Asset A</b>
+        </div>
+        <div class="muted" style="font-size:12px;"
+             th:text="${r.topSeverity != null ? 'Top severity: ' + r.topSeverity : 'Top severity: NONE'}">
+          Top severity: HIGH
+        </div>
+      </td>
+
+      <td>
+        <span class="pill" th:text="${r.softwareCount}">0</span>
+      </td>
+
+      <td>
+        <span class="pill" th:text="${r.totalAlerts}">0</span>
+      </td>
+
+      <td class="muted" style="font-size:12px;">
+        <div>
+          CRITICAL: <b th:text="${r.critical}">0</b>
+          &nbsp; HIGH: <b th:text="${r.high}">0</b>
+          &nbsp; MEDIUM: <b th:text="${r.medium}">0</b>
+        </div>
+        <div style="margin-top:4px;">
+          LOW: <b th:text="${r.low}">0</b>
+          &nbsp; NONE: <b th:text="${r.none}">0</b>
+        </div>
+      </td>
+
+      <td th:text="${r.lastSeenAt != null ? r.lastSeenAt : '-'}">2026-02-20T10:00</td>
+
+      <td>
+        <a class="nav-link"
+           th:href="@{/alerts(status=${status}, assetId=${r.assetId})}"
+           style="padding:6px 10px;">
+          Drill down
+        </a>
+      </td>
+    </tr>
+
+    </tbody>
+  </table>
+
+</main>
+</body>
+</html>

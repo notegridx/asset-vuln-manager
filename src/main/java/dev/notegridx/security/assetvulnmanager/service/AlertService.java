@@ -36,6 +36,18 @@ public class AlertService {
                 .toList();
     }
 
+    // ---- Option C: drilldown (by asset) ----
+
+    @Transactional(readOnly = true)
+    public List<Alert> findByAssetId(Long assetId, AlertStatus statusOrNullForAll) {
+        if (assetId == null) throw new IllegalArgumentException("assetId is required");
+
+        if (statusOrNullForAll == null) {
+            return alertRepository.findBySoftwareInstall_Asset_IdOrderByLastSeenAtDesc(assetId);
+        }
+        return alertRepository.findByStatusAndSoftwareInstall_Asset_IdOrderByLastSeenAtDesc(statusOrNullForAll, assetId);
+    }
+
     @Transactional(readOnly = true)
     public Alert getRequired(Long id) {
         return alertRepository.findById(id)
