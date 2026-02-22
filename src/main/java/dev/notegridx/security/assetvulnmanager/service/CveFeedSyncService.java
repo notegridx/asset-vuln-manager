@@ -15,6 +15,7 @@ import dev.notegridx.security.assetvulnmanager.repository.CveSyncStateRepository
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -44,8 +45,8 @@ import java.util.*;
  * Upsert policy aligned with current domain:
  * - Vulnerability unique: (source, external_id) -> update via applyNvdDetails()
  * - VulnerabilityAffectedCpe unique:
- * (vulnerability_id, cpe_name, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
- * -> insert-only, duplicates ignored
+ *   (vulnerability_id, cpe_name, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
+ *   -> insert-only, duplicates ignored
  */
 @Service
 public class CveFeedSyncService {
@@ -248,7 +249,6 @@ public class CveFeedSyncService {
             }
         }
     }
-
 
     private ParseUpsertResult parseAndUpsertJsonGzChunked(InputStream jsonGzStream, int maxItems) throws IOException {
         final int[] parsed = {0};
@@ -754,6 +754,37 @@ public class CveFeedSyncService {
             }
         }
 
+        // ---- Phase: insert-only but idempotent (avoid UX_VAC_DEDUPE violations) ----
+        // UX_VAC_DEDUPE is based on *_NN columns; align existence check with those keys.
+        final long vid = (v == null || v.getId() == null) ? 0L : v.getId();
+        final String cpeNameNn = nn(criteria);
+        final long vendorIdNn = nn(vendorId);
+        final long productIdNn = nn(productId);
+        final String vendorNormNn = nn(vendorNorm);
+        final String productNormNn = nn(productNorm);
+        final String vsiNn = nn(a.versionStartIncluding);
+        final String vseNn = nn(a.versionStartExcluding);
+        final String veiNn = nn(a.versionEndIncluding);
+        final String veeNn = nn(a.versionEndExcluding);
+
+        // If already exists, skip without touching persistence context
+        if (vid != 0L) {
+            boolean exists = affectedCpeRepository
+                    .existsByVulnerabilityIdAndCpeNameNnAndCpeVendorIdNnAndCpeProductIdNnAndVendorNormNnAndProductNormNnAndVersionStartIncludingNnAndVersionStartExcludingNnAndVersionEndIncludingNnAndVersionEndExcludingNn(
+                            vid,
+                            cpeNameNn,
+                            vendorIdNn,
+                            productIdNn,
+                            vendorNormNn,
+                            productNormNn,
+                            vsiNn,
+                            vseNn,
+                            veiNn,
+                            veeNn
+                    );
+            if (exists) return 0;
+        }
+
         VulnerabilityAffectedCpe vac = new VulnerabilityAffectedCpe(
                 v,
                 criteria,
@@ -769,11 +800,41 @@ public class CveFeedSyncService {
 
         try {
             affectedCpeRepository.save(vac);
+            // Ensure constraint violations occur here (not later on unrelated SELECT autoFlush)
+            em.flush();
             return 1;
         } catch (DataIntegrityViolationException e) {
             // unique constraint hit: ignore
+            // But the persistence context may now contain a "broken" entity state -> clear it to avoid
+            // "Entry ... has a null identifier" cascading on next autoFlush.
+            try {
+                em.clear();
+            } catch (Exception ignore) {
+            }
             return 0;
+        } catch (PersistenceException e) {
+            // Defensive: some providers throw PersistenceException directly for constraint violations.
+            try {
+                em.clear();
+            } catch (Exception ignore) {
+            }
+            // Re-throw unexpected persistence issues so chunkTx can rollback properly
+            throw e;
         }
+    }
+
+    /**
+     * Normalize NOT-NULL "NN" columns (schema uses *_NN with defaults).
+     * Keep it consistent with your schema defaults:
+     * - Strings: null -> ""
+     * - Long ids: null -> 0
+     */
+    private static String nn(String s) {
+        return (s == null) ? "" : s;
+    }
+
+    private static long nn(Long v) {
+        return (v == null) ? 0L : v;
     }
 
     private Long cachedVendorId(String vendorNorm) {
@@ -806,7 +867,6 @@ public class CveFeedSyncService {
             case YEAR -> "cve-feed-" + (year == null ? "year" : year);
         };
     }
-
 
     private static LocalDateTime parseToLocalDateTime(String iso) {
         String s = norm(iso);
