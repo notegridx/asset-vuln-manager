@@ -11,7 +11,6 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +28,9 @@ import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepositor
 public class NvdImportService {
 
 	private static final Logger log = LoggerFactory.getLogger(NvdImportService.class);
+
+	private static final String SOURCE_NVD = "NVD";
+	private static final long SENTINEL_ID = -1L;
 
 	private final NvdClient nvdClient;
 	private final VulnerabilityRepository vulnerabilityRepository;
@@ -59,7 +61,6 @@ public class NvdImportService {
 
 	@Transactional
 	public ImportResult importFromNvd(OffsetDateTime lastModStart, OffsetDateTime lastModEnd, int maxResults) {
-		final String source = "NVD";
 
 		int safeMax = Math.max(1, Math.min(maxResults, 2000));
 		log.info("NVD import start: range={}..{}, maxResults={}", lastModStart, lastModEnd, safeMax);
@@ -76,8 +77,8 @@ public class NvdImportService {
 			String cveId = normalize(item.cve().id());
 			if (cveId == null) continue;
 
-			Vulnerability v = vulnerabilityRepository.findBySourceAndExternalId(source, cveId)
-					.orElseGet(() -> new Vulnerability(source, cveId));
+			Vulnerability v = vulnerabilityRepository.findBySourceAndExternalId(SOURCE_NVD, cveId)
+					.orElseGet(() -> new Vulnerability(SOURCE_NVD, cveId));
 
 			String desc = pickEnDescription(item.cve().descriptions());
 
@@ -100,24 +101,50 @@ public class NvdImportService {
 			Set<AffectedSpec> specs = extractAffectedSpecs(item.cve().configurations());
 
 			for (AffectedSpec spec : specs) {
-				try {
-					affectedCpeRepository.save(new VulnerabilityAffectedCpe(
-							v,
-							spec.criteria(),
-							spec.vendorId(),
-							spec.productId(),
-							spec.vendorNorm(),
-							spec.productNorm(),
-							spec.versionStartIncluding(),
-							spec.versionStartExcluding(),
-							spec.versionEndIncluding(),
-							spec.versionEndExcluding()
-					));
-					affectedInserted++;
-				} catch (DataIntegrityViolationException e) {
-					// uq_vac_vuln_criteria_range による重複は握りつぶす（idempotent）
-					log.debug("AffectedCpe already exists (ignored). cveId={}, criteria={}", cveId, spec.criteria());
+
+				// *_nn（NOT NULL）値を生成して exists 判定に使う（NULL問題を完全回避）
+				long vendorIdNn = (spec.vendorId() != null) ? spec.vendorId() : SENTINEL_ID;
+				long productIdNn = (spec.productId() != null) ? spec.productId() : SENTINEL_ID;
+
+				String cpeNameNn = nullToEmpty(spec.criteria());
+				String vendorNormNn = nullToEmpty(spec.vendorNorm());
+				String productNormNn = nullToEmpty(spec.productNorm());
+				String vStartIncNn = nullToEmpty(spec.versionStartIncluding());
+				String vStartExcNn = nullToEmpty(spec.versionStartExcluding());
+				String vEndIncNn = nullToEmpty(spec.versionEndIncluding());
+				String vEndExcNn = nullToEmpty(spec.versionEndExcluding());
+
+				boolean exists = affectedCpeRepository
+						.existsByVulnerabilityIdAndCpeNameNnAndCpeVendorIdNnAndCpeProductIdNnAndVendorNormNnAndProductNormNnAndVersionStartIncludingNnAndVersionStartExcludingNnAndVersionEndIncludingNnAndVersionEndExcludingNn(
+								v.getId(),
+								cpeNameNn,
+								vendorIdNn,
+								productIdNn,
+								vendorNormNn,
+								productNormNn,
+								vStartIncNn,
+								vStartExcNn,
+								vEndIncNn,
+								vEndExcNn
+						);
+
+				if (exists) {
+					continue;
 				}
+
+				affectedCpeRepository.save(new VulnerabilityAffectedCpe(
+						v,
+						spec.criteria(),
+						spec.vendorId(),
+						spec.productId(),
+						spec.vendorNorm(),
+						spec.productNorm(),
+						spec.versionStartIncluding(),
+						spec.versionStartExcluding(),
+						spec.versionEndIncluding(),
+						spec.versionEndExcluding()
+				));
+				affectedInserted++;
 			}
 		}
 
@@ -137,13 +164,11 @@ public class NvdImportService {
 				if (v != null) return v;
 			}
 		}
-
 		for (var d : descriptions) {
 			if (d == null) continue;
 			String v = normalize(d.value());
 			if (v != null) return v;
 		}
-
 		return null;
 	}
 
@@ -156,14 +181,12 @@ public class NvdImportService {
 				return new CvssPick(normalize(m.cvssData().version()), m.cvssData().baseScore());
 			}
 		}
-
 		if (metrics.cvssMetricV30() != null && !metrics.cvssMetricV30().isEmpty()) {
 			var m = metrics.cvssMetricV30().get(0);
 			if (m != null && m.cvssData() != null) {
 				return new CvssPick(normalize(m.cvssData().version()), m.cvssData().baseScore());
 			}
 		}
-
 		return new CvssPick(null, null);
 	}
 
@@ -185,6 +208,7 @@ public class NvdImportService {
 			if (configurations == null || configurations.nodes() == null) continue;
 			for (var n : configurations.nodes()) collectFromNode(n, out);
 		}
+
 		out.removeIf(Objects::isNull);
 		out.removeIf(s -> s.criteria() == null || !s.criteria().startsWith("cpe:2.3:"));
 		return out;
@@ -201,7 +225,6 @@ public class NvdImportService {
 				String criteria = normalize(m.criteria());
 				if (criteria == null) continue;
 
-				// criteria から vendor/product 抽出
 				String vendorNorm = null;
 				String productNorm = null;
 				Long vendorId = null;
@@ -214,7 +237,6 @@ public class NvdImportService {
 					productNorm = normalizer.normalizeProduct(vp.product());
 
 					if (vendorNorm != null && productNorm != null) {
-						// 可能なら辞書IDまで引く（辞書未同期でもNULLでOK）
 						vendorId = cpeVendorRepository.findByNameNorm(vendorNorm)
 								.map(v -> v.getId())
 								.orElse(null);
@@ -249,6 +271,10 @@ public class NvdImportService {
 		if (s == null) return null;
 		String t = s.trim();
 		return t.isEmpty() ? null : t;
+	}
+
+	private static String nullToEmpty(String s) {
+		return (s == null) ? "" : s;
 	}
 
 	private record CvssPick(String version, BigDecimal score) {}
