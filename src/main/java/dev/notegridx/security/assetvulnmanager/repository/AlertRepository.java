@@ -18,13 +18,16 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
 	List<Alert> findBySoftwareInstallIdOrderByLastSeenAtDesc(Long softwareInstallId);
 
-	// ---- Option C: drilldown filters ----
-
-	// Asset配下のアラート（statusあり）
-	List<Alert> findByStatusAndSoftwareInstall_Asset_IdOrderByLastSeenAtDesc(
-			AlertStatus status, Long assetId
-	);
-
-	// Asset配下のアラート（statusなし = ALL）
+	// ---- drilldown: by asset ----
 	List<Alert> findBySoftwareInstall_Asset_IdOrderByLastSeenAtDesc(Long assetId);
+	List<Alert> findByStatusAndSoftwareInstall_Asset_IdOrderByLastSeenAtDesc(AlertStatus status, Long assetId);
+
+	// ---- drilldown: by softwareInstall ----
+	List<Alert> findBySoftwareInstall_IdOrderByLastSeenAtDesc(Long softwareInstallId);
+	List<Alert> findByStatusAndSoftwareInstall_IdOrderByLastSeenAtDesc(AlertStatus status, Long softwareInstallId);
+
+	// ---- ALL: OPEN+CLOSED ----
+	List<Alert> findByStatusInOrderByLastSeenAtDesc(List<AlertStatus> statuses);
+	List<Alert> findByStatusInAndSoftwareInstall_Asset_IdOrderByLastSeenAtDesc(List<AlertStatus> statuses, Long assetId);
+	List<Alert> findByStatusInAndSoftwareInstall_IdOrderByLastSeenAtDesc(List<AlertStatus> statuses, Long softwareInstallId);
 }

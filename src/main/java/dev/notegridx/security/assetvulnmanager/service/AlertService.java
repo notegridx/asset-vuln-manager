@@ -1,8 +1,8 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -23,29 +23,37 @@ public class AlertService {
         this.alertRepository = alertRepository;
     }
 
+    /**
+     * statusKey: "OPEN" / "CLOSED" / "ALL" / null
+     * - null は "OPEN" 扱い（互換）
+     * - "ALL" は OPEN + CLOSED
+     */
     @Transactional(readOnly = true)
-    public List<Alert> findByStatus(AlertStatus status) {
-        return alertRepository.findByStatusOrderByLastSeenAtDesc(status);
-    }
+    public List<Alert> list(String statusKey, Long assetId, Long softwareId) {
+        String effective = (statusKey == null) ? "OPEN" : statusKey.trim().toUpperCase(Locale.ROOT);
 
-    @Transactional(readOnly = true)
-    public List<Alert> findAll() {
-        return alertRepository.findAll()
-                .stream()
-                .sorted((a, b) -> b.getLastSeenAt().compareTo(a.getLastSeenAt()))
-                .toList();
-    }
+        // drilldown は assetId / softwareId のどちらか片方想定（両方来たら software優先）
+        if ("ALL".equals(effective)) {
+            List<AlertStatus> statuses = List.of(AlertStatus.OPEN, AlertStatus.CLOSED);
 
-    // ---- Option C: drilldown (by asset) ----
-
-    @Transactional(readOnly = true)
-    public List<Alert> findByAssetId(Long assetId, AlertStatus statusOrNullForAll) {
-        if (assetId == null) throw new IllegalArgumentException("assetId is required");
-
-        if (statusOrNullForAll == null) {
-            return alertRepository.findBySoftwareInstall_Asset_IdOrderByLastSeenAtDesc(assetId);
+            if (softwareId != null) {
+                return alertRepository.findByStatusInAndSoftwareInstall_IdOrderByLastSeenAtDesc(statuses, softwareId);
+            }
+            if (assetId != null) {
+                return alertRepository.findByStatusInAndSoftwareInstall_Asset_IdOrderByLastSeenAtDesc(statuses, assetId);
+            }
+            return alertRepository.findByStatusInOrderByLastSeenAtDesc(statuses);
         }
-        return alertRepository.findByStatusAndSoftwareInstall_Asset_IdOrderByLastSeenAtDesc(statusOrNullForAll, assetId);
+
+        AlertStatus st = "CLOSED".equals(effective) ? AlertStatus.CLOSED : AlertStatus.OPEN;
+
+        if (softwareId != null) {
+            return alertRepository.findByStatusAndSoftwareInstall_IdOrderByLastSeenAtDesc(st, softwareId);
+        }
+        if (assetId != null) {
+            return alertRepository.findByStatusAndSoftwareInstall_Asset_IdOrderByLastSeenAtDesc(st, assetId);
+        }
+        return alertRepository.findByStatusOrderByLastSeenAtDesc(st);
     }
 
     @Transactional(readOnly = true)
@@ -56,21 +64,12 @@ public class AlertService {
 
     @Transactional
     public Alert close(Long alertId, CloseReason reason) {
-        if (reason == null) {
-            throw new IllegalArgumentException("close reason is required");
-        }
+        if (reason == null) throw new IllegalArgumentException("close reason is required");
 
         Alert alert = getRequired(alertId);
-
-        if (alert.getStatus() == AlertStatus.CLOSED) {
-            return alert;
-        }
+        if (alert.getStatus() == AlertStatus.CLOSED) return alert;
 
         alert.close(reason, LocalDateTime.now());
         return alertRepository.save(alert);
-    }
-
-    public List<String> listFilterKeys() {
-        return Arrays.asList("OPEN", "CLOSED", "ALL");
     }
 }

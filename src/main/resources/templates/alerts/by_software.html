@@ -1,24 +1,24 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('Alerts by Asset')}"></head>
+<head th:replace="~{layout/base :: head('Alerts by Software')}"></head>
 
-<body th:replace="~{layout/base :: layout('Alerts by Asset', 'alerts', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Alerts by Software', 'alerts', ~{::main})}">
 <main>
 
   <!-- Page Header (unified with other pages: inline layout) -->
   <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
     <div class="page-header__left">
-      <h1>Alerts (Grouped by Asset)</h1>
+      <h1>Alerts (Grouped by Software)</h1>
       <div class="muted" style="margin-top:6px;">
-        One row per Asset. View rows opens the flat list filtered by asset.
+        One row per SoftwareInstall. Drill down to see the raw rows.
       </div>
     </div>
 
     <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <span class="pill" th:text="'status: ' + ${status}">status: OPEN</span>
       <span class="pill" th:text="'rows: ' + ${#lists.size(rows)}">rows: 0</span>
-      <span class="pill">view: ASSET</span>
+      <span class="pill">view: SOFTWARE</span>
     </div>
   </div>
 
@@ -34,16 +34,16 @@
           <span class="muted" style="font-size:12px; margin-right:6px;">Status</span>
 
           <a class="btn"
-             th:classappend="${status == 'OPEN'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status='OPEN')}">OPEN</a>
+             th:classappend="${status != null && status.toString() == 'OPEN'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='SOFTWARE', status='OPEN')}">OPEN</a>
 
           <a class="btn"
-             th:classappend="${status == 'CLOSED'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status='CLOSED')}">CLOSED</a>
+             th:classappend="${status != null && status.toString() == 'CLOSED'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='SOFTWARE', status='CLOSED')}">CLOSED</a>
 
           <a class="btn"
-             th:classappend="${status == 'ALL'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status='ALL')}">ALL</a>
+             th:classappend="${status != null && status.toString() == 'ALL'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='SOFTWARE', status='ALL')}">ALL</a>
         </div>
 
         <span class="muted" style="margin:0 4px;">|</span>
@@ -55,10 +55,10 @@
           <a class="btn"
              th:href="@{/alerts(view='FLAT', status=${status})}">FLAT</a>
 
-          <a class="btn btn-primary"
+          <a class="btn"
              th:href="@{/alerts(view='ASSET', status=${status})}">Group by Asset</a>
 
-          <a class="btn"
+          <a class="btn btn-primary"
              th:href="@{/alerts(view='SOFTWARE', status=${status})}">Group by Software</a>
         </div>
 
@@ -78,12 +78,12 @@
       <thead>
       <tr>
         <th>Asset</th>
-        <th style="width:120px;">Softwares</th>
+        <th>Software</th>
         <th style="width:120px;">Alerts</th>
         <th style="width:160px;">Top Severity</th>
         <th>Breakdown</th>
         <th style="width:190px;">Last Seen</th>
-        <th style="width:160px;">Actions</th>
+        <th style="width:170px;">Actions</th>
       </tr>
       </thead>
 
@@ -101,7 +101,17 @@
           <div class="muted" style="font-size:12px;" th:text="'assetId: ' + ${r.assetId}">assetId</div>
         </td>
 
-        <td th:text="${r.softwareCount}">0</td>
+        <td>
+          <div>
+            <b th:text="${r.product}">product</b>
+            <span class="muted" th:text="${r.version != null && !r.version.isBlank() ? ' ' + r.version : ''}"></span>
+          </div>
+          <div class="muted" style="font-size:12px;"
+               th:text="${(r.vendor != null ? r.vendor : '') + ' / installId: ' + r.softwareInstallId}">
+            vendor/installId
+          </div>
+        </td>
+
         <td th:text="${r.totalAlerts}">0</td>
 
         <td>
@@ -129,8 +139,8 @@
         <td>
           <a class="btn btn-ghost"
              style="padding:6px 10px; font-size:12px; border-radius:10px;"
-             th:href="@{/alerts(view='FLAT', status=${status}, assetId=${r.assetId})}">
-            View rows
+             th:href="@{/alerts(view='FLAT', status=${status}, softwareId=${r.softwareInstallId})}">
+            Drilldown
           </a>
         </td>
       </tr>
