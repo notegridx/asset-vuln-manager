@@ -6,16 +6,28 @@
 <body th:replace="~{layout/base :: layout('Update Product Dictionary', 'admin', ~{::main})}">
 <main>
 
-    <h1>Update Product Dictionary</h1>
+    <!-- Page Header (unified with other pages) -->
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
 
-    <p class="muted">
-        Download and refresh the NVD CPE Dictionary in your local database.
-        This dictionary provides canonical vendor/product definitions used for product mapping and alert generation.
-    </p>
+        <div class="page-header__left">
+            <h1>Update Product Dictionary</h1>
+            <div class="muted" style="margin-top:6px;">
+                Download and refresh the NVD CPE Dictionary in your local database.
+                This dictionary provides canonical vendor/product definitions used for product mapping and alert generation.
+            </div>
+        </div>
 
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="pill">CPE Dictionary</span>
+            <span class="pill">Admin Tool</span>
+        </div>
+    </div>
+
+    <!-- Notes Card -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <div class="muted" style="font-size:12px;">
-            Notes:
+            <b>Notes</b>
             <ul style="margin:6px 0 0 18px;">
                 <li>Safe for large feeds (streaming + chunked transactions).</li>
                 <li>Idempotent: re-running will not create duplicates.</li>
@@ -24,77 +36,95 @@
         </div>
     </div>
 
-    <h2>Run update</h2>
-
-    <form th:action="@{/admin/cpe/sync}" method="post">
-
-        <div class="field">
-            <label>
-                <input type="checkbox" name="force" th:checked="${force != null and force}">
-                Force update (ignore previous sync state)
-            </label>
-            <div class="muted" style="font-size: 12px; margin-top: 4px;">
-                Use this if you suspect the local sync state is out of date or you want to re-process the dictionary.
+    <!-- Run Update -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Run update</h2>
+            <div class="muted" style="font-size:12px;">
+                Configure options and execute sync.
             </div>
         </div>
 
-        <div class="field">
-            <label>Maximum items to process</label>
-            <input type="number" name="maxItems" min="1" max="5000000"
-                   th:value="${maxItems != null ? maxItems : 2000000}">
-            <div class="muted" style="font-size: 12px; margin-top: 4px;">
-                Safety cap for processing. Increase only if you intentionally want to ingest more entries.
+        <form th:action="@{/admin/cpe/sync}" method="post" style="margin-top:12px;">
+
+            <div class="field">
+                <label>
+                    <input type="checkbox" name="force" th:checked="${force != null and force}">
+                    Force update (ignore previous sync state)
+                </label>
+                <div class="muted" style="font-size:12px; margin-top:4px;">
+                    Use this if you suspect the local sync state is out of date or you want to re-process the dictionary.
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Maximum items to process</label>
+                <input type="number" name="maxItems" min="1" max="5000000"
+                       th:value="${maxItems != null ? maxItems : 2000000}">
+                <div class="muted" style="font-size:12px; margin-top:4px;">
+                    Safety cap for processing. Increase only if you intentionally want to ingest more entries.
+                </div>
+            </div>
+
+            <div class="actions" style="margin-top:14px;">
+                <button type="submit" class="btn btn-primary">
+                    Update Product Dictionary
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- Result -->
+    <div th:if="${result != null}" class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Update result</h2>
+            <div class="muted" style="font-size:12px;">
+                Summary of sync metrics.
             </div>
         </div>
 
-        <div class="actions" style="margin-top: 14px;">
-            <button type="submit">Update Product Dictionary</button>
+        <div class="table-wrap" style="margin-top:12px;">
+            <table style="margin-top:0;">
+                <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>skipped (dictionary unchanged)</td>
+                    <td th:text="${result.skipped}">false</td>
+                </tr>
+                <tr>
+                    <td>meta sha256</td>
+                    <td th:text="${result.metaSha256}">-</td>
+                </tr>
+                <tr>
+                    <td>meta last modified</td>
+                    <td th:text="${result.metaLastModified}">-</td>
+                </tr>
+                <tr>
+                    <td>meta size (bytes)</td>
+                    <td th:text="${result.metaSize}">0</td>
+                </tr>
+
+                <tr th:if="${result.vendorsInserted != null}">
+                    <td>new vendors added</td>
+                    <td th:text="${result.vendorsInserted}">0</td>
+                </tr>
+                <tr th:if="${result.productsInserted != null}">
+                    <td>new products added</td>
+                    <td th:text="${result.productsInserted}">0</td>
+                </tr>
+                <tr th:if="${result.cpeParsed != null}">
+                    <td>dictionary entries parsed</td>
+                    <td th:text="${result.cpeParsed}">0</td>
+                </tr>
+                </tbody>
+            </table>
         </div>
-    </form>
-
-    <div th:if="${result != null}">
-        <hr/>
-        <h2>Update result</h2>
-
-        <table>
-            <thead>
-            <tr>
-                <th>Metric</th>
-                <th>Value</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td>skipped (dictionary unchanged)</td>
-                <td th:text="${result.skipped}">false</td>
-            </tr>
-            <tr>
-                <td>meta sha256</td>
-                <td th:text="${result.metaSha256}">-</td>
-            </tr>
-            <tr>
-                <td>meta last modified</td>
-                <td th:text="${result.metaLastModified}">-</td>
-            </tr>
-            <tr>
-                <td>meta size (bytes)</td>
-                <td th:text="${result.metaSize}">0</td>
-            </tr>
-
-            <tr th:if="${result.vendorsInserted != null}">
-                <td>new vendors added</td>
-                <td th:text="${result.vendorsInserted}">0</td>
-            </tr>
-            <tr th:if="${result.productsInserted != null}">
-                <td>new products added</td>
-                <td th:text="${result.productsInserted}">0</td>
-            </tr>
-            <tr th:if="${result.cpeParsed != null}">
-                <td>dictionary entries parsed</td>
-                <td th:text="${result.cpeParsed}">0</td>
-            </tr>
-            </tbody>
-        </table>
     </div>
 
 </main>

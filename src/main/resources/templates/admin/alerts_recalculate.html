@@ -6,14 +6,24 @@
 <body th:replace="~{layout/base :: layout('Generate Alerts', 'admin', ~{::main})}">
 <main>
 
-  <h1>Generate Alerts</h1>
+  <!-- Page Header (unified) -->
+  <div class="page-header"
+       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header__left">
+      <h1 style="margin:0;">Generate Alerts</h1>
+      <p class="muted" style="margin:6px 0 0 0;">
+        Analyze installed software against stored vulnerability data and create or update security alerts.
+        This operation only performs matching and alert upsert.
+        It does <b>not</b> import vulnerability data or update the product dictionary.
+      </p>
+    </div>
+    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill">Matching</span>
+      <span class="pill">Admin Tool</span>
+    </div>
+  </div>
 
-  <p class="muted">
-    Analyze installed software against stored vulnerability data and create or update security alerts.
-    This operation only performs matching and alert upsert.
-    It does <b>not</b> import vulnerability data or update the product dictionary.
-  </p>
-
+  <!-- When to use (card rhythm) -->
   <div class="card" style="padding:12px; margin:12px 0;">
     <div class="muted" style="font-size:12px;">
       When to use this:
@@ -25,40 +35,50 @@
     </div>
   </div>
 
-  <h2>Execute</h2>
+  <!-- Execute (card rhythm + unified button style) -->
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <h2 style="margin:0 0 10px 0;">Execute</h2>
 
-  <form th:action="@{/admin/alerts/recalculate}" method="post">
-    <div class="actions" style="margin-top: 14px;">
-      <button type="submit">Generate Alerts</button>
+    <form th:action="@{/admin/alerts/recalculate}" method="post">
+      <div class="actions" style="margin-top: 14px;">
+        <button type="submit" class="btn btn-primary">Generate Alerts</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Result (bindings unchanged; just wrap with card + table-wrap) -->
+  <div th:if="${matchResult != null}" class="card" style="padding:12px; margin:12px 0;">
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">Alert Generation Result</h2>
+      <div class="muted" style="font-size:12px;">
+        Summary of matching pass and alert upsert.
+      </div>
     </div>
-  </form>
 
-  <div th:if="${matchResult != null}">
-    <hr/>
-    <h2>Alert Generation Result</h2>
-
-    <table>
-      <thead>
-      <tr>
-        <th>Metric</th>
-        <th>Value</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr>
-        <td>matches found</td>
-        <td th:text="${matchResult.pairsFound}">0</td>
-      </tr>
-      <tr>
-        <td>new alerts created</td>
-        <td th:text="${matchResult.alertsInserted}">0</td>
-      </tr>
-      <tr>
-        <td>alerts updated</td>
-        <td th:text="${matchResult.alertsTouched}">0</td>
-      </tr>
-      </tbody>
-    </table>
+    <div class="table-wrap" style="margin-top:12px;">
+      <table style="margin-top:0;">
+        <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>matches found</td>
+          <td th:text="${matchResult.pairsFound}">0</td>
+        </tr>
+        <tr>
+          <td>new alerts created</td>
+          <td th:text="${matchResult.alertsInserted}">0</td>
+        </tr>
+        <tr>
+          <td>alerts updated</td>
+          <td th:text="${matchResult.alertsTouched}">0</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </main>

@@ -1,69 +1,107 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout/base :: head('Review Product Mapping')}"></head>
+
 <body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
 <main>
-    <h1>Review Product Mapping</h1>
-    <p class="muted">
-        Matches vendor/product entries in software_installs against the product dictionary and highlights entries that are not yet confirmed.
-    </p>
 
-    <div th:if="${summary != null}" class="kv">
-        <b>checked</b> <span th:text="${summary.checked}">0</span>
-        <b>hit</b> <span th:text="${summary.hit}">0</span>
-        <b>miss</b> <span th:text="${summary.miss}">0</span>
-        <b>needsNormalization</b> <span th:text="${summary.needsNormalization}">0</span>
+    <!-- Page Header (unified) -->
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div class="page-header__left">
+            <h1 style="margin:0;">Review Product Mapping</h1>
+            <p class="muted" style="margin:6px 0 0 0;">
+                Matches vendor/product entries in software_installs against the product dictionary and highlights entries that are not yet confirmed.
+            </p>
+        </div>
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="pill">Product Mapping</span>
+            <span class="pill">Admin Tool</span>
+        </div>
     </div>
 
-    <hr/>
+    <!-- Summary (card rhythm; bindings unchanged) -->
+    <div th:if="${summary != null}" class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Summary</h2>
+            <div class="muted" style="font-size:12px;">
+                Current normalization coverage for installed software.
+            </div>
+        </div>
 
-    <table>
-        <thead>
-        <tr>
-            <th style="width: 90px;">SW ID</th>
-            <th>Raw</th>
-            <th style="width: 260px;">Normalized</th>
-            <th style="width: 120px;">Result</th>
-            <th>Reason</th>
-            <th style="width: 90px;">Action</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:if="${#lists.isEmpty(rows)}">
-            <td colspan="6" class="muted">No entries</td>
-        </tr>
+        <!-- keep kv markup semantics; just wrap/space -->
+        <div class="kv" style="margin-top:12px;">
+            <b>checked</b> <span th:text="${summary.checked}">0</span>
+            <b>hit</b> <span th:text="${summary.hit}">0</span>
+            <b>miss</b> <span th:text="${summary.miss}">0</span>
+            <b>needsNormalization</b> <span th:text="${summary.needsNormalization}">0</span>
+        </div>
+    </div>
 
-        <tr th:each="r : ${rows}">
-            <td th:text="${r.softwareId}">1</td>
+    <!-- Table (stable start; unified) -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Items</h2>
+            <div class="muted" style="font-size:12px;">
+                Review unmapped rows and edit software entries to confirm mapping.
+            </div>
+        </div>
 
-            <td>
-                <div><span th:text="${r.vendor}">vendor</span> / <b th:text="${r.product}">product</b></div>
-                <div class="muted" style="font-size: 12px;" th:text="${r.version}">1.0</div>
-            </td>
+        <div class="table-wrap" style="margin-top:12px;">
+            <table style="margin-top:0;">
+                <thead>
+                <tr>
+                    <th style="width: 90px;">SW ID</th>
+                    <th>Raw</th>
+                    <th style="width: 260px;">Normalized</th>
+                    <th style="width: 120px;">Result</th>
+                    <th>Reason</th>
+                    <th style="width: 110px;">Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(rows)}">
+                    <td colspan="6" class="muted">No entries</td>
+                </tr>
 
-            <td>
-                <div class="muted" style="font-size: 12px;">
-                    v: <span th:text="${r.normalizedVendor != null ? r.normalizedVendor : '-'}">-</span>
-                </div>
-                <div class="muted" style="font-size: 12px;">
-                    p: <span th:text="${r.normalizedProduct != null ? r.normalizedProduct : '-'}">-</span>
-                </div>
-            </td>
+                <tr th:each="r : ${rows}">
+                    <td th:text="${r.softwareId}">1</td>
 
-            <td>
+                    <td>
+                        <div><span th:text="${r.vendor}">vendor</span> / <b th:text="${r.product}">product</b></div>
+                        <div class="muted" style="font-size: 12px;" th:text="${r.version}">1.0</div>
+                    </td>
+
+                    <td>
+                        <div class="muted" style="font-size: 12px;">
+                            v: <span th:text="${r.normalizedVendor != null ? r.normalizedVendor : '-'}">-</span>
+                        </div>
+                        <div class="muted" style="font-size: 12px;">
+                            p: <span th:text="${r.normalizedProduct != null ? r.normalizedProduct : '-'}">-</span>
+                        </div>
+                    </td>
+
+                    <td>
             <span class="badge"
                   th:classappend="${r.resolve.hit ? ' badge--status-open' : ' badge--unmapped'}"
                   th:text="${r.resolve.hit ? 'MATCHED' : 'UNMAPPED'}">UNMAPPED</span>
-            </td>
+                    </td>
 
-            <td class="muted" th:text="${r.resolve.reason != null ? r.resolve.reason : '-'}">reason</td>
+                    <td class="muted" th:text="${r.resolve.reason != null ? r.resolve.reason : '-'}">reason</td>
 
-            <td>
-                <a th:href="@{/software/{id}/edit(id=${r.softwareId})}">Edit</a>
-            </td>
-        </tr>
-        </tbody>
-    </table>
+                    <td>
+                        <!-- style only: keep URL, but match button look -->
+                        <a class="btn btn-ghost" style="padding:6px 10px; font-size:12px; border-radius:10px;"
+                           th:href="@{/software/{id}/edit(id=${r.softwareId})}">
+                            Edit
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </main>
 </body>
 </html>

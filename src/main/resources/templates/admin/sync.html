@@ -6,20 +6,32 @@
 <body th:replace="~{layout/base :: layout('CVE Delta Update (API)', 'admin', ~{::main})}">
 <main>
 
-    <h1>CVE Delta Update (API)</h1>
-    <p class="muted">
-        Fetch recently modified CVEs via the NVD API (lastModified window), upsert vulnerabilities,
-        evaluate software matches, and create or update alerts.
-    </p>
-    <p class="muted" style="font-size: 12px;">
-        For bulk ingestion from CVE JSON 2.0 feeds, use “Update Vulnerability Data”.
-    </p>
+    <!-- Page Header (unified with other pages) -->
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div class="page-header__left">
+            <h1>CVE Delta Update (API)</h1>
 
-    <hr/>
+            <p class="muted" style="margin:6px 0 0 0;">
+                Fetch recently modified CVEs via the NVD API (lastModified window), upsert vulnerabilities,
+                evaluate software matches, and create or update alerts.
+            </p>
 
-    <h2>Run delta update</h2>
+            <p class="muted" style="font-size: 12px; margin:6px 0 0 0;">
+                For bulk ingestion from CVE JSON 2.0 feeds, use “Update Vulnerability Data”.
+            </p>
+        </div>
 
-    <div class="card" style="padding: 14px; margin: 10px 0;">
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="pill">NVD API</span>
+            <span class="pill">Admin Tool</span>
+        </div>
+    </div>
+
+    <!-- Prerequisites (same card rhythm as other pages) -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <h2 style="margin:0 0 10px 0;">Run delta update</h2>
+
         <div class="muted" style="font-size: 12px; line-height: 1.6;">
             <b>Typical prerequisites</b>
             <ul style="margin: 8px 0 0 18px;">
@@ -33,85 +45,93 @@
                 matching as a fallback. Version range checks may become <b>UNCONFIRMED</b> when software version is missing or cannot be parsed.
             </div>
         </div>
+
+        <form th:action="@{/admin/sync}" method="post" style="margin-top:12px;">
+            <div class="field">
+                <label>Days back (NVD lastModified window)</label>
+                <input type="number" name="daysBack" min="1" max="120"
+                       th:value="${daysBack != null ? daysBack : 1}">
+                <div class="muted" style="font-size: 12px;">
+                    Fetches CVEs whose <code>lastModified</code> is within (now - daysBack) … now.
+                    Smaller values = faster; larger values = more catch-up.
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Max results (API cap per run)</label>
+                <input type="number" name="maxResults" min="1" max="2000"
+                       th:value="${maxResults != null ? maxResults : 200}">
+                <div class="muted" style="font-size: 12px;">
+                    Limits how many CVE items are fetched from the API in one run.
+                    If the window contains more items than this cap, rerun with a smaller window or run multiple times.
+                </div>
+            </div>
+
+            <div class="actions" style="margin-top: 14px;">
+                <!-- style only: add btn classes; no behavior change -->
+                <button type="submit" class="btn btn-primary">Run CVE Delta Update</button>
+            </div>
+        </form>
     </div>
 
-    <form th:action="@{/admin/sync}" method="post">
-        <div class="field">
-            <label>Days back (NVD lastModified window)</label>
-            <input type="number" name="daysBack" min="1" max="120"
-                   th:value="${daysBack != null ? daysBack : 1}">
-            <div class="muted" style="font-size: 12px;">
-                Fetches CVEs whose <code>lastModified</code> is within (now - daysBack) … now.
-                Smaller values = faster; larger values = more catch-up.
+    <!-- Result (same card rhythm; bindings unchanged) -->
+    <div th:if="${result != null}" class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Result</h2>
+            <div class="muted" style="font-size:12px;">
+                Interpretation: <b>Fetch/Upsert</b> affects the vulnerability store; <b>Pairs/Alerts</b> reflects the matching pass.
             </div>
         </div>
 
-        <div class="field">
-            <label>Max results (API cap per run)</label>
-            <input type="number" name="maxResults" min="1" max="2000"
-                   th:value="${maxResults != null ? maxResults : 200}">
-            <div class="muted" style="font-size: 12px;">
-                Limits how many CVE items are fetched from the API in one run.
-                If the window contains more items than this cap, rerun with a smaller window or run multiple times.
-            </div>
-        </div>
-
-        <div class="actions" style="margin-top: 14px;">
-            <button type="submit">Run CVE Delta Update</button>
-        </div>
-    </form>
-
-    <div th:if="${result != null}">
-        <hr/>
-        <h2>Result</h2>
-
-        <p class="muted" style="font-size: 12px;">
+        <p class="muted" style="font-size: 12px; margin:10px 0 0 0;">
             Interpretation:
             <b>Fetch/Upsert</b> affects the vulnerability store;
             <b>Pairs/Alerts</b> reflects the matching pass against your current software inventory.
         </p>
 
-        <table>
-            <thead>
-            <tr>
-                <th style="width: 260px;">Metric</th>
-                <th style="width: 120px;">Value</th>
-                <th>Description</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td>fetched</td>
-                <td th:text="${result.fetched}">0</td>
-                <td class="muted">Number of CVE items returned by the NVD API in this run.</td>
-            </tr>
-            <tr>
-                <td>vulnerabilitiesUpserted</td>
-                <td th:text="${result.vulnerabilitiesUpserted}">0</td>
-                <td class="muted">Number of vulnerability rows saved or updated.</td>
-            </tr>
-            <tr>
-                <td>affectedCpesInserted</td>
-                <td th:text="${result.affectedCpesInserted}">0</td>
-                <td class="muted">Number of affected product specifications inserted (includes version range metadata).</td>
-            </tr>
-            <tr>
-                <td>pairsFound</td>
-                <td th:text="${result.pairsFound}">0</td>
-                <td class="muted">Total software × vulnerability candidate pairs evaluated as non-NO_MATCH.</td>
-            </tr>
-            <tr>
-                <td>alertsInserted</td>
-                <td th:text="${result.alertsInserted}">0</td>
-                <td class="muted">New alerts created (first time a pair becomes visible).</td>
-            </tr>
-            <tr>
-                <td>alertsTouched</td>
-                <td th:text="${result.alertsTouched}">0</td>
-                <td class="muted">Existing alerts updated (e.g., refreshed lastSeenAt, certainty or matchedBy updated).</td>
-            </tr>
-            </tbody>
-        </table>
+        <div class="table-wrap" style="margin-top:12px;">
+            <table style="margin-top:0;">
+                <thead>
+                <tr>
+                    <th style="width: 260px;">Metric</th>
+                    <th style="width: 120px;">Value</th>
+                    <th>Description</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>fetched</td>
+                    <td th:text="${result.fetched}">0</td>
+                    <td class="muted">Number of CVE items returned by the NVD API in this run.</td>
+                </tr>
+                <tr>
+                    <td>vulnerabilitiesUpserted</td>
+                    <td th:text="${result.vulnerabilitiesUpserted}">0</td>
+                    <td class="muted">Number of vulnerability rows saved or updated.</td>
+                </tr>
+                <tr>
+                    <td>affectedCpesInserted</td>
+                    <td th:text="${result.affectedCpesInserted}">0</td>
+                    <td class="muted">Number of affected product specifications inserted (includes version range metadata).</td>
+                </tr>
+                <tr>
+                    <td>pairsFound</td>
+                    <td th:text="${result.pairsFound}">0</td>
+                    <td class="muted">Total software × vulnerability candidate pairs evaluated as non-NO_MATCH.</td>
+                </tr>
+                <tr>
+                    <td>alertsInserted</td>
+                    <td th:text="${result.alertsInserted}">0</td>
+                    <td class="muted">New alerts created (first time a pair becomes visible).</td>
+                </tr>
+                <tr>
+                    <td>alertsTouched</td>
+                    <td th:text="${result.alertsTouched}">0</td>
+                    <td class="muted">Existing alerts updated (e.g., refreshed lastSeenAt, certainty or matchedBy updated).</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
 
         <div class="muted" style="font-size: 12px; margin-top: 10px; line-height: 1.6;">
             Tip: If you only want to run the matching phase (no CVE fetch), use

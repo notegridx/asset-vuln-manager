@@ -6,15 +6,26 @@
 <body th:replace="~{layout/base :: layout('Import Inventory (CSV)', 'admin', ~{::main})}">
 <main>
 
-    <h1>Import Inventory (CSV)</h1>
-    <p class="muted">
-        Upload CSV files to register assets and installed software.
-        Installed software is used to match against stored vulnerabilities and generate alerts.
-    </p>
+    <!-- Page Header (unified) -->
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div class="page-header__left">
+            <h1 style="margin:0;">Import Inventory (CSV)</h1>
+            <p class="muted" style="margin:6px 0 0 0;">
+                Upload CSV files to register assets and installed software.
+                Installed software is used to match against stored vulnerabilities and generate alerts.
+            </p>
+        </div>
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="pill">CSV Import</span>
+            <span class="pill">Admin Tool</span>
+        </div>
+    </div>
 
+    <!-- Tips -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <div class="muted" style="font-size:12px;">
-            Tips:
+            <b>Tips</b>
             <ul style="margin:6px 0 0 18px;">
                 <li><b>Preview only</b> runs validation without saving changes.</li>
                 <li><b>Apply changes</b> writes to the database.</li>
@@ -24,221 +35,156 @@
         </div>
     </div>
 
-    <!-- ======================================================= -->
-    <!-- Assets -->
-    <!-- ======================================================= -->
-    <h2>Import Assets</h2>
+    <!-- ======================= Assets ======================= -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <h2 style="margin:0 0 10px 0;">Import Assets</h2>
 
-    <form th:action="@{/admin/import/assets}" method="post" enctype="multipart/form-data">
-        <div class="field">
-            <label>assets.csv</label>
-            <input type="file" name="file" accept=".csv,text/csv" required>
-            <div class="muted" style="font-size:12px; margin-top:4px;">
-                Registers or updates assets by <b>external_key</b>.
+        <form th:action="@{/admin/import/assets}" method="post" enctype="multipart/form-data">
+
+            <div class="field">
+                <label>assets.csv</label>
+                <input type="file" name="file" accept=".csv,text/csv" required>
+                <div class="muted" style="font-size:12px; margin-top:4px;">
+                    Registers or updates assets by <b>external_key</b>.
+                </div>
             </div>
-        </div>
 
-        <div class="field">
-            <label>
-                <input type="checkbox" name="commit" value="true">
-                Apply changes to database
-            </label>
-            <div class="muted" style="font-size: 12px;">Unchecked = Preview only (no changes saved)</div>
-        </div>
+            <div class="field">
+                <label>
+                    <input type="checkbox" name="commit" value="true">
+                    Apply changes to database
+                </label>
+                <div class="muted" style="font-size:12px;">Unchecked = Preview only (no changes saved)</div>
+            </div>
 
-        <div class="actions" style="margin-top: 14px;">
-            <button type="submit">Import assets.csv</button>
-        </div>
-    </form>
+            <div class="actions" style="margin-top:14px;">
+                <button type="submit" class="btn btn-primary">Import assets.csv</button>
+            </div>
+        </form>
+    </div>
 
-    <div th:if="${assetResult != null}">
-        <hr/>
-        <h3>Asset Import Summary</h3>
+    <!-- Asset Result -->
+    <div th:if="${assetResult != null}" class="card" style="padding:12px; margin:12px 0;">
+        <h3 style="margin:0 0 10px 0;">Asset Import Summary</h3>
 
-        <table>
-            <thead>
-            <tr>
-                <th>Metric</th>
-                <th>Value</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr><td>preview only</td><td th:text="${assetResult.dryRun}">false</td></tr>
-            <tr><td>lines read</td><td th:text="${assetResult.linesRead}">0</td></tr>
-            <tr><td>processed</td><td th:text="${assetResult.ok}">0</td></tr>
-            <tr><td>inserted</td><td th:text="${assetResult.inserted}">0</td></tr>
-            <tr><td>updated</td><td th:text="${assetResult.updated}">0</td></tr>
-            <tr><td>skipped</td><td th:text="${assetResult.skipped}">0</td></tr>
-            <tr><td>errors</td><td th:text="${assetResult.errors}">0</td></tr>
-            </tbody>
-        </table>
-
-        <div th:if="${assetResult.errors > 0}">
-            <h4>Errors (by line)</h4>
-            <table>
+        <div class="table-wrap">
+            <table style="margin-top:0;">
                 <thead>
-                <tr>
-                    <th style="width: 90px;">Line</th>
-                    <th style="width: 160px;">Code</th>
-                    <th>Message</th>
-                    <th>Raw</th>
-                </tr>
+                <tr><th>Metric</th><th>Value</th></tr>
                 </thead>
                 <tbody>
-                <tr th:each="e : ${assetResult.errorList}">
-                    <td th:text="${e.lineNo}">2</td>
-                    <td th:text="${e.code}">INVALID</td>
-                    <td th:text="${e.message}">...</td>
-                    <td class="muted" th:text="${e.rawLine}">...</td>
-                </tr>
+                <tr><td>preview only</td><td th:text="${assetResult.dryRun}">false</td></tr>
+                <tr><td>lines read</td><td th:text="${assetResult.linesRead}">0</td></tr>
+                <tr><td>processed</td><td th:text="${assetResult.ok}">0</td></tr>
+                <tr><td>inserted</td><td th:text="${assetResult.inserted}">0</td></tr>
+                <tr><td>updated</td><td th:text="${assetResult.updated}">0</td></tr>
+                <tr><td>skipped</td><td th:text="${assetResult.skipped}">0</td></tr>
+                <tr><td>errors</td><td th:text="${assetResult.errors}">0</td></tr>
                 </tbody>
             </table>
         </div>
-    </div>
 
-    <hr/>
-
-    <!-- ======================================================= -->
-    <!-- Software -->
-    <!-- ======================================================= -->
-    <h2>Import Installed Software</h2>
-
-    <form th:action="@{/admin/import/software}" method="post" enctype="multipart/form-data">
-        <div class="field">
-            <label>software.csv</label>
-            <input type="file" name="file" accept=".csv,text/csv" required>
-            <div class="muted" style="font-size:12px; margin-top:4px;">
-                Adds installed software to assets via <b>external_key</b> (asset lookup key).
-            </div>
-        </div>
-
-        <div class="field">
-            <label>
-                <input type="checkbox" name="commit" value="true">
-                Apply changes to database
-            </label>
-            <div class="muted" style="font-size: 12px;">Unchecked = Preview only (no changes saved)</div>
-        </div>
-
-        <div class="field">
-            <label>
-                <input type="checkbox" name="recalc" value="true">
-                Automatically generate alerts after a successful import
-            </label>
-            <div class="muted" style="font-size: 12px;">
-                Runs only when “Apply changes” is checked and the import completes without errors.
-            </div>
-        </div>
-
-        <div class="actions" style="margin-top: 14px;">
-            <button type="submit">Import software.csv</button>
-        </div>
-    </form>
-
-    <div th:if="${softwareResult != null}">
-        <hr/>
-        <h3>Software Import Summary</h3>
-
-        <div th:if="${matchSkippedMessage != null}">
-            <p class="muted" th:text="${matchSkippedMessage}">Alert generation skipped ...</p>
-        </div>
-
-        <table>
-            <thead>
-            <tr>
-                <th>Metric</th>
-                <th>Value</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr><td>preview only</td><td th:text="${softwareResult.dryRun}">false</td></tr>
-            <tr><td>lines read</td><td th:text="${softwareResult.linesRead}">0</td></tr>
-            <tr><td>processed</td><td th:text="${softwareResult.ok}">0</td></tr>
-            <tr><td>inserted</td><td th:text="${softwareResult.inserted}">0</td></tr>
-            <tr><td>updated</td><td th:text="${softwareResult.updated}">0</td></tr>
-            <tr><td>skipped</td><td th:text="${softwareResult.skipped}">0</td></tr>
-            <tr><td>errors</td><td th:text="${softwareResult.errors}">0</td></tr>
-            </tbody>
-        </table>
-
-        <!-- Errors + Override -->
-        <div th:if="${softwareResult.errors > 0}">
+        <div th:if="${assetResult.errors > 0}" style="margin-top:12px;">
             <h4>Errors (by line)</h4>
-
-            <form th:action="@{/admin/import/software/override}" method="post" th:if="${importSessionId != null}">
-                <input type="hidden" name="sessionId" th:value="${importSessionId}"/>
-
-                <div class="field">
-                    <label>
-                        <input type="checkbox" name="recalc" value="true">
-                        Automatically generate alerts after a successful override import
-                    </label>
-                    <div class="muted" style="font-size: 12px;">
-                        Selected rows will be imported even if vendor/product is not found in the product dictionary.
-                        Only <b>DICT_*</b> errors can be overridden.
-                    </div>
-                </div>
-
-                <table>
+            <div class="table-wrap">
+                <table style="margin-top:0;">
                     <thead>
                     <tr>
-                        <th style="width: 110px;">Override</th>
-                        <th style="width: 90px;">Line</th>
-                        <th style="width: 160px;">Code</th>
+                        <th style="width:90px;">Line</th>
+                        <th style="width:160px;">Code</th>
                         <th>Message</th>
                         <th>Raw</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="e : ${softwareResult.errorList}">
-                        <td>
-                            <input type="checkbox"
-                                   name="overrideLines"
-                                   th:value="${e.lineNo}"
-                                   th:disabled="${!#strings.startsWith(e.code, 'DICT_')}"
-                                   th:title="${#strings.startsWith(e.code, 'DICT_') ? 'Override dictionary validation' : 'Not overrideable'}"/>
-                        </td>
+                    <tr th:each="e : ${assetResult.errorList}">
                         <td th:text="${e.lineNo}">2</td>
-                        <td th:text="${e.code}">DICT_...</td>
+                        <td th:text="${e.code}">INVALID</td>
                         <td th:text="${e.message}">...</td>
                         <td class="muted" th:text="${e.rawLine}">...</td>
                     </tr>
                     </tbody>
                 </table>
-
-                <div class="actions" style="margin-top: 14px;">
-                    <button type="submit">Import selected DICT_* rows (override)</button>
-                </div>
-            </form>
-
-            <div th:if="${importSessionId == null}">
-                <p class="muted">
-                    Override import is unavailable because the upload session has expired.
-                    Please upload the CSV again.
-                </p>
             </div>
         </div>
     </div>
 
-    <!-- Matching result -->
-    <div th:if="${matchResult != null}">
-        <h3>Alert Generation Result</h3>
-        <table>
-            <tbody>
-            <tr>
-                <td>matches found</td>
-                <td th:text="${matchResult.pairsFound}">0</td>
-            </tr>
-            <tr>
-                <td>new alerts created</td>
-                <td th:text="${matchResult.alertsInserted}">0</td>
-            </tr>
-            <tr>
-                <td>alerts updated</td>
-                <td th:text="${matchResult.alertsTouched}">0</td>
-            </tr>
-            </tbody>
-        </table>
+    <!-- ======================= Software ======================= -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <h2 style="margin:0 0 10px 0;">Import Installed Software</h2>
+
+        <form th:action="@{/admin/import/software}" method="post" enctype="multipart/form-data">
+
+            <div class="field">
+                <label>software.csv</label>
+                <input type="file" name="file" accept=".csv,text/csv" required>
+                <div class="muted" style="font-size:12px; margin-top:4px;">
+                    Adds installed software to assets via <b>external_key</b>.
+                </div>
+            </div>
+
+            <div class="field">
+                <label>
+                    <input type="checkbox" name="commit" value="true">
+                    Apply changes to database
+                </label>
+                <div class="muted" style="font-size:12px;">Unchecked = Preview only</div>
+            </div>
+
+            <div class="field">
+                <label>
+                    <input type="checkbox" name="recalc" value="true">
+                    Automatically generate alerts after a successful import
+                </label>
+                <div class="muted" style="font-size:12px;">
+                    Runs only when “Apply changes” is checked and the import completes without errors.
+                </div>
+            </div>
+
+            <div class="actions" style="margin-top:14px;">
+                <button type="submit" class="btn btn-primary">Import software.csv</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Software Result -->
+    <div th:if="${softwareResult != null}" class="card" style="padding:12px; margin:12px 0;">
+        <h3 style="margin:0 0 10px 0;">Software Import Summary</h3>
+
+        <div th:if="${matchSkippedMessage != null}">
+            <p class="muted" th:text="${matchSkippedMessage}">Alert generation skipped ...</p>
+        </div>
+
+        <div class="table-wrap">
+            <table style="margin-top:0;">
+                <thead>
+                <tr><th>Metric</th><th>Value</th></tr>
+                </thead>
+                <tbody>
+                <tr><td>preview only</td><td th:text="${softwareResult.dryRun}">false</td></tr>
+                <tr><td>lines read</td><td th:text="${softwareResult.linesRead}">0</td></tr>
+                <tr><td>processed</td><td th:text="${softwareResult.ok}">0</td></tr>
+                <tr><td>inserted</td><td th:text="${softwareResult.inserted}">0</td></tr>
+                <tr><td>updated</td><td th:text="${softwareResult.updated}">0</td></tr>
+                <tr><td>skipped</td><td th:text="${softwareResult.skipped}">0</td></tr>
+                <tr><td>errors</td><td th:text="${softwareResult.errors}">0</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Match Result -->
+    <div th:if="${matchResult != null}" class="card" style="padding:12px; margin:12px 0;">
+        <h3 style="margin:0 0 10px 0;">Alert Generation Result</h3>
+        <div class="table-wrap">
+            <table style="margin-top:0;">
+                <tbody>
+                <tr><td>matches found</td><td th:text="${matchResult.pairsFound}">0</td></tr>
+                <tr><td>new alerts created</td><td th:text="${matchResult.alertsInserted}">0</td></tr>
+                <tr><td>alerts updated</td><td th:text="${matchResult.alertsTouched}">0</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
 </main>

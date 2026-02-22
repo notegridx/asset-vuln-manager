@@ -16,12 +16,20 @@
       --accent: #8ab4ff;
 
       /* subtle semantic accents (keep the same design language) */
-      --ok: #8ab4ff;
-      /* reuse accent */
+      --ok: #8ab4ff;      /* reuse accent */
       --warn: #ffd37a;
       --danger: #ff9aa5;
-      --neutral: #a6adbb;
-      /* muted */
+      --neutral: #a6adbb; /* muted */
+
+      /* ===== B2B UI rhythm ===== */
+      --space-1: 8px;
+      --space-2: 12px;
+      --space-3: 16px;
+      --space-4: 20px;
+      --space-5: 28px;
+
+      --radius-1: 12px;
+      --radius-2: 14px;
     }
 
     * {
@@ -31,9 +39,10 @@
     body {
       margin: 0;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-      background: radial-gradient(1200px 700px at 20% -10%, rgba(138, 180, 255, 0.12), transparent 40%),
-      radial-gradient(900px 600px at 90% 0%, rgba(255, 211, 122, 0.08), transparent 42%),
-      var(--bg);
+      background:
+              radial-gradient(1200px 700px at 20% -10%, rgba(138, 180, 255, 0.12), transparent 40%),
+              radial-gradient(900px 600px at 90% 0%, rgba(255, 211, 122, 0.08), transparent 42%),
+              var(--bg);
       color: var(--text);
     }
 
@@ -59,11 +68,11 @@
       gap: 16px;
       padding: 14px 16px;
       border: 1px solid var(--line);
-      border-radius: 14px;
+      border-radius: var(--radius-2);
       background: rgba(18, 24, 38, 0.75);
       backdrop-filter: blur(6px);
       position: relative;
-      z-index: 1000; /* ← 追加：ドロップダウンを main より前に */
+      z-index: 1000; /* dropdown in front of main */
     }
 
     .brand {
@@ -94,7 +103,7 @@
       align-items: center;
       gap: 8px;
       padding: 8px 12px;
-      border-radius: 12px;
+      border-radius: var(--radius-1);
       border: 1px solid var(--line);
       color: var(--muted);
       font-size: 14px;
@@ -116,12 +125,15 @@
     main {
       margin-top: 16px;
       padding: 16px;
-      border-radius: 14px;
+      border-radius: var(--radius-2);
       border: 1px solid var(--line);
       background: rgba(18, 24, 38, 0.65);
       backdrop-filter: blur(6px);
       position: relative;
       z-index: 1;
+
+      /* ===== Stable layout (prevents "table jumps") ===== */
+      min-height: 72vh;
     }
 
     h1,
@@ -134,6 +146,55 @@
       color: var(--muted);
     }
 
+    /* ===== B2B Page scaffold ===== */
+    .page {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    /* Title + summary + primary actions (fixed height) */
+    .page-header {
+      min-height: 72px; /* 핵: prevents vertical shifts across pages */
+      display: flex;
+      gap: var(--space-3);
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .page-title h1 {
+      margin: 0;
+    }
+
+    .page-title .sub {
+      margin-top: 6px;
+    }
+
+    .kpi {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    /* Toolbar: filters/search/sort area */
+    .toolbar {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-2);
+      background: rgba(255, 255, 255, 0.02);
+      padding: 12px;
+    }
+
+    .toolbar .form-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    /* Generic actions row (keep existing behavior) */
     .actions {
       display: flex;
       align-items: center;
@@ -143,13 +204,26 @@
       flex-wrap: wrap;
     }
 
+    /* Optional: consistent separators */
+    hr {
+      border: none;
+      border-top: 1px solid rgba(42, 53, 80, 0.65);
+      margin: 16px 0;
+      opacity: 0.9;
+    }
+
+    /* ===== Table wrapper ensures stable start + min height ===== */
+    .table-wrap {
+      min-height: 420px;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
       border-spacing: 0;
       margin-top: 10px;
       overflow: hidden;
-      border-radius: 12px;
+      border-radius: var(--radius-1);
       border: 1px solid var(--line);
       background: rgba(255, 255, 255, 0.01);
     }
@@ -160,6 +234,7 @@
       border-bottom: 1px solid rgba(42, 53, 80, 0.7);
       vertical-align: top;
       font-size: 14px;
+      line-height: 1.35;
     }
 
     thead th {
@@ -167,6 +242,13 @@
       color: var(--muted);
       font-weight: 600;
       background: rgba(255, 255, 255, 0.02);
+
+      /* ===== Sticky header for B2B tables ===== */
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(6px);
+      background: rgba(18, 24, 38, 0.95);
     }
 
     tbody tr:hover {
@@ -175,6 +257,13 @@
 
     tr:last-child td {
       border-bottom: none;
+    }
+
+    /* Small metadata text inside cells */
+    td .meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 6px;
     }
 
     input,
@@ -199,7 +288,7 @@
     .field select,
     .field textarea {
       padding: 10px 12px;
-      border-radius: 12px;
+      border-radius: var(--radius-1);
       border: 1px solid var(--line);
       background: rgba(255, 255, 255, 0.02);
       color: var(--text);
@@ -212,20 +301,57 @@
       border-color: rgba(138, 180, 255, 0.55);
     }
 
+    /* ===== Buttons: Primary / Ghost / Danger ===== */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       padding: 10px 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(138, 180, 255, 0.55);
-      background: rgba(138, 180, 255, 0.14);
+      border-radius: var(--radius-1);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.02);
       color: var(--text);
       cursor: pointer;
+      text-decoration: none;
+      user-select: none;
     }
 
     .btn:hover {
+      border-color: rgba(138, 180, 255, 0.35);
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      border-color: rgba(138, 180, 255, 0.55);
+      background: rgba(138, 180, 255, 0.14);
+    }
+
+    .btn-primary:hover {
+      background: rgba(138, 180, 255, 0.20);
+    }
+
+    .btn-ghost {
+      background: transparent;
+    }
+
+    .btn-danger {
+      border-color: rgba(255, 154, 165, 0.55);
+      background: rgba(255, 154, 165, 0.10);
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 154, 165, 0.14);
+      border-color: rgba(255, 154, 165, 0.70);
+    }
+
+    /* Backward compatible: keep existing .btn look if pages use it */
+    /* (If you prefer strict separation, remove these two lines) */
+    .btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger) {
+      border-color: rgba(138, 180, 255, 0.55);
+      background: rgba(138, 180, 255, 0.14);
+    }
+    .btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger):hover {
       background: rgba(138, 180, 255, 0.20);
     }
 
@@ -236,6 +362,7 @@
       border: 1px solid var(--line);
       color: var(--muted);
       font-size: 12px;
+      white-space: nowrap;
     }
 
     /* Badges: status / severity / unmapped */
@@ -299,7 +426,7 @@
       gap: 8px 14px;
       padding: 12px;
       border: 1px solid var(--line);
-      border-radius: 14px;
+      border-radius: var(--radius-2);
       background: rgba(255, 255, 255, 0.01);
     }
 
@@ -312,6 +439,22 @@
       color: var(--text);
     }
 
+    /* Generic card (used across templates) */
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-2);
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    /* Empty state utility */
+    .empty-state {
+      padding: 14px;
+      border: 1px dashed rgba(42, 53, 80, 0.9);
+      border-radius: var(--radius-2);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.01);
+    }
+
     footer {
       margin-top: 12px;
       color: var(--muted);
@@ -320,6 +463,7 @@
       opacity: 0.85;
     }
   </style>
+
 </head>
 
 <body th:fragment="layout(title, active, content)">

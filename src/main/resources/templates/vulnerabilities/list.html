@@ -5,93 +5,99 @@
 <body th:replace="~{layout/base :: layout('Vulnerabilities', 'vulns', ~{::main})}">
 <main>
 
-    <div class="actions" style="align-items:flex-end;">
-        <div>
-            <h1 style="margin:0;">Vulnerabilities</h1>
+    <!-- Page header (aligned with Alerts pages) -->
+    <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div class="page-header__left">
+            <h1>Vulnerabilities</h1>
             <div class="muted" style="margin-top:6px;">
                 Imported CVE list (local cache). Use filters/sort to browse all items.
             </div>
         </div>
 
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <span class="pill" th:text="'Total: ' + ${page.totalElements}">Total: 0</span>
             <span class="pill" th:text="'Page: ' + ${page.number + 1} + ' / ' + ${page.totalPages}">Page: 1 / 1</span>
         </div>
     </div>
 
-    <!-- Filters -->
+    <!-- Toolbar / Filters (structure only, data bindings unchanged) -->
     <form th:action="@{/vulnerabilities}" method="get"
           class="card" style="padding:12px; margin:12px 0;">
-        <div class="actions" style="gap:14px; flex-wrap:wrap; align-items:flex-end;">
+        <div class="toolbar"
+             style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;">
 
-            <!-- Size -->
-            <div class="field" style="min-width:160px;">
-                <label>Rows per page</label>
-                <select name="size">
-                    <option th:each="n : ${sizeOptions}"
-                            th:value="${n}"
-                            th:selected="${n == size}"
-                            th:text="${n}">500</option>
-                </select>
-            </div>
+            <div class="toolbar__left" style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
 
-            <!-- Sort -->
-            <div class="field" style="min-width:220px;">
-                <label>Sort</label>
-                <select name="sort">
-                    <option th:each="s : ${sortOptions}"
-                            th:value="${s}"
-                            th:selected="${s == sort}"
-                            th:text="${s == 'LAST_MODIFIED' ? 'Last Modified (desc)'
+                <!-- Size -->
+                <div class="field" style="min-width:160px;">
+                    <label>Rows per page</label>
+                    <select name="size">
+                        <option th:each="n : ${sizeOptions}"
+                                th:value="${n}"
+                                th:selected="${n == size}"
+                                th:text="${n}">500</option>
+                    </select>
+                </div>
+
+                <!-- Sort -->
+                <div class="field" style="min-width:220px;">
+                    <label>Sort</label>
+                    <select name="sort">
+                        <option th:each="s : ${sortOptions}"
+                                th:value="${s}"
+                                th:selected="${s == sort}"
+                                th:text="${s == 'LAST_MODIFIED' ? 'Last Modified (desc)'
                         : (s == 'CVSS' ? 'CVSS (desc)'
                         : 'Severity (Critical → None)')}">
-                        Last Modified (desc)
-                    </option>
-                </select>
-            </div>
-
-            <!-- Severity -->
-            <div class="field" style="min-width:160px;">
-                <label>Severity</label>
-                <select name="severity">
-                    <option th:each="s : ${severityOptions}"
-                            th:value="${s}"
-                            th:selected="${(s == 'ALL' and (severityKey == null or severityKey == '' or severityKey == 'ALL')) or (s == severityKey)}"
-                            th:text="${s}">
-                        ALL
-                    </option>
-                </select>
-            </div>
-
-            <!-- CVSS range -->
-            <div class="field" style="min-width:140px;">
-                <label>Min CVSS</label>
-                <input type="number" step="0.1" min="0" max="10"
-                       name="minCvss" th:value="${minCvss}">
-            </div>
-
-            <div class="field" style="min-width:140px;">
-                <label>Max CVSS</label>
-                <input type="number" step="0.1" min="0" max="10"
-                       name="maxCvss" th:value="${maxCvss}">
-            </div>
-
-            <!-- Include no CVSS -->
-            <div class="field" style="min-width:210px;">
-                <label>
-                    <input type="checkbox" name="includeNoCvss" value="true"
-                           th:checked="${includeNoCvss}">
-                    Include “No CVSS”
-                </label>
-                <div class="muted" style="font-size:12px;">
-                    Uncheck to exclude rows where CVSS is missing.
+                            Last Modified (desc)
+                        </option>
+                    </select>
                 </div>
+
+                <!-- Severity -->
+                <div class="field" style="min-width:160px;">
+                    <label>Severity</label>
+                    <select name="severity">
+                        <option th:each="s : ${severityOptions}"
+                                th:value="${s}"
+                                th:selected="${(s == 'ALL' and (severityKey == null or severityKey == '' or severityKey == 'ALL')) or (s == severityKey)}"
+                                th:text="${s}">
+                            ALL
+                        </option>
+                    </select>
+                </div>
+
+                <!-- CVSS range -->
+                <div class="field" style="min-width:140px;">
+                    <label>Min CVSS</label>
+                    <input type="number" step="0.1" min="0" max="10"
+                           name="minCvss" th:value="${minCvss}">
+                </div>
+
+                <div class="field" style="min-width:140px;">
+                    <label>Max CVSS</label>
+                    <input type="number" step="0.1" min="0" max="10"
+                           name="maxCvss" th:value="${maxCvss}">
+                </div>
+
+                <!-- Include no CVSS -->
+                <div class="field" style="min-width:210px;">
+                    <label>
+                        <input type="checkbox" name="includeNoCvss" value="true"
+                               th:checked="${includeNoCvss}">
+                        Include “No CVSS”
+                    </label>
+                    <div class="muted" style="font-size:12px;">
+                        Uncheck to exclude rows where CVSS is missing.
+                    </div>
+                </div>
+
             </div>
 
             <!-- Submit -->
-            <div class="actions" style="gap:10px;">
-                <button type="submit">Apply</button>
-                <a th:href="@{/vulnerabilities}">Reset</a>
+            <div class="toolbar__right" style="display:flex; gap:10px; align-items:center;">
+                <button type="submit" class="btn">Apply</button>
+                <a class="btn" th:href="@{/vulnerabilities}">Reset</a>
             </div>
 
         </div>
@@ -100,7 +106,7 @@
         <input type="hidden" name="page" value="1"/>
     </form>
 
-    <!-- Table -->
+    <!-- Table (bindings unchanged) -->
     <table>
         <thead>
         <tr>
@@ -157,7 +163,7 @@
         </tbody>
     </table>
 
-    <!-- Pager -->
+    <!-- Pager (bindings unchanged) -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <div class="actions" style="gap:8px; flex-wrap:wrap; align-items:center;">
 

@@ -6,164 +6,212 @@
 <body th:replace="~{layout/base :: layout('Update Vulnerability Data', 'admin', ~{::main})}">
 <main>
 
-  <h1>Update Vulnerability Data</h1>
+  <!-- Page Header (unified) -->
+  <div class="page-header"
+       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
 
-  <p class="muted">
-    Download and refresh vulnerability data from the NVD CVE JSON 2.0 feed.
-    This will update stored vulnerabilities and their affected product/version ranges used for alert generation.
-  </p>
+    <div class="page-header__left">
+      <h1>Update Vulnerability Data</h1>
+      <div class="muted" style="margin-top:6px;">
+        Download and refresh vulnerability data from the NVD CVE JSON 2.0 feed.
+        This updates stored vulnerabilities and affected product/version ranges used for alert generation.
+      </div>
+    </div>
 
+    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill">CVE Feed</span>
+      <span class="pill">Admin Tool</span>
+    </div>
+  </div>
+
+  <!-- Notes -->
   <div class="card" style="padding:12px; margin:12px 0;">
     <div class="muted" style="font-size:12px;">
-      Notes:
+      <b>Notes</b>
       <ul style="margin:6px 0 0 18px;">
         <li>Safe for large feeds (streaming + chunked transactions).</li>
         <li>Idempotent: re-running will not create duplicates.</li>
         <li>If the selected feed has not changed since the last run, the update may be skipped unless forced.</li>
-        <li><b>MODIFIED</b> is typically used for routine updates; <b>RECENT</b> is a smaller feed for quick setup/testing.</li>
+        <li><b>MODIFIED</b> is typically used for routine updates; <b>RECENT</b> is smaller and useful for quick setup/testing.</li>
       </ul>
     </div>
   </div>
 
-  <h2>Run update</h2>
+  <!-- Run Update -->
+  <div class="card" style="padding:12px; margin:12px 0;">
 
-  <form th:action="@{/admin/cve/sync}" method="post">
-
-    <div class="field">
-      <label>Feed selection</label>
-      <select name="kind" id="feedKind">
-        <option value="MODIFIED" th:selected="${kind == null or kind == 'MODIFIED'}">MODIFIED (latest changes)</option>
-        <option value="RECENT" th:selected="${kind == 'RECENT'}">RECENT (most recent CVEs)</option>
-        <option value="YEAR" th:selected="${kind == 'YEAR'}">YEAR (full year feed)</option>
-      </select>
-      <div class="muted" style="font-size: 12px; margin-top: 4px;">
-        Choose which NVD feed to import.
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">Run update</h2>
+      <div class="muted" style="font-size:12px;">
+        Select feed and execution options.
       </div>
     </div>
 
-    <div class="field" id="yearField" style="display:none;">
-      <label>Year</label>
-      <input type="number" name="year" id="yearInput" min="1999" max="2100"
-             list="yearCandidates" th:value="${year}">
-      <datalist id="yearCandidates"></datalist>
-      <div class="muted" style="font-size: 12px; margin-top: 4px;">
-        Type a year (e.g., 2026). Suggestions are provided, but you can enter any year.
+    <form th:action="@{/admin/cve/sync}" method="post" style="margin-top:12px;">
+
+      <div class="field">
+        <label>Feed selection</label>
+        <select name="kind" id="feedKind">
+          <option value="MODIFIED" th:selected="${kind == null or kind == 'MODIFIED'}">
+            MODIFIED (latest changes)
+          </option>
+          <option value="RECENT" th:selected="${kind == 'RECENT'}">
+            RECENT (most recent CVEs)
+          </option>
+          <option value="YEAR" th:selected="${kind == 'YEAR'}">
+            YEAR (full year feed)
+          </option>
+        </select>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Choose which NVD feed to import.
+        </div>
+      </div>
+
+      <div class="field" id="yearField" style="display:none;">
+        <label>Year</label>
+        <input type="number" name="year" id="yearInput"
+               min="1999" max="2100"
+               list="yearCandidates"
+               th:value="${year}">
+        <datalist id="yearCandidates"></datalist>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Type a year (e.g., 2026). Suggestions are provided.
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div th:if="${error != null}"
+           class="card"
+           style="padding:12px; margin:12px 0; border:1px solid rgba(255, 154, 165, 0.5);">
+        <b>Error</b>
+        <div th:text="${error}"></div>
+      </div>
+
+      <!-- Force -->
+      <div class="field">
+        <label>
+          <input type="checkbox" name="force"
+                 th:checked="${force != null and force}">
+          Force update (ignore previous sync state)
+        </label>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Use this if you suspect the local sync state is out of date.
+        </div>
+      </div>
+
+      <!-- Max Items -->
+      <div class="field">
+        <label>Maximum items to process</label>
+        <input type="number" name="maxItems" min="1" max="5000000"
+               th:value="${maxItems != null ? maxItems : 2000000}">
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Safety cap for processing.
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:14px;">
+        <button type="submit" class="btn btn-primary">
+          Update Vulnerability Data
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Result -->
+  <div th:if="${result != null}"
+       class="card"
+       style="padding:12px; margin:12px 0;">
+
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">Update result</h2>
+      <div class="muted" style="font-size:12px;">
+        Summary of feed processing.
       </div>
     </div>
 
-    <div th:if="${error != null}" class="card" style="padding:12px; margin:12px 0; border: 1px solid #c33;">
-      <b>Error</b>
-      <div th:text="${error}"></div>
+    <div class="table-wrap" style="margin-top:12px;">
+      <table style="margin-top:0;">
+        <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>skipped (feed unchanged)</td>
+          <td th:text="${result.skipped}">false</td>
+        </tr>
+        <tr>
+          <td>vulnerabilities stored (upserted)</td>
+          <td th:text="${result.vulnerabilitiesUpserted}">0</td>
+        </tr>
+        <tr>
+          <td>affected entries added</td>
+          <td th:text="${result.affectedCpesInserted}">0</td>
+        </tr>
+        <tr>
+          <td>vulnerabilities parsed</td>
+          <td th:text="${result.vulnerabilitiesParsed}">0</td>
+        </tr>
+        <tr>
+          <td>meta sha256</td>
+          <td th:text="${result.metaSha256}">-</td>
+        </tr>
+        <tr>
+          <td>meta last modified</td>
+          <td th:text="${result.metaLastModified}">-</td>
+        </tr>
+        <tr>
+          <td>meta size (bytes)</td>
+          <td th:text="${result.metaSize}">0</td>
+        </tr>
+        </tbody>
+      </table>
     </div>
+  </div>
 
-    <script>
-      (function () {
-        const kindEl = document.getElementById('feedKind');
-        const yearField = document.getElementById('yearField');
-        const yearInput = document.getElementById('yearInput');
-        const datalist = document.getElementById('yearCandidates');
+  <!-- Back link -->
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <a class="btn btn-ghost" th:href="@{/admin/sync}">
+      ← Back to CVE Delta Update (API)
+    </a>
+  </div>
 
-        function toggleYear() {
-          const isYear = (kindEl.value === 'YEAR');
-          yearField.style.display = isYear ? '' : 'none';
-          if (!isYear) return;
+  <!-- Script (unchanged logic) -->
+  <script>
+    (function () {
+      const kindEl = document.getElementById('feedKind');
+      const yearField = document.getElementById('yearField');
+      const yearInput = document.getElementById('yearInput');
+      const datalist = document.getElementById('yearCandidates');
 
-          // 候補リスト（固定リスト表示）：今年〜2002を生成（必要なら範囲は調整）
-          if (datalist.childElementCount === 0) {
-            const current = new Date().getFullYear();
-            const start = current;
-            const end = 2002;
-            for (let y = start; y >= end; y--) {
-              const opt = document.createElement('option');
-              opt.value = String(y);
-              datalist.appendChild(opt);
-            }
-          }
+      function toggleYear() {
+        const isYear = (kindEl.value === 'YEAR');
+        yearField.style.display = isYear ? '' : 'none';
+        if (!isYear) return;
 
-          // 未入力なら今年を入れておく（任意）
-          if (!yearInput.value) {
-            yearInput.value = String(new Date().getFullYear());
+        if (datalist.childElementCount === 0) {
+          const current = new Date().getFullYear();
+          const start = current;
+          const end = 2002;
+          for (let y = start; y >= end; y--) {
+            const opt = document.createElement('option');
+            opt.value = String(y);
+            datalist.appendChild(opt);
           }
         }
 
-        kindEl.addEventListener('change', toggleYear);
-        toggleYear();
-      })();
-    </script>
+        if (!yearInput.value) {
+          yearInput.value = String(new Date().getFullYear());
+        }
+      }
 
-
-    <div class="field">
-      <label>
-        <input type="checkbox" name="force" th:checked="${force != null and force}">
-        Force update (ignore previous sync state)
-      </label>
-      <div class="muted" style="font-size: 12px; margin-top: 4px;">
-        Use this if you suspect the local sync state is out of date or you want to re-process the feed.
-      </div>
-    </div>
-
-    <div class="field">
-      <label>Maximum items to process</label>
-      <input type="number" name="maxItems" min="1" max="5000000"
-             th:value="${maxItems != null ? maxItems : 2000000}">
-      <div class="muted" style="font-size: 12px; margin-top: 4px;">
-        Safety cap for processing. Increase only if you intentionally want to ingest more entries.
-      </div>
-    </div>
-
-    <div class="actions" style="margin-top: 14px;">
-      <button type="submit">Update Vulnerability Data</button>
-    </div>
-  </form>
-
-  <div th:if="${result != null}">
-    <hr/>
-    <h2>Update result</h2>
-
-    <table>
-      <thead>
-      <tr>
-        <th>Metric</th>
-        <th>Value</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr>
-        <td>skipped (feed unchanged)</td>
-        <td th:text="${result.skipped}">false</td>
-      </tr>
-      <tr>
-        <td>vulnerabilities stored (upserted)</td>
-        <td th:text="${result.vulnerabilitiesUpserted}">0</td>
-      </tr>
-      <tr>
-        <td>affected entries added</td>
-        <td th:text="${result.affectedCpesInserted}">0</td>
-      </tr>
-      <tr>
-        <td>vulnerabilities parsed</td>
-        <td th:text="${result.vulnerabilitiesParsed}">0</td>
-      </tr>
-      <tr>
-        <td>meta sha256</td>
-        <td th:text="${result.metaSha256}">-</td>
-      </tr>
-      <tr>
-        <td>meta last modified</td>
-        <td th:text="${result.metaLastModified}">-</td>
-      </tr>
-      <tr>
-        <td>meta size (bytes)</td>
-        <td th:text="${result.metaSize}">0</td>
-      </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <hr/>
-  <div class="actions">
-    <a th:href="@{/admin/sync}"><- Back to CVE Delta Update (API)</a>
-  </div>
+      kindEl.addEventListener('change', toggleYear);
+      toggleYear();
+    })();
+  </script>
 
 </main>
 </body>
