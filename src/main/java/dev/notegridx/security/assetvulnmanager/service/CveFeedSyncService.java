@@ -758,8 +758,8 @@ public class CveFeedSyncService {
         // UX_VAC_DEDUPE is based on *_NN columns; align existence check with those keys.
         final long vid = (v == null || v.getId() == null) ? 0L : v.getId();
         final String cpeNameNn = nn(criteria);
-        final long vendorIdNn = nn(vendorId);
-        final long productIdNn = nn(productId);
+        final Long vendorIdNn = nn(vendorId);
+        final Long productIdNn = nn(productId);
         final String vendorNormNn = nn(vendorNorm);
         final String productNormNn = nn(productNorm);
         final String vsiNn = nn(a.versionStartIncluding);
@@ -833,8 +833,8 @@ public class CveFeedSyncService {
         return (s == null) ? "" : s;
     }
 
-    private static long nn(Long v) {
-        return (v == null) ? 0L : v;
+    private static Long nn(Long v) {
+        return (v == null) ? -1L : v;
     }
 
     private Long cachedVendorId(String vendorNorm) {
