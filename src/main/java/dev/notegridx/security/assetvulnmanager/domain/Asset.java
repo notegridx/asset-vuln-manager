@@ -47,6 +47,24 @@ public class Asset {
     @OneToMany(mappedBy = "asset", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SoftwareInstall> softwareInstalls = new ArrayList<>();
 
+    @Column(nullable = false)
+    private String source = "MANUAL";
+
+    @Column
+    private String platform;
+
+    @Column(name = "os_version")
+    private String osVersion;
+
+    @Column(name = "last_seen_at")
+    private LocalDateTime lastSeenAt;
+
+    public void markSeen(String source) {
+        String s = (source == null) ? null : source.trim();
+        this.source = (s == null || s.isEmpty()) ? "MANUAL" : s;
+        this.lastSeenAt = LocalDateTime.now();
+    }
+
     protected Asset() {
     }
 
@@ -72,11 +90,15 @@ public class Asset {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
+        if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
+        // lastSeenAt は null 許容（初回観測まで未設定でもOK）
     }
 
     @PreUpdate
     void preUpdate() {
         this.updatedAt = LocalDateTime.now();
+        if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
+
     }
 
 

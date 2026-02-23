@@ -1,69 +1,69 @@
 package dev.notegridx.security.assetvulnmanager.service.importing;
 
-import dev.notegridx.security.assetvulnmanager.domain.Asset;
-import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
-import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
-import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.*;
 
-
-import dev.notegridx.security.assetvulnmanager.service.SoftwareDictionaryValidator;
-import dev.notegridx.security.assetvulnmanager.service.importing.ImportError;
-import dev.notegridx.security.assetvulnmanager.service.importing.ImportResult;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.transaction.TransactionException;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import dev.notegridx.security.assetvulnmanager.domain.Asset;
+import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
+import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
+import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
+import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
+import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
+
 
 @Service
 public class CsvImportService {
 
+    private static final String SOURCE_CSV = "CSV";
+
     private final AssetRepository assetRepository;
     private final SoftwareInstallRepository softwareInstallRepository;
-    private final SoftwareDictionaryValidator dictValidator;
+    private final ImportRunRepository importRunRepository;
+    private final UnresolvedMappingRepository unresolvedMappingRepository;
 
     private final TransactionTemplate rowTx;
-
-    private final DictMode dictMode;
-
-    public enum DictMode {STRICT, LENIENT}
 
     public CsvImportService(
             AssetRepository assetRepository,
             SoftwareInstallRepository softwareInstallRepository,
-            SoftwareDictionaryValidator dictValidator,
-            PlatformTransactionManager txManager,
-            @Value("${app.software.dict-mode:LENIENT}") String dictMode
+            ImportRunRepository importRunRepository,
+            UnresolvedMappingRepository unresolvedMappingRepository,
+            PlatformTransactionManager txManager
     ) {
         this.assetRepository = assetRepository;
         this.softwareInstallRepository = softwareInstallRepository;
-        this.dictValidator = dictValidator;
+        this.importRunRepository = importRunRepository;
+        this.unresolvedMappingRepository = unresolvedMappingRepository;
 
         TransactionTemplate tt = new TransactionTemplate(txManager);
         tt.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.rowTx = tt;
-
-        this.dictMode = parseDictMode(dictMode);
-    }
-
-    private static DictMode parseDictMode(String s) {
-        if (s == null) return DictMode.LENIENT;
-        try {
-            return DictMode.valueOf(s.trim().toUpperCase(Locale.ROOT));
-        } catch (Exception e) {
-            return DictMode.LENIENT;
-        }
     }
 
     // =========================================================
-    // Assets CSV import
+    // Result DTOs (self-contained)
+    // =========================================================
+
+
+
+
+
+    // =========================================================
+    // Assets CSV
+    // columns: external_key,name,asset_type,owner,note
     // =========================================================
     public ImportResult importAssetsCsv(InputStream in, boolean commit) throws IOException {
         List<ImportError> errors = new ArrayList<>();
@@ -74,17 +74,21 @@ public class CsvImportService {
         int updated = 0;
         int skipped = 0;
 
+        ImportRun run = null;
+        if (commit) {
+            run = startImportRun("CSV_ASSETS");
+        }
+
         try (BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             String headerLine = br.readLine();
             if (headerLine == null) {
-                return new ImportResult(!commit, 0, 0, 0, 0, 0, 1,
-                        List.of(new ImportError(1, "EMPTY_FILE", "CSV is empty", "")));
+                errors.add(new ImportError(1, "EMPTY_FILE", "CSV is empty.", ""));
+                if (commit && run != null) finishImportRun(run, 0, 0, 0, errors.size(), "EMPTY_FILE");
+                return new ImportResult(!commit, 0, 0, 0, 0, 0, errors.size(), errors);
             }
 
             linesRead++;
-            List<String> header = parseCsvLine(headerLine);
-            Map<String, Integer> idx = headerIndex(header);
-
+            Map<String, Integer> idx = headerIndex(parseCsvLine(headerLine));
             requireColumns(idx, errors, 1, headerLine, "external_key", "name");
 
             String line;
@@ -108,7 +112,7 @@ public class CsvImportService {
 
                 if (externalKey == null) {
                     errors.add(new ImportError(lineNo, "INVALID_EXTERNAL_KEY",
-                            "external_key is required (trim+uppercase).", line));
+                            "external_key is required (trim + uppercase).", line));
                     continue;
                 }
                 if (name == null) {
@@ -128,28 +132,28 @@ public class CsvImportService {
 
                 try {
                     final Asset ex = existing;
+                    final ImportRun runFinal = run;
 
                     rowTx.execute(status -> {
+                        Asset a;
                         if (ex == null) {
-                            // Asset(name) がある前提（あなたのプロジェクトではこれで作っているはず）
-                            Asset a = new Asset(name);
-
-                            // external_key / assetType / owner / note の更新は既存仕様に合わせて
-                            // updateDetails がある前提（無い場合はここをあなたのAsset実装に合わせて直して）
-                            a.updateDetails(externalKey, assetType, owner, note);
-
-                            assetRepository.save(a);
+                            a = new Asset(name);
                         } else {
-                            // 既存Assetの更新
-                            ex.updateDetails(externalKey, assetType, owner, note);
-
-                            // ⚠️ name更新をしたい場合：
-                            // - Asset に setName(String) があるなら ex.setName(name);
-                            // - nameを変えない設計なら何もしない
-                            // ex.setName(name);
-
-                            assetRepository.save(ex);
+                            a = ex;
+                            // 既存方針が「nameは更新しない」ならここは触らない。
+                            // nameを更新したい場合は Asset に setter/メソッドを追加してここで更新。
                         }
+
+                        a.updateDetails(externalKey, assetType, owner, note);
+
+                        // ingestion metadata（Asset側に markSeen(String) を実装している前提）
+                        a.markSeen(SOURCE_CSV);
+
+                        assetRepository.save(a);
+
+                        // run counts
+                        runFinal.setAssetsUpserted(runFinal.getAssetsUpserted() + 1);
+
                         return null;
                     });
 
@@ -165,25 +169,28 @@ public class CsvImportService {
                             "Unexpected error. " + safeMsg(e), line));
                 }
             }
+
+        } finally {
+            if (commit && run != null) {
+                finishImportRun(run, inserted, updated, 0, errors.size(), null);
+            }
         }
 
         return new ImportResult(!commit, linesRead, ok, inserted, updated, skipped, errors.size(), errors);
     }
 
     // =========================================================
-    // Software CSV import
+    // Software CSV
+    // columns: external_key,vendor,product,version,cpe_name
     // =========================================================
 
-    // 互換維持：2引数版は残す
     public ImportResult importSoftwareCsv(InputStream in, boolean commit) throws IOException {
         return importSoftwareCsv(in, commit, Collections.emptySet());
     }
 
     /**
-     * overrideLineNos に含まれる行番号は、STRICTでも辞書missを許容してDB登録する。
-     * <p>
-     * また「すでにDBに存在する行」は、次回のoverride実行で再読込されても
-     * DICT_* エラーとして再表示されないようにする（既存行は辞書チェックで落とさない）。
+     * overrideLineNos: その行番号は、たとえ辞書/正規化が不完全でも登録を許可したい、などの運用用。
+     * （この実装では “落とす” 処理は入れていないので、将来拡張用の入口として保持）
      */
     public ImportResult importSoftwareCsv(InputStream in, boolean commit, Set<Integer> overrideLineNos) throws IOException {
         List<ImportError> errors = new ArrayList<>();
@@ -193,26 +200,30 @@ public class CsvImportService {
         int inserted = 0;
         int updated = 0;
         int skipped = 0;
+        int unresolvedUpserts = 0;
 
         final Set<Integer> override = (overrideLineNos == null) ? Collections.emptySet() : overrideLineNos;
+
+        ImportRun run = null;
+        if (commit) {
+            run = startImportRun("CSV_SOFTWARE");
+        }
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             String headerLine = br.readLine();
             if (headerLine == null) {
-                return new ImportResult(!commit, 0, 0, 0, 0, 0, 1,
-                        List.of(new ImportError(1, "EMPTY_FILE", "CSV is empty", "")));
+                errors.add(new ImportError(1, "EMPTY_FILE", "CSV is empty.", ""));
+                if (commit && run != null) finishImportRun(run, 0, 0, 0, errors.size(), "EMPTY_FILE");
+                return new ImportResult(!commit, 0, 0, 0, 0, 0, errors.size(), errors);
             }
 
             linesRead++;
-            List<String> header = parseCsvLine(headerLine);
-            Map<String, Integer> idx = headerIndex(header);
-
-            // required columns
-            // STRICTでも override があるため vendor/product は必須としておく（運用上安全）
+            Map<String, Integer> idx = headerIndex(parseCsvLine(headerLine));
             requireColumns(idx, errors, 1, headerLine, "external_key", "vendor", "product");
 
             String line;
             int lineNo = 1;
+
             while ((line = br.readLine()) != null) {
                 lineNo++;
                 linesRead++;
@@ -232,7 +243,7 @@ public class CsvImportService {
 
                 if (externalKey == null) {
                     errors.add(new ImportError(lineNo, "INVALID_EXTERNAL_KEY",
-                            "external_key is required (trim+uppercase).", line));
+                            "external_key is required (trim + uppercase).", line));
                     continue;
                 }
                 if (product == null) {
@@ -241,9 +252,7 @@ public class CsvImportService {
                     continue;
                 }
 
-                boolean overrideThisLine = override.contains(lineNo);
-
-                // (重要) 先に Asset / existing を確定する
+                // asset lookup
                 Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
                 if (asset == null) {
                     errors.add(new ImportError(lineNo, "ASSET_NOT_FOUND",
@@ -251,46 +260,12 @@ public class CsvImportService {
                     continue;
                 }
 
-                Long assetId = asset.getId();
+                // existing check (current UNIQUE strategy)
                 SoftwareInstall existing = softwareInstallRepository
-                        .findByAssetIdAndVendorAndProductAndVersion(assetId, vendor, product, version)
+                        .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendor, product, version)
                         .orElse(null);
 
-                // ---- 辞書チェック方針 ----
-                // 1) override行：STRICTでも辞書missを許容（resolveしない = canonicalは触らない/新規はnull）
-                // 2) 既存行：次回再実行時に DICT_* でまた落ちて再表示されるのを防ぐため、辞書missで落とさない
-                // 3) 新規行＆overrideでない：STRICTなら辞書HIT必須、LENIENTならHIT時のみリンク
-                SoftwareDictionaryValidator.Resolve dictResolve = null;
-                boolean touchCanonical = false; // canonical を変更するか（勝手にunlinkしないためのガード）
-
-                if (!overrideThisLine && existing == null) {
-                    // 新規行：ここでのみ辞書を評価
-                    dictResolve = dictValidator.resolve(vendor, product);
-
-                    if (dictMode == DictMode.STRICT && !dictResolve.hit()) {
-                        String code = (dictResolve.code() == null) ? "DICT_VALIDATION_FAILED" : dictResolve.code().name();
-                        String msg = (dictResolve.message() == null) ? "Dictionary validation failed." : dictResolve.message();
-                        errors.add(new ImportError(lineNo, code, msg, line));
-                        continue;
-                    }
-
-                    // LENIENTでもHITしたならリンクしたいので、触る対象にする
-                    if (dictResolve.hit()) {
-                        touchCanonical = true;
-                    }
-
-                } else if (!overrideThisLine && existing != null) {
-                    // 既存行：辞書missで落とさない（再表示防止）
-                    // canonical は “触らない” (touchCanonical=false) をデフォルトにして現状維持
-                    dictResolve = null;
-                    touchCanonical = false;
-
-                } else {
-                    // override行：辞書missを許容。canonicalは基本触らない。
-                    // 新規 insert の場合 canonical は null のまま。既存 update の場合も現状維持。
-                    dictResolve = null;
-                    touchCanonical = false;
-                }
+                boolean overrideThisLine = override.contains(lineNo);
 
                 if (!commit) {
                     ok++;
@@ -301,36 +276,52 @@ public class CsvImportService {
 
                 try {
                     final SoftwareInstall ex = existing;
-                    final SoftwareDictionaryValidator.Resolve rFinal = dictResolve;
-                    final boolean touchCanonicalFinal = touchCanonical;
+                    final ImportRun runFinal = run;
 
                     rowTx.execute(status -> {
+                        // Asset is also "seen" if software arrives
+                        asset.markSeen(SOURCE_CSV);
+                        assetRepository.save(asset);
+
+                        SoftwareInstall si;
                         if (ex == null) {
-                            SoftwareInstall si = new SoftwareInstall(asset, product);
-                            si.updateDetails(vendor, product, version, cpeName);
-
-                            // 新規は “HITした場合のみ link”。miss/override は何もしない（= nullのまま）
-                            if (touchCanonicalFinal && rFinal != null && rFinal.hit()) {
-                                si.linkCanonical(rFinal.vendorId(), rFinal.productId());
-                            }
-                            softwareInstallRepository.save(si);
-
+                            si = new SoftwareInstall(asset, product);
                         } else {
-                            ex.updateDetails(vendor, product, version, cpeName);
-
-                            // 既存は “触るべき” と判断した時だけ canonical を更新
-                            // （dict miss や override で勝手に unlink しない）
-                            if (touchCanonicalFinal && rFinal != null && rFinal.hit()) {
-                                ex.linkCanonical(rFinal.vendorId(), rFinal.productId());
-                            }
-                            softwareInstallRepository.save(ex);
+                            si = ex;
                         }
+
+                        // display/matching key update (existing behavior)
+                        si.updateDetails(vendor, product, version, cpeName);
+
+                        // ingestion metadata (new columns)
+                        si.markSeen(SOURCE_CSV);
+                        si.captureRaw(vendor, product, version);
+                        if (runFinal != null) {
+                            si.attachImportRun(runFinal.getId());
+                        }
+
+                        softwareInstallRepository.save(si);
+
+                        // run counts
+                        runFinal.setSoftwareUpserted(runFinal.getSoftwareUpserted() + 1);
+
+                        // unresolved mapping queue:
+                        // 最低限の運用：cpe_name が空、かつ canonical (vendor/product id) が未解決のままならキューへ
+                        // （厳密な “辞書miss判定” は後段で resolve ロジックを差し込める）
+                        if (shouldQueueUnresolved(si, overrideThisLine)) {
+                            upsertUnresolvedMapping(SOURCE_CSV, vendor, product, version);
+                            runFinal.setUnresolvedCount(runFinal.getUnresolvedCount() + 1);
+                        }
+
                         return null;
                     });
 
                     ok++;
                     if (existing == null) inserted++;
                     else updated++;
+
+                    // unresolvedUpserts は“試行回数”として加算（正確な upsert 数は run.unresolvedCount を参照）
+                    if (!overrideThisLine && cpeName == null) unresolvedUpserts++;
 
                 } catch (DataIntegrityViolationException e) {
                     errors.add(new ImportError(lineNo, "DB_CONSTRAINT",
@@ -340,13 +331,84 @@ public class CsvImportService {
                             "Unexpected error. " + safeMsg(e), line));
                 }
             }
+
+        } finally {
+            if (commit && run != null) {
+                finishImportRun(run, inserted, updated, unresolvedUpserts, errors.size(), null);
+            }
         }
 
         return new ImportResult(!commit, linesRead, ok, inserted, updated, skipped, errors.size(), errors);
     }
 
+    private static boolean shouldQueueUnresolved(SoftwareInstall si, boolean overrideThisLine) {
+        if (overrideThisLine) return true;
+        if (si.getCpeName() != null && !si.getCpeName().isBlank()) return false;
+
+        // canonical ids が未設定なら unresolved へ
+        return si.getCpeVendorId() == null || si.getCpeProductId() == null;
+    }
+
     // =========================================================
-    // Helpers
+    // ImportRun helpers
+    // =========================================================
+
+    private ImportRun startImportRun(String kind) {
+        ImportRun run = ImportRun.start("CSV", "CSV_SOFTWARE");
+        run = importRunRepository.save(run);
+        run.setSource(SOURCE_CSV);
+        run.setKind(kind);
+        run.setStartedAt(LocalDateTime.now());
+        run.setAssetsUpserted(0);
+        run.setSoftwareUpserted(0);
+        run.setUnresolvedCount(0);
+        run.setErrorCount(0);
+        return importRunRepository.save(run);
+    }
+
+    private void finishImportRun(ImportRun run, int inserted, int updated, int unresolvedUpserts, int errorCount, String summaryNote) {
+        run.setFinishedAt(LocalDateTime.now());
+
+        // counts are already incremented inside rowTx; set errorCount here
+        run.setErrorCount(errorCount);
+
+        if (summaryNote != null) {
+            run.setSummary(summaryNote);
+        }
+
+        importRunRepository.save(run);
+    }
+
+    // =========================================================
+    // UnresolvedMapping upsert
+    // =========================================================
+
+    private void upsertUnresolvedMapping(String source, String vendorRaw, String productRaw, String versionRaw) {
+        String v = normalizeNullable(vendorRaw);
+        String p = normalizeNullable(productRaw);
+        String ver = normalizeNullable(versionRaw);
+        if (p == null) return;
+
+        LocalDateTime now = LocalDateTime.now();
+
+        Optional<UnresolvedMapping> existing =
+                unresolvedMappingRepository.findTopBySourceAndVendorRawAndProductRawAndVersionRaw(source, v, p, ver);
+
+        if (existing.isPresent()) {
+            UnresolvedMapping um = existing.get();
+            um.setLastSeenAt(now);
+            unresolvedMappingRepository.save(um);
+            return;
+        }
+
+        UnresolvedMapping um =
+                UnresolvedMapping.create(source, v, p, ver);
+
+        unresolvedMappingRepository.save(um);
+    }
+
+    // =========================================================
+    // CSV helpers
     // =========================================================
 
     private static boolean isBlankLine(String s) {
@@ -363,7 +425,8 @@ public class CsvImportService {
             List<ImportError> errors,
             int lineNo,
             String raw,
-            String... required) {
+            String... required
+    ) {
         for (String r : required) {
             if (!idx.containsKey(r)) {
                 errors.add(new ImportError(lineNo, "MISSING_COLUMN",

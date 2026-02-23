@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('Unresolved Mappings')}"></head>
+
+<body th:replace="~{layout/base :: layout('Unresolved Mappings', 'admin', ~{::main})}">
+<main>
+
+  <h1>Unresolved Mappings</h1>
+  <p class="muted">
+    Items that could not be mapped to canonical CPE vendor/product yet. This is the dictionary training queue.
+  </p>
+
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <a class="btn btn-soft" th:href="@{/admin/import-runs}">Import Runs</a>
+      <a class="btn" th:href="@{/admin/import}">Import CSV</a>
+
+      <div style="flex:1;"></div>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <a class="btn btn-xs" th:classappend="${status == null} ? ' active' : ''" th:href="@{/admin/unresolved}">All</a>
+        <a class="btn btn-xs" th:classappend="${status == 'NEW'} ? ' active' : ''" th:href="@{/admin/unresolved(status='NEW', runId=${runId})}">NEW</a>
+        <a class="btn btn-xs" th:classappend="${status == 'RESOLVED'} ? ' active' : ''" th:href="@{/admin/unresolved(status='RESOLVED', runId=${runId})}">RESOLVED</a>
+        <a class="btn btn-xs" th:classappend="${status == 'IGNORED'} ? ' active' : ''" th:href="@{/admin/unresolved(status='IGNORED', runId=${runId})}">IGNORED</a>
+      </div>
+    </div>
+
+    <div class="muted" style="font-size:12px; margin-top:8px;" th:if="${runId != null}">
+      Filtered by import run: <span class="mono" th:text="${runId}">1</span>
+      <a class="btn btn-xs btn-soft" style="margin-left:8px;" th:href="@{/admin/unresolved(status=${status})}">Clear</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+        <tr>
+          <th style="width:80px;">ID</th>
+          <th style="width:110px;">Source</th>
+          <th style="width:210px;">Vendor</th>
+          <th>Product</th>
+          <th style="width:180px;">Version</th>
+          <th style="width:110px;">Status</th>
+          <th style="width:190px;">First Seen</th>
+          <th style="width:190px;">Last Seen</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:if="${mappings == null || #lists.isEmpty(mappings)}">
+          <td colspan="8" class="muted" style="padding:14px;">No unresolved mappings.</td>
+        </tr>
+
+        <tr th:each="m : ${mappings}">
+          <td class="mono" th:text="${m.id}">1</td>
+          <td><span class="badge" th:text="${m.source}">CSV</span></td>
+          <td class="mono" th:text="${m.vendorRaw}">apache</td>
+          <td class="mono" th:text="${m.productRaw}">http_server</td>
+          <td class="mono" th:text="${m.versionRaw}">2.4.58</td>
+          <td>
+              <span class="badge"
+                    th:classappend="${m.status == 'NEW'} ? ' badge-warn' : ''"
+                    th:text="${m.status}">NEW</span>
+          </td>
+          <td class="mono" th:text="${m.firstSeenAt}">2026-02-23T10:00:00</td>
+          <td class="mono" th:text="${m.lastSeenAt}">2026-02-23T10:01:00</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="muted" style="font-size:12px; padding:10px 12px; border-top:1px solid rgba(0,0,0,0.06);">
+      Tip: Start with NEW items. Resolve by updating canonical dictionary mappings or by normalizing vendor/product naming.
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

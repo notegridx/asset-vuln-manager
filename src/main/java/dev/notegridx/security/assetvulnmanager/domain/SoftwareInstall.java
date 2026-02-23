@@ -2,9 +2,9 @@ package dev.notegridx.security.assetvulnmanager.domain;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-
 import lombok.Getter;
 
 @Entity
@@ -14,10 +14,14 @@ import lombok.Getter;
                 columnNames = {"asset_id", "vendor", "product", "version"}
         ),
         indexes = {
-        @Index(name = "idx_sw_asset_id", columnList = "asset_id"),
-        @Index(name = "idx_sw_cpe", columnList = "cpe_name"),
-        @Index(name = "idx_sw_norm", columnList = "normalized_vendor, normalized_product")
-})
+                @Index(name = "idx_sw_asset_id", columnList = "asset_id"),
+                @Index(name = "idx_sw_cpe", columnList = "cpe_name"),
+                @Index(name = "idx_sw_norm", columnList = "normalized_vendor, normalized_product"),
+                @Index(name = "idx_sw_type", columnList = "type"),
+                @Index(name = "idx_sw_source", columnList = "source"),
+                @Index(name = "idx_sw_last_seen", columnList = "last_seen_at"),
+                @Index(name = "idx_sw_import_run", columnList = "import_run_id")
+        })
 @Getter
 public class SoftwareInstall {
 
@@ -28,6 +32,39 @@ public class SoftwareInstall {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "asset_id", nullable = false)
     private Asset asset;
+
+    // ===== Added (osquery ingestion support) =====
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SoftwareType type = SoftwareType.APPLICATION;
+
+    @Column(nullable = false)
+    private String source = "MANUAL";
+
+    @Column(name = "vendor_raw")
+    private String vendorRaw;
+
+    @Column(name = "product_raw")
+    private String productRaw;
+
+    @Column(name = "version_raw", length = 128)
+    private String versionRaw;
+
+    @Column(name = "version_norm", length = 128)
+    private String versionNorm;
+
+    @Column(name = "last_seen_at")
+    private LocalDateTime lastSeenAt;
+
+    /**
+     * FK is defined in schema.sql (import_runs.id) but we keep it as scalar Long
+     * (same style as cpeVendorId/cpeProductId) to avoid entity coupling.
+     */
+    @Column(name = "import_run_id")
+    private Long importRunId;
+
+    // ===== Existing (display & matching key) =====
 
     @Column(nullable = false)
     private String vendor = "";
@@ -68,8 +105,14 @@ public class SoftwareInstall {
         this.product = requireNotBlank(product, "product");
         this.vendor = "";
         this.version = "";
+        this.type = SoftwareType.APPLICATION;
+        this.source = "MANUAL";
     }
 
+    /**
+     * Existing behavior: updates the "display/matching key" columns and normalized keys.
+     * (raw / last_seen / importRun are handled by dedicated methods below)
+     */
     public void updateDetails(String vendor, String product, String version, String cpeName) {
         String p = requireNotBlank(product, "product");
         this.product = p;
@@ -94,6 +137,44 @@ public class SoftwareInstall {
         this.cpeProductId = null;
     }
 
+    // =========================================================
+    // New helper methods for snapshot ingestion / troubleshooting
+    // =========================================================
+
+    public void setType(SoftwareType type) {
+        if (type == null) return;
+        this.type = type;
+    }
+
+    /**
+     * Sets ingestion source (CSV/OSQUERY/FLEET/WAZUH/MANUAL...) and updates last_seen_at.
+     */
+    public void markSeen(String source) {
+        String s = normalizeNullable(source);
+        this.source = (s == null) ? "MANUAL" : s;
+        this.lastSeenAt = LocalDateTime.now();
+    }
+
+    /**
+     * Stores raw values for troubleshooting / dictionary training.
+     */
+    public void captureRaw(String vendorRaw, String productRaw, String versionRaw) {
+        this.vendorRaw = normalizeNullable(vendorRaw);
+        this.productRaw = normalizeNullable(productRaw);
+        this.versionRaw = normalizeNullable(versionRaw);
+
+        // version_norm: first step = "trimmed string", not numeric comparison
+        this.versionNorm = normalizeVersionNorm(this.versionRaw);
+    }
+
+    public void attachImportRun(Long importRunId) {
+        this.importRunId = importRunId;
+    }
+
+    // =========================================================
+    // Normalizers
+    // =========================================================
+
     private static String normalizeNullable(String s) {
         if (s == null) return null;
         String t = s.trim();
@@ -103,7 +184,7 @@ public class SoftwareInstall {
     private static String normalizeToEmpty(String s) {
         if (s == null) return "";
         String t = s.trim();
-        return t.isEmpty() ?  "" : t;
+        return t.isEmpty() ? "" : t;
     }
 
     private static String normalizeForKey(String s) {
@@ -113,6 +194,13 @@ public class SoftwareInstall {
         x = x.replaceAll("[\\p{Punct}&&[^._-]]+", "");
         x = x.replaceAll("\\s+", " ").trim();
         return x.isEmpty() ? null : x;
+    }
+
+    private static String normalizeVersionNorm(String s) {
+        String t = normalizeNullable(s);
+        if (t == null) return null;
+        // First step only: trimmed string. (No semantic version comparison here.)
+        return t;
     }
 
     private static String requireNotBlank(String s, String field) {
@@ -126,22 +214,40 @@ public class SoftwareInstall {
         this.createdAt = now;
         this.updatedAt = now;
 
+        // existing guards
         if (this.vendor == null) this.vendor = "";
         if (this.version == null) this.version = "";
 
         if (this.normalizedVendor == null) this.normalizedVendor = normalizeForKey(this.vendor);
         if (this.normalizedProduct == null) this.normalizedProduct = normalizeForKey(this.product);
+
+        // new guards
+        if (this.type == null) this.type = SoftwareType.APPLICATION;
+        if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
+
+        // keep versionNorm in sync when only versionRaw is set
+        if (this.versionNorm == null && this.versionRaw != null) {
+            this.versionNorm = normalizeVersionNorm(this.versionRaw);
+        }
     }
 
     @PreUpdate
     void preUpdate() {
         this.updatedAt = LocalDateTime.now();
 
+        // existing guards
         if (this.vendor == null) this.vendor = "";
         if (this.version == null) this.version = "";
 
         if (this.normalizedVendor == null) this.normalizedVendor = normalizeForKey(this.vendor);
         if (this.normalizedProduct == null) this.normalizedProduct = normalizeForKey(this.product);
-    }
 
+        // new guards
+        if (this.type == null) this.type = SoftwareType.APPLICATION;
+        if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
+
+        if (this.versionNorm == null && this.versionRaw != null) {
+            this.versionNorm = normalizeVersionNorm(this.versionRaw);
+        }
+    }
 }
