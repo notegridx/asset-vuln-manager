@@ -10,6 +10,7 @@ public class VersionRangeMatcher {
     public enum Verdict {
         MATCH,
         NO_MATCH,
+        NO_VERSION_CONSTRAINT,
         UNKNOWN_VERSION,
         UNPARSABLE_VERSION
     }
@@ -28,8 +29,8 @@ public class VersionRangeMatcher {
                         normalize(endIncluding) != null ||
                         normalize(endExcluding) != null;
 
-        // range が無いなら version 不要なので確定
-        if (!hasAnyRange) return Verdict.MATCH;
+        // range が無い = 影響範囲が version で絞れていない（要確認）
+        if (!hasAnyRange) return Verdict.NO_VERSION_CONSTRAINT;
 
         // range があるのに version が無い：確定できない
         if (v == null) return Verdict.UNKNOWN_VERSION;

@@ -33,13 +33,20 @@
         <div class="muted" style="margin-top:10px;"
              th:if="${alert.certainty != null && alert.certainty.toString() == 'UNCONFIRMED'}">
             <div th:text="'reason: ' + ${alert.uncertainReason != null ? alert.uncertainReason : '-'}">reason</div>
+
             <div style="margin-top:6px;"
                  th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'MISSING_SOFTWARE_VERSION'}">
                 Software version が未入力のため、version range 判定ができず要確認です。
             </div>
+
             <div style="margin-top:6px;"
                  th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'UNPARSABLE_SOFTWARE_VERSION'}">
                 Software version の形式が比較ロジックで解釈できず、要確認です。
+            </div>
+
+            <div style="margin-top:6px;"
+                 th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'NO_VERSION_CONSTRAINT'}">
+                The CVE does not specify version conditions, so impact on the latest version cannot be automatically determined. Manual review required.
             </div>
         </div>
 

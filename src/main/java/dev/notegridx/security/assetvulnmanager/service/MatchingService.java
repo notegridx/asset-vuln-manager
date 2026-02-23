@@ -276,7 +276,11 @@ public class MatchingService {
 	 */
 	private static final class BestVerdict {
 		private static final EnumSet<VersionRangeMatcher.Verdict> UNCONFIRMED =
-				EnumSet.of(VersionRangeMatcher.Verdict.UNKNOWN_VERSION, VersionRangeMatcher.Verdict.UNPARSABLE_VERSION);
+				EnumSet.of(
+						VersionRangeMatcher.Verdict.NO_VERSION_CONSTRAINT,
+						VersionRangeMatcher.Verdict.UNKNOWN_VERSION,
+						VersionRangeMatcher.Verdict.UNPARSABLE_VERSION
+				);
 
 		private final VersionRangeMatcher.Verdict verdict;
 
@@ -305,6 +309,7 @@ public class MatchingService {
 		}
 
 		AlertUncertainReason toReason() {
+			if (verdict == VersionRangeMatcher.Verdict.NO_VERSION_CONSTRAINT) return AlertUncertainReason.NO_VERSION_CONSTRAINT;
 			if (verdict == VersionRangeMatcher.Verdict.UNKNOWN_VERSION) return AlertUncertainReason.MISSING_SOFTWARE_VERSION;
 			if (verdict == VersionRangeMatcher.Verdict.UNPARSABLE_VERSION) return AlertUncertainReason.UNPARSABLE_SOFTWARE_VERSION;
 			return null;
