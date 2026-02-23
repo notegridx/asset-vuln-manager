@@ -1,87 +1,159 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout/base :: head('Vulnerability Detail')}"></head>
+
 <body th:replace="~{layout/base :: layout('Vulnerability Detail', 'vulns', ~{::main})}">
 <main>
-    <div class="actions">
-        <h1 style="margin: 0;">Vulnerability Detail</h1>
-        <a th:href="@{/vulnerabilities}"><- Back</a>
+
+    <!-- Page Header (unified style) -->
+    <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div class="page-header__left">
+            <h1>Vulnerability Detail</h1>
+
+            <div class="muted" style="margin-top:6px;">
+                Source: <b th:text="${v.source}">NVD</b>
+                <span class="muted" style="margin:0 6px;">|</span>
+                ID: <b th:text="${v.id}">1</b>
+            </div>
+
+            <div class="muted" style="margin-top:6px;">
+                CVE:
+                <a th:href="@{'https://nvd.nist.gov/vuln/detail/' + ${v.externalId}}"
+                   th:text="${v.externalId}" target="_blank" rel="noopener noreferrer">CVE-2026-XXXX</a>
+            </div>
+        </div>
+
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a class="btn" th:href="@{/vulnerabilities}">← Back</a>
+
+            <span class="pill" th:text="'severity: ' + ${v.severity != null ? v.severity : 'NONE'}">severity: HIGH</span>
+            <span class="pill" th:text="'cvss: ' + ${(v.cvssScore != null ? v.cvssScore : '-')}">cvss: 7.5</span>
+            <span class="pill" th:text="'affected: ' + ${#lists.size(cpes)}">affected: 0</span>
+        </div>
     </div>
 
-    <div class="kv">
-        <b>ID</b> <span th:text="${v.id}">1</span>
-        <b>Source</b> <span th:text="${v.source}">NVD</span>
-        <b>CVE</b>
-        <span>
-            <a th:href="@{'https://nvd.nist.gov/vuln/detail/' + ${v.externalId}}"
-               th:text="${v.externalId}" target="_blank" rel="noopener noreferrer">CVE-2026-XXXX</a>
-        </span>
+    <!-- Summary card -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="kv">
+            <b>Severity</b>
+            <span>
+        <span class="badge"
+              th:classappend="${v.severity != null ?
+                (v.severity.name() == 'CRITICAL' ? ' badge--sev-critical' :
+                 (v.severity.name() == 'HIGH' ? ' badge--sev-high' :
+                  (v.severity.name() == 'MEDIUM' ? ' badge--sev-medium' :
+                   (v.severity.name() == 'LOW' ? ' badge--sev-low' :
+                    ' badge--sev-none'))))
+                : ' badge--sev-none'}"
+              th:text="${v.severity != null ? v.severity : 'NONE'}">HIGH</span>
+      </span>
 
-        <b>Severity</b>
-        <span>
-            <span class="badge"
-                  th:classappend="${v.severity != null ?
-  (v.severity.name() == 'CRITICAL' ? ' badge--sev-critical' :
-   (v.severity.name() == 'HIGH' ? ' badge--sev-high' :
-    (v.severity.name() == 'MEDIUM' ? ' badge--sev-medium' :
-     (v.severity.name() == 'LOW' ? ' badge--sev-low' :
-      ' badge--sev-none'))))
-  : ' badge--sev-none'}"
-                  th:text="${v.severity != null ? v.severity : 'NONE'}">HIGH</span>
-        </span>
+            <b>CVSS</b>
+            <span th:text="${(v.cvssVersion != null ? v.cvssVersion : '-') + ' / ' + (v.cvssScore != null ? v.cvssScore : '-')}">
+        3.1 / 7.5
+      </span>
 
-        <b>CVSS</b>
-        <span th:text="${(v.cvssVersion != null ? v.cvssVersion : '-') + ' / ' + (v.cvssScore != null ? v.cvssScore : '-')}">
-            3.1 / 7.5
-        </span>
+            <b>Published</b>
+            <span th:text="${v.publishedAt != null ? v.publishedAt : '-'}">-</span>
 
-        <b>Published</b> <span th:text="${v.publishedAt != null ? v.publishedAt : '-'}">-</span>
-        <b>Last Modified</b> <span th:text="${v.lastModifiedAt != null ? v.lastModifiedAt : '-'}">-</span>
+            <b>Last Modified</b>
+            <span th:text="${v.lastModifiedAt != null ? v.lastModifiedAt : '-'}">-</span>
+        </div>
     </div>
 
-    <hr/>
+    <!-- Description -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="gap:10px; margin:0; justify-content:flex-start; align-items:center;">
+            <h2 style="margin:0; font-size:18px;">Description</h2>
+        </div>
 
-    <h2 style="margin-bottom: 6px;">Description</h2>
-    <p class="muted" th:text="${v.description != null ? v.description : '-'}">description</p>
-
-    <hr/>
-
-    <div class="actions">
-        <h2 style="margin: 0;">Affected CPEs</h2>
-        <span class="pill" th:text="'count: ' + ${#lists.size(cpes)}">count: 0</span>
+        <div class="muted" style="margin-top:8px; white-space:pre-wrap;"
+             th:text="${v.description != null ? v.description : '-'}">description</div>
     </div>
-    <p class="muted">Imported from NVD configurations -> criteria (vulnerable=true). Stored in
-        vulnerability_affected_cpes.</p>
 
-    <table>
-        <thead>
-        <tr>
-            <th style="width: 90px;">ID</th>
-            <th>CPE (cpeName)</th>
-            <th style="width: 170px;">Start (including)</th>
-            <th style="width: 170px;">Start (excluding)</th>
-            <th style="width: 170px;">End (including)</th>
-            <th style="width: 170px;">End (excluding)</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:if="${#lists.isEmpty(cpes)}">
-            <td colspan="6" class="muted">No affected CPEs stored for this vulnerability.</td>
-        </tr>
+    <!-- Affected CPEs -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="toolbar"
+             style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
 
-        <tr th:each="c : ${cpes}">
-            <td th:text="${c.id}">1</td>
-            <td>
-                <code th:text="${c.cpeName}">cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*</code>
-            </td>
-            <td th:text="${c.versionStartIncluding != null ? c.versionStartIncluding : '-'}">-</td>
-            <td th:text="${c.versionStartExcluding != null ? c.versionStartExcluding : '-'}">-</td>
-            <td th:text="${c.versionEndIncluding != null ? c.versionEndIncluding : '-'}">-</td>
-            <td th:text="${c.versionEndExcluding != null ? c.versionEndExcluding : '-'}">-</td>
-        </tr>
-        </tbody>
-    </table>
+            <div class="toolbar__left" style="display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+                <div class="actions" style="gap:10px; margin:0; justify-content:flex-start; align-items:center;">
+                    <h2 style="margin:0; font-size:18px;">Affected CPEs</h2>
+                    <span class="pill" th:text="'count: ' + ${#lists.size(cpes)}">count: 0</span>
+                </div>
+
+                <span class="muted" style="margin:0 4px;">|</span>
+
+                <div class="muted" style="font-size:12px;">
+                    Imported from NVD configurations → criteria (vulnerable=true). Stored in <code>vulnerability_affected_cpes</code>.
+                </div>
+            </div>
+
+            <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <!-- reserved -->
+            </div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table style="margin-top:0;">
+            <thead>
+            <tr>
+                <th style="width:90px;">ID</th>
+                <th>CPE (cpeName)</th>
+                <th style="width:260px;">Range</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            <tr th:if="${#lists.isEmpty(cpes)}">
+                <td colspan="3" class="muted">
+                    No affected CPEs stored for this vulnerability.
+                </td>
+            </tr>
+
+            <tr th:each="c : ${cpes}">
+                <td th:text="${c.id}">1</td>
+
+                <td>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <code th:text="${c.cpeName}">cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*</code>
+
+                        <!-- quick indicator: has any range -->
+                        <span class="badge badge--unmapped"
+                              th:if="${c.versionStartIncluding != null or c.versionStartExcluding != null or c.versionEndIncluding != null or c.versionEndExcluding != null}"
+                              style="font-size:12px;">
+              has range
+            </span>
+                    </div>
+                </td>
+
+                <!-- Range (visible, compact, same style) -->
+                <td>
+                    <div class="muted" style="font-size:12px; line-height:1.45;">
+                        <div>
+                            <b class="muted" style="font-weight:600;">Start (incl)</b>
+                            <span th:text="${c.versionStartIncluding != null ? c.versionStartIncluding : '-'}">-</span>
+                        </div>
+                        <div>
+                            <b class="muted" style="font-weight:600;">Start (excl)</b>
+                            <span th:text="${c.versionStartExcluding != null ? c.versionStartExcluding : '-'}">-</span>
+                        </div>
+                        <div style="margin-top:6px;">
+                            <b class="muted" style="font-weight:600;">End (incl)</b>
+                            <span th:text="${c.versionEndIncluding != null ? c.versionEndIncluding : '-'}">-</span>
+                        </div>
+                        <div>
+                            <b class="muted" style="font-weight:600;">End (excl)</b>
+                            <span th:text="${c.versionEndExcluding != null ? c.versionEndExcluding : '-'}">-</span>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
 </main>
-
 </body>
 </html>
