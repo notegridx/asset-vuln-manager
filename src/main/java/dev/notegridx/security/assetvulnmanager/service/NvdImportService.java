@@ -193,9 +193,23 @@ public class NvdImportService {
 	private static LocalDateTime parseNvdDateTime(String s) {
 		String v = normalize(s);
 		if (v == null) return null;
+
+		// 1) ISO_OFFSET_DATE_TIME (e.g. 2026-02-22T18:00:01-05:00 / ...Z)
 		try {
 			return OffsetDateTime.parse(v).toLocalDateTime();
-		} catch (DateTimeParseException e) {
+		} catch (Exception ignore) {}
+
+		// 2) Instant (e.g. 2026-02-22T23:00:01Z)
+		try {
+			return java.time.Instant.parse(v).atOffset(java.time.ZoneOffset.UTC).toLocalDateTime();
+		} catch (Exception ignore) {}
+
+		// 3) LocalDateTime (no offset)
+		try {
+			return LocalDateTime.parse(v);
+		} catch (Exception e) {
+			// ✅ ここで初めてログ（1回だけでもOK）
+			// log.warn("Failed to parse NVD datetime: [{}]", v);
 			return null;
 		}
 	}

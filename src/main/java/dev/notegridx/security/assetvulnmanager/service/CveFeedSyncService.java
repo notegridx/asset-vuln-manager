@@ -384,7 +384,14 @@ public class CveFeedSyncService {
                     cveId = norm(p.getValueAsString());
                     continue;
                 }
-
+                if ("published".equals(cf) && cv == JsonToken.VALUE_STRING) {
+                    publishedAt = parseToLocalDateTime(p.getValueAsString());
+                    continue;
+                }
+                if ("lastModified".equals(cf) && cv == JsonToken.VALUE_STRING) {
+                    lastModifiedAt = parseToLocalDateTime(p.getValueAsString());
+                    continue;
+                }
                 if ("descriptions".equals(cf) && cv == JsonToken.START_ARRAY) {
                     // prefer English description
                     String desc = parseDescriptionsPreferEn(p);

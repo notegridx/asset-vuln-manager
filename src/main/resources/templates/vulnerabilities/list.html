@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('CVEs')}"></head>
+<head th:replace="~{layout/base :: head('Vulnerabilities')}"></head>
 
-<body th:replace="~{layout/base :: layout('CVEs', 'vulns', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Vulnerabilities', 'vulns', ~{::main})}">
 <main>
 
     <div class="actions">
-        <h1 style="margin: 0;">CVEs</h1>
+        <!-- ✅ h1 を Vulnerabilities に戻す -->
+        <h1 style="margin: 0;">Vulnerabilities</h1>
         <a class="btn" th:href="@{/vulnerabilities}">Clear</a>
     </div>
 
+    <!-- ===== フィルタフォーム（変更なし） ===== -->
     <form method="get" th:action="@{/vulnerabilities}" class="card" style="padding:12px; margin:12px 0;">
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
 
@@ -56,7 +58,6 @@
                 </select>
             </div>
 
-            <!-- ★ includeNoCvss: select (true/false を必ず送る) -->
             <div class="field" style="min-width: 190px;">
                 <label>No CVSS rows</label>
                 <select name="includeNoCvss">
@@ -65,7 +66,6 @@
                 </select>
             </div>
 
-            <!-- ★ withCpe/withRange: checkbox only (hidden無し) -->
             <div class="field" style="display:flex; gap:16px; align-items:center; padding-bottom:6px;">
                 <label style="display:flex; gap:8px; align-items:center; margin:0;">
                     <input type="checkbox" name="withCpe" value="true" th:checked="${withCpe}">
@@ -90,14 +90,15 @@
         <span th:text="'Total: ' + ${vulns.totalElements} + ' / Pages: ' + ${vulns.totalPages}">Total</span>
     </div>
 
+    <!-- ===== 一覧テーブル ===== -->
     <div class="card" style="padding:0; overflow:auto;">
         <table class="table">
             <thead>
             <tr>
-                <th style="min-width:140px;">CVE</th>
+                <th style="min-width:160px;">CVE</th>
                 <th style="min-width:110px;">Severity</th>
                 <th style="min-width:120px;">CVSS</th>
-                <th>Title</th>
+                <th style="min-width:auto;">Description</th> <!-- ✅ Title → Description -->
                 <th style="min-width:170px;">Last Modified</th>
             </tr>
             </thead>
@@ -108,90 +109,34 @@
 
             <tr th:each="v : ${vulns.content}">
                 <td>
-                    <!-- ★ detail mapping に合わせる -->
-                    <a th:href="@{/vulnerabilities/{id}(id=${v.id})}" th:text="${v.externalId}">CVE-XXXX</a>
+                    <a th:href="@{/vulnerabilities/{id}(id=${v.id})}"
+                       th:text="${v.externalId}">CVE-XXXX</a>
                 </td>
+
                 <td>
-          <span class="badge"
-                th:classappend="${v.severity != null
-                  ? (v.severity.toString() == 'CRITICAL'
-                      ? ' badge--sev-critical'
-                      : (v.severity.toString() == 'HIGH'
-                          ? ' badge--sev-high'
-                          : (v.severity.toString() == 'MEDIUM'
-                              ? ' badge--sev-medium'
-                              : (v.severity.toString() == 'LOW'
-                                  ? ' badge--sev-low'
-                                  : ' badge--sev-none'))))
-                  : ' badge--sev-none'}"
-                th:text="${v.severity != null ? v.severity : 'NONE'}">HIGH</span>
+                    <span class="badge"
+                          th:classappend="' badge--sev-' + ${v.severity != null ? v.severity.toString().toLowerCase() : 'none'}"
+                          th:text="${v.severity != null ? v.severity : 'NONE'}">
+                    </span>
                 </td>
+
                 <td class="muted"
                     th:text="${(v.cvssVersion != null ? v.cvssVersion : '-') + ' / ' + (v.cvssScore != null ? v.cvssScore : '-')}">
-                    3.1 / 7.5
                 </td>
+
+                <!-- ✅ description 表示（改行保持 + 省略表示） -->
                 <td>
-                    <div th:text="${v.title != null ? v.title : '-'}">title</div>
+                    <div class="muted vuln-desc" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; text-overflow:ellipsis; line-height:1.4em; max-height:2.8em; font-size:13px;"
+                         th:text="${v.description != null ? v.description : '-'}"></div>
                 </td>
-                <td class="muted" th:text="${v.lastModifiedAt != null ? v.lastModifiedAt : '-'}">-</td>
+
+                <td class="muted"
+                    th:text="${v.lastModifiedAt != null ? #temporals.format(v.lastModifiedAt, 'yyyy-MM-dd HH:mm') : '-'}">
+                    -
+                </td>
             </tr>
             </tbody>
         </table>
-    </div>
-
-    <div class="card" style="padding:12px; margin-top:12px;" th:if="${vulns.totalPages > 1}">
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-
-            <a class="btn"
-               th:if="${vulns.hasPrevious()}"
-               th:href="@{/vulnerabilities(
-            page=${vulns.number - 1},
-            size=${size},
-            sort=${sort},
-            severity=${severity},
-            minCvss=${minCvss},
-            maxCvss=${maxCvss},
-            includeNoCvss=${includeNoCvss},
-            withCpe=${withCpe},
-            withRange=${withRange}
-         )}">Prev</a>
-
-            <span th:each="p : ${pagerItems}" style="display:inline-flex; gap:6px; align-items:center;">
-        <a class="btn"
-           th:classappend="${p == vulns.number} ? ' active' : ''"
-           th:href="@{/vulnerabilities(
-              page=${p},
-              size=${size},
-              sort=${sort},
-              severity=${severity},
-              minCvss=${minCvss},
-              maxCvss=${maxCvss},
-              includeNoCvss=${includeNoCvss},
-              withCpe=${withCpe},
-              withRange=${withRange}
-           )}"
-           th:text="${p + 1}">1</a>
-      </span>
-
-            <a class="btn"
-               th:if="${vulns.hasNext()}"
-               th:href="@{/vulnerabilities(
-            page=${vulns.number + 1},
-            size=${size},
-            sort=${sort},
-            severity=${severity},
-            minCvss=${minCvss},
-            maxCvss=${maxCvss},
-            includeNoCvss=${includeNoCvss},
-            withCpe=${withCpe},
-            withRange=${withRange}
-         )}">Next</a>
-
-            <span class="muted" style="margin-left:auto;"
-                  th:text="'Page ' + ${vulns.number + 1} + ' / ' + ${vulns.totalPages}">
-        Page 1 / 10
-      </span>
-        </div>
     </div>
 
 </main>
