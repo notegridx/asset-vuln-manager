@@ -17,13 +17,14 @@
 
       <div class="muted" style="margin-top:6px;" th:if="${softwareId != null}">
         Drilldown: softwareId=<b th:text="${softwareId}">1</b>
-        <a th:href="@{/alerts(view='FLAT', status=${status})}" style="margin-left:8px;">Clear</a>
+        <a th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty})}" style="margin-left:8px;">Clear</a>
       </div>
     </div>
 
     <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <span class="pill" th:text="'count: ' + ${#lists.size(alerts)}">count: 0</span>
       <span class="pill" th:text="'status: ' + ${status}">status: OPEN</span>
+      <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}">certainty: ALL</span>
       <span class="pill" th:text="'view: ' + ${view != null ? view : 'FLAT'}">view: FLAT</span>
     </div>
   </div>
@@ -41,15 +42,34 @@
 
           <a class="btn"
              th:classappend="${status != null && status.toString() == 'OPEN'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view=${view}, status='OPEN', softwareId=${softwareId})}">OPEN</a>
+             th:href="@{/alerts(view=${view}, status='OPEN', certainty=${certainty}, softwareId=${softwareId})}">OPEN</a>
 
           <a class="btn"
              th:classappend="${status != null && status.toString() == 'CLOSED'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view=${view}, status='CLOSED', softwareId=${softwareId})}">CLOSED</a>
+             th:href="@{/alerts(view=${view}, status='CLOSED', certainty=${certainty}, softwareId=${softwareId})}">CLOSED</a>
 
           <a class="btn"
              th:classappend="${status != null && status.toString() == 'ALL'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view=${view}, status='ALL', softwareId=${softwareId})}">ALL</a>
+             th:href="@{/alerts(view=${view}, status='ALL', certainty=${certainty}, softwareId=${softwareId})}">ALL</a>
+        </div>
+
+        <span class="muted" style="margin:0 4px;">|</span>
+
+        <!-- Certainty -->
+        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
+          <span class="muted" style="font-size:12px; margin-right:6px;">Certainty</span>
+
+          <a class="btn"
+             th:classappend="${certainty != null && certainty.toString() == 'CONFIRMED'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view=${view}, status=${status}, certainty='CONFIRMED', softwareId=${softwareId})}">CONFIRMED</a>
+
+          <a class="btn"
+             th:classappend="${certainty != null && certainty.toString() == 'UNCONFIRMED'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view=${view}, status=${status}, certainty='UNCONFIRMED', softwareId=${softwareId})}">UNCONFIRMED</a>
+
+          <a class="btn"
+             th:classappend="${certainty == null || certainty.toString() == 'ALL'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view=${view}, status=${status}, certainty='ALL', softwareId=${softwareId})}">ALL</a>
         </div>
 
         <span class="muted" style="margin:0 4px;">|</span>
@@ -60,15 +80,15 @@
 
           <a class="btn"
              th:classappend="${view == null || view == 'FLAT'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='FLAT', status=${status}, softwareId=${softwareId})}">FLAT</a>
+             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">FLAT</a>
 
           <a class="btn"
              th:classappend="${view == 'ASSET'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status=${status}, softwareId=${softwareId})}">Group by Asset</a>
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">Group by Asset</a>
 
           <a class="btn"
              th:classappend="${view == 'SOFTWARE'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='SOFTWARE', status=${status}, softwareId=${softwareId})}">Group by Software</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">Group by Software</a>
         </div>
 
       </div>
@@ -128,7 +148,7 @@
           <div style="margin-top:6px;">
             <a class="btn btn-ghost"
                style="padding:6px 10px; font-size:12px; border-radius:10px;"
-               th:href="@{/alerts(view='FLAT', status=${status}, softwareId=${a.softwareInstall.id})}">
+               th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${a.softwareInstall.id})}">
               Drilldown
             </a>
           </div>

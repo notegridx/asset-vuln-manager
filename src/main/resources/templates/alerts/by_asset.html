@@ -17,6 +17,7 @@
 
     <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <span class="pill" th:text="'status: ' + ${status}">status: OPEN</span>
+      <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}">certainty: ALL</span>
       <span class="pill" th:text="'rows: ' + ${#lists.size(rows)}">rows: 0</span>
       <span class="pill">view: ASSET</span>
     </div>
@@ -35,15 +36,34 @@
 
           <a class="btn"
              th:classappend="${status == 'OPEN'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status='OPEN')}">OPEN</a>
+             th:href="@{/alerts(view='ASSET', status='OPEN', certainty=${certainty})}">OPEN</a>
 
           <a class="btn"
              th:classappend="${status == 'CLOSED'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status='CLOSED')}">CLOSED</a>
+             th:href="@{/alerts(view='ASSET', status='CLOSED', certainty=${certainty})}">CLOSED</a>
 
           <a class="btn"
              th:classappend="${status == 'ALL'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status='ALL')}">ALL</a>
+             th:href="@{/alerts(view='ASSET', status='ALL', certainty=${certainty})}">ALL</a>
+        </div>
+
+        <span class="muted" style="margin:0 4px;">|</span>
+
+        <!-- Certainty -->
+        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
+          <span class="muted" style="font-size:12px; margin-right:6px;">Certainty</span>
+
+          <a class="btn"
+             th:classappend="${certainty != null && certainty.toString() == 'CONFIRMED'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty='CONFIRMED')}">CONFIRMED</a>
+
+          <a class="btn"
+             th:classappend="${certainty != null && certainty.toString() == 'UNCONFIRMED'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty='UNCONFIRMED')}">UNCONFIRMED</a>
+
+          <a class="btn"
+             th:classappend="${certainty == null || certainty.toString() == 'ALL'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty='ALL')}">ALL</a>
         </div>
 
         <span class="muted" style="margin:0 4px;">|</span>
@@ -53,13 +73,13 @@
           <span class="muted" style="font-size:12px; margin-right:6px;">View</span>
 
           <a class="btn"
-             th:href="@{/alerts(view='FLAT', status=${status})}">FLAT</a>
+             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty})}">FLAT</a>
 
           <a class="btn btn-primary"
-             th:href="@{/alerts(view='ASSET', status=${status})}">Group by Asset</a>
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty})}">Group by Asset</a>
 
           <a class="btn"
-             th:href="@{/alerts(view='SOFTWARE', status=${status})}">Group by Software</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty})}">Group by Software</a>
         </div>
 
       </div>
@@ -129,7 +149,7 @@
         <td>
           <a class="btn btn-ghost"
              style="padding:6px 10px; font-size:12px; border-radius:10px;"
-             th:href="@{/alerts(view='FLAT', status=${status}, assetId=${r.assetId})}">
+             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, assetId=${r.assetId})}">
             View rows
           </a>
         </td>

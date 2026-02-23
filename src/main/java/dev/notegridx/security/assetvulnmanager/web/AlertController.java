@@ -1,10 +1,12 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import dev.notegridx.security.assetvulnmanager.domain.Alert;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
 import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import dev.notegridx.security.assetvulnmanager.domain.enums.Severity;
 import dev.notegridx.security.assetvulnmanager.service.AlertService;
@@ -22,6 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Controller
 public class AlertController {
 
+	private static final Set<String> ALLOWED_CERTAINTY = Set.of("ALL", "CONFIRMED", "UNCONFIRMED");
+
 	private final AlertService alertService;
 
 	public AlertController(AlertService alertService) {
@@ -32,18 +36,24 @@ public class AlertController {
 	public String list(
 			@RequestParam(name = "status", required = false) String status,
 			@RequestParam(name = "view", defaultValue = "FLAT") String view,
+			@RequestParam(name = "certainty", required = false) String certainty,
 			@RequestParam(name = "assetId", required = false) Long assetId,
 			@RequestParam(name = "softwareId", required = false) Long softwareId,
 			Model model
 	) {
 		String v = (view == null) ? "FLAT" : view.trim().toUpperCase(Locale.ROOT);
 		String effective = (status == null) ? "OPEN" : status.trim().toUpperCase(Locale.ROOT);
+		String c = normalizeCertainty(certainty);
 
 		// 取得（ALL/OPEN/CLOSED + drilldown）
 		List<Alert> alerts = alertService.list(effective, assetId, softwareId);
 
+		// Phase 1: DB変更なしでin-memory filter（null certainty は CONFIRMED 扱い）
+		alerts = applyCertaintyFilter(alerts, c);
+
 		model.addAttribute("status", effective);
 		model.addAttribute("view", v);
+		model.addAttribute("certainty", c);
 		model.addAttribute("assetId", assetId);
 		model.addAttribute("softwareId", softwareId);
 
@@ -63,18 +73,52 @@ public class AlertController {
 	@GetMapping("/alerts/by-software")
 	public String bySoftware(
 			@RequestParam(name = "status", required = false) String status,
+			@RequestParam(name = "certainty", required = false) String certainty,
 			Model model
 	) {
 		String effective = (status == null) ? "OPEN" : status.trim().toUpperCase(Locale.ROOT);
+		String c = normalizeCertainty(certainty);
+
 		List<Alert> alerts = alertService.list(effective, null, null);
+		alerts = applyCertaintyFilter(alerts, c);
 
 		model.addAttribute("rows", buildSoftwareRows(alerts));
 		model.addAttribute("status", effective);
 		model.addAttribute("view", "SOFTWARE");
+		model.addAttribute("certainty", c);
 		model.addAttribute("assetId", null);
 		model.addAttribute("softwareId", null);
 
 		return "alerts/by_software";
+	}
+
+	// -------------------------
+	// Certainty filter (Phase 1: in-memory)
+	// -------------------------
+
+	private static String normalizeCertainty(String certainty) {
+		String c = (certainty == null) ? "ALL" : certainty.trim().toUpperCase(Locale.ROOT);
+		return ALLOWED_CERTAINTY.contains(c) ? c : "ALL";
+	}
+
+	/**
+	 * certainty=CONFIRMED: DB上 null も CONFIRMED 扱い（既存UIの表示と整合）
+	 */
+	private static List<Alert> applyCertaintyFilter(List<Alert> alerts, String certaintyKey) {
+		if (alerts == null || alerts.isEmpty()) return alerts;
+		if (certaintyKey == null || "ALL".equals(certaintyKey)) return alerts;
+
+		if ("UNCONFIRMED".equals(certaintyKey)) {
+			return alerts.stream()
+					.filter(a -> a.getCertainty() == AlertCertainty.UNCONFIRMED)
+					.toList();
+		}
+		if ("CONFIRMED".equals(certaintyKey)) {
+			return alerts.stream()
+					.filter(a -> a.getCertainty() == null || a.getCertainty() == AlertCertainty.CONFIRMED)
+					.toList();
+		}
+		return alerts;
 	}
 
 	// -------------------------
@@ -113,7 +157,7 @@ public class AlertController {
 				if (sevRank(s) > sevRank(top)) top = s;
 			}
 
-			var lastSeen = list.stream()
+			LocalDateTime lastSeen = list.stream()
 					.map(Alert::getLastSeenAt)
 					.filter(Objects::nonNull)
 					.max(Comparator.naturalOrder())
@@ -178,7 +222,7 @@ public class AlertController {
 				if (sevRank(s) > sevRank(top)) top = s;
 			}
 
-			var lastSeen = list.stream()
+			LocalDateTime lastSeen = list.stream()
 					.map(Alert::getLastSeenAt)
 					.filter(Objects::nonNull)
 					.max(Comparator.naturalOrder())
@@ -226,7 +270,7 @@ public class AlertController {
 			int medium,
 			int low,
 			int none,
-			Object lastSeenAt
+			LocalDateTime lastSeenAt
 	) {}
 
 	public record SoftwareAggRow(
@@ -243,7 +287,7 @@ public class AlertController {
 			int medium,
 			int low,
 			int none,
-			Object lastSeenAt
+			LocalDateTime lastSeenAt
 	) {}
 
 	// --- detail/close（既存）---
