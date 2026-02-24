@@ -6,76 +6,92 @@
 <body th:replace="~{layout/base :: layout('Asset Details', 'assets', ~{::main})}">
 <main>
 
-  <div class="actions">
-    <h1 style="margin:0;">Asset Details</h1>
-    <a th:href="@{/assets}"><- Back to inventory</a>
-  </div>
+    <div class="actions">
+        <h1 style="margin:0;">Asset Details</h1>
+        <a th:href="@{/assets}"><- Back to inventory</a>
+    </div>
 
-  <p class="muted" style="margin-top:6px;">
-    Review installed software for this asset. Software entries are used to match against CVEs and generate alerts.
-  </p>
+    <p class="muted" style="margin-top:6px;">
+        Review installed software for this asset. Software entries are used to match against CVEs and generate alerts.
+    </p>
 
-  <div class="kv" style="margin-top:12px;">
-    <b>Asset ID</b> <span th:text="${asset.id}">1</span>
-    <b>Asset Name</b> <span th:text="${asset.name}">Example</span>
-  </div>
+    <div class="kv" style="margin-top:12px;">
+        <b>Asset ID</b> <span th:text="${asset.id}">1</span>
+        <b>Asset Name</b> <span th:text="${asset.name}">Example</span>
+    </div>
 
-  <hr/>
+    <hr/>
 
-  <div class="actions">
-    <h2 style="margin:0;">Installed Software</h2>
-    <a th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
-  </div>
+    <div class="actions">
+        <h2 style="margin:0;">Installed Software</h2>
+        <a th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
+    </div>
 
-  <p class="muted" style="margin-top:6px;">
-    Tip: If CPE is blank, you can map vendor/product via <b>Data → Review Product Mapping</b> to improve matching accuracy.
-  </p>
+    <p class="muted" style="margin-top:6px;">
+        Tip: If CPE is blank, you can map vendor/product via <b>Data → Review Product Mapping</b> to improve matching
+        accuracy.
+    </p>
 
-  <table>
-    <thead>
-    <tr>
-      <th style="width: 80px;">ID</th>
-      <th style="width: 180px;">Vendor</th>
-      <th style="width: 260px;">Product</th>
-      <th style="width: 140px;">Installed Version</th>
-      <th>CPE 2.3 Name</th>
-      <th style="width: 90px;">Action</th>
-    </tr>
-    </thead>
+    <table>
+        <thead>
+        <tr>
+            <th style="width: 80px;">ID</th>
+            <th style="width: 180px;">Vendor</th>
+            <th style="width: 260px;">Product</th>
+            <th style="width: 140px;">Installed Version</th>
+            <th>CPE 2.3 Name</th>
+            <th style="width: 90px;">Action</th>
+        </tr>
+        </thead>
 
-    <tbody>
-    <tr th:if="${#lists.isEmpty(installs)}">
-      <td colspan="6" class="muted">
-        No software registered for this asset yet. Add installed software to enable vulnerability matching.
-      </td>
-    </tr>
+        <tbody>
+        <tr th:if="${#lists.isEmpty(installs)}">
+            <td colspan="6" class="muted">
+                No software registered for this asset yet. Add installed software to enable vulnerability matching.
+            </td>
+        </tr>
 
-    <tr th:each="s : ${installs}">
-      <td th:text="${s.id}">1</td>
+        <tr th:each="s : ${installs}">
+            <td th:text="${s.id}">1</td>
 
-      <td th:text="${s.vendor != null && !#strings.isEmpty(s.vendor) ? s.vendor : '-'}">vendor</td>
+            <td th:text="${s.vendor != null && !#strings.isEmpty(s.vendor) ? s.vendor : '-'}">vendor</td>
 
-      <td>
-        <b th:text="${s.product}">product</b>
-      </td>
+            <td>
+                <b th:text="${s.product}">product</b>
+            </td>
 
-      <td th:text="${s.version != null && !#strings.isEmpty(s.version) ? s.version : '(not set)'}">1.0</td>
+            <td th:text="${s.version != null && !#strings.isEmpty(s.version) ? s.version : '(not set)'}">1.0</td>
 
-      <td>
+            <td>
         <span th:if="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
               class="muted"
               th:text="${s.cpeName}">cpe:2.3:...</span>
 
-        <span th:unless="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
-              class="badge badge--unmapped">UNMAPPED (CPE)</span>
-      </td>
+                <span th:unless="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
+                      class="badge badge--unmapped">UNMAPPED (CPE)</span>
+            </td>
 
-      <td>
-        <a th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
-      </td>
-    </tr>
-    </tbody>
-  </table>
+            <td>
+                <div style="display:flex; gap:8px; align-items:center;">
+
+                    <!-- Edit button -->
+                    <a th:href="@{/software/{id}/edit(id=${s.id})}"
+                       class="btn">
+                        Edit
+                    </a>
+
+                    <!-- Delete button -->
+                    <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
+                          onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
+                        <input type="hidden" name="assetId" th:value="${asset.id}">
+                        <button class="btn btn--danger" type="submit">Delete</button>
+                    </form>
+
+                </div>
+            </td>
+        </tr>
+        </tbody>
+    </table>
 
 </main>
 </body>

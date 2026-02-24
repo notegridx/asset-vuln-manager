@@ -18,70 +18,82 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/software")
 public class SoftwareController {
 
-	private final SoftwareInstallRepository softwareInstallRepository;
-	private final SoftwareInstallService softwareInstallService;
+    private final SoftwareInstallRepository softwareInstallRepository;
+    private final SoftwareInstallService softwareInstallService;
 
-	@GetMapping("/{id}/edit")
-	public String editForm(@PathVariable Long id, Model model) {
-		SoftwareInstall s = softwareInstallRepository.findById(id)
-				.orElseThrow(() -> new IllegalArgumentException("SoftwareInstall not found. id=" + id));
+    @PostMapping("/{id}/delete")
+    public String deleteSoftware(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "assetId", required = false) Long assetId
+    ) {
+        softwareInstallService.deleteCascade(id);
+        if (assetId != null) {
+            return "redirect:/assets/" + assetId;
+        }
+        return "redirect:/assets";
+    }
 
-		SoftwareInstallForm form = new SoftwareInstallForm();
-		form.setVendor(s.getVendor());
-		form.setProduct(s.getProduct());
-		form.setVersion(s.getVersion());
-		form.setCpeName(s.getCpeName());
+    @GetMapping("/{id}/edit")
+    public String editForm(@PathVariable Long id, Model model) {
+        SoftwareInstall s = softwareInstallRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("SoftwareInstall not found. id=" + id));
 
-		model.addAttribute("softwareInstallForm", form);
-		model.addAttribute("softwareId", s.getId());
-		model.addAttribute("assetId", s.getAsset().getId());
+        SoftwareInstallForm form = new SoftwareInstallForm();
+        form.setVendor(s.getVendor());
+        form.setProduct(s.getProduct());
+        form.setVersion(s.getVersion());
+        form.setCpeName(s.getCpeName());
 
-		return "software/edit";
-	}
+        model.addAttribute("softwareInstallForm", form);
+        model.addAttribute("softwareId", s.getId());
+        model.addAttribute("assetId", s.getAsset().getId());
 
-	@PostMapping("/{id}/edit")
-	public String update(
-			@PathVariable Long id,
-			@Valid @ModelAttribute("softwareInstallForm") SoftwareInstallForm form,
-			BindingResult bindingResult,
-			Model model
-	) {
-		SoftwareInstall s = softwareInstallRepository.findById(id)
-				.orElseThrow(() -> new IllegalArgumentException("SoftwareInstall not found. id=" + id));
+        return "software/edit";
+    }
 
-		if (bindingResult.hasErrors()) {
-			model.addAttribute("softwareId", s.getId());
-			model.addAttribute("assetId", s.getAsset().getId());
-			return "software/edit";
-		}
+    @PostMapping("/{id}/edit")
+    public String update(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("softwareInstallForm") SoftwareInstallForm form,
+            BindingResult bindingResult,
+            Model model
+    ) {
+        SoftwareInstall s = softwareInstallRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("SoftwareInstall not found. id=" + id));
 
-		try {
-			softwareInstallService.updateDetails(
-					id,
-					form.getVendor(),
-					form.getProduct(),
-					form.getVersion(),
-					form.getCpeName()
-			);
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("softwareId", s.getId());
+            model.addAttribute("assetId", s.getAsset().getId());
+            return "software/edit";
+        }
 
-		} catch (DictionaryValidationException e) {
-			// vendor / product のどちらで落ちてもフォームに表示できる
-			bindingResult.rejectValue(
-					e.getField(),
-					e.getCode().name(),
-					e.getMessage()
-			);
-			model.addAttribute("softwareId", s.getId());
-			model.addAttribute("assetId", s.getAsset().getId());
-			return "software/edit";
+        try {
+            softwareInstallService.updateDetails(
+                    id,
+                    form.getVendor(),
+                    form.getProduct(),
+                    form.getVersion(),
+                    form.getCpeName()
+            );
 
-		} catch (DataIntegrityViolationException e) {
-			bindingResult.reject("duplicate", "This software is already registered for this asset.");
-			model.addAttribute("softwareId", s.getId());
-			model.addAttribute("assetId", s.getAsset().getId());
-			return "software/edit";
-		}
+        } catch (DictionaryValidationException e) {
+            // vendor / product のどちらで落ちてもフォームに表示できる
+            bindingResult.rejectValue(
+                    e.getField(),
+                    e.getCode().name(),
+                    e.getMessage()
+            );
+            model.addAttribute("softwareId", s.getId());
+            model.addAttribute("assetId", s.getAsset().getId());
+            return "software/edit";
 
-		return "redirect:/assets/" + s.getAsset().getId();
-	}
+        } catch (DataIntegrityViolationException e) {
+            bindingResult.reject("duplicate", "This software is already registered for this asset.");
+            model.addAttribute("softwareId", s.getId());
+            model.addAttribute("assetId", s.getAsset().getId());
+            return "software/edit";
+        }
+
+        return "redirect:/assets/" + s.getAsset().getId();
+    }
 }

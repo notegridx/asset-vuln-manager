@@ -2,6 +2,7 @@ package dev.notegridx.security.assetvulnmanager.service;
 
 import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,95 +15,105 @@ import java.util.Locale;
 @Service
 public class SoftwareInstallService {
 
-	public enum DictMode { STRICT, LENIENT }
+    public enum DictMode {STRICT, LENIENT}
 
-	private final SoftwareInstallRepository softwareInstallRepository;
-	private final SoftwareDictionaryValidator dictValidator;
-	private final DictMode dictMode;
+    private final SoftwareInstallRepository softwareInstallRepository;
+    private final AlertRepository alertRepository;
+    private final SoftwareDictionaryValidator dictValidator;
+    private final DictMode dictMode;
 
-	public SoftwareInstallService(
-			SoftwareInstallRepository softwareInstallRepository,
-			SoftwareDictionaryValidator dictValidator,
-			@Value("${app.software.dict-mode:LENIENT}") String dictMode
-	) {
-		this.softwareInstallRepository = softwareInstallRepository;
-		this.dictValidator = dictValidator;
-		this.dictMode = parseDictMode(dictMode);
-	}
+    public SoftwareInstallService(
+            SoftwareInstallRepository softwareInstallRepository,
+            AlertRepository alertRepository,
+            SoftwareDictionaryValidator dictValidator,
+            @Value("${app.software.dict-mode:LENIENT}") String dictMode
+    ) {
+        this.softwareInstallRepository = softwareInstallRepository;
+        this.alertRepository = alertRepository;
+        this.dictValidator = dictValidator;
+        this.dictMode = parseDictMode(dictMode);
+    }
 
-	private static DictMode parseDictMode(String s) {
-		if (s == null) return DictMode.LENIENT;
-		try {
-			return DictMode.valueOf(s.trim().toUpperCase(Locale.ROOT));
-		} catch (Exception e) {
-			return DictMode.LENIENT;
-		}
-	}
+    @Transactional
+    public void deleteCascade(Long installId) {
+        // alerts -> software_install
+        alertRepository.deleteBySoftwareInstallId(installId);
+        softwareInstallRepository.deleteById(installId);
+    }
 
-	@Transactional(readOnly = true)
-	public List<SoftwareInstall> findByAssetId(Long assetId) {
-		return softwareInstallRepository.findByAssetIdOrderByIdDesc(assetId);
-	}
+    private static DictMode parseDictMode(String s) {
+        if (s == null) return DictMode.LENIENT;
+        try {
+            return DictMode.valueOf(s.trim().toUpperCase(Locale.ROOT));
+        } catch (Exception e) {
+            return DictMode.LENIENT;
+        }
+    }
 
-	@Transactional(readOnly = true)
-	public SoftwareInstall getRequired(Long id) {
-		return softwareInstallRepository.findById(id)
-				.orElseThrow(() -> new EntityNotFoundException("SoftwareInstall not found. id=" + id));
-	}
+    @Transactional(readOnly = true)
+    public List<SoftwareInstall> findByAssetId(Long assetId) {
+        return softwareInstallRepository.findByAssetIdOrderByIdDesc(assetId);
+    }
 
-	@Transactional
-	public SoftwareInstall addToAsset(
-			Asset asset,
-			String vendor,
-			String product,
-			String version,
-			String cpeName
-	) {
-		SoftwareDictionaryValidator.Resolve r;
-		if (dictMode == DictMode.STRICT) {
-			r = dictValidator.resolveOrThrow(vendor, product);
-		} else {
-			r = dictValidator.resolve(vendor, product);
-		}
+    @Transactional(readOnly = true)
+    public SoftwareInstall getRequired(Long id) {
+        return softwareInstallRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("SoftwareInstall not found. id=" + id));
+    }
 
-		SoftwareInstall si = new SoftwareInstall(asset, product);
-		si.updateDetails(vendor, product, version, cpeName);
+    @Transactional
+    public SoftwareInstall addToAsset(
+            Asset asset,
+            String vendor,
+            String product,
+            String version,
+            String cpeName
+    ) {
+        SoftwareDictionaryValidator.Resolve r;
+        if (dictMode == DictMode.STRICT) {
+            r = dictValidator.resolveOrThrow(vendor, product);
+        } else {
+            r = dictValidator.resolve(vendor, product);
+        }
 
-		if (r.hit()) {
-			si.linkCanonical(r.vendorId(), r.productId());
-		} else {
-			// LENIENT時：辞書HITしないなら canonicalリンクは付けない（既存があっても新規はなし）
-			si.unlinkCanonical();
-		}
+        SoftwareInstall si = new SoftwareInstall(asset, product);
+        si.updateDetails(vendor, product, version, cpeName);
 
-		return softwareInstallRepository.save(si);
-	}
+        if (r.hit()) {
+            si.linkCanonical(r.vendorId(), r.productId());
+        } else {
+            // LENIENT時：辞書HITしないなら canonicalリンクは付けない（既存があっても新規はなし）
+            si.unlinkCanonical();
+        }
 
-	@Transactional
-	public SoftwareInstall updateDetails(
-			Long softwareInstallId,
-			String vendor,
-			String product,
-			String version,
-			String cpeName
-	) {
-		SoftwareDictionaryValidator.Resolve r;
-		if (dictMode == DictMode.STRICT) {
-			r = dictValidator.resolveOrThrow(vendor, product);
-		} else {
-			r = dictValidator.resolve(vendor, product);
-		}
+        return softwareInstallRepository.save(si);
+    }
 
-		SoftwareInstall si = getRequired(softwareInstallId);
-		si.updateDetails(vendor, product, version, cpeName);
+    @Transactional
+    public SoftwareInstall updateDetails(
+            Long softwareInstallId,
+            String vendor,
+            String product,
+            String version,
+            String cpeName
+    ) {
+        SoftwareDictionaryValidator.Resolve r;
+        if (dictMode == DictMode.STRICT) {
+            r = dictValidator.resolveOrThrow(vendor, product);
+        } else {
+            r = dictValidator.resolve(vendor, product);
+        }
 
-		if (r.hit()) {
-			si.linkCanonical(r.vendorId(), r.productId());
-		} else {
-			// LENIENT時：入力が変わって辞書に当たらない場合は canonical を外す（古いリンクが残るのを防ぐ）
-			si.unlinkCanonical();
-		}
+        SoftwareInstall si = getRequired(softwareInstallId);
+        si.updateDetails(vendor, product, version, cpeName);
 
-		return softwareInstallRepository.save(si);
-	}
+        if (r.hit()) {
+            si.linkCanonical(r.vendorId(), r.productId());
+        } else {
+            // LENIENT時：入力が変わって辞書に当たらない場合は canonical を外す（古いリンクが残るのを防ぐ）
+            si.unlinkCanonical();
+        }
+
+        return softwareInstallRepository.save(si);
+    }
 }

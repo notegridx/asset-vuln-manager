@@ -6,84 +6,91 @@
 <body th:replace="~{layout/base :: layout('Asset Inventory', 'assets', ~{::main})}">
 <main>
 
-  <!-- Page header (same structure as Alerts/Vulnerabilities unified version) -->
-  <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
-    <div class="page-header__left">
-      <h1>Asset Inventory</h1>
-      <div class="muted" style="margin-top:6px;">
-        Registered assets under monitoring. Click an asset name to view installed software and related alerts.
-      </div>
+    <!-- Page header (same structure as Alerts/Vulnerabilities unified version) -->
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div class="page-header__left">
+            <h1>Asset Inventory</h1>
+            <div class="muted" style="margin-top:6px;">
+                Registered assets under monitoring. Click an asset name to view installed software and related alerts.
+            </div>
+        </div>
+
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="pill" th:text="'Total: ' + ${#lists.size(assets)}">Total: 0</span>
+        </div>
     </div>
 
-    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <span class="pill" th:text="'Total: ' + ${#lists.size(assets)}">Total: 0</span>
-    </div>
-  </div>
+    <!-- Toolbar (actions area, unified) -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="toolbar"
+             style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
 
-  <!-- Toolbar (actions area, unified) -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <div class="toolbar"
-         style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
-
-      <div class="toolbar__left" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <div class="toolbar__left" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
         <span class="muted" style="font-size:12px;">
           Actions
         </span>
-      </div>
+            </div>
 
-      <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <a class="btn" th:href="@{/assets/new}">+ Register new asset</a>
-      </div>
+            <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <a class="btn" th:href="@{/assets/new}">+ Register new asset</a>
+            </div>
 
+        </div>
     </div>
-  </div>
 
-  <!-- Table wrapper (stable start/height) -->
-  <div class="table-wrap">
-    <table style="margin-top:0;">
-      <thead>
-      <tr>
-        <th style="width: 80px;">ID</th>
-        <th style="width: 170px;">External ID</th>
-        <th style="width: 260px;">Asset Name</th>
-        <th style="width: 160px;">Asset Type</th>
-        <th style="width: 180px;">Owner</th>
-        <th>Notes</th>
-        <th style="width: 190px;">Last Updated</th>
-      </tr>
-      </thead>
+    <!-- Table wrapper (stable start/height) -->
+    <div class="table-wrap">
+        <table style="margin-top:0;">
+            <thead>
+            <tr>
+                <th style="width: 80px;">ID</th>
+                <th style="width: 170px;">External ID</th>
+                <th style="width: 260px;">Asset Name</th>
+                <th style="width: 160px;">Asset Type</th>
+                <th style="width: 180px;">Owner</th>
+                <th>Notes</th>
+                <th style="width: 190px;">Last Updated</th>
+            </tr>
+            </thead>
 
-      <tbody>
-      <tr th:if="${#lists.isEmpty(assets)}">
-        <td colspan="7" class="muted">
-          No assets registered yet. Start by registering your first asset.
-        </td>
-      </tr>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(assets)}">
+                <td colspan="7" class="muted">
+                    No assets registered yet. Start by registering your first asset.
+                </td>
+            </tr>
 
-      <tr th:each="a : ${assets}">
-        <td th:text="${a.id}">1</td>
+            <tr th:each="a : ${assets}">
+                <td th:text="${a.id}">1</td>
 
-        <td>
-          <span th:text="${a.externalKey != null ? a.externalKey : '-'}">ASSET-001</span>
-        </td>
+                <td>
+                    <span th:text="${a.externalKey != null ? a.externalKey : '-'}">ASSET-001</span>
+                </td>
 
-        <td>
-          <a th:href="@{/assets/{id}(id=${a.id})}" th:text="${a.name}">Example</a>
-        </td>
+                <td>
+                    <a th:href="@{/assets/{id}(id=${a.id})}" th:text="${a.name}">Example</a>
+                </td>
 
-        <td th:text="${a.assetType != null ? a.assetType : '-'}">server</td>
+                <td th:text="${a.assetType != null ? a.assetType : '-'}">server</td>
 
-        <td th:text="${a.owner != null ? a.owner : '-'}">owner</td>
+                <td th:text="${a.owner != null ? a.owner : '-'}">owner</td>
 
-        <td class="muted">
-          <span th:text="${a.note != null ? a.note : ''}"></span>
-        </td>
+                <td class="muted">
+                    <span th:text="${a.note != null ? a.note : ''}"></span>
+                </td>
 
-        <td th:text="${a.updatedAt}">2026-02-16T08:00</td>
-      </tr>
-      </tbody>
-    </table>
-  </div>
+                <td th:text="${a.updatedAt}">2026-02-16T08:00</td>
+                <td>
+                    <form th:action="@{/assets/{id}/delete(id=${a.id})}" method="post"
+                          onsubmit="return confirm('Delete this asset? This will also delete installed software and related alerts.');">
+                        <button class="btn btn--danger" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
 
 </main>
 </body>

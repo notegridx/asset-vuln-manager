@@ -9,6 +9,9 @@ import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import org.springframework.data.jpa.repository.Query;
 
 public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall, Long> {
+    List<SoftwareInstall> findByAssetIdOrderByIdAsc(Long assetId);
+
+    long deleteByAssetId(Long assetId);
 
     List<SoftwareInstall> findByCpeNameIsNotNull();
 
@@ -32,9 +35,9 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
     List<SoftwareInstall> findNeedsNormalization();
 
     @Query("""
-           select count(s)
-           from SoftwareInstall s
-           where s.cpeName is null or trim(s.cpeName) = ''
-           """)
+            select count(s)
+            from SoftwareInstall s
+            where s.cpeName is null or trim(s.cpeName) = ''
+            """)
     long countUnmappedCpe();
 }
