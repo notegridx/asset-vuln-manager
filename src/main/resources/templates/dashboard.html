@@ -7,7 +7,8 @@
 <main>
 
     <!-- Page Header (unified) -->
-    <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
         <div class="page-header__left">
             <h1>Dashboard</h1>
             <div class="muted" style="margin-top:6px;">
@@ -129,6 +130,20 @@
             <span class="muted">rows</span>
         </div>
 
+        <div class="k">CPE Dictionary (Vendors)</div>
+        <div class="v">
+            <span class="pill" th:text="${cpeVendors}">0</span>
+            <span class="muted">loaded</span>
+            <span style="margin-left:10px;"><a th:href="@{/admin/cpe/sync}">Update</a></span>
+        </div>
+
+        <div class="k">CPE Dictionary (Products)</div>
+        <div class="v">
+            <span class="pill" th:text="${cpeProducts}">0</span>
+            <span class="muted">loaded</span>
+            <span style="margin-left:10px;"><a th:href="@{/admin/cpe/sync}">Update</a></span>
+        </div>
+
         <div class="k">Vulnerabilities</div>
         <div class="v">
             <span class="pill" th:text="${vulns}">0</span>
@@ -202,7 +217,9 @@
                            th:text="${v.externalId}">CVE-XXXX-YYYY</a>
                     </td>
                     <td th:text="${v.cvssScore != null ? v.cvssScore : '-'}">-</td>
-                    <td th:text="${v.lastModifiedAt != null ? #temporals.format(v.lastModifiedAt, 'yyyy-MM-dd HH:mm') : '-'}">-</td>
+                    <td th:text="${v.lastModifiedAt != null ? #temporals.format(v.lastModifiedAt, 'yyyy-MM-dd HH:mm') : '-'}">
+                        -
+                    </td>
                     <td class="muted" style="font-size:12px;"
                         th:text="${v.description != null ? (v.description.length() > 160 ? v.description.substring(0,160) + '…' : v.description) : ''}">
                         ...

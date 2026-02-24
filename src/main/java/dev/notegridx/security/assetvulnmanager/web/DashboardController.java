@@ -2,10 +2,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
-import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
-import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
-import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
-import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
+import dev.notegridx.security.assetvulnmanager.repository.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,17 +17,23 @@ public class DashboardController {
     private final SoftwareInstallRepository softwareInstallRepository;
     private final VulnerabilityRepository vulnerabilityRepository;
     private final AlertRepository alertRepository;
+    private final CpeVendorRepository cpeVendorRepository;
+    private final CpeProductRepository cpeProductRepository;
 
     public DashboardController(
             AssetRepository assetRepository,
             SoftwareInstallRepository softwareInstallRepository,
             VulnerabilityRepository vulnerabilityRepository,
-            AlertRepository alertRepository
+            AlertRepository alertRepository,
+            CpeVendorRepository cpeVendorRepository,
+            CpeProductRepository cpeProductRepository
     ) {
         this.assetRepository = assetRepository;
         this.softwareInstallRepository = softwareInstallRepository;
         this.vulnerabilityRepository = vulnerabilityRepository;
         this.alertRepository = alertRepository;
+        this.cpeVendorRepository = cpeVendorRepository;
+        this.cpeProductRepository = cpeProductRepository;
     }
 
     @GetMapping("/")
@@ -49,11 +52,16 @@ public class DashboardController {
         // “UNMAPPED (CPE)” の件数。Alerts一覧でも cpeName null/empty を UNMAPPED 表示しているので同条件で揃える【turn10file11†52_alerts 3038ede1588c80c38a77f3c6776ba1e7.md†L64-L71】。
         long unmappedInstalls = softwareInstallRepository.countUnmappedCpe();
 
+        long cpeVendors = cpeVendorRepository.count();
+        long cpeProducts = cpeProductRepository.count();
+
         model.addAttribute("assets", assets);
         model.addAttribute("installs", installs);
         model.addAttribute("vulns", vulns);
         model.addAttribute("openAlerts", openAlerts);
         model.addAttribute("unmappedInstalls", unmappedInstalls);
+        model.addAttribute("cpeVendors", cpeVendors);
+        model.addAttribute("cpeProducts", cpeProducts);
 
         long criticalNoCpeCount = vulnerabilityRepository.countCriticalWithoutAffectedCpes();
         List<Vulnerability> criticalNoCpe = vulnerabilityRepository
