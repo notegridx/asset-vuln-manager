@@ -19,6 +19,7 @@ import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityAffectedCpe;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertMatchMethod;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertUncertainReason;
+import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
@@ -48,7 +49,9 @@ public class MatchingService {
 
 	@Transactional
 	public MatchResult matchAndUpsertAlerts() {
-		LocalDateTime now = LocalDateTime.now();
+		// run開始時刻（この時刻以降に touchDetected(now) されなかった OPEN は stale とみなす）
+		LocalDateTime runStartedAt = LocalDateTime.now();
+		LocalDateTime now = runStartedAt;
 
 		int pairsFound = 0;
 		int alertsInserted = 0;
@@ -236,6 +239,13 @@ public class MatchingService {
 				}
 			}
 		}
+
+		// ---- 追加: stale OPEN を自動クローズ（理由つき）----
+		int autoClosed = alertRepository.closeStaleOpenAlerts(
+				runStartedAt,
+				CloseReason.AUTO_CLOSED_NO_LONGER_AFFECTED,
+				LocalDateTime.now()
+		);
 
 		return new MatchResult(pairsFound, alertsInserted, alertsTouched);
 	}
