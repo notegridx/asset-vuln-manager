@@ -13,7 +13,7 @@
     --accent: #8ab4ff;
 
     /* subtle semantic accents (keep the same design language) */
-    --ok: #8ab4ff;      /* reuse accent */
+    --ok: #8ab4ff; /* reuse accent */
     --warn: #ffd37a;
     --danger: #ff9aa5;
     --neutral: #a6adbb; /* muted */
@@ -30,28 +30,41 @@
 }
 
 /* ---- Reset ---- */
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
 
-html, body { height: 100%; }
+html, body {
+    height: 100%;
+}
 
 body {
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    background:
-            radial-gradient(1200px 700px at 20% -10%, rgba(138, 180, 255, 0.12), transparent 40%),
-            radial-gradient(900px 600px at 90% 0%, rgba(255, 211, 122, 0.08), transparent 42%),
-            var(--bg);
+    background: radial-gradient(1200px 700px at 20% -10%, rgba(138, 180, 255, 0.12), transparent 40%),
+    radial-gradient(900px 600px at 90% 0%, rgba(255, 211, 122, 0.08), transparent 42%),
+    var(--bg);
     color: var(--text);
 }
 
 /* ---- Base elements ---- */
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
 
-h1, h2, h3 { margin: 0 0 12px; }
+a:hover {
+    text-decoration: underline;
+}
 
-.muted { color: var(--muted); }
+h1, h2, h3 {
+    margin: 0 0 12px;
+}
+
+.muted {
+    color: var(--muted);
+}
 
 hr {
     border: none;
@@ -159,8 +172,13 @@ main {
     flex-wrap: wrap;
 }
 
-.page-title h1 { margin: 0; }
-.page-title .sub { margin-top: 6px; }
+.page-title h1 {
+    margin: 0;
+}
+
+.page-title .sub {
+    margin-top: 6px;
+}
 
 .kpi {
     display: flex;
@@ -220,7 +238,9 @@ footer {
 }
 
 /* ---- Tables ---- */
-.table-wrap { min-height: 420px; }
+.table-wrap {
+    min-height: 420px;
+}
 
 /* Support both <table> and <table class="table"> */
 :is(table, .table) {
@@ -260,7 +280,9 @@ footer {
     background: rgba(138, 180, 255, 0.06);
 }
 
-:is(table, .table) tr:last-child td { border-bottom: none; }
+:is(table, .table) tr:last-child td {
+    border-bottom: none;
+}
 
 /* Small metadata text inside cells */
 :is(table, .table) td .meta {
@@ -270,7 +292,9 @@ footer {
 }
 
 /* ---- Forms / Fields ---- */
-input, select, textarea, button { font: inherit; }
+input, select, textarea, button {
+    font: inherit;
+}
 
 .field {
     display: grid;
@@ -326,14 +350,20 @@ input, select, textarea, button { font: inherit; }
     border-color: rgba(138, 180, 255, 0.55);
     background: rgba(138, 180, 255, 0.14);
 }
-.btn-primary:hover { background: rgba(138, 180, 255, 0.20); }
 
-.btn-ghost { background: transparent; }
+.btn-primary:hover {
+    background: rgba(138, 180, 255, 0.20);
+}
+
+.btn-ghost {
+    background: transparent;
+}
 
 .btn-danger {
     border-color: rgba(255, 154, 165, 0.55);
     background: rgba(255, 154, 165, 0.10);
 }
+
 .btn-danger:hover {
     background: rgba(255, 154, 165, 0.14);
     border-color: rgba(255, 154, 165, 0.70);
@@ -345,6 +375,7 @@ input, select, textarea, button { font: inherit; }
     border-color: rgba(138, 180, 255, 0.55);
     background: rgba(138, 180, 255, 0.14);
 }
+
 .btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger):hover {
     background: rgba(138, 180, 255, 0.20);
 }
@@ -358,6 +389,59 @@ input, select, textarea, button { font: inherit; }
     color: var(--muted);
     font-size: 12px;
     white-space: nowrap;
+}
+
+
+/* Dashboard: Open alerts by severity */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+}
+
+@media (max-width: 980px) {
+    .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.stat-card {
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-2);
+    background: rgba(255, 255, 255, 0.01);
+    padding: 12px 12px 10px;
+    text-decoration: none;
+    color: var(--text);
+}
+
+.stat-card:hover {
+    border-color: rgba(138, 180, 255, 0.35);
+    background: rgba(255, 255, 255, 0.02);
+    text-decoration: none;
+}
+
+.stat-card__label {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+}
+
+.stat-card__num {
+    margin-top: 6px;
+    font-size: 28px; /* 数値を大きく */
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.stat-card--critical {
+    border-color: rgba(255, 154, 165, 0.55); /* danger強調 */
+    background: rgba(255, 154, 165, 0.10);
+}
+
+.stat-card--critical:hover {
+    border-color: rgba(255, 154, 165, 0.75);
+    background: rgba(255, 154, 165, 0.14);
 }
 
 .badge {
@@ -378,6 +462,7 @@ input, select, textarea, button { font: inherit; }
     border-color: rgba(138, 180, 255, 0.45);
     background: rgba(138, 180, 255, 0.10);
 }
+
 .badge--status-closed {
     color: var(--muted);
     background: rgba(166, 173, 187, 0.06);
@@ -388,16 +473,19 @@ input, select, textarea, button { font: inherit; }
     color: var(--muted);
     background: rgba(166, 173, 187, 0.06);
 }
+
 .badge--sev-low {
     color: var(--text);
     border-color: rgba(138, 180, 255, 0.40);
     background: rgba(138, 180, 255, 0.08);
 }
+
 .badge--sev-medium {
     color: var(--text);
     border-color: rgba(255, 211, 122, 0.45);
     background: rgba(255, 211, 122, 0.10);
 }
+
 .badge--sev-high,
 .badge--sev-critical {
     color: var(--text);
@@ -421,8 +509,15 @@ input, select, textarea, button { font: inherit; }
     border-radius: var(--radius-2);
     background: rgba(255, 255, 255, 0.01);
 }
-.kv .k { color: var(--muted); font-size: 13px; }
-.kv .v { color: var(--text); }
+
+.kv .k {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.kv .v {
+    color: var(--text);
+}
 
 /* ---- Cards / Empty state ---- */
 .card {
@@ -452,24 +547,58 @@ input, select, textarea, button { font: inherit; }
    ========================================================= */
 
 /* ---- Spacing ---- */
-.m-0 { margin: 0 !important; }
-.my-8 { margin: 8px 0 !important; }
-.my-12 { margin: 12px 0 !important; }
+.m-0 {
+    margin: 0 !important;
+}
 
-.p-0 { padding: 0 !important; }
-.p-12 { padding: 12px !important; }
+.my-8 {
+    margin: 8px 0 !important;
+}
 
-.ml-auto { margin-left: auto !important; }
+.my-12 {
+    margin: 12px 0 !important;
+}
+
+.p-0 {
+    padding: 0 !important;
+}
+
+.p-12 {
+    padding: 12px !important;
+}
+
+.ml-auto {
+    margin-left: auto !important;
+}
 
 /* ---- Sizing / Overflow ---- */
-.overflow-auto { overflow: auto !important; }
+.overflow-auto {
+    overflow: auto !important;
+}
 
-.minw-110 { min-width: 110px !important; }
-.minw-120 { min-width: 120px !important; }
-.minw-130 { min-width: 130px !important; }
-.minw-160 { min-width: 160px !important; }
-.minw-170 { min-width: 170px !important; }
-.minw-190 { min-width: 190px !important; }
+.minw-110 {
+    min-width: 110px !important;
+}
+
+.minw-120 {
+    min-width: 120px !important;
+}
+
+.minw-130 {
+    min-width: 130px !important;
+}
+
+.minw-160 {
+    min-width: 160px !important;
+}
+
+.minw-170 {
+    min-width: 170px !important;
+}
+
+.minw-190 {
+    min-width: 190px !important;
+}
 
 /* ---- Text clamp ---- */
 .line-clamp-2 {
@@ -499,14 +628,30 @@ input, select, textarea, button { font: inherit; }
 }
 
 /* ---- Table header width helpers ---- */
-:is(table, .table) th.col-cve { min-width: 160px; }
-:is(table, .table) th.col-sev { min-width: 110px; }
-:is(table, .table) th.col-cvss { min-width: 120px; }
-:is(table, .table) th.col-desc { min-width: auto; }
-:is(table, .table) th.col-lastmod { min-width: 170px; }
+:is(table, .table) th.col-cve {
+    min-width: 160px;
+}
+
+:is(table, .table) th.col-sev {
+    min-width: 110px;
+}
+
+:is(table, .table) th.col-cvss {
+    min-width: 120px;
+}
+
+:is(table, .table) th.col-desc {
+    min-width: auto;
+}
+
+:is(table, .table) th.col-lastmod {
+    min-width: 170px;
+}
 
 /* ---- Empty row cell padding ---- */
-.cell-empty { padding: 14px; }
+.cell-empty {
+    padding: 14px;
+}
 
 /* ---- Buttons (small) ---- */
 .btn-sm {
@@ -527,37 +672,99 @@ input, select, textarea, button { font: inherit; }
 }
 
 /* ---- Table column width helpers ---- */
-:is(table, .table) th.col-id { width: 84px; }
-:is(table, .table) th.col-status { width: 160px; }
-:is(table, .table) th.col-lastseen { width: 190px; }
+:is(table, .table) th.col-id {
+    width: 84px;
+}
+
+:is(table, .table) th.col-status {
+    width: 160px;
+}
+
+:is(table, .table) th.col-lastseen {
+    width: 190px;
+}
 
 /* ---- Small meta text (replaces inline font-size:12px) ---- */
-.text-12 { font-size: 12px; }
+.text-12 {
+    font-size: 12px;
+}
 
 /* ---- Stack spacing helper ---- */
-.mt-6 { margin-top: 6px !important; }
-.mt-8 { margin-top: 8px !important; }
+.mt-6 {
+    margin-top: 6px !important;
+}
+
+.mt-8 {
+    margin-top: 8px !important;
+}
 
 /* ---- Flex helpers (for toolbars & headers) ---- */
-.flex { display: flex !important; }
-.flex-wrap { flex-wrap: wrap !important; }
-.items-center { align-items: center !important; }
-.items-end { align-items: flex-end !important; }
-.justify-between { justify-content: space-between !important; }
-.justify-start { justify-content: flex-start !important; }
+.flex {
+    display: flex !important;
+}
 
-.gap-6 { gap: 6px !important; }
-.gap-8 { gap: 8px !important; }
-.gap-10 { gap: 10px !important; }
-.gap-14 { gap: 14px !important; }
-.gap-16 { gap: 16px !important; }
+.flex-wrap {
+    flex-wrap: wrap !important;
+}
+
+.items-center {
+    align-items: center !important;
+}
+
+.items-end {
+    align-items: flex-end !important;
+}
+
+.justify-between {
+    justify-content: space-between !important;
+}
+
+.justify-start {
+    justify-content: flex-start !important;
+}
+
+.gap-6 {
+    gap: 6px !important;
+}
+
+.gap-8 {
+    gap: 8px !important;
+}
+
+.gap-10 {
+    gap: 10px !important;
+}
+
+.gap-14 {
+    gap: 14px !important;
+}
+
+.gap-16 {
+    gap: 16px !important;
+}
 
 /* ---- Width helpers for grouped tables ---- */
-:is(table, .table) th.col-120 { width: 120px; }
-:is(table, .table) th.col-160 { width: 160px; }
-:is(table, .table) th.col-170 { width: 170px; }
-:is(table, .table) th.col-190 { width: 190px; }
+:is(table, .table) th.col-120 {
+    width: 120px;
+}
+
+:is(table, .table) th.col-160 {
+    width: 160px;
+}
+
+:is(table, .table) th.col-170 {
+    width: 170px;
+}
+
+:is(table, .table) th.col-190 {
+    width: 190px;
+}
 
 /* ---- Margin helpers ---- */
-.mr-6 { margin-right: 6px !important; }
-.mx-4 { margin: 0 4px !important; }
+.mr-6 {
+    margin-right: 6px !important;
+}
+
+.mx-4 {
+    margin: 0 4px !important;
+}

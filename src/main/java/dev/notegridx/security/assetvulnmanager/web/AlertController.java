@@ -39,23 +39,27 @@ public class AlertController {
 			@RequestParam(name = "certainty", required = false) String certainty,
 			@RequestParam(name = "assetId", required = false) Long assetId,
 			@RequestParam(name = "softwareId", required = false) Long softwareId,
+			@RequestParam(name = "severity", required = false) String severity,
 			Model model
 	) {
 		String v = (view == null) ? "FLAT" : view.trim().toUpperCase(Locale.ROOT);
 		String effective = (status == null) ? "OPEN" : status.trim().toUpperCase(Locale.ROOT);
 		String c = normalizeCertainty(certainty);
+		String sev = normalizeSeverity(severity);
 
 		// 取得（ALL/OPEN/CLOSED + drilldown）
 		List<Alert> alerts = alertService.list(effective, assetId, softwareId);
 
 		// Phase 1: DB変更なしでin-memory filter（null certainty は CONFIRMED 扱い）
 		alerts = applyCertaintyFilter(alerts, c);
+		alerts = applySeverityFilter(alerts, sev);
 
 		model.addAttribute("status", effective);
 		model.addAttribute("view", v);
 		model.addAttribute("certainty", c);
 		model.addAttribute("assetId", assetId);
 		model.addAttribute("softwareId", softwareId);
+		model.addAttribute("severity", sev);
 
 		if ("ASSET".equals(v)) {
 			model.addAttribute("rows", buildAssetRows(alerts));
@@ -324,5 +328,32 @@ public class AlertController {
 
 		alertService.close(id, closeForm.getCloseReason());
 		return "redirect:/alerts/" + id;
+	}
+
+	// -------------------------
+	// Severity Normalization
+	// -------------------------
+
+	private static String normalizeSeverity(String severity) {
+		if (severity == null) return null;
+		try {
+			return Severity.valueOf(severity.toUpperCase(Locale.ROOT)).name();
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
+	}
+
+	private static List<Alert> applySeverityFilter(List<Alert> alerts, String severityKey) {
+		if (severityKey == null) return alerts;
+
+		Severity target = Severity.valueOf(severityKey);
+
+		return alerts.stream()
+				.filter(a -> {
+					if (a.getVulnerability() == null) return false;
+					Severity s = a.getVulnerability().getSeverity();
+					return s == target;
+				})
+				.toList();
 	}
 }

@@ -23,21 +23,36 @@
         </div>
     </div>
 
-    <!-- Toolbar (quick links, unified) -->
+    <!-- OPEN Alerts by Severity (replaces Quick links) -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <div class="toolbar"
              style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
-
             <div class="toolbar__left" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <span class="muted" style="font-size:12px;">Quick links</span>
+                <span class="muted" style="font-size:12px;">Open alerts by severity</span>
             </div>
+        </div>
 
-            <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <a class="btn" th:href="@{/alerts}">Alerts</a>
-                <a class="btn" th:href="@{/assets}">Assets</a>
-                <a class="btn" th:href="@{/admin/import}">CSV Import</a>
-            </div>
-
+        <div class="stat-grid" style="margin-top:10px;">
+            <a class="stat-card stat-card--critical" th:href="@{/alerts(status='OPEN', severity='CRITICAL')}">
+                <div class="stat-card__label">CRITICAL</div>
+                <div class="stat-card__num" th:text="${openAlertsCritical}">0</div>
+            </a>
+            <a class="stat-card" th:href="@{/alerts(status='OPEN', severity='HIGH')}">
+                <div class="stat-card__label">HIGH</div>
+                <div class="stat-card__num" th:text="${openAlertsHigh}">0</div>
+            </a>
+            <a class="stat-card" th:href="@{/alerts(status='OPEN', severity='MEDIUM')}">
+                <div class="stat-card__label">MEDIUM</div>
+                <div class="stat-card__num" th:text="${openAlertsMedium}">0</div>
+            </a>
+            <a class="stat-card" th:href="@{/alerts(status='OPEN', severity='LOW')}">
+                <div class="stat-card__label">LOW</div>
+                <div class="stat-card__num" th:text="${openAlertsLow}">0</div>
+            </a>
+            <a class="stat-card" th:href="@{/alerts(status='OPEN', severity='NONE')}">
+                <div class="stat-card__label">NONE</div>
+                <div class="stat-card__num" th:text="${openAlertsNone}">0</div>
+            </a>
         </div>
     </div>
 
