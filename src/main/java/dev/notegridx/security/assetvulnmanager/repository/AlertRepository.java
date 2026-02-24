@@ -68,4 +68,12 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
             @Param("reason") CloseReason reason,
             @Param("closedAt") LocalDateTime closedAt
     );
+
+    @Query("""
+                select a.softwareInstall.id, count(a)
+                from Alert a
+                where a.softwareInstall.id in :ids
+                group by a.softwareInstall.id
+            """)
+    List<Object[]> countBySoftwareInstallIds(@Param("ids") List<Long> ids);
 }

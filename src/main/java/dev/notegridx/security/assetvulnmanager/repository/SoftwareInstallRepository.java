@@ -3,10 +3,14 @@ package dev.notegridx.security.assetvulnmanager.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall, Long> {
     List<SoftwareInstall> findByAssetIdOrderByIdAsc(Long assetId);
@@ -40,4 +44,28 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             where s.cpeName is null or trim(s.cpeName) = ''
             """)
     long countUnmappedCpe();
+
+    @EntityGraph(attributePaths = {"asset"})
+    @Query("""
+            select s from SoftwareInstall s
+            where (:assetId is null or s.asset.id = :assetId)
+              and (
+                    :q is null or :q = ''
+                    or lower(coalesce(s.vendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.product, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.version, '')) like lower(concat('%', :q, '%'))
+                  )
+              and (
+                    :unmappedCpe is null
+                    or (:unmappedCpe = true and (s.cpeName is null or trim(s.cpeName) = ''))
+                    or (:unmappedCpe = false and (s.cpeName is not null and trim(s.cpeName) <> ''))
+                  )
+            order by s.id desc
+            """)
+    Page<SoftwareInstall> searchPaged(
+            @Param("assetId") Long assetId,
+            @Param("q") String q,
+            @Param("unmappedCpe") Boolean unmappedCpe,
+            Pageable pageable
+    );
 }
