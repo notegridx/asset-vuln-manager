@@ -6,16 +6,16 @@
 <body th:replace="~{layout/base :: layout('Alerts by Asset', 'alerts', ~{::main})}">
 <main>
 
-  <!-- Page Header (unified with other pages: inline layout) -->
-  <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  <!-- Page Header -->
+  <div class="page-header flex items-end justify-between gap-16 flex-wrap">
     <div class="page-header__left">
       <h1>Alerts (Grouped by Asset)</h1>
-      <div class="muted" style="margin-top:6px;">
+      <div class="muted mt-6">
         One row per Asset. View rows opens the flat list filtered by asset.
       </div>
     </div>
 
-    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <div class="page-header__right flex gap-10 items-center flex-wrap">
       <span class="pill" th:text="'status: ' + ${status}">status: OPEN</span>
       <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}">certainty: ALL</span>
       <span class="pill" th:text="'rows: ' + ${#lists.size(rows)}">rows: 0</span>
@@ -23,16 +23,15 @@
     </div>
   </div>
 
-  <!-- Controls (unified: card padding 12px + toolbar layout) -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <div class="toolbar"
-         style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+  <!-- Controls -->
+  <div class="card p-12 my-12">
+    <div class="toolbar flex gap-14 flex-wrap items-center justify-between">
 
-      <div class="toolbar__left" style="display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+      <div class="toolbar__left flex gap-14 flex-wrap items-center">
 
         <!-- Status -->
-        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
-          <span class="muted" style="font-size:12px; margin-right:6px;">Status</span>
+        <div class="actions m-0 justify-start gap-8">
+          <span class="muted text-12 mr-6">Status</span>
 
           <a class="btn"
              th:classappend="${status == 'OPEN'} ? ' btn-primary' : ''"
@@ -47,11 +46,11 @@
              th:href="@{/alerts(view='ASSET', status='ALL', certainty=${certainty})}">ALL</a>
         </div>
 
-        <span class="muted" style="margin:0 4px;">|</span>
+        <span class="muted mx-4">|</span>
 
         <!-- Certainty -->
-        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
-          <span class="muted" style="font-size:12px; margin-right:6px;">Certainty</span>
+        <div class="actions m-0 justify-start gap-8">
+          <span class="muted text-12 mr-6">Certainty</span>
 
           <a class="btn"
              th:classappend="${certainty != null && certainty.toString() == 'CONFIRMED'} ? ' btn-primary' : ''"
@@ -66,11 +65,11 @@
              th:href="@{/alerts(view='ASSET', status=${status}, certainty='ALL')}">ALL</a>
         </div>
 
-        <span class="muted" style="margin:0 4px;">|</span>
+        <span class="muted mx-4">|</span>
 
         <!-- View toggle -->
-        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
-          <span class="muted" style="font-size:12px; margin-right:6px;">View</span>
+        <div class="actions m-0 justify-start gap-8">
+          <span class="muted text-12 mr-6">View</span>
 
           <a class="btn"
              th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty})}">FLAT</a>
@@ -84,8 +83,7 @@
 
       </div>
 
-      <!-- Right side reserved (keeps consistent spacing like other pages) -->
-      <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <div class="toolbar__right flex gap-10 items-center flex-wrap">
         <!-- intentionally empty -->
       </div>
 
@@ -94,23 +92,23 @@
 
   <!-- Table -->
   <div class="table-wrap">
-    <table style="margin-top:0;">
+    <table class="table m-0">
       <thead>
       <tr>
         <th>Asset</th>
-        <th style="width:120px;">Softwares</th>
-        <th style="width:120px;">Alerts</th>
-        <th style="width:160px;">Top Severity</th>
+        <th class="col-120">Softwares</th>
+        <th class="col-120">Alerts</th>
+        <th class="col-160">Top Severity</th>
         <th>Breakdown</th>
-        <th style="width:190px;">Last Seen</th>
-        <th style="width:160px;">Actions</th>
+        <th class="col-190">Last Seen</th>
+        <th class="col-160">Actions</th>
       </tr>
       </thead>
 
       <tbody>
       <!-- Empty state -->
       <tr th:if="${#lists.isEmpty(rows)}">
-        <td colspan="7" class="muted">
+        <td colspan="7" class="muted cell-empty">
           No grouped rows found for the selected status.
         </td>
       </tr>
@@ -118,7 +116,7 @@
       <tr th:each="r : ${rows}">
         <td>
           <div><b th:text="${r.assetName}">asset</b></div>
-          <div class="muted" style="font-size:12px;" th:text="'assetId: ' + ${r.assetId}">assetId</div>
+          <div class="muted text-12" th:text="'assetId: ' + ${r.assetId}">assetId</div>
         </td>
 
         <td th:text="${r.softwareCount}">0</td>
@@ -136,19 +134,18 @@
                 th:text="${r.topSeverity != null ? r.topSeverity : 'NONE'}">NONE</span>
         </td>
 
-        <td class="muted" style="font-size:12px;">
-          <span th:text="'CRIT ' + ${r.critical}">CRIT 0</span>
-          <span th:text="' / HIGH ' + ${r.high}">/ HIGH 0</span>
-          <span th:text="' / MED ' + ${r.medium}">/ MED 0</span>
-          <span th:text="' / LOW ' + ${r.low}">/ LOW 0</span>
-          <span th:text="' / NONE ' + ${r.none}">/ NONE 0</span>
+        <td class="muted text-12">
+          CRIT <span th:text="${r.critical}">0</span>
+          / HIGH <span th:text="${r.high}">0</span>
+          / MED <span th:text="${r.medium}">0</span>
+          / LOW <span th:text="${r.low}">0</span>
+          / NONE <span th:text="${r.none}">0</span>
         </td>
 
         <td th:text="${r.lastSeenAt}">-</td>
 
         <td>
-          <a class="btn btn-ghost"
-             style="padding:6px 10px; font-size:12px; border-radius:10px;"
+          <a class="btn btn-ghost btn-sm"
              th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, assetId=${r.assetId})}">
             View rows
           </a>

@@ -7,16 +7,16 @@
 <main>
 
     <div class="actions">
-        <!-- ✅ h1 を Vulnerabilities に戻す -->
-        <h1 style="margin: 0;">Vulnerabilities</h1>
+        <h1 class="m-0">Vulnerabilities</h1>
         <a class="btn" th:href="@{/vulnerabilities}">Clear</a>
     </div>
 
-    <!-- ===== フィルタフォーム（変更なし） ===== -->
-    <form method="get" th:action="@{/vulnerabilities}" class="card" style="padding:12px; margin:12px 0;">
-        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+    <!-- ===== Filters ===== -->
+    <form method="get" th:action="@{/vulnerabilities}" class="card p-12 my-12">
+        <!-- use toolbar rhythm (same as .toolbar .form-row) -->
+        <div class="form-row">
 
-            <div class="field" style="min-width: 160px;">
+            <div class="field minw-160">
                 <label>Sort</label>
                 <select name="sort">
                     <option value="LAST_MODIFIED" th:selected="${sort == 'LAST_MODIFIED'}">Last Modified</option>
@@ -25,7 +25,7 @@
                 </select>
             </div>
 
-            <div class="field" style="min-width: 160px;">
+            <div class="field minw-160">
                 <label>Severity</label>
                 <select name="severity">
                     <option value="" th:selected="${severity == ''}">All</option>
@@ -37,17 +37,17 @@
                 </select>
             </div>
 
-            <div class="field" style="min-width: 130px;">
+            <div class="field minw-130">
                 <label>Min CVSS</label>
                 <input type="number" name="minCvss" step="0.1" min="0" max="10" th:value="${minCvss}">
             </div>
 
-            <div class="field" style="min-width: 130px;">
+            <div class="field minw-130">
                 <label>Max CVSS</label>
                 <input type="number" name="maxCvss" step="0.1" min="0" max="10" th:value="${maxCvss}">
             </div>
 
-            <div class="field" style="min-width: 160px;">
+            <div class="field minw-160">
                 <label>Page size</label>
                 <select name="size">
                     <option value="25" th:selected="${size == 25}">25</option>
@@ -58,7 +58,7 @@
                 </select>
             </div>
 
-            <div class="field" style="min-width: 190px;">
+            <div class="field minw-190">
                 <label>No CVSS rows</label>
                 <select name="includeNoCvss">
                     <option value="true" th:selected="${includeNoCvss}">Include</option>
@@ -66,19 +66,19 @@
                 </select>
             </div>
 
-            <div class="field" style="display:flex; gap:16px; align-items:center; padding-bottom:6px;">
-                <label style="display:flex; gap:8px; align-items:center; margin:0;">
+            <div class="field check-row">
+                <label class="check-label">
                     <input type="checkbox" name="withCpe" value="true" th:checked="${withCpe}">
                     With CPE
                 </label>
 
-                <label style="display:flex; gap:8px; align-items:center; margin:0;">
+                <label class="check-label">
                     <input type="checkbox" name="withRange" value="true" th:checked="${withRange}">
                     With version range
                 </label>
             </div>
 
-            <div class="actions" style="margin-left:auto; gap:10px;">
+            <div class="actions ml-auto">
                 <input type="hidden" name="page" value="0">
                 <button type="submit">Apply</button>
             </div>
@@ -86,25 +86,25 @@
         </div>
     </form>
 
-    <div class="muted" style="margin: 8px 0;">
+    <div class="muted my-8">
         <span th:text="'Total: ' + ${vulns.totalElements} + ' / Pages: ' + ${vulns.totalPages}">Total</span>
     </div>
 
-    <!-- ===== 一覧テーブル ===== -->
-    <div class="card" style="padding:0; overflow:auto;">
+    <!-- ===== Table ===== -->
+    <div class="card p-0 overflow-auto">
         <table class="table">
             <thead>
             <tr>
-                <th style="min-width:160px;">CVE</th>
-                <th style="min-width:110px;">Severity</th>
-                <th style="min-width:120px;">CVSS</th>
-                <th style="min-width:auto;">Description</th> <!-- ✅ Title → Description -->
-                <th style="min-width:170px;">Last Modified</th>
+                <th class="col-cve">CVE</th>
+                <th class="col-sev">Severity</th>
+                <th class="col-cvss">CVSS</th>
+                <th class="col-desc">Description</th>
+                <th class="col-lastmod">Last Modified</th>
             </tr>
             </thead>
             <tbody>
             <tr th:if="${vulns.totalElements == 0}">
-                <td colspan="5" class="muted" style="padding:14px;">No results.</td>
+                <td colspan="5" class="muted cell-empty">No results.</td>
             </tr>
 
             <tr th:each="v : ${vulns.content}">
@@ -124,9 +124,8 @@
                     th:text="${(v.cvssVersion != null ? v.cvssVersion : '-') + ' / ' + (v.cvssScore != null ? v.cvssScore : '-')}">
                 </td>
 
-                <!-- ✅ description 表示（改行保持 + 省略表示） -->
                 <td>
-                    <div class="muted vuln-desc" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; text-overflow:ellipsis; line-height:1.4em; max-height:2.8em; font-size:13px;"
+                    <div class="muted vuln-desc line-clamp-2"
                          th:text="${v.description != null ? v.description : '-'}"></div>
                 </td>
 

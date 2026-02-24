@@ -1,0 +1,563 @@
+/* =========================================================
+   SCAFFOLD
+   - App-wide tokens, reset, base typography, layout shell
+   ========================================================= */
+
+/* ---- Tokens ---- */
+:root {
+    --bg: #0b0d12;
+    --panel: #121826;
+    --text: #e6e8ee;
+    --muted: #a6adbb;
+    --line: #2a3550;
+    --accent: #8ab4ff;
+
+    /* subtle semantic accents (keep the same design language) */
+    --ok: #8ab4ff;      /* reuse accent */
+    --warn: #ffd37a;
+    --danger: #ff9aa5;
+    --neutral: #a6adbb; /* muted */
+
+    /* ===== B2B UI rhythm ===== */
+    --space-1: 8px;
+    --space-2: 12px;
+    --space-3: 16px;
+    --space-4: 20px;
+    --space-5: 28px;
+
+    --radius-1: 12px;
+    --radius-2: 14px;
+}
+
+/* ---- Reset ---- */
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    background:
+            radial-gradient(1200px 700px at 20% -10%, rgba(138, 180, 255, 0.12), transparent 40%),
+            radial-gradient(900px 600px at 90% 0%, rgba(255, 211, 122, 0.08), transparent 42%),
+            var(--bg);
+    color: var(--text);
+}
+
+/* ---- Base elements ---- */
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3 { margin: 0 0 12px; }
+
+.muted { color: var(--muted); }
+
+hr {
+    border: none;
+    border-top: 1px solid rgba(42, 53, 80, 0.65);
+    margin: 16px 0;
+    opacity: 0.9;
+}
+
+/* ---- App shell ---- */
+.container {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-2);
+    background: rgba(18, 24, 38, 0.75);
+    backdrop-filter: blur(6px);
+    position: relative;
+    z-index: 1000; /* dropdown in front of main */
+}
+
+.brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    line-height: 1;
+}
+
+.brand .title {
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.brand .sub {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+nav {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius-1);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.nav-link:hover {
+    border-color: rgba(138, 180, 255, 0.35);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.nav-link.active {
+    border-color: rgba(138, 180, 255, 0.55);
+    color: var(--text);
+    background: rgba(138, 180, 255, 0.10);
+}
+
+main {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: var(--radius-2);
+    border: 1px solid var(--line);
+    background: rgba(18, 24, 38, 0.65);
+    backdrop-filter: blur(6px);
+    position: relative;
+    z-index: 1;
+
+    /* ===== Stable layout (prevents "table jumps") ===== */
+    min-height: 72vh;
+}
+
+/* ---- Page scaffold helpers ---- */
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+/* Title + summary + primary actions (fixed height) */
+.page-header {
+    min-height: 72px; /* prevents vertical shifts across pages */
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.page-title h1 { margin: 0; }
+.page-title .sub { margin-top: 6px; }
+
+.kpi {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Generic actions row (keep existing behavior) */
+.actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+footer {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    opacity: 0.85;
+}
+
+
+/* =========================================================
+   COMPONENTS
+   - Reusable UI pieces: toolbar, table, form fields, buttons,
+     badges, cards, key-value blocks, empty state
+   ========================================================= */
+
+/* ---- Toolbar ---- */
+.toolbar {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-2);
+    background: rgba(255, 255, 255, 0.02);
+    padding: 12px;
+}
+
+/* Keep original selector for existing templates */
+.toolbar .form-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+/* Also support .form-row outside .toolbar (to kill inline styles) */
+.form-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+/* ---- Tables ---- */
+.table-wrap { min-height: 420px; }
+
+/* Support both <table> and <table class="table"> */
+:is(table, .table) {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    margin-top: 10px;
+    overflow: hidden;
+    border-radius: var(--radius-1);
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+:is(table, .table) th,
+:is(table, .table) td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(42, 53, 80, 0.7);
+    vertical-align: top;
+    font-size: 14px;
+    line-height: 1.35;
+}
+
+:is(table, .table) thead th {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 600;
+
+    /* ===== Sticky header for B2B tables ===== */
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    backdrop-filter: blur(6px);
+    background: rgba(18, 24, 38, 0.95);
+}
+
+:is(table, .table) tbody tr:hover {
+    background: rgba(138, 180, 255, 0.06);
+}
+
+:is(table, .table) tr:last-child td { border-bottom: none; }
+
+/* Small metadata text inside cells */
+:is(table, .table) td .meta {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+/* ---- Forms / Fields ---- */
+input, select, textarea, button { font: inherit; }
+
+.field {
+    display: grid;
+    gap: 6px;
+    margin: 12px 0;
+}
+
+.field label {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.field input,
+.field select,
+.field textarea {
+    padding: 10px 12px;
+    border-radius: var(--radius-1);
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text);
+    outline: none;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+    border-color: rgba(138, 180, 255, 0.55);
+}
+
+/* ---- Buttons ---- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: var(--radius-1);
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text);
+    cursor: pointer;
+    text-decoration: none;
+    user-select: none;
+}
+
+.btn:hover {
+    border-color: rgba(138, 180, 255, 0.35);
+    text-decoration: none;
+}
+
+/* Variants (existing class names) */
+.btn-primary {
+    border-color: rgba(138, 180, 255, 0.55);
+    background: rgba(138, 180, 255, 0.14);
+}
+.btn-primary:hover { background: rgba(138, 180, 255, 0.20); }
+
+.btn-ghost { background: transparent; }
+
+.btn-danger {
+    border-color: rgba(255, 154, 165, 0.55);
+    background: rgba(255, 154, 165, 0.10);
+}
+.btn-danger:hover {
+    background: rgba(255, 154, 165, 0.14);
+    border-color: rgba(255, 154, 165, 0.70);
+}
+
+/* Backward compatible:
+   Many pages use only .btn and expect it to look like the "primary-ish" button. */
+.btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger) {
+    border-color: rgba(138, 180, 255, 0.55);
+    background: rgba(138, 180, 255, 0.14);
+}
+.btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger):hover {
+    background: rgba(138, 180, 255, 0.20);
+}
+
+/* ---- Pills / Badges ---- */
+.pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* Status */
+.badge--status-open {
+    color: var(--text);
+    border-color: rgba(138, 180, 255, 0.45);
+    background: rgba(138, 180, 255, 0.10);
+}
+.badge--status-closed {
+    color: var(--muted);
+    background: rgba(166, 173, 187, 0.06);
+}
+
+/* Severity */
+.badge--sev-none {
+    color: var(--muted);
+    background: rgba(166, 173, 187, 0.06);
+}
+.badge--sev-low {
+    color: var(--text);
+    border-color: rgba(138, 180, 255, 0.40);
+    background: rgba(138, 180, 255, 0.08);
+}
+.badge--sev-medium {
+    color: var(--text);
+    border-color: rgba(255, 211, 122, 0.45);
+    background: rgba(255, 211, 122, 0.10);
+}
+.badge--sev-high,
+.badge--sev-critical {
+    color: var(--text);
+    border-color: rgba(255, 154, 165, 0.45);
+    background: rgba(255, 154, 165, 0.10);
+}
+
+.badge--unmapped {
+    color: var(--text);
+    border-color: rgba(255, 211, 122, 0.45);
+    background: rgba(255, 211, 122, 0.10);
+}
+
+/* ---- Key-value blocks ---- */
+.kv {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 8px 14px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-2);
+    background: rgba(255, 255, 255, 0.01);
+}
+.kv .k { color: var(--muted); font-size: 13px; }
+.kv .v { color: var(--text); }
+
+/* ---- Cards / Empty state ---- */
+.card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-2);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.empty-state {
+    padding: 14px;
+    border: 1px dashed rgba(42, 53, 80, 0.9);
+    border-radius: var(--radius-2);
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+/* Vulnerabilities: safe wrapping for long texts */
+.vuln-desc {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+
+/* =========================================================
+   UTILITIES
+   - Small, composable helpers to eliminate inline styles
+   ========================================================= */
+
+/* ---- Spacing ---- */
+.m-0 { margin: 0 !important; }
+.my-8 { margin: 8px 0 !important; }
+.my-12 { margin: 12px 0 !important; }
+
+.p-0 { padding: 0 !important; }
+.p-12 { padding: 12px !important; }
+
+.ml-auto { margin-left: auto !important; }
+
+/* ---- Sizing / Overflow ---- */
+.overflow-auto { overflow: auto !important; }
+
+.minw-110 { min-width: 110px !important; }
+.minw-120 { min-width: 120px !important; }
+.minw-130 { min-width: 130px !important; }
+.minw-160 { min-width: 160px !important; }
+.minw-170 { min-width: 170px !important; }
+.minw-190 { min-width: 190px !important; }
+
+/* ---- Text clamp ---- */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4em;
+    max-height: 2.8em;
+    font-size: 13px;
+}
+
+/* ---- Checkbox rows (filter toolbars) ---- */
+.check-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding-bottom: 6px;
+}
+
+.check-label {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0;
+}
+
+/* ---- Table header width helpers ---- */
+:is(table, .table) th.col-cve { min-width: 160px; }
+:is(table, .table) th.col-sev { min-width: 110px; }
+:is(table, .table) th.col-cvss { min-width: 120px; }
+:is(table, .table) th.col-desc { min-width: auto; }
+:is(table, .table) th.col-lastmod { min-width: 170px; }
+
+/* ---- Empty row cell padding ---- */
+.cell-empty { padding: 14px; }
+
+/* ---- Buttons (small) ---- */
+.btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 10px;
+}
+
+/* ---- Page header modifiers ---- */
+.page-header--bottom {
+    align-items: flex-end;
+}
+
+/* ---- Divider used in toolbars ---- */
+.sep {
+    color: var(--muted);
+    margin: 0 4px;
+}
+
+/* ---- Table column width helpers ---- */
+:is(table, .table) th.col-id { width: 84px; }
+:is(table, .table) th.col-status { width: 160px; }
+:is(table, .table) th.col-lastseen { width: 190px; }
+
+/* ---- Small meta text (replaces inline font-size:12px) ---- */
+.text-12 { font-size: 12px; }
+
+/* ---- Stack spacing helper ---- */
+.mt-6 { margin-top: 6px !important; }
+.mt-8 { margin-top: 8px !important; }
+
+/* ---- Flex helpers (for toolbars & headers) ---- */
+.flex { display: flex !important; }
+.flex-wrap { flex-wrap: wrap !important; }
+.items-center { align-items: center !important; }
+.items-end { align-items: flex-end !important; }
+.justify-between { justify-content: space-between !important; }
+.justify-start { justify-content: flex-start !important; }
+
+.gap-6 { gap: 6px !important; }
+.gap-8 { gap: 8px !important; }
+.gap-10 { gap: 10px !important; }
+.gap-14 { gap: 14px !important; }
+.gap-16 { gap: 16px !important; }
+
+/* ---- Width helpers for grouped tables ---- */
+:is(table, .table) th.col-120 { width: 120px; }
+:is(table, .table) th.col-160 { width: 160px; }
+:is(table, .table) th.col-170 { width: 170px; }
+:is(table, .table) th.col-190 { width: 190px; }
+
+/* ---- Margin helpers ---- */
+.mr-6 { margin-right: 6px !important; }
+.mx-4 { margin: 0 4px !important; }

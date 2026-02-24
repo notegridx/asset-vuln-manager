@@ -2,37 +2,33 @@
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
 
 <head th:replace="~{layout/base :: head('Alerts by Software')}"></head>
-
 <body th:replace="~{layout/base :: layout('Alerts by Software', 'alerts', ~{::main})}">
 <main>
 
-  <!-- Page Header (unified with other pages: inline layout) -->
-  <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
-    <div class="page-header__left">
+  <div class="page-header flex items-end justify-between gap-16 flex-wrap">
+    <div>
       <h1>Alerts (Grouped by Software)</h1>
-      <div class="muted" style="margin-top:6px;">
+      <div class="muted mt-6">
         One row per SoftwareInstall. Drill down to see the raw rows.
       </div>
     </div>
 
-    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <span class="pill" th:text="'status: ' + ${status}">status: OPEN</span>
-      <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}">certainty: ALL</span>
-      <span class="pill" th:text="'rows: ' + ${#lists.size(rows)}">rows: 0</span>
+    <div class="flex gap-10 items-center flex-wrap">
+      <span class="pill" th:text="'status: ' + ${status}"></span>
+      <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}"></span>
+      <span class="pill" th:text="'rows: ' + ${#lists.size(rows)}"></span>
       <span class="pill">view: SOFTWARE</span>
     </div>
   </div>
 
-  <!-- Controls (unified: card padding 12px + toolbar layout) -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <div class="toolbar"
-         style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+  <div class="card p-12 my-12">
+    <div class="toolbar flex items-center justify-between gap-14 flex-wrap">
 
-      <div class="toolbar__left" style="display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+      <div class="flex gap-14 flex-wrap items-center">
 
         <!-- Status -->
-        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
-          <span class="muted" style="font-size:12px; margin-right:6px;">Status</span>
+        <div class="actions m-0 justify-start gap-8">
+          <span class="muted text-12 mr-6">Status</span>
 
           <a class="btn"
              th:classappend="${status != null && status.toString() == 'OPEN'} ? ' btn-primary' : ''"
@@ -47,11 +43,11 @@
              th:href="@{/alerts(view='SOFTWARE', status='ALL', certainty=${certainty})}">ALL</a>
         </div>
 
-        <span class="muted" style="margin:0 4px;">|</span>
+        <span class="muted mx-4">|</span>
 
         <!-- Certainty -->
-        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
-          <span class="muted" style="font-size:12px; margin-right:6px;">Certainty</span>
+        <div class="actions m-0 justify-start gap-8">
+          <span class="muted text-12 mr-6">Certainty</span>
 
           <a class="btn"
              th:classappend="${certainty != null && certainty.toString() == 'CONFIRMED'} ? ' btn-primary' : ''"
@@ -66,11 +62,11 @@
              th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty='ALL')}">ALL</a>
         </div>
 
-        <span class="muted" style="margin:0 4px;">|</span>
+        <span class="muted mx-4">|</span>
 
-        <!-- View toggle -->
-        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
-          <span class="muted" style="font-size:12px; margin-right:6px;">View</span>
+        <!-- View -->
+        <div class="actions m-0 justify-start gap-8">
+          <span class="muted text-12 mr-6">View</span>
 
           <a class="btn"
              th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty})}">FLAT</a>
@@ -83,82 +79,73 @@
         </div>
 
       </div>
-
-      <!-- Right side reserved (keeps consistent spacing like other pages) -->
-      <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <!-- intentionally empty -->
-      </div>
-
     </div>
   </div>
 
-  <!-- Table -->
   <div class="table-wrap">
-    <table style="margin-top:0;">
+    <table class="table m-0">
       <thead>
       <tr>
         <th>Asset</th>
         <th>Software</th>
-        <th style="width:120px;">Alerts</th>
-        <th style="width:160px;">Top Severity</th>
+        <th class="col-120">Alerts</th>
+        <th class="col-160">Top Severity</th>
         <th>Breakdown</th>
-        <th style="width:190px;">Last Seen</th>
-        <th style="width:170px;">Actions</th>
+        <th class="col-190">Last Seen</th>
+        <th class="col-170">Actions</th>
       </tr>
       </thead>
 
       <tbody>
-      <!-- Empty state -->
       <tr th:if="${#lists.isEmpty(rows)}">
-        <td colspan="7" class="muted">
+        <td colspan="7" class="muted cell-empty">
           No grouped rows found for the selected status.
         </td>
       </tr>
 
       <tr th:each="r : ${rows}">
         <td>
-          <div><b th:text="${r.assetName}">asset</b></div>
-          <div class="muted" style="font-size:12px;" th:text="'assetId: ' + ${r.assetId}">assetId</div>
+          <div><b th:text="${r.assetName}"></b></div>
+          <div class="muted text-12" th:text="'assetId: ' + ${r.assetId}"></div>
         </td>
 
         <td>
           <div>
-            <b th:text="${r.product}">product</b>
-            <span class="muted" th:text="${r.version != null && !r.version.isBlank() ? ' ' + r.version : ''}"></span>
+            <b th:text="${r.product}"></b>
+            <span class="muted"
+                  th:text="${r.version != null && !r.version.isBlank() ? ' ' + r.version : ''}"></span>
           </div>
-          <div class="muted" style="font-size:12px;"
+          <div class="muted text-12"
                th:text="${(r.vendor != null ? r.vendor : '') + ' / installId: ' + r.softwareInstallId}">
-            vendor/installId
           </div>
         </td>
 
-        <td th:text="${r.totalAlerts}">0</td>
+        <td th:text="${r.totalAlerts}"></td>
 
         <td>
-          <span class="badge"
-                th:classappend="${r.topSeverity != null
-                      ? (r.topSeverity.toString() == 'CRITICAL' ? ' badge--sev-critical'
-                      : (r.topSeverity.toString() == 'HIGH' ? ' badge--sev-high'
-                      : (r.topSeverity.toString() == 'MEDIUM' ? ' badge--sev-medium'
-                      : (r.topSeverity.toString() == 'LOW' ? ' badge--sev-low'
-                      : ' badge--sev-none'))))
-                      : ' badge--sev-none'}"
-                th:text="${r.topSeverity != null ? r.topSeverity : 'NONE'}">NONE</span>
+        <span class="badge"
+              th:classappend="${r.topSeverity != null
+                    ? (r.topSeverity.toString() == 'CRITICAL' ? ' badge--sev-critical'
+                    : (r.topSeverity.toString() == 'HIGH' ? ' badge--sev-high'
+                    : (r.topSeverity.toString() == 'MEDIUM' ? ' badge--sev-medium'
+                    : (r.topSeverity.toString() == 'LOW' ? ' badge--sev-low'
+                    : ' badge--sev-none'))))
+                    : ' badge--sev-none'}"
+              th:text="${r.topSeverity != null ? r.topSeverity : 'NONE'}"></span>
         </td>
 
-        <td class="muted" style="font-size:12px;">
-          <span th:text="'CRIT ' + ${r.critical}">CRIT 0</span>
-          <span th:text="' / HIGH ' + ${r.high}">/ HIGH 0</span>
-          <span th:text="' / MED ' + ${r.medium}">/ MED 0</span>
-          <span th:text="' / LOW ' + ${r.low}">/ LOW 0</span>
-          <span th:text="' / NONE ' + ${r.none}">/ NONE 0</span>
+        <td class="muted text-12">
+          CRIT <span th:text="${r.critical}"></span>
+          / HIGH <span th:text="${r.high}"></span>
+          / MED <span th:text="${r.medium}"></span>
+          / LOW <span th:text="${r.low}"></span>
+          / NONE <span th:text="${r.none}"></span>
         </td>
 
-        <td th:text="${r.lastSeenAt}">-</td>
+        <td th:text="${r.lastSeenAt}"></td>
 
         <td>
-          <a class="btn btn-ghost"
-             style="padding:6px 10px; font-size:12px; border-radius:10px;"
+          <a class="btn btn-ghost btn-sm"
              th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${r.softwareInstallId})}">
             Drilldown
           </a>

@@ -36,13 +36,11 @@
 
             <div style="margin-top:6px;"
                  th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'MISSING_SOFTWARE_VERSION'}">
-                Software version が未入力のため、version range 判定ができず要確認です。
-            </div>
+                Software version is not specified, so version range evaluation cannot be performed. Manual review is required.            </div>
 
             <div style="margin-top:6px;"
                  th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'UNPARSABLE_SOFTWARE_VERSION'}">
-                Software version の形式が比較ロジックで解釈できず、要確認です。
-            </div>
+                The software version format cannot be interpreted by the comparison logic. Manual review is required.            </div>
 
             <div style="margin-top:6px;"
                  th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'NO_VERSION_CONSTRAINT'}">

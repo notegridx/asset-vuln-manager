@@ -6,22 +6,22 @@
 <body th:replace="~{layout/base :: layout('Alerts', 'alerts', ~{::main})}">
 <main>
 
-  <!-- Page Header (same as other unified pages: inline layout, no data change) -->
-  <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  <!-- Page Header -->
+  <div class="page-header page-header--bottom">
     <div class="page-header__left">
       <h1>Alerts</h1>
 
-      <div class="muted" style="margin-top:6px;">
+      <div class="muted mt-6">
         View alerts. Use grouping to reduce duplicate-looking rows.
       </div>
 
-      <div class="muted" style="margin-top:6px;" th:if="${softwareId != null}">
+      <div class="muted mt-6" th:if="${softwareId != null}">
         Drilldown: softwareId=<b th:text="${softwareId}">1</b>
-        <a th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty})}" style="margin-left:8px;">Clear</a>
+        <a th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty})}" class="ml-auto">Clear</a>
       </div>
     </div>
 
-    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <div class="page-header__right kpi">
       <span class="pill" th:text="'count: ' + ${#lists.size(alerts)}">count: 0</span>
       <span class="pill" th:text="'status: ' + ${status}">status: OPEN</span>
       <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}">certainty: ALL</span>
@@ -29,180 +29,175 @@
     </div>
   </div>
 
-  <!-- Controls (same "card padding 12px" style as other pages) -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <div class="toolbar"
-         style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+  <!-- Controls -->
+  <div class="card p-12 my-12">
+    <div class="toolbar">
+      <div class="form-row flex items-center justify-between">
+        <div class="toolbar__left flex gap-14 flex-wrap items-center">
 
-      <div class="toolbar__left" style="display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+          <!-- Status -->
+          <div class="actions m-0 justify-start gap-8">
+            <span class="muted text-12">Status</span>
 
-        <!-- Status -->
-        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
-          <span class="muted" style="font-size:12px; margin-right:6px;">Status</span>
+            <a class="btn"
+               th:classappend="${status != null && status.toString() == 'OPEN'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status='OPEN', certainty=${certainty}, softwareId=${softwareId})}">OPEN</a>
 
-          <a class="btn"
-             th:classappend="${status != null && status.toString() == 'OPEN'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view=${view}, status='OPEN', certainty=${certainty}, softwareId=${softwareId})}">OPEN</a>
+            <a class="btn"
+               th:classappend="${status != null && status.toString() == 'CLOSED'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status='CLOSED', certainty=${certainty}, softwareId=${softwareId})}">CLOSED</a>
 
-          <a class="btn"
-             th:classappend="${status != null && status.toString() == 'CLOSED'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view=${view}, status='CLOSED', certainty=${certainty}, softwareId=${softwareId})}">CLOSED</a>
+            <a class="btn"
+               th:classappend="${status != null && status.toString() == 'ALL'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status='ALL', certainty=${certainty}, softwareId=${softwareId})}">ALL</a>
+          </div>
 
-          <a class="btn"
-             th:classappend="${status != null && status.toString() == 'ALL'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view=${view}, status='ALL', certainty=${certainty}, softwareId=${softwareId})}">ALL</a>
+          <span class="sep">|</span>
+
+          <!-- Certainty -->
+          <div class="actions m-0 justify-start gap-8">
+            <span class="muted text-12">Certainty</span>
+
+            <a class="btn"
+               th:classappend="${certainty != null && certainty.toString() == 'CONFIRMED'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status=${status}, certainty='CONFIRMED', softwareId=${softwareId})}">CONFIRMED</a>
+
+            <a class="btn"
+               th:classappend="${certainty != null && certainty.toString() == 'UNCONFIRMED'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status=${status}, certainty='UNCONFIRMED', softwareId=${softwareId})}">UNCONFIRMED</a>
+
+            <a class="btn"
+               th:classappend="${certainty == null || certainty.toString() == 'ALL'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status=${status}, certainty='ALL', softwareId=${softwareId})}">ALL</a>
+          </div>
+
+          <span class="sep">|</span>
+
+          <!-- View -->
+          <div class="actions m-0 justify-start gap-8">
+            <span class="muted text-12">View</span>
+
+            <a class="btn"
+               th:classappend="${view == null || view == 'FLAT'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">FLAT</a>
+
+            <a class="btn"
+               th:classappend="${view == 'ASSET'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">Group by Asset</a>
+
+            <a class="btn"
+               th:classappend="${view == 'SOFTWARE'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">Group by Software</a>
+          </div>
         </div>
 
-        <span class="muted" style="margin:0 4px;">|</span>
-
-        <!-- Certainty -->
-        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
-          <span class="muted" style="font-size:12px; margin-right:6px;">Certainty</span>
-
-          <a class="btn"
-             th:classappend="${certainty != null && certainty.toString() == 'CONFIRMED'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view=${view}, status=${status}, certainty='CONFIRMED', softwareId=${softwareId})}">CONFIRMED</a>
-
-          <a class="btn"
-             th:classappend="${certainty != null && certainty.toString() == 'UNCONFIRMED'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view=${view}, status=${status}, certainty='UNCONFIRMED', softwareId=${softwareId})}">UNCONFIRMED</a>
-
-          <a class="btn"
-             th:classappend="${certainty == null || certainty.toString() == 'ALL'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view=${view}, status=${status}, certainty='ALL', softwareId=${softwareId})}">ALL</a>
-        </div>
-
-        <span class="muted" style="margin:0 4px;">|</span>
-
-        <!-- View -->
-        <div class="actions" style="gap:8px; margin:0; justify-content:flex-start;">
-          <span class="muted" style="font-size:12px; margin-right:6px;">View</span>
-
-          <a class="btn"
-             th:classappend="${view == null || view == 'FLAT'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">FLAT</a>
-
-          <a class="btn"
-             th:classappend="${view == 'ASSET'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">Group by Asset</a>
-
-          <a class="btn"
-             th:classappend="${view == 'SOFTWARE'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">Group by Software</a>
-        </div>
-
+        <div class="toolbar__right"></div>
       </div>
-
-      <!-- Right side (reserved; keep layout stable like other pages) -->
-      <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <!-- (intentionally empty) -->
-      </div>
-
     </div>
   </div>
 
-  <!-- Table (same as other pages) -->
-  <div class="table-wrap">
-    <table style="margin-top:0;">
-      <thead>
-      <tr>
-        <th style="width:84px;">ID</th>
-        <th>Asset</th>
-        <th>Software</th>
-        <th>Vulnerability</th>
-        <th style="width:160px;">Status</th>
-        <th style="width:190px;">Last Seen</th>
-      </tr>
-      </thead>
+  <!-- Table -->
+  <div class="card p-0 overflow-auto">
+    <div class="table-wrap">
+      <table class="table m-0">
+        <thead>
+        <tr>
+          <th class="col-id">ID</th>
+          <th>Asset</th>
+          <th>Software</th>
+          <th>Vulnerability</th>
+          <th class="col-status">Status</th>
+          <th class="col-lastseen">Last Seen</th>
+        </tr>
+        </thead>
 
-      <tbody>
-      <!-- Empty state -->
-      <tr th:if="${#lists.isEmpty(alerts)}">
-        <td colspan="6" class="muted">
-          No alerts found for the selected filters.
-        </td>
-      </tr>
+        <tbody>
+        <tr th:if="${#lists.isEmpty(alerts)}">
+          <td colspan="6" class="muted cell-empty">
+            No alerts found for the selected filters.
+          </td>
+        </tr>
 
-      <tr th:each="a : ${alerts}">
-        <td>
-          <a th:href="@{/alerts/{id}(id=${a.id})}" th:text="${a.id}">1</a>
-        </td>
+        <tr th:each="a : ${alerts}">
+          <td>
+            <a th:href="@{/alerts/{id}(id=${a.id})}" th:text="${a.id}">1</a>
+          </td>
 
-        <!-- Asset -->
-        <td>
-          <div th:text="${a.softwareInstall != null && a.softwareInstall.asset != null ? a.softwareInstall.asset.name : '-'}">asset</div>
-          <div class="muted" style="font-size:12px;"
-               th:text="'assetId: ' + ${a.softwareInstall != null && a.softwareInstall.asset != null ? a.softwareInstall.asset.id : '-'}">assetId</div>
-        </td>
+          <!-- Asset -->
+          <td>
+            <div th:text="${a.softwareInstall != null && a.softwareInstall.asset != null ? a.softwareInstall.asset.name : '-'}">asset</div>
+            <div class="muted text-12"
+                 th:text="'assetId: ' + ${a.softwareInstall != null && a.softwareInstall.asset != null ? a.softwareInstall.asset.id : '-'}">assetId</div>
+          </td>
 
-        <!-- Software -->
-        <td>
-          <div>
-            <b th:text="${a.softwareInstall != null ? a.softwareInstall.product : '-'}">product</b>
-            <span class="muted"
-                  th:text="${a.softwareInstall != null && a.softwareInstall.version != null && !a.softwareInstall.version.isBlank() ? ' ' + a.softwareInstall.version : ''}"></span>
-          </div>
-          <div class="muted" style="font-size:12px;"
-               th:text="${a.softwareInstall != null ? (a.softwareInstall.vendor + ' / installId: ' + a.softwareInstall.id) : '-'}">vendor/installId</div>
+          <!-- Software -->
+          <td>
+            <div>
+              <b th:text="${a.softwareInstall != null ? a.softwareInstall.product : '-'}">product</b>
+              <span class="muted"
+                    th:text="${a.softwareInstall != null && a.softwareInstall.version != null && !a.softwareInstall.version.isBlank() ? ' ' + a.softwareInstall.version : ''}"></span>
+            </div>
+            <div class="muted text-12"
+                 th:text="${a.softwareInstall != null ? (a.softwareInstall.vendor + ' / installId: ' + a.softwareInstall.id) : '-'}">vendor/installId</div>
 
-          <div style="margin-top:6px;">
-            <a class="btn btn-ghost"
-               style="padding:6px 10px; font-size:12px; border-radius:10px;"
-               th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${a.softwareInstall.id})}">
-              Drilldown
-            </a>
-          </div>
-        </td>
+            <div class="mt-6">
+              <a class="btn btn-ghost btn-sm"
+                 th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${a.softwareInstall.id})}">
+                Drilldown
+              </a>
+            </div>
+          </td>
 
-        <!-- Vulnerability -->
-        <td>
-          <div>
-            <a th:if="${a.vulnerability != null}"
-               th:href="@{/vulnerabilities/{id}(id=${a.vulnerability.id})}"
-               th:text="${a.vulnerability.externalId}">CVE-XXXX</a>
-            <span th:if="${a.vulnerability == null}">-</span>
-          </div>
+          <!-- Vulnerability -->
+          <td>
+            <div>
+              <a th:if="${a.vulnerability != null}"
+                 th:href="@{/vulnerabilities/{id}(id=${a.vulnerability.id})}"
+                 th:text="${a.vulnerability.externalId}">CVE-XXXX</a>
+              <span th:if="${a.vulnerability == null}">-</span>
+            </div>
 
-          <div class="muted" style="font-size:12px;" th:if="${a.vulnerability != null}"
-               th:text="${a.vulnerability.title != null && !a.vulnerability.title.isBlank() ? a.vulnerability.title : '(no title)'}">title</div>
+            <div class="muted text-12" th:if="${a.vulnerability != null}"
+                 th:text="${a.vulnerability.title != null && !a.vulnerability.title.isBlank() ? a.vulnerability.title : '(no title)'}">title</div>
 
-          <div style="margin-top:6px;">
-            <span class="badge"
-                  th:classappend="${a.vulnerability != null && a.vulnerability.severity != null
-                      ? (a.vulnerability.severity.toString() == 'CRITICAL' ? ' badge--sev-critical'
-                      : (a.vulnerability.severity.toString() == 'HIGH' ? ' badge--sev-high'
-                      : (a.vulnerability.severity.toString() == 'MEDIUM' ? ' badge--sev-medium'
-                      : (a.vulnerability.severity.toString() == 'LOW' ? ' badge--sev-low'
-                      : ' badge--sev-none'))))
-                      : ' badge--sev-none'}"
-                  th:text="${a.vulnerability != null && a.vulnerability.severity != null ? a.vulnerability.severity : 'NONE'}">NONE</span>
-          </div>
-        </td>
+            <div class="mt-6">
+              <span class="badge"
+                    th:classappend="${a.vulnerability != null && a.vulnerability.severity != null
+                        ? (a.vulnerability.severity.toString() == 'CRITICAL' ? ' badge--sev-critical'
+                        : (a.vulnerability.severity.toString() == 'HIGH' ? ' badge--sev-high'
+                        : (a.vulnerability.severity.toString() == 'MEDIUM' ? ' badge--sev-medium'
+                        : (a.vulnerability.severity.toString() == 'LOW' ? ' badge--sev-low'
+                        : ' badge--sev-none'))))
+                        : ' badge--sev-none'}"
+                    th:text="${a.vulnerability != null && a.vulnerability.severity != null ? a.vulnerability.severity : 'NONE'}">NONE</span>
+            </div>
+          </td>
 
-        <!-- Status -->
-        <td>
-          <div class="actions" style="gap:6px; flex-wrap:wrap; margin:0; justify-content:flex-start;">
-            <span class="badge"
-                  th:classappend="${a.status != null && a.status.toString() == 'OPEN' ? ' badge--status-open' : ' badge--status-closed'}"
-                  th:text="${a.status != null ? a.status : '-'}">OPEN</span>
+          <!-- Status -->
+          <td>
+            <div class="actions m-0 justify-start gap-6 flex-wrap">
+              <span class="badge"
+                    th:classappend="${a.status != null && a.status.toString() == 'OPEN' ? ' badge--status-open' : ' badge--status-closed'}"
+                    th:text="${a.status != null ? a.status : '-'}">OPEN</span>
 
-            <span class="badge"
-                  th:classappend="${a.certainty != null && a.certainty.toString() == 'UNCONFIRMED' ? ' badge--sev-medium' : ' badge--sev-low'}"
-                  th:text="${a.certainty != null ? a.certainty : 'CONFIRMED'}">CONFIRMED</span>
-          </div>
+              <span class="badge"
+                    th:classappend="${a.certainty != null && a.certainty.toString() == 'UNCONFIRMED' ? ' badge--sev-medium' : ' badge--sev-low'}"
+                    th:text="${a.certainty != null ? a.certainty : 'CONFIRMED'}">CONFIRMED</span>
+            </div>
 
-          <div class="muted" style="font-size:12px; margin-top:8px;"
-               th:if="${a.status != null && a.status.toString() == 'CLOSED'}">
-            <div th:text="'closeReason: ' + ${a.closeReason != null ? a.closeReason : '-'}">closeReason</div>
-            <div th:text="'closedAt: ' + ${a.closedAt != null ? a.closedAt : '-'}">closedAt</div>
-          </div>
-        </td>
+            <div class="muted text-12 mt-8"
+                 th:if="${a.status != null && a.status.toString() == 'CLOSED'}">
+              <div th:text="'closeReason: ' + ${a.closeReason != null ? a.closeReason : '-'}">closeReason</div>
+              <div th:text="'closedAt: ' + ${a.closedAt != null ? a.closedAt : '-'}">closedAt</div>
+            </div>
+          </td>
 
-        <!-- Last Seen -->
-        <td th:text="${a.lastSeenAt}">2026-02-20T10:00</td>
-      </tr>
-      </tbody>
-    </table>
+          <!-- Last Seen -->
+          <td th:text="${a.lastSeenAt}">2026-02-20T10:00</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </main>

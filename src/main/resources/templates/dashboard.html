@@ -206,8 +206,9 @@
                 <tr>
                     <th style="width:170px;">CVE</th>
                     <th style="width:80px;">CVSS</th>
-                    <th style="width:170px;">Last Modified</th>
                     <th>Description</th>
+                    <th style="width:170px;">Last Modified</th>
+
                 </tr>
                 </thead>
                 <tbody>
@@ -217,13 +218,13 @@
                            th:text="${v.externalId}">CVE-XXXX-YYYY</a>
                     </td>
                     <td th:text="${v.cvssScore != null ? v.cvssScore : '-'}">-</td>
-                    <td th:text="${v.lastModifiedAt != null ? #temporals.format(v.lastModifiedAt, 'yyyy-MM-dd HH:mm') : '-'}">
-                        -
                     </td>
                     <td class="muted" style="font-size:12px;"
                         th:text="${v.description != null ? (v.description.length() > 160 ? v.description.substring(0,160) + '…' : v.description) : ''}">
                         ...
                     </td>
+                    <td th:text="${v.lastModifiedAt != null ? #temporals.format(v.lastModifiedAt, 'yyyy-MM-dd HH:mm') : '-'}">
+                        -
                 </tr>
                 </tbody>
             </table>
