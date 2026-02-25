@@ -17,8 +17,7 @@
 
       <div class="muted mt-6" th:if="${softwareId != null}">
         Drilldown: softwareId=<b th:text="${softwareId}">1</b>
-        <a th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty})}" class="ml-auto">Clear</a>
-      </div>
+        <a th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity})}" class="ml-auto">Clear</a>      </div>
     </div>
 
     <div class="page-header__right kpi">
@@ -26,6 +25,7 @@
       <span class="pill" th:text="'status: ' + ${status}">status: OPEN</span>
       <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}">certainty: ALL</span>
       <span class="pill" th:text="'view: ' + ${view != null ? view : 'FLAT'}">view: FLAT</span>
+      <span class="pill" th:text="'severity: ' + ${severity != null ? severity : 'ALL'}">severity: ALL</span>
     </div>
   </div>
 
@@ -41,18 +41,16 @@
 
             <a class="btn"
                th:classappend="${status != null && status.toString() == 'OPEN'} ? ' btn-primary' : ''"
-               th:href="@{/alerts(view=${view}, status='OPEN', certainty=${certainty}, softwareId=${softwareId})}">OPEN</a>
+               th:href="@{/alerts(view=${view}, status='OPEN', certainty=${certainty}, severity=${severity}, softwareId=${softwareId})}">OPEN</a>
 
             <a class="btn"
                th:classappend="${status != null && status.toString() == 'CLOSED'} ? ' btn-primary' : ''"
-               th:href="@{/alerts(view=${view}, status='CLOSED', certainty=${certainty}, softwareId=${softwareId})}">CLOSED</a>
+               th:href="@{/alerts(view=${view}, status='CLOSED', certainty=${certainty}, severity=${severity}, softwareId=${softwareId})}">CLOSED</a>
 
             <a class="btn"
                th:classappend="${status != null && status.toString() == 'ALL'} ? ' btn-primary' : ''"
-               th:href="@{/alerts(view=${view}, status='ALL', certainty=${certainty}, softwareId=${softwareId})}">ALL</a>
+               th:href="@{/alerts(view=${view}, status='ALL', certainty=${certainty}, severity=${severity}, softwareId=${softwareId})}">ALL</a>
           </div>
-
-          <span class="sep">|</span>
 
           <!-- Certainty -->
           <div class="actions m-0 justify-start gap-8">
@@ -60,18 +58,46 @@
 
             <a class="btn"
                th:classappend="${certainty != null && certainty.toString() == 'CONFIRMED'} ? ' btn-primary' : ''"
-               th:href="@{/alerts(view=${view}, status=${status}, certainty='CONFIRMED', softwareId=${softwareId})}">CONFIRMED</a>
+               th:href="@{/alerts(view=${view}, status=${status}, certainty='CONFIRMED', severity=${severity}, softwareId=${softwareId})}">CONFIRMED</a>
 
             <a class="btn"
                th:classappend="${certainty != null && certainty.toString() == 'UNCONFIRMED'} ? ' btn-primary' : ''"
-               th:href="@{/alerts(view=${view}, status=${status}, certainty='UNCONFIRMED', softwareId=${softwareId})}">UNCONFIRMED</a>
+               th:href="@{/alerts(view=${view}, status=${status}, certainty='UNCONFIRMED', severity=${severity}, softwareId=${softwareId})}">UNCONFIRMED</a>
 
             <a class="btn"
                th:classappend="${certainty == null || certainty.toString() == 'ALL'} ? ' btn-primary' : ''"
-               th:href="@{/alerts(view=${view}, status=${status}, certainty='ALL', softwareId=${softwareId})}">ALL</a>
+               th:href="@{/alerts(view=${view}, status=${status}, certainty='ALL', severity=${severity}, softwareId=${softwareId})}">ALL</a>
           </div>
 
-          <span class="sep">|</span>
+          <!-- Severity -->
+          <div class="actions m-0 justify-start gap-8">
+            <span class="muted text-12">Severity</span>
+
+            <a class="btn"
+               th:classappend="${severity != null && severity.toString() == 'CRITICAL'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status=${status}, certainty=${certainty}, severity='CRITICAL', softwareId=${softwareId})}">CRITICAL</a>
+
+            <a class="btn"
+               th:classappend="${severity != null && severity.toString() == 'HIGH'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status=${status}, certainty=${certainty}, severity='HIGH', softwareId=${softwareId})}">HIGH</a>
+
+            <a class="btn"
+               th:classappend="${severity != null && severity.toString() == 'MEDIUM'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status=${status}, certainty=${certainty}, severity='MEDIUM', softwareId=${softwareId})}">MEDIUM</a>
+
+            <a class="btn"
+               th:classappend="${severity != null && severity.toString() == 'LOW'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status=${status}, certainty=${certainty}, severity='LOW', softwareId=${softwareId})}">LOW</a>
+
+            <a class="btn"
+               th:classappend="${severity != null && severity.toString() == 'NONE'} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status=${status}, certainty=${certainty}, severity='NONE', softwareId=${softwareId})}">NONE</a>
+
+            <!-- ALL: severity param を落とす（nullに戻す） -->
+            <a class="btn"
+               th:classappend="${severity == null} ? ' btn-primary' : ''"
+               th:href="@{/alerts(view=${view}, status=${status}, certainty=${certainty}, softwareId=${softwareId})}">ALL</a>
+          </div>
 
           <!-- View -->
           <div class="actions m-0 justify-start gap-8">
@@ -79,15 +105,15 @@
 
             <a class="btn"
                th:classappend="${view == null || view == 'FLAT'} ? ' btn-primary' : ''"
-               th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">FLAT</a>
+               th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity=${severity}, softwareId=${softwareId})}">FLAT</a>
 
             <a class="btn"
                th:classappend="${view == 'ASSET'} ? ' btn-primary' : ''"
-               th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">Group by Asset</a>
+               th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity=${severity}, softwareId=${softwareId})}">Group by Asset</a>
 
             <a class="btn"
                th:classappend="${view == 'SOFTWARE'} ? ' btn-primary' : ''"
-               th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, softwareId=${softwareId})}">Group by Software</a>
+               th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, severity=${severity}, softwareId=${softwareId})}">Group by Software</a>
           </div>
         </div>
 
@@ -142,7 +168,7 @@
 
             <div class="mt-6">
               <a class="btn btn-ghost btn-sm"
-                 th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${a.softwareInstall.id})}">
+                 th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity}, softwareId=${a.softwareInstall.id})}">
                 Drilldown
               </a>
             </div>

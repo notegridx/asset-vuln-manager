@@ -16,6 +16,7 @@
     <div class="flex gap-10 items-center flex-wrap">
       <span class="pill" th:text="'status: ' + ${status}"></span>
       <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}"></span>
+      <span class="pill" th:text="'severity: ' + ${severity != null ? severity : 'ALL'}">severity: ALL</span>
       <span class="pill" th:text="'rows: ' + ${#lists.size(rows)}"></span>
       <span class="pill">view: SOFTWARE</span>
     </div>
@@ -51,31 +52,63 @@
 
           <a class="btn"
              th:classappend="${certainty != null && certainty.toString() == 'CONFIRMED'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty='CONFIRMED')}">CONFIRMED</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty='CONFIRMED', severity=${severity})}">CONFIRMED</a>
 
           <a class="btn"
              th:classappend="${certainty != null && certainty.toString() == 'UNCONFIRMED'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty='UNCONFIRMED')}">UNCONFIRMED</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty='UNCONFIRMED', severity=${severity})}">UNCONFIRMED</a>
 
           <a class="btn"
              th:classappend="${certainty == null || certainty.toString() == 'ALL'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty='ALL')}">ALL</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty='ALL', severity=${severity})}">ALL</a>
         </div>
 
         <span class="muted mx-4">|</span>
+
+        <span class="muted mx-4">|</span>
+
+        <!-- Severity -->
+        <div class="actions m-0 justify-start gap-8">
+          <span class="muted text-12 mr-6">Severity</span>
+
+          <a class="btn"
+             th:classappend="${severity != null && severity.toString() == 'CRITICAL'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='CRITICAL')}">CRITICAL</a>
+
+          <a class="btn"
+             th:classappend="${severity != null && severity.toString() == 'HIGH'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='HIGH')}">HIGH</a>
+
+          <a class="btn"
+             th:classappend="${severity != null && severity.toString() == 'MEDIUM'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='MEDIUM')}">MEDIUM</a>
+
+          <a class="btn"
+             th:classappend="${severity != null && severity.toString() == 'LOW'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='LOW')}">LOW</a>
+
+          <a class="btn"
+             th:classappend="${severity != null && severity.toString() == 'NONE'} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='NONE')}">NONE</a>
+
+          <!-- ALL: severity param を落とす（nullに戻す） -->
+          <a class="btn"
+             th:classappend="${severity == null} ? ' btn-primary' : ''"
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty})}">ALL</a>
+        </div>
 
         <!-- View -->
         <div class="actions m-0 justify-start gap-8">
           <span class="muted text-12 mr-6">View</span>
 
           <a class="btn"
-             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty})}">FLAT</a>
+             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity})}">FLAT</a>
 
           <a class="btn"
-             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty})}">Group by Asset</a>
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity=${severity})}">Group by Asset</a>
 
           <a class="btn btn-primary"
-             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty})}">Group by Software</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, severity=${severity})}">Group by Software</a>
         </div>
 
       </div>
@@ -146,7 +179,7 @@
 
         <td>
           <a class="btn btn-ghost btn-sm"
-             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, softwareId=${r.softwareInstallId})}">
+             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty},  severity=${severity}, softwareId=${r.softwareInstallId})}">
             Drilldown
           </a>
         </td>
