@@ -27,6 +27,26 @@
 
     --radius-1: 12px;
     --radius-2: 14px;
+
+    --sev-critical-bg: #3b0f12;
+    --sev-critical-text: #ff6b6b;
+    --sev-critical-border: #ff4d4f;
+
+    --sev-high-bg: #3a1f0f;
+    --sev-high-text: #ff9f43;
+    --sev-high-border: #ff8c1a;
+
+    --sev-medium-bg: #3a320f;
+    --sev-medium-text: #ffd166;
+    --sev-medium-border: #f4c430;
+
+    --sev-low-bg: #0f1f3a;
+    --sev-low-text: #5dade2;
+    --sev-low-border: #3498db;
+
+    --sev-none-bg: #1f2937;
+    --sev-none-text: #9ca3af;
+    --sev-none-border: #374151;
 }
 
 /* ---- Reset ---- */
@@ -427,6 +447,11 @@ select option {
     padding: 12px 12px 10px;
     text-decoration: none;
     color: var(--text);
+    transition:
+            background 0.18s ease,
+            border-color 0.18s ease,
+            transform 0.18s ease,
+            box-shadow 0.18s ease;
 }
 
 .stat-card:hover {
@@ -448,14 +473,68 @@ select option {
     line-height: 1.1;
 }
 
+/* =========================
+   Dashboard: stat-card severity
+   ========================= */
+
 .stat-card--critical {
-    border-color: rgba(255, 154, 165, 0.55); /* danger強調 */
-    background: rgba(255, 154, 165, 0.10);
+    border-color: var(--sev-critical-border);
+    background: var(--sev-critical-bg);
 }
 
 .stat-card--critical:hover {
-    border-color: rgba(255, 154, 165, 0.75);
-    background: rgba(255, 154, 165, 0.14);
+    border-color: var(--sev-critical-border);
+    background: color-mix(in srgb, var(--sev-critical-bg) 70%, white 10%);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    transform: translateY(-2px);
+}
+
+.stat-card--high {
+    border-color: var(--sev-high-border);
+    background: var(--sev-high-bg);
+}
+
+.stat-card--high:hover {
+    border-color: var(--sev-high-border);
+    background: color-mix(in srgb, var(--sev-high-bg) 70%, white 10%);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    transform: translateY(-2px);
+}
+
+.stat-card--medium {
+    border-color: var(--sev-medium-border);
+    background: var(--sev-medium-bg);
+}
+
+.stat-card--medium:hover {
+    border-color: var(--sev-medium-border);
+    background: color-mix(in srgb, var(--sev-medium-bg) 70%, white 10%);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    transform: translateY(-2px);
+}
+
+.stat-card--low {
+    border-color: var(--sev-low-border);
+    background: var(--sev-low-bg);
+}
+
+.stat-card--low:hover {
+    border-color: var(--sev-low-border);
+    background: color-mix(in srgb, var(--sev-low-bg) 70%, white 10%);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    transform: translateY(-2px);
+}
+
+.stat-card--none {
+    border-color: var(--sev-none-border);
+    background: var(--sev-none-bg);
+}
+
+.stat-card--none:hover {
+    border-color: var(--sev-none-border);
+    background: color-mix(in srgb, var(--sev-none-bg) 70%, white 10%);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    transform: translateY(-2px);
 }
 
 .badge {
@@ -483,28 +562,34 @@ select option {
 }
 
 /* Severity */
-.badge--sev-none {
-    color: var(--muted);
-    background: rgba(166, 173, 187, 0.06);
+.badge--sev-critical {
+    background: var(--sev-critical-bg);
+    color: var(--sev-critical-text);
+    border: 1px solid var(--sev-critical-border);
 }
 
-.badge--sev-low {
-    color: var(--text);
-    border-color: rgba(138, 180, 255, 0.40);
-    background: rgba(138, 180, 255, 0.08);
+.badge--sev-high {
+    background: var(--sev-high-bg);
+    color: var(--sev-high-text);
+    border: 1px solid var(--sev-high-border);
 }
 
 .badge--sev-medium {
-    color: var(--text);
-    border-color: rgba(255, 211, 122, 0.45);
-    background: rgba(255, 211, 122, 0.10);
+    background: var(--sev-medium-bg);
+    color: var(--sev-medium-text);
+    border: 1px solid var(--sev-medium-border);
 }
 
-.badge--sev-high,
-.badge--sev-critical {
-    color: var(--text);
-    border-color: rgba(255, 154, 165, 0.45);
-    background: rgba(255, 154, 165, 0.10);
+.badge--sev-low {
+    background: var(--sev-low-bg);
+    color: var(--sev-low-text);
+    border: 1px solid var(--sev-low-border);
+}
+
+.badge--sev-none {
+    background: var(--sev-none-bg);
+    color: var(--sev-none-text);
+    border: 1px solid var(--sev-none-border);
 }
 
 .badge--unmapped {

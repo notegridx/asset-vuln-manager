@@ -37,19 +37,23 @@
                 <div class="stat-card__label">CRITICAL</div>
                 <div class="stat-card__num" th:text="${openAlertsCritical}">0</div>
             </a>
-            <a class="stat-card" th:href="@{/alerts(status='OPEN', severity='HIGH')}">
+
+            <a class="stat-card stat-card--high" th:href="@{/alerts(status='OPEN', severity='HIGH')}">
                 <div class="stat-card__label">HIGH</div>
                 <div class="stat-card__num" th:text="${openAlertsHigh}">0</div>
             </a>
-            <a class="stat-card" th:href="@{/alerts(status='OPEN', severity='MEDIUM')}">
+
+            <a class="stat-card stat-card--medium" th:href="@{/alerts(status='OPEN', severity='MEDIUM')}">
                 <div class="stat-card__label">MEDIUM</div>
                 <div class="stat-card__num" th:text="${openAlertsMedium}">0</div>
             </a>
-            <a class="stat-card" th:href="@{/alerts(status='OPEN', severity='LOW')}">
+
+            <a class="stat-card stat-card--low" th:href="@{/alerts(status='OPEN', severity='LOW')}">
                 <div class="stat-card__label">LOW</div>
                 <div class="stat-card__num" th:text="${openAlertsLow}">0</div>
             </a>
-            <a class="stat-card" th:href="@{/alerts(status='OPEN', severity='NONE')}">
+
+            <a class="stat-card stat-card--none" th:href="@{/alerts(status='OPEN', severity='NONE')}">
                 <div class="stat-card__label">NONE</div>
                 <div class="stat-card__num" th:text="${openAlertsNone}">0</div>
             </a>
