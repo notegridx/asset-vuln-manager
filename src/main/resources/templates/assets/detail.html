@@ -18,9 +18,53 @@
         Review installed software for this asset. Software entries are used to match against CVEs and generate alerts.
     </p>
 
-    <div class="kv" style="margin-top:12px;">
-        <b>Asset ID</b> <span th:text="${asset.id}">1</span>
-        <b>Asset Name</b> <span th:text="${asset.name}">Example</span>
+    <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="kv" style="grid-template-columns: 140px 1fr 140px 1fr; gap:8px 12px;">
+            <div class="k">ID</div>
+            <div class="v" th:text="${asset.id}">1</div>
+
+            <div class="k">External Key</div>
+            <div class="v" th:text="${asset.externalKey != null ? asset.externalKey : '-'}">ASSET-001</div>
+
+            <div class="k">Name</div>
+            <div class="v" th:text="${asset.name}">Example</div>
+
+            <div class="k">Asset Type</div>
+            <div class="v" th:text="${asset.assetType != null ? asset.assetType : '-'}">Server</div>
+
+            <div class="k">Owner</div>
+            <div class="v" th:text="${asset.owner != null ? asset.owner : '-'}">Admin</div>
+
+            <div class="k">Source</div>
+            <div class="v" th:text="${asset.source != null ? asset.source : '-'}">MANUAL</div>
+
+            <div class="k">Platform</div>
+            <div class="v" th:text="${asset.platform != null ? asset.platform : '-'}">Windows</div>
+
+            <div class="k">OS Version</div>
+            <div class="v" th:text="${asset.osVersion != null ? asset.osVersion : '-'}">11.0.22631</div>
+
+            <div class="k">Last Seen</div>
+            <div class="v"
+                 th:text="${asset.lastSeenAt != null ? #temporals.format(asset.lastSeenAt, 'yyyy-MM-dd HH:mm') : '-'}">
+                2026-02-24 09:32
+            </div>
+
+            <div class="k">Created</div>
+            <div class="v"
+                 th:text="${#temporals.format(asset.createdAt, 'yyyy-MM-dd HH:mm')}">
+                2026-02-20 10:00
+            </div>
+
+            <div class="k">Updated</div>
+            <div class="v"
+                 th:text="${#temporals.format(asset.updatedAt, 'yyyy-MM-dd HH:mm')}">
+                2026-02-24 09:30
+            </div>
+
+            <div class="k">Note</div>
+            <div class="v" th:text="${asset.note != null ? asset.note : '-'}">Note</div>
+        </div>
     </div>
 
     <hr/>
