@@ -79,6 +79,17 @@ public class Asset {
         this.note = note;
     }
 
+    public void updateName(String name) {
+        this.name = requireNotBlank(name, "name");
+    }
+
+    private static String requireNotBlank(String value, String field) {
+        if (value == null) throw new IllegalArgumentException(field + " is required");
+        String v = value.trim();
+        if (v.isEmpty()) throw new IllegalArgumentException(field + " is required");
+        return v;
+    }
+
     private static String normalizeNullable(String s) {
         if (s == null) return null;
         String t = s.trim();

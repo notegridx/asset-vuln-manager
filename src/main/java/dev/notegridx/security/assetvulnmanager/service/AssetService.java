@@ -59,4 +59,23 @@ public class AssetService {
         return assetRepository.save(asset);
     }
 
+    @Transactional
+    public Asset update(Long id,
+                        String externalKey,
+                        String name,
+                        String assetType,
+                        String owner,
+                        String note) {
+
+        Asset asset = getRequired(id);
+
+        // name も編集対象にする
+        asset.updateName(name);
+
+        // 既存の詳細更新を流用
+        asset.updateDetails(externalKey, assetType, owner, note);
+
+        return assetRepository.save(asset);
+    }
+
 }

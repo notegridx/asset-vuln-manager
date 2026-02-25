@@ -8,7 +8,10 @@
 
     <div class="actions">
         <h1 style="margin:0;">Asset Details</h1>
-        <a th:href="@{/assets}"><- Back to inventory</a>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <a th:href="@{/assets}"><- Back to inventory</a>
+            <a class="btn" th:href="@{/assets/{id}/edit(id=${asset.id})}">Edit</a>
+        </div>
     </div>
 
     <p class="muted" style="margin-top:6px;">

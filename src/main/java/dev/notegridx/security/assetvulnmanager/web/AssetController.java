@@ -140,6 +140,57 @@ public class AssetController {
         return "redirect:/assets/" + assetId;
     }
 
+    @GetMapping("/assets/{id}/edit")
+    public String editAsset(@PathVariable Long id, Model model) {
+        Asset asset = assetService.getRequired(id);
+
+        AssetForm form = new AssetForm();
+        form.setExternalKey(asset.getExternalKey());
+        form.setName(asset.getName());
+        form.setAssetType(asset.getAssetType());
+        form.setOwner(asset.getOwner());
+        form.setNote(asset.getNote());
+
+        model.addAttribute("asset", asset);
+        model.addAttribute("assetForm", form);
+        return "assets/edit";
+    }
+
+    @PostMapping("/assets/{id}/edit")
+    public String updateAsset(@PathVariable Long id,
+                              @Valid @ModelAttribute("assetForm") AssetForm form,
+                              BindingResult binding,
+                              Model model) {
+
+        if (binding.hasErrors()) {
+            model.addAttribute("asset", assetService.getRequired(id));
+            return "assets/edit";
+        }
+
+        try {
+            assetService.update(
+                    id,
+                    form.getExternalKey(),
+                    form.getName(),
+                    form.getAssetType(),
+                    form.getOwner(),
+                    form.getNote()
+            );
+        } catch (DataIntegrityViolationException e) {
+            // external_key UNIQUE など想定
+            binding.rejectValue("externalKey", "duplicate", "External Key is already used.");
+            model.addAttribute("asset", assetService.getRequired(id));
+            return "assets/edit";
+        } catch (IllegalArgumentException e) {
+            // updateName/updateDetails のバリデーションなど
+            binding.reject("invalid", e.getMessage());
+            model.addAttribute("asset", assetService.getRequired(id));
+            return "assets/edit";
+        }
+
+        return "redirect:/assets/" + id;
+    }
+
     @ExceptionHandler(EntityNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public String notFound(EntityNotFoundException ex, Model model) {
