@@ -49,7 +49,8 @@
                 <th style="width: 260px;">Asset Name</th>
                 <th style="width: 160px;">Asset Type</th>
                 <th style="width: 180px;">Owner</th>
-                <th>Notes</th>
+                <th style="width: 140px;">Platform</th>
+                <th style="width: 160px;">OS Version</th>
                 <th style="width: 190px;">Last Updated</th>
                 <th style="width: 200px;">Actions</th>
             </tr>
@@ -57,11 +58,10 @@
 
             <tbody>
             <tr th:if="${#lists.isEmpty(assets)}">
-                <td colspan="8" class="muted">
+                <td colspan="9" class="muted">
                     No assets registered yet. Start by registering your first asset.
                 </td>
             </tr>
-
             <tr th:each="a : ${assets}">
                 <td th:text="${a.id}">1</td>
 
@@ -77,11 +77,14 @@
 
                 <td th:text="${a.owner != null ? a.owner : '-'}">owner</td>
 
-                <td class="muted">
-                    <span th:text="${a.note != null ? a.note : ''}"></span>
-                </td>
+                <!-- NEW -->
+                <td th:text="${a.platform != null ? a.platform : '-'}">windows</td>
+
+                <!-- NEW -->
+                <td th:text="${a.osVersion != null ? a.osVersion : '-'}">11.0.22631</td>
 
                 <td th:text="${a.updatedAt}">2026-02-16T08:00</td>
+
                 <td>
                     <div style="display:flex; gap:8px; align-items:center;">
                         <a class="btn" th:href="@{/assets/{id}/edit(id=${a.id})}">Edit</a>
