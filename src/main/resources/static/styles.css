@@ -324,6 +324,17 @@ input, select, textarea, button {
     border-color: rgba(138, 180, 255, 0.55);
 }
 
+select {
+    background-color: #1f2937;   /* ダーク背景 */
+    color: #e5e7eb;              /* 明るい文字 */
+    border: 1px solid #374151;
+}
+
+select option {
+    background-color: #1f2937;
+    color: #e5e7eb;
+}
+
 /* ---- Buttons ---- */
 .btn {
     display: inline-flex;
@@ -340,20 +351,23 @@ input, select, textarea, button {
     user-select: none;
 }
 
-.btn:hover {
-    border-color: rgba(138, 180, 255, 0.35);
-    text-decoration: none;
-}
-
-/* Variants (existing class names) */
-.btn-primary {
-    border-color: rgba(138, 180, 255, 0.55);
-    background: rgba(138, 180, 255, 0.14);
-}
-
+/* hover は inactive のみ */
 .btn-primary:hover {
-    background: rgba(138, 180, 255, 0.20);
+    border-color: #8ab4ff;
+    background: linear-gradient(135deg, #8ab4ff, #5f8cff);
 }
+
+/* Active */
+.btn-primary {
+    background: linear-gradient(135deg, #8ab4ff, #5f8cff);
+    color: #0b0d12;
+    border-color: #8ab4ff;
+    box-shadow: 0 0 0 1px #8ab4ff inset;
+}
+
+/*.btn-primary:hover {*/
+/*    background: rgba(138, 180, 255, 0.20);*/
+/*}*/
 
 .btn-ghost {
     background: transparent;
