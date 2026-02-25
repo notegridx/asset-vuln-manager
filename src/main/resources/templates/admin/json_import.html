@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('JSON Import (Manual Upload)')}"></head>
+
+<body th:replace="~{layout/base :: layout('JSON Import (Manual Upload)', 'admin', ~{::main})}">
+<main>
+
+  <div class="page-header"
+       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header__left">
+      <h1 style="margin:0;">JSON Import (Manual Upload)</h1>
+      <p class="muted" style="margin:6px 0 0 0;">
+        Upload JSON files and import inventory in 3 steps: <b>Upload → Preview → Import</b>.
+        Staging tables are used to keep Preview/Import separated.
+      </p>
+    </div>
+    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill">JSON Upload</span>
+      <span class="pill">Admin Tool</span>
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="muted" style="font-size:12px; line-height:1.6;">
+      <b>Policy (initial implementation)</b>
+      <ul style="margin:6px 0 0 18px;">
+        <li>Import is <b>upsert</b> only (no delete).</li>
+        <li><code>last_seen_at</code> is updated at import time.</li>
+        <li><code>source_type</code> is fixed to <b>JSON_UPLOAD</b>.</li>
+        <li>Assets key: <code>externalKey</code></li>
+        <li>Software key: <code>asset_id + vendor + product + version</code> (DB UNIQUE)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <h2 style="margin:0 0 10px 0;">Upload Assets JSON</h2>
+
+    <form th:action="@{/admin/import/json/assets/upload}" method="post" enctype="multipart/form-data">
+      <div class="field">
+        <label>assets.json</label>
+        <input type="file" name="file" accept="application/json,.json" required>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Required: <b>externalKey</b>, <b>name</b>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:14px;">
+        <button type="submit" class="btn btn-primary">Upload → Preview Assets</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <h2 style="margin:0 0 10px 0;">Upload Software JSON</h2>
+
+    <form th:action="@{/admin/import/json/software/upload}" method="post" enctype="multipart/form-data">
+      <div class="field">
+        <label>software.json</label>
+        <input type="file" name="file" accept="application/json,.json" required>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Required: <b>externalKey</b>, <b>product</b> (version is optional)
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Note: assets must already exist (import assets first).
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:14px;">
+        <button type="submit" class="btn btn-primary">Upload → Preview Software</button>
+      </div>
+    </form>
+  </div>
+
+</main>
+</body>
+</html>

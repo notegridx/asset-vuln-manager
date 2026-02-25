@@ -64,6 +64,23 @@ public class SoftwareInstall {
     @Column(name = "import_run_id")
     private Long importRunId;
 
+    // ===== New columns (requested) =====
+
+    @Column(name = "install_location", length = 1024)
+    private String installLocation;
+
+    @Column(name = "installed_at")
+    private LocalDateTime installedAt;
+
+    @Column(name = "package_identifier", length = 255)
+    private String packageIdentifier;
+
+    @Column(name = "arch", length = 64)
+    private String arch;
+
+    @Column(name = "source_type", nullable = false, length = 64)
+    private String sourceType = "UNKNOWN";
+
     // ===== Existing (display & matching key) =====
 
     @Column(nullable = false)
@@ -107,6 +124,7 @@ public class SoftwareInstall {
         this.version = "";
         this.type = SoftwareType.APPLICATION;
         this.source = "MANUAL";
+        this.sourceType = "UNKNOWN";
     }
 
     /**
@@ -171,6 +189,32 @@ public class SoftwareInstall {
         this.importRunId = importRunId;
     }
 
+    /**
+     * JSON/OSQUERY 等の拡張カラム更新用（要件: last_seen_at 更新 / source_type 固定などに使う）
+     *
+     * NOTE: initial JSON import policy:
+     *  - sourceType: "JSON_UPLOAD"
+     *  - lastSeenAt: import-time now
+     */
+    public void updateImportExtended(
+            String installLocation,
+            LocalDateTime installedAt,
+            String packageIdentifier,
+            String arch,
+            String sourceType,
+            LocalDateTime lastSeenAt
+    ) {
+        this.installLocation = normalizeNullable(installLocation);
+        this.installedAt = installedAt;
+        this.packageIdentifier = normalizeNullable(packageIdentifier);
+        this.arch = normalizeNullable(arch);
+
+        String st = normalizeNullable(sourceType);
+        this.sourceType = (st == null) ? "UNKNOWN" : st;
+
+        this.lastSeenAt = lastSeenAt;
+    }
+
     // =========================================================
     // Normalizers
     // =========================================================
@@ -225,6 +269,8 @@ public class SoftwareInstall {
         if (this.type == null) this.type = SoftwareType.APPLICATION;
         if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
 
+        if (this.sourceType == null || this.sourceType.trim().isEmpty()) this.sourceType = "UNKNOWN";
+
         // keep versionNorm in sync when only versionRaw is set
         if (this.versionNorm == null && this.versionRaw != null) {
             this.versionNorm = normalizeVersionNorm(this.versionRaw);
@@ -245,6 +291,8 @@ public class SoftwareInstall {
         // new guards
         if (this.type == null) this.type = SoftwareType.APPLICATION;
         if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
+
+        if (this.sourceType == null || this.sourceType.trim().isEmpty()) this.sourceType = "UNKNOWN";
 
         if (this.versionNorm == null && this.versionRaw != null) {
             this.versionNorm = normalizeVersionNorm(this.versionRaw);

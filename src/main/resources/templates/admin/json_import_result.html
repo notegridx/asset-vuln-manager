@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('JSON Import - Result')}"></head>
+
+<body th:replace="~{layout/base :: layout('JSON Import - Result', 'admin', ~{::main})}">
+<main>
+
+  <div class="page-header"
+       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header__left">
+      <h1 style="margin:0;">Import Result</h1>
+      <p class="muted" style="margin:6px 0 0 0;">
+        runId=<span th:text="${run.id}">0</span> /
+        kind=<span th:text="${run.kind}">JSON_*</span> /
+        status=<span th:text="${run.status}">IMPORTED</span>
+      </p>
+    </div>
+    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill" th:text="${run.kind}">JSON</span>
+      <span class="pill" th:text="${run.status}">IMPORTED</span>
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="muted" style="font-size:12px; line-height:1.7;">
+      <div>file: <b th:text="${run.originalFilename}">-</b></div>
+      <div>sha256: <code th:text="${run.sha256}">-</code></div>
+      <div style="margin-top:8px;">
+        total=<b th:text="${run.totalRows}">0</b>,
+        valid=<b th:text="${run.validRows}">0</b>,
+        invalid=<b th:text="${run.invalidRows}">0</b>
+      </div>
+      <div style="margin-top:8px;">
+        assets_upserted=<b th:text="${run.assetsUpserted}">0</b>,
+        software_upserted=<b th:text="${run.softwareUpserted}">0</b>
+      </div>
+      <div th:if="${run.summary != null}" style="margin-top:8px;">
+        summary: <span th:text="${run.summary}">-</span>
+      </div>
+      <div th:if="${run.errorMessage != null}" style="margin-top:8px;">
+        error: <span class="badge badge--danger" th:text="${run.errorMessage}">-</span>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top:14px;">
+      <a class="btn btn-primary" th:href="@{/admin/import/json}">Back to JSON Import</a>
+      <a class="btn" th:href="@{/admin/import-runs}">Open Import Runs</a>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>
