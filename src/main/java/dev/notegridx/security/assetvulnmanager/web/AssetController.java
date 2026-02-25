@@ -150,6 +150,9 @@ public class AssetController {
         form.setAssetType(asset.getAssetType());
         form.setOwner(asset.getOwner());
         form.setNote(asset.getNote());
+        form.setSource(asset.getSource());
+        form.setPlatform(asset.getPlatform());
+        form.setOsVersion(asset.getOsVersion());
 
         model.addAttribute("asset", asset);
         model.addAttribute("assetForm", form);
@@ -174,7 +177,10 @@ public class AssetController {
                     form.getName(),
                     form.getAssetType(),
                     form.getOwner(),
-                    form.getNote()
+                    form.getNote(),
+                    form.getSource(),
+                    form.getPlatform(),
+                    form.getOsVersion()
             );
         } catch (DataIntegrityViolationException e) {
             // external_key UNIQUE など想定

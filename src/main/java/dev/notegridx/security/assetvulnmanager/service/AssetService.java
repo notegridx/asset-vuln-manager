@@ -78,4 +78,27 @@ public class AssetService {
         return assetRepository.save(asset);
     }
 
+    @Transactional
+    public Asset update(Long id,
+                        String externalKey,
+                        String name,
+                        String assetType,
+                        String owner,
+                        String note,
+                        String source,
+                        String platform,
+                        String osVersion) {
+
+        Asset asset = getRequired(id);
+
+        asset.updateName(name);
+        asset.updateDetails(externalKey, assetType, owner, note);
+
+        asset.setSource(source);
+        asset.setPlatform(platform);
+        asset.setOsVersion(osVersion);
+
+        return assetRepository.save(asset);
+    }
+
 }

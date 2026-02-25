@@ -48,10 +48,26 @@
             <textarea th:field="*{note}"></textarea>
         </div>
 
+        <div class="field">
+            <label>Source</label>
+            <input type="text" th:field="*{source}" placeholder="e.g. MANUAL / OSQUERY / FLEET"/>
+        </div>
+
+        <div class="field">
+            <label>Platform</label>
+            <input type="text" th:field="*{platform}" placeholder="e.g. Windows / Linux / macOS"/>
+        </div>
+
+        <div class="field">
+            <label>OS Version</label>
+            <input type="text" th:field="*{osVersion}" placeholder="e.g. 11.0.22631"/>
+        </div>
+
         <div class="actions" style="margin-top:14px;">
             <button class="btn" type="submit">Save</button>
             <a class="btn btn-ghost" th:href="@{/assets/{id}(id=${asset.id})}">Cancel</a>
         </div>
+
     </form>
 </main>
 </body>

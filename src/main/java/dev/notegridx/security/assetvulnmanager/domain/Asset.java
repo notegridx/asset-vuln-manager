@@ -96,6 +96,19 @@ public class Asset {
         return t.isEmpty() ? null : t;
     }
 
+    public void setSource(String source) {
+        String s = (source == null) ? null : source.trim();
+        this.source = (s == null || s.isEmpty()) ? "MANUAL" : s;
+    }
+
+    public void setPlatform(String platform) {
+        this.platform = normalizeNullable(platform);
+    }
+
+    public void setOsVersion(String osVersion) {
+        this.osVersion = normalizeNullable(osVersion);
+    }
+
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();
