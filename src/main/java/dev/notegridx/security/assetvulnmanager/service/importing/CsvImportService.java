@@ -58,12 +58,9 @@ public class CsvImportService {
     // =========================================================
 
 
-
-
-
     // =========================================================
     // Assets CSV
-    // columns: external_key,name,asset_type,owner,note
+    // columns: external_key,name,asset_type,owner,note,platform,os_version
     // =========================================================
     public ImportResult importAssetsCsv(InputStream in, boolean commit) throws IOException {
         List<ImportError> errors = new ArrayList<>();
@@ -109,6 +106,9 @@ public class CsvImportService {
                 String assetType = normalizeNullable(get(cols, idx, "asset_type"));
                 String owner = normalizeNullable(get(cols, idx, "owner"));
                 String note = normalizeNullable(get(cols, idx, "note"));
+                // optional
+                String platform = get(cols, idx, "platform");
+                String osVersion = get(cols, idx, "os_version");
 
                 if (externalKey == null) {
                     errors.add(new ImportError(lineNo, "INVALID_EXTERNAL_KEY",
@@ -145,6 +145,10 @@ public class CsvImportService {
                         }
 
                         a.updateDetails(externalKey, assetType, owner, note);
+                        // optional fields
+                        a.setPlatform(platform);
+                        a.setOsVersion(osVersion);
+
 
                         // ingestion metadata（Asset側に markSeen(String) を実装している前提）
                         a.markSeen(SOURCE_CSV);

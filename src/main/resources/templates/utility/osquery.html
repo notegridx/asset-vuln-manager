@@ -165,69 +165,73 @@
     }
 
     function convert() {
-      // まず状態リセット
+      disableDownloads();
       generatedAssetsCsv = "";
       generatedSoftwareCsv = "";
       document.getElementById("assetsOut").textContent = "";
       document.getElementById("softwareOut").textContent = "";
-      disableDownloads();
-      setStatus("");
 
-      const mode = document.getElementById("mode").value;
+      const mode = document.getElementById("mode").value; // single / multi
       const externalKeyInput = upperKey(document.getElementById("externalKey").value);
+
       const assetNameInput = sanitizeCsvField(document.getElementById("assetName").value);
       const assetTypeInput = sanitizeCsvField(document.getElementById("assetType").value);
-      const jsonText = document.getElementById("jsonInput").value;
 
-      let data;
+      const raw = document.getElementById("jsonInput").value;
+
+      let json;
       try {
-        data = JSON.parse(jsonText);
+        json = JSON.parse(raw);
       } catch (e) {
-        setStatus("Invalid JSON: JSON parse failed.", true);
+        setStatus("Invalid JSON: " + (e && e.message ? e.message : e), true);
         return;
       }
 
-      const records = normalizeToRecords(data);
-      if (records.length === 0) {
-        setStatus("Unsupported JSON structure: no records found.", true);
-        return;
-      }
-
-      // “配列（単一ホスト）” なのに multi を選んでいる場合はガイド
-      const isSingleArray = (records.length === 1 && records[0].externalKey === "");
-      if (mode === "multi" && isSingleArray) {
-        setStatus("This JSON does not include hostname/hostIdentifier. Switch to 'Single host' or provide host keys in JSON.", true);
-        return;
-      }
-
-      if (mode === "single" && !externalKeyInput) {
-        setStatus("external_key is required in Single host mode. Fill 'Asset External Key' (e.g., OSAKA-DB-01).", true);
-        return;
-      }
+      // 受け取り形式を配列に正規化
+      const records = Array.isArray(json) ? json : [json];
 
       const assetsMap = new Map();
       const softwareLines = ["external_key,vendor,product,version,cpe_name"];
 
-      for (const rec of records) {
-        let ek = rec.externalKey;
+      let softwareRowCount = 0;
 
+      for (const rec of records) {
+        if (!rec || typeof rec !== "object") continue;
+
+        // ===== external_key 決定 =====
+        let ek = rec.externalKey;
         if (mode === "single") {
           ek = externalKeyInput;
         } else {
           if (!ek) continue;
         }
+        ek = upperKey(ek);
+        if (!ek) continue;
+
+        // ===== Asset 行（今回のJSONを優先して読む）=====
+        // 既存UI入力は「全台共通のデフォルト」として扱い、rec側の値があればそちらを優先
+        const recName = sanitizeCsvField(rec.name || "");
+        const recType = sanitizeCsvField(rec.assetType || "");
+        const recOwner = sanitizeCsvField(rec.owner || "");
+
+        const name = recName || assetNameInput || ek;
+        const type = recType || assetTypeInput || "";
+
+        // platform / os_version は note に詰める（CSV列互換のため）
+        const platform = sanitizeCsvField(rec.platform || "");
+        const osv = sanitizeCsvField(rec.os_version || rec.osVersion || "");
+        let note = "";
+        if (platform) note += `platform=${platform}`;
+        if (osv) note += (note ? " " : "") + `os_version=${osv}`;
 
         if (!assetsMap.has(ek)) {
-          const name = assetNameInput || ek;
-          assetsMap.set(ek, [
-            ek,
-            sanitizeCsvField(name),
-            assetTypeInput,
-            "",
-            ""
-          ].join(","));
+          assetsMap.set(
+                  ek,
+                  [ek, name, type, recOwner, note].join(",")
+          );
         }
 
+        // ===== Software 行（既存互換: softwareRows がある時だけ出す）=====
         const rows = Array.isArray(rec.softwareRows) ? rec.softwareRows : [];
         for (const item of rows) {
           const product = sanitizeCsvField(item.name || item.product || "");
@@ -236,13 +240,15 @@
           const vendor = sanitizeCsvField(item.vendor || item.publisher || item.maintainer || "");
           const version = sanitizeCsvField(item.version || "");
           softwareLines.push([ek, vendor, product, version, ""].join(","));
+          softwareRowCount++;
         }
       }
 
       const assetsLines = ["external_key,name,asset_type,owner,note", ...assetsMap.values()];
-
       generatedAssetsCsv = assetsLines.join("\n");
-      generatedSoftwareCsv = softwareLines.join("\n");
+
+      // softwareRows が無いJSONなら software.csv はヘッダのみ or 空にしてDL不可にする
+      generatedSoftwareCsv = (softwareLines.length > 1) ? softwareLines.join("\n") : "";
 
       document.getElementById("assetsOut").textContent = generatedAssetsCsv;
       document.getElementById("softwareOut").textContent = generatedSoftwareCsv;
@@ -252,8 +258,11 @@
 
       enableDownloads(hasAssets, hasSoftware);
 
-      setStatus(`Converted: assets=${assetsMap.size} row(s), software=${softwareLines.length - 1} row(s).`);
+      setStatus(`Converted: assets=${assetsMap.size} row(s), software=${softwareRowCount} row(s).`);
     }
+
+
+
 
     function downloadBlob(text, filename) {
       const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
