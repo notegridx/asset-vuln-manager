@@ -73,28 +73,28 @@
 
           <a class="btn"
              th:classappend="${severity != null && severity.toString() == 'CRITICAL'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='CRITICAL')}">CRITICAL</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, severity='CRITICAL')}">CRITICAL</a>
 
           <a class="btn"
              th:classappend="${severity != null && severity.toString() == 'HIGH'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='HIGH')}">HIGH</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, severity='HIGH')}">HIGH</a>
 
           <a class="btn"
              th:classappend="${severity != null && severity.toString() == 'MEDIUM'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='MEDIUM')}">MEDIUM</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, severity='MEDIUM')}">MEDIUM</a>
 
           <a class="btn"
              th:classappend="${severity != null && severity.toString() == 'LOW'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='LOW')}">LOW</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, severity='LOW')}">LOW</a>
 
           <a class="btn"
              th:classappend="${severity != null && severity.toString() == 'NONE'} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity='NONE')}">NONE</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty}, severity='NONE')}">NONE</a>
 
           <!-- ALL: severity param を落とす（nullに戻す） -->
           <a class="btn"
              th:classappend="${severity == null} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty})}">ALL</a>
+             th:href="@{/alerts(view='SOFTWARE', status=${status}, certainty=${certainty})}">ALL</a>
         </div>
 
         <!-- View -->

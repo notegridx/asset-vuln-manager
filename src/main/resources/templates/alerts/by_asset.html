@@ -91,7 +91,7 @@
           <!-- ALL: severity param を落とす（nullに戻す） -->
           <a class="btn"
              th:classappend="${severity == null} ? ' btn-primary' : ''"
-             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty}, severity=${severity})}">ALL</a>
+             th:href="@{/alerts(view='ASSET', status=${status}, certainty=${certainty})}">ALL</a>
         </div>
 
         <!-- View toggle -->
