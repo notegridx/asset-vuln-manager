@@ -71,6 +71,10 @@ public class DashboardController {
         long cpeVendors = cpeVendorRepository.count();
         long cpeProducts = cpeProductRepository.count();
 
+        // First-Time Setup を出すかどうか（初期データが揃っていない間だけ true）
+        boolean needsSetup =
+                (assets == 0) || (vulns == 0) || (cpeVendors == 0);
+
         model.addAttribute("assets", assets);
         model.addAttribute("installs", installs);
         model.addAttribute("vulns", vulns);
@@ -83,6 +87,7 @@ public class DashboardController {
         model.addAttribute("unmappedInstalls", unmappedInstalls);
         model.addAttribute("cpeVendors", cpeVendors);
         model.addAttribute("cpeProducts", cpeProducts);
+        model.addAttribute("needsSetup", needsSetup);
 
         long criticalNoCpeCount = vulnerabilityRepository.countCriticalWithoutAffectedCpes();
         List<Vulnerability> criticalNoCpe = vulnerabilityRepository
