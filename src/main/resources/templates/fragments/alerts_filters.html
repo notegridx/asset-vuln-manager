@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  Usage:
+    <div th:replace="~{fragments/alerts_filters :: filters(${status}, ${certainty}, ${severity}, ${view}, ${assetId}, ${softwareId})}"></div>
+
+  Notes:
+  - Submits GET /alerts with params: status, certainty, severity, view, assetId, softwareId
+  - severity: empty string => treated as "ALL" (controller normalizes)
+-->
+<div th:fragment="filters(status, certainty, severity, view, assetId, softwareId)"
+     class="card p-12 my-12">
+
+  <form method="get" th:action="@{/alerts}">
+    <div class="toolbar flex gap-16 flex-wrap items-end">
+
+      <!-- Status -->
+      <div class="field">
+        <label>Status</label>
+        <select name="status" onchange="this.form.submit()">
+          <option value="OPEN" th:selected="${status == 'OPEN'}">OPEN</option>
+          <option value="CLOSED" th:selected="${status == 'CLOSED'}">CLOSED</option>
+          <option value="ALL" th:selected="${status == 'ALL'}">ALL</option>
+        </select>
+      </div>
+
+      <!-- Certainty -->
+      <div class="field">
+        <label>Certainty</label>
+        <select name="certainty" onchange="this.form.submit()">
+          <option value="ALL" th:selected="${certainty == null or certainty == '' or certainty == 'ALL'}">ALL</option>
+          <option value="CONFIRMED" th:selected="${certainty == 'CONFIRMED'}">CONFIRMED</option>
+          <option value="UNCONFIRMED" th:selected="${certainty == 'UNCONFIRMED'}">UNCONFIRMED</option>
+        </select>
+      </div>
+
+      <!-- Severity -->
+      <div class="field">
+        <label>Severity</label>
+        <select name="severity" onchange="this.form.submit()">
+          <option value="" th:selected="${severity == null or severity == ''}">ALL</option>
+          <option value="CRITICAL" th:selected="${severity == 'CRITICAL'}">CRITICAL</option>
+          <option value="HIGH" th:selected="${severity == 'HIGH'}">HIGH</option>
+          <option value="MEDIUM" th:selected="${severity == 'MEDIUM'}">MEDIUM</option>
+          <option value="LOW" th:selected="${severity == 'LOW'}">LOW</option>
+          <option value="NONE" th:selected="${severity == 'NONE'}">NONE</option>
+        </select>
+      </div>
+
+      <!-- View -->
+      <div class="field">
+        <label>View</label>
+        <select name="view" onchange="this.form.submit()">
+          <option value="FLAT" th:selected="${view == 'FLAT'}">Flat</option>
+          <option value="ASSET" th:selected="${view == 'ASSET'}">Grouped by Asset</option>
+          <option value="SOFTWARE" th:selected="${view == 'SOFTWARE'}">Grouped by Software</option>
+        </select>
+      </div>
+
+      <!-- Preserve drilldown context (optional) -->
+      <input type="hidden" name="assetId" th:value="${assetId}">
+      <input type="hidden" name="softwareId" th:value="${softwareId}">
+
+    </div>
+  </form>
+
+</div>
+
+</body>
+</html>
