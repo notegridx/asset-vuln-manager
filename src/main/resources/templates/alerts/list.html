@@ -17,7 +17,8 @@
 
       <div class="muted mt-6" th:if="${softwareId != null}">
         Drilldown: softwareId=<b th:text="${softwareId}">1</b>
-        <a th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity})}" class="ml-auto">Clear</a>      </div>
+        <a th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity})}" class="ml-auto">Clear</a>
+      </div>
     </div>
 
     <div class="page-header__right kpi">
@@ -206,8 +207,11 @@
                     th:classappend="${a.status != null && a.status.toString() == 'OPEN' ? ' badge--status-open' : ' badge--status-closed'}"
                     th:text="${a.status != null ? a.status : '-'}">OPEN</span>
 
+              <!-- ✅ Certainty badge: separate palette (no longer reusing severity colors) -->
               <span class="badge"
-                    th:classappend="${a.certainty != null && a.certainty.toString() == 'UNCONFIRMED' ? ' badge--sev-medium' : ' badge--sev-low'}"
+                    th:classappend="${a.certainty != null && a.certainty.toString() == 'UNCONFIRMED'
+                        ? ' badge--certainty-unconfirmed'
+                        : ' badge--certainty-confirmed'}"
                     th:text="${a.certainty != null ? a.certainty : 'CONFIRMED'}">CONFIRMED</span>
             </div>
 

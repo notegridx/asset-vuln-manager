@@ -44,12 +44,12 @@
                     <div class="stat-card__num" th:text="${openAlertsCritical}">0</div>
                 </a>
                 <div class="stat-card__subline">
-                    <a class="mini-pill mini-pill--confirmed"
+                    <a class="badge badge--certainty-confirmed"
                        th:href="@{/alerts(status='OPEN', severity='CRITICAL', certainty='CONFIRMED')}"
                        th:text="'Confirmed ' + ${openAlertsCriticalConfirmed}">
                         Confirmed 0
                     </a>
-                    <a class="mini-pill mini-pill--unconfirmed"
+                    <a class="badge badge--certainty-unconfirmed"
                        th:href="@{/alerts(status='OPEN', severity='CRITICAL', certainty='UNCONFIRMED')}"
                        th:text="'Unconfirmed ' + ${openAlertsCriticalUnconfirmed}">
                         Unconfirmed 0
@@ -64,12 +64,12 @@
                     <div class="stat-card__num" th:text="${openAlertsHigh}">0</div>
                 </a>
                 <div class="stat-card__subline">
-                    <a class="mini-pill mini-pill--confirmed"
+                    <a class="badge badge--certainty-confirmed"
                        th:href="@{/alerts(status='OPEN', severity='HIGH', certainty='CONFIRMED')}"
                        th:text="'Confirmed ' + ${openAlertsHighConfirmed}">
                         Confirmed 0
                     </a>
-                    <a class="mini-pill mini-pill--unconfirmed"
+                    <a class="badge badge--certainty-unconfirmed"
                        th:href="@{/alerts(status='OPEN', severity='HIGH', certainty='UNCONFIRMED')}"
                        th:text="'Unconfirmed ' + ${openAlertsHighUnconfirmed}">
                         Unconfirmed 0
@@ -84,12 +84,12 @@
                     <div class="stat-card__num" th:text="${openAlertsMedium}">0</div>
                 </a>
                 <div class="stat-card__subline">
-                    <a class="mini-pill mini-pill--confirmed"
+                    <a class="badge badge--certainty-confirmed"
                        th:href="@{/alerts(status='OPEN', severity='MEDIUM', certainty='CONFIRMED')}"
                        th:text="'Confirmed ' + ${openAlertsMediumConfirmed}">
                         Confirmed 0
                     </a>
-                    <a class="mini-pill mini-pill--unconfirmed"
+                    <a class="badge badge--certainty-unconfirmed"
                        th:href="@{/alerts(status='OPEN', severity='MEDIUM', certainty='UNCONFIRMED')}"
                        th:text="'Unconfirmed ' + ${openAlertsMediumUnconfirmed}">
                         Unconfirmed 0
@@ -104,12 +104,12 @@
                     <div class="stat-card__num" th:text="${openAlertsLow}">0</div>
                 </a>
                 <div class="stat-card__subline">
-                    <a class="mini-pill mini-pill--confirmed"
+                    <a class="badge badge--certainty-confirmed"
                        th:href="@{/alerts(status='OPEN', severity='LOW', certainty='CONFIRMED')}"
                        th:text="'Confirmed ' + ${openAlertsLowConfirmed}">
                         Confirmed 0
                     </a>
-                    <a class="mini-pill mini-pill--unconfirmed"
+                    <a class="badge badge--certainty-unconfirmed"
                        th:href="@{/alerts(status='OPEN', severity='LOW', certainty='UNCONFIRMED')}"
                        th:text="'Unconfirmed ' + ${openAlertsLowUnconfirmed}">
                         Unconfirmed 0
@@ -117,11 +117,12 @@
                 </div>
             </div>
         </div>
+
         <div class="certainty-explain">
-            <span class="mini-pill mini-pill--confirmed">Confirmed</span>
+            <span class="badge badge--certainty-confirmed">Confirmed</span>
             <span class="muted">version range matched</span>
 
-            <span class="mini-pill mini-pill--unconfirmed">Unconfirmed</span>
+            <span class="badge badge--certainty-unconfirmed">Unconfirmed</span>
             <span class="muted">version missing / not comparable</span>
         </div>
     </div>

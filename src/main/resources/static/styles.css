@@ -47,6 +47,16 @@
     --sev-none-bg: #1f2937;
     --sev-none-text: #9ca3af;
     --sev-none-border: #374151;
+
+    /* ===== Certainty colors (separate from Severity) ===== */
+
+    --certainty-confirmed-bg: rgba(56, 189, 248, 0.15);
+    --certainty-confirmed-border: #38bdf8;
+    --certainty-confirmed-text: #7dd3fc;
+
+    --certainty-unconfirmed-bg: rgba(192, 132, 252, 0.15);
+    --certainty-unconfirmed-border: #c084fc;
+    --certainty-unconfirmed-text: #d8b4fe;
 }
 
 /* ---- Reset ---- */
@@ -648,6 +658,18 @@ select option {
     color: var(--text);
     border-color: rgba(255, 211, 122, 0.45);
     background: rgba(255, 211, 122, 0.10);
+}
+
+.badge--certainty-confirmed {
+    border: 1px solid var(--certainty-confirmed-border);
+    background: var(--certainty-confirmed-bg);
+    color: var(--certainty-confirmed-text);
+}
+
+.badge--certainty-unconfirmed {
+    border: 1px solid var(--certainty-unconfirmed-border);
+    background: var(--certainty-unconfirmed-bg);
+    color: var(--certainty-unconfirmed-text);
 }
 
 /* ---- Key-value blocks ---- */
