@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
 import dev.notegridx.security.assetvulnmanager.domain.enums.Severity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -29,6 +30,12 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     // Dashboard: OPEN alerts by severity
     long countByStatusAndVulnerability_Severity(AlertStatus status, Severity severity);
 
+    // Dashboard: OPEN alerts by certainty (CONFIRMED / UNCONFIRMED)
+    long countByStatusAndCertainty(AlertStatus status, AlertCertainty certainty);
+
+    // Dashboard: OPEN alerts by severity + certainty
+    long countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus status, Severity severity, AlertCertainty certainty);
+
     List<Alert> findBySoftwareInstallIdOrderByLastSeenAtDesc(Long softwareInstallId);
 
     // ---- drilldown: by asset ----
@@ -50,7 +57,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
     /**
      * Generate Alerts 実行中に touchDetected() されなかった（= lastSeenAt が runStartedAt より古い）OPEN Alert を自動で CLOSE する。
-     * <p>
+     *
      * NOTE: JPQL bulk update は @PreUpdate を通らないため、updatedAt も明示的に更新する。
      */
     @Modifying

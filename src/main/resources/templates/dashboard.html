@@ -19,11 +19,14 @@
         <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <span class="pill" th:text="'Assets: ' + ${assets}">Assets: 0</span>
             <span class="pill" th:text="'Vulns: ' + ${vulns}">Vulns: 0</span>
-            <span class="pill" th:text="'Open alerts: ' + ${openAlerts}">Open alerts: 0</span>
+            <span class="pill"
+                  th:text="'Open alerts: ' + ${openAlerts} + ' (Confirmed ' + ${openAlertsConfirmed} + ')'">
+                Open alerts: 0 (Confirmed 0)
+            </span>
         </div>
     </div>
 
-    <!-- OPEN Alerts by Severity (replaces Quick links) -->
+    <!-- OPEN Alerts by Severity -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <div class="toolbar"
              style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
@@ -33,30 +36,93 @@
         </div>
 
         <div class="stat-grid" style="margin-top:10px;">
-            <a class="stat-card stat-card--critical" th:href="@{/alerts(status='OPEN', severity='CRITICAL')}">
-                <div class="stat-card__label">CRITICAL</div>
-                <div class="stat-card__num" th:text="${openAlertsCritical}">0</div>
-            </a>
 
-            <a class="stat-card stat-card--high" th:href="@{/alerts(status='OPEN', severity='HIGH')}">
-                <div class="stat-card__label">HIGH</div>
-                <div class="stat-card__num" th:text="${openAlertsHigh}">0</div>
-            </a>
+            <!-- CRITICAL -->
+            <div class="stat-card stat-card--critical">
+                <a class="stat-card__main" th:href="@{/alerts(status='OPEN', severity='CRITICAL')}">
+                    <div class="stat-card__label">CRITICAL</div>
+                    <div class="stat-card__num" th:text="${openAlertsCritical}">0</div>
+                </a>
+                <div class="stat-card__subline">
+                    <a class="mini-pill mini-pill--confirmed"
+                       th:href="@{/alerts(status='OPEN', severity='CRITICAL', certainty='CONFIRMED')}"
+                       th:text="'Confirmed ' + ${openAlertsCriticalConfirmed}">
+                        Confirmed 0
+                    </a>
+                    <a class="mini-pill mini-pill--unconfirmed"
+                       th:href="@{/alerts(status='OPEN', severity='CRITICAL', certainty='UNCONFIRMED')}"
+                       th:text="'Unconfirmed ' + ${openAlertsCriticalUnconfirmed}">
+                        Unconfirmed 0
+                    </a>
+                </div>
+            </div>
 
-            <a class="stat-card stat-card--medium" th:href="@{/alerts(status='OPEN', severity='MEDIUM')}">
-                <div class="stat-card__label">MEDIUM</div>
-                <div class="stat-card__num" th:text="${openAlertsMedium}">0</div>
-            </a>
+            <!-- HIGH -->
+            <div class="stat-card stat-card--high">
+                <a class="stat-card__main" th:href="@{/alerts(status='OPEN', severity='HIGH')}">
+                    <div class="stat-card__label">HIGH</div>
+                    <div class="stat-card__num" th:text="${openAlertsHigh}">0</div>
+                </a>
+                <div class="stat-card__subline">
+                    <a class="mini-pill mini-pill--confirmed"
+                       th:href="@{/alerts(status='OPEN', severity='HIGH', certainty='CONFIRMED')}"
+                       th:text="'Confirmed ' + ${openAlertsHighConfirmed}">
+                        Confirmed 0
+                    </a>
+                    <a class="mini-pill mini-pill--unconfirmed"
+                       th:href="@{/alerts(status='OPEN', severity='HIGH', certainty='UNCONFIRMED')}"
+                       th:text="'Unconfirmed ' + ${openAlertsHighUnconfirmed}">
+                        Unconfirmed 0
+                    </a>
+                </div>
+            </div>
 
-            <a class="stat-card stat-card--low" th:href="@{/alerts(status='OPEN', severity='LOW')}">
-                <div class="stat-card__label">LOW</div>
-                <div class="stat-card__num" th:text="${openAlertsLow}">0</div>
-            </a>
+            <!-- MEDIUM -->
+            <div class="stat-card stat-card--medium">
+                <a class="stat-card__main" th:href="@{/alerts(status='OPEN', severity='MEDIUM')}">
+                    <div class="stat-card__label">MEDIUM</div>
+                    <div class="stat-card__num" th:text="${openAlertsMedium}">0</div>
+                </a>
+                <div class="stat-card__subline">
+                    <a class="mini-pill mini-pill--confirmed"
+                       th:href="@{/alerts(status='OPEN', severity='MEDIUM', certainty='CONFIRMED')}"
+                       th:text="'Confirmed ' + ${openAlertsMediumConfirmed}">
+                        Confirmed 0
+                    </a>
+                    <a class="mini-pill mini-pill--unconfirmed"
+                       th:href="@{/alerts(status='OPEN', severity='MEDIUM', certainty='UNCONFIRMED')}"
+                       th:text="'Unconfirmed ' + ${openAlertsMediumUnconfirmed}">
+                        Unconfirmed 0
+                    </a>
+                </div>
+            </div>
 
-            <a class="stat-card stat-card--none" th:href="@{/alerts(status='OPEN', severity='NONE')}">
-                <div class="stat-card__label">NONE</div>
-                <div class="stat-card__num" th:text="${openAlertsNone}">0</div>
-            </a>
+            <!-- LOW -->
+            <div class="stat-card stat-card--low">
+                <a class="stat-card__main" th:href="@{/alerts(status='OPEN', severity='LOW')}">
+                    <div class="stat-card__label">LOW</div>
+                    <div class="stat-card__num" th:text="${openAlertsLow}">0</div>
+                </a>
+                <div class="stat-card__subline">
+                    <a class="mini-pill mini-pill--confirmed"
+                       th:href="@{/alerts(status='OPEN', severity='LOW', certainty='CONFIRMED')}"
+                       th:text="'Confirmed ' + ${openAlertsLowConfirmed}">
+                        Confirmed 0
+                    </a>
+                    <a class="mini-pill mini-pill--unconfirmed"
+                       th:href="@{/alerts(status='OPEN', severity='LOW', certainty='UNCONFIRMED')}"
+                       th:text="'Unconfirmed ' + ${openAlertsLowUnconfirmed}">
+                        Unconfirmed 0
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="certainty-explain">
+            <span class="mini-pill mini-pill--confirmed">Confirmed</span>
+            <span class="muted">version range matched</span>
+
+            <span class="mini-pill mini-pill--unconfirmed">Unconfirmed</span>
+            <span class="muted">version missing / not comparable</span>
         </div>
     </div>
 
@@ -193,60 +259,34 @@
     <!-- Critical CVEs without CPE -->
     <div class="actions" style="margin:0; align-items:flex-end;">
         <h2 style="margin:0;">Critical CVEs without CPE</h2>
-        <div class="kpi" style="justify-content:flex-end;">
-            <span class="pill" th:text="'Count: ' + ${criticalNoCpeCount}">Count: 0</span>
-            <a class="btn btn-ghost" style="padding:6px 10px; font-size:12px; border-radius:10px;"
-               th:href="@{/vulnerabilities(severity='CRITICAL', size=500, sort='LAST_MODIFIED')}">
-                View CRITICAL
-            </a>
+        <div class="muted" style="font-size:12px;">
+            These may require manual review because CPE mapping is missing.
         </div>
     </div>
 
-    <p class="muted" style="margin-top: 6px;">
-        CRITICAL severity but no affected CPE entries yet. These may become matchable after CVE-Modified updates.
-    </p>
-
-    <div class="kv" style="grid-template-columns: 220px 1fr; margin-top:12px;">
-        <div class="k">Count</div>
-        <div class="v">
+    <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="muted" style="font-size:12px;">
+            Count:
             <span class="pill" th:text="${criticalNoCpeCount}">0</span>
-            <span class="muted">CVE(s)</span>
-            <span style="margin-left:10px;">
-        <a th:href="@{/vulnerabilities(severity='CRITICAL', size=500, sort='LAST_MODIFIED')}">View CRITICAL</a>
-      </span>
         </div>
-    </div>
 
-    <div th:if="${#lists.isEmpty(criticalNoCpe)}" class="muted" style="margin-top:8px;">
-        No items.
-    </div>
-
-    <div th:if="${!#lists.isEmpty(criticalNoCpe)}" class="card" style="padding:12px; margin-top:10px;">
-        <div class="table-wrap">
-            <table style="width:100%; margin-top:0;">
+        <div style="margin-top:10px; overflow:auto;">
+            <table class="table">
                 <thead>
                 <tr>
-                    <th style="width:170px;">CVE</th>
-                    <th style="width:80px;">CVSS</th>
-                    <th>Description</th>
-                    <th style="width:170px;">Last Modified</th>
-
+                    <th style="min-width:160px;">CVE</th>
+                    <th>Title</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="v : ${criticalNoCpe}">
                     <td>
-                        <a th:href="@{/vulnerabilities/{id}(id=${v.id})}"
-                           th:text="${v.externalId}">CVE-XXXX-YYYY</a>
+                        <a th:href="@{/vulnerabilities/{id}(id=${v.id})}" th:text="${v.externalId}">CVE-XXXX</a>
                     </td>
-                    <td th:text="${v.cvssScore != null ? v.cvssScore : '-'}">-</td>
-                    </td>
-                    <td class="muted" style="font-size:12px;"
-                        th:text="${v.description != null ? (v.description.length() > 160 ? v.description.substring(0,160) + '…' : v.description) : ''}">
-                        ...
-                    </td>
-                    <td th:text="${v.lastModifiedAt != null ? #temporals.format(v.lastModifiedAt, 'yyyy-MM-dd HH:mm') : '-'}">
-                        -
+                    <td class="muted" th:text="${v.title}">title</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(criticalNoCpe)}">
+                    <td colspan="2" class="muted">No items.</td>
                 </tr>
                 </tbody>
             </table>
