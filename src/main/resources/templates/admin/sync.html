@@ -13,8 +13,7 @@
             <h1>CVE Delta Update (API)</h1>
 
             <p class="muted" style="margin:6px 0 0 0;">
-                Fetch recently modified CVEs via the NVD API (lastModified window), upsert vulnerabilities,
-                evaluate software matches, and create or update alerts.
+                Fetch recently modified CVEs via the NVD API (lastModified window), upsert vulnerabilities.
             </p>
 
             <p class="muted" style="font-size: 12px; margin:6px 0 0 0;">
@@ -113,21 +112,6 @@
                     <td>affectedCpesInserted</td>
                     <td th:text="${result.affectedCpesInserted}">0</td>
                     <td class="muted">Number of affected product specifications inserted (includes version range metadata).</td>
-                </tr>
-                <tr>
-                    <td>pairsFound</td>
-                    <td th:text="${result.pairsFound}">0</td>
-                    <td class="muted">Total software × vulnerability candidate pairs evaluated as non-NO_MATCH.</td>
-                </tr>
-                <tr>
-                    <td>alertsInserted</td>
-                    <td th:text="${result.alertsInserted}">0</td>
-                    <td class="muted">New alerts created (first time a pair becomes visible).</td>
-                </tr>
-                <tr>
-                    <td>alertsTouched</td>
-                    <td th:text="${result.alertsTouched}">0</td>
-                    <td class="muted">Existing alerts updated (e.g., refreshed lastSeenAt, certainty or matchedBy updated).</td>
                 </tr>
                 </tbody>
             </table>
