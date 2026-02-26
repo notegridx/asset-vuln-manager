@@ -204,55 +204,64 @@
         </div>
     </div>
 
-    <div class="kv" style="grid-template-columns: 220px 1fr; margin-top:12px;">
-        <div class="k">Assets</div>
-        <div class="v">
-            <span class="pill" th:text="${assets}">0</span>
-            <span class="muted">total</span>
-            <span style="margin-left:10px;"><a th:href="@{/assets}">View</a></span>
-        </div>
+    <div class="status-grid status-grid--3" style="margin-top:12px;">
 
-        <div class="k">Installed software</div>
-        <div class="v">
-            <span class="pill" th:text="${installs}">0</span>
-            <span class="muted">rows</span>
-            <span style="margin-left:10px;"><a th:href="@{/software}">View</a></span>
-        </div>
+        <a class="status-tile" th:href="@{/assets}">
+            <div class="status-tile__label">Assets</div>
+            <div class="status-tile__value">
+                <span class="pill" th:text="${assets}">0</span>
+                <span class="muted">total</span>
+            </div>
+        </a>
 
-        <div class="k">CPE Dictionary (Vendors)</div>
-        <div class="v">
-            <span class="pill" th:text="${cpeVendors}">0</span>
-            <span class="muted">loaded</span>
-            <span style="margin-left:10px;"><a th:href="@{/admin/cpe/sync}">Update</a></span>
-        </div>
+        <a class="status-tile" th:href="@{/software}">
+            <div class="status-tile__label">Installed software</div>
+            <div class="status-tile__value">
+                <span class="pill" th:text="${installs}">0</span>
+                <span class="muted">rows</span>
+            </div>
+        </a>
 
-        <div class="k">CPE Dictionary (Products)</div>
-        <div class="v">
-            <span class="pill" th:text="${cpeProducts}">0</span>
-            <span class="muted">loaded</span>
-            <span style="margin-left:10px;"><a th:href="@{/admin/cpe/sync}">Update</a></span>
-        </div>
+        <a class="status-tile" th:href="@{/admin/cpe/sync}">
+            <div class="status-tile__label">CPE Dictionary (Vendors)</div>
+            <div class="status-tile__value">
+                <span class="pill" th:text="${cpeVendors}">0</span>
+                <span class="muted">loaded</span>
+            </div>
+        </a>
 
-        <div class="k">Vulnerabilities</div>
-        <div class="v">
-            <span class="pill" th:text="${vulns}">0</span>
-            <span class="muted">stored</span>
-            <span style="margin-left:10px;"><a th:href="@{/vulnerabilities}">View</a></span>
-        </div>
+        <a class="status-tile" th:href="@{/admin/cpe/sync}">
+            <div class="status-tile__label">CPE Dictionary (Products)</div>
+            <div class="status-tile__value">
+                <span class="pill" th:text="${cpeProducts}">0</span>
+                <span class="muted">loaded</span>
+            </div>
+        </a>
 
-        <div class="k">Open alerts</div>
-        <div class="v">
-            <span class="pill" th:text="${openAlerts}">0</span>
-            <span class="muted">active</span>
-            <span style="margin-left:10px;"><a th:href="@{/alerts}">View</a></span>
-        </div>
+        <a class="status-tile" th:href="@{/vulnerabilities}">
+            <div class="status-tile__label">Vulnerabilities</div>
+            <div class="status-tile__value">
+                <span class="pill" th:text="${vulns}">0</span>
+                <span class="muted">stored</span>
+            </div>
+        </a>
 
-        <div class="k">Software needs product mapping</div>
-        <div class="v">
-            <span class="pill" th:text="${unmappedInstalls}">0</span>
-            <span class="muted">may reduce matching accuracy</span>
-            <span style="margin-left:10px;"><a th:href="@{/admin/canonical}">Review</a></span>
-        </div>
+        <a class="status-tile" th:href="@{/alerts}">
+            <div class="status-tile__label">Open alerts</div>
+            <div class="status-tile__value">
+                <span class="pill" th:text="${openAlerts}">0</span>
+                <span class="muted">active</span>
+            </div>
+        </a>
+
+        <a class="status-tile status-tile--wide" th:href="@{/admin/canonical}">
+            <div class="status-tile__label">Software needs product mapping</div>
+            <div class="status-tile__value">
+                <span class="pill" th:text="${unmappedInstalls}">0</span>
+                <span class="muted">may reduce matching accuracy</span>
+            </div>
+        </a>
+
     </div>
 
     <hr/>

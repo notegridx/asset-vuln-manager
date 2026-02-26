@@ -14,8 +14,23 @@
 
   <header>
     <div class="brand">
-      <div class="title">asset-vuln-manager</div>
-      <div class="sub" th:text="${title}">page</div>
+      <a class="brand-link" th:href="@{/dashboard}">
+  <span class="brand-mark" aria-hidden="true">
+    <svg viewBox="0 0 24 24" class="brand-icon">
+      <circle cx="6" cy="6" r="2" />
+      <circle cx="18" cy="6" r="2" />
+      <circle cx="12" cy="18" r="2" />
+      <line x1="6" y1="6" x2="18" y2="6" />
+      <line x1="6" y1="6" x2="12" y2="18" />
+      <line x1="18" y1="6" x2="12" y2="18" />
+    </svg>
+  </span>
+
+        <span class="title">asset-vuln-manager</span>
+        <span class="brand-hint">← Back to Dashboard</span>
+      </a>
+
+      <div class="sub" th:text="${title}">Vulnerabilities</div>
     </div>
 
     <div th:replace="~{fragments/nav :: nav(${active})}"></div>
