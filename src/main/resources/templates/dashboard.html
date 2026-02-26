@@ -271,27 +271,57 @@
             <span class="pill" th:text="${criticalNoCpeCount}">0</span>
         </div>
 
+
         <div style="margin-top:10px; overflow:auto;">
             <table class="table">
                 <thead>
                 <tr>
                     <th style="min-width:160px;">CVE</th>
-                    <th>Title</th>
+                    <th style="min-width:90px;">CVSS</th>
+                    <th style="min-width:480px;">Description</th>
+                    <th style="min-width:130px;">Published</th>
+                    <th style="min-width:130px;">Last Modified</th>
                 </tr>
                 </thead>
+
                 <tbody>
                 <tr th:each="v : ${criticalNoCpe}">
                     <td>
-                        <a th:href="@{/vulnerabilities/{id}(id=${v.id})}" th:text="${v.externalId}">CVE-XXXX</a>
+                        <a th:href="@{/vulnerabilities/{id}(id=${v.id})}"
+                           th:text="${v.externalId}">CVE-XXXX</a>
                     </td>
-                    <td class="muted" th:text="${v.title}">title</td>
+
+                    <td>
+                        <div th:text="${v.cvssScore != null ? v.cvssScore : '-'}">-</div>
+                        <div class="muted" style="font-size:12px;"
+                             th:if="${v.cvssVersion != null && !v.cvssVersion.isBlank()}"
+                             th:text="${v.cvssVersion}">3.1</div>
+                    </td>
+
+                    <td class="muted"
+                        th:text="${v.description != null ? #strings.abbreviate(v.description, 240) : '-'}">
+                        desc
+                    </td>
+
+                    <td class="muted"
+                        th:text="${v.publishedAt != null ? #temporals.format(v.publishedAt, 'yyyy-MM-dd') : '-'}">
+                        -
+                    </td>
+
+                    <td class="muted"
+                        th:text="${v.lastModifiedAt != null ? #temporals.format(v.lastModifiedAt, 'yyyy-MM-dd') : '-'}">
+                        -
+                    </td>
                 </tr>
+
                 <tr th:if="${#lists.isEmpty(criticalNoCpe)}">
-                    <td colspan="2" class="muted">No items.</td>
+                    <td colspan="5" class="muted">No items.</td>
                 </tr>
                 </tbody>
             </table>
         </div>
+
+
     </div>
 
 </main>
