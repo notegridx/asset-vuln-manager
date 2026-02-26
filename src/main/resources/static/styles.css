@@ -941,3 +941,22 @@ select option {
 .mx-4 {
     margin: 0 4px !important;
 }
+
+/* ===== Software List Responsive Fix ===== */
+
+.table--fixed {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.table--fixed th,
+.table--fixed td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 長い文字列を強制的に折り返す */
+.cell-break {
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}

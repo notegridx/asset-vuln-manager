@@ -56,17 +56,18 @@
   </div>
 
   <!-- Table: use table-wrap like alerts/vulns -->
-  <div class="table-wrap">
-    <table style="margin-top:0;">
+  <div class="card p-0 overflow-auto">
+    <div class="table-wrap table--fixed">
+      <table class="table m-0">
       <thead>
       <tr>
         <th style="width:72px;">ID</th>
-        <th>Asset</th>
         <th>Vendor</th>
         <th>Product</th>
         <th>Version</th>
         <th>CPE</th>
-        <th>Actions</th>
+        <th>Asset</th>
+        <th style="width: 160px;">Actions</th>
       </tr>
       </thead>
 
@@ -74,40 +75,43 @@
       <tr th:each="s : ${page.content}">
         <td th:text="${s.id}">1</td>
 
-        <td>
-          <a th:href="@{/assets/{id}(id=${s.asset.id})}" th:text="${s.asset.name}">AssetName</a>
-          <div class="muted" style="font-size:12px;">assetId: <span th:text="${s.asset.id}">1</span></div>
-        </td>
-
         <td th:text="${s.vendor}">vendor</td>
-        <td th:text="${s.product}">product</td>
+        <td class="cell-break">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span th:text="${s.product}">product</span>
+
+            <a th:if="${alertCountMap[s.id] != null and alertCountMap[s.id] > 0}"
+               class="badge"
+               th:href="@{/alerts(view='FLAT', status='OPEN', softwareId=${s.id})}">
+              <span th:text="${alertCountMap[s.id]}">0</span> alerts
+            </a>
+
+          </div>
+        </td>
         <td th:text="${s.version}">version</td>
 
-        <td>
+        <td class="cell-break">
           <span th:if="${s.cpeName == null or #strings.trim(s.cpeName) == ''}" class="badge badge--warn">UNMAPPED</span>
           <span th:unless="${s.cpeName == null or #strings.trim(s.cpeName) == ''}"
                 class="mono" th:text="${s.cpeName}">cpe:2.3:...</span>
         </td>
 
-        <td style="white-space:nowrap;">
-          <a class="btn btn--small" th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
+        <td>
+          <a th:href="@{/assets/{id}(id=${s.asset.id})}" th:text="${s.asset.name}">AssetName</a>
+        </td>
 
-          <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
-                style="display:inline;"
-                onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
-            <input type="hidden" name="assetId" th:value="${s.asset.id}">
-            <input type="hidden" name="returnTo" value="software">
-            <button class="btn btn--small btn--danger" type="submit">Delete</button>
-          </form>
+        <td>
+          <div class="actions" style="margin:0; justify-content:flex-start; gap:6px; flex-wrap:wrap;">
+            <a class="btn btn--small" th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
 
-          <a class="btn btn--small"
-             th:if="${alertCountMap[s.id] != null}"
-             th:href="@{/alerts(view='FLAT', status='ALL', softwareId=${s.id})}">
-            Alerts
-          </a>
-          <span class="muted" th:unless="${alertCountMap[s.id] != null}">
-  No alerts
-</span>
+            <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
+                  style="display:inline;"
+                  onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
+              <input type="hidden" name="assetId" th:value="${s.asset.id}">
+              <input type="hidden" name="returnTo" value="software">
+              <button class="btn btn--small btn--danger" type="submit">Delete</button>
+            </form>
+          </div>
         </td>
       </tr>
 
@@ -116,6 +120,7 @@
       </tr>
       </tbody>
     </table>
+  </div>
   </div>
 
   <!-- pager -->
