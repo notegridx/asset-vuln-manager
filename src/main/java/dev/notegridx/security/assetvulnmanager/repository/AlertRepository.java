@@ -55,14 +55,15 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
      */
     @Modifying
     @Query("""
-            	update Alert a
-            	   set a.status = dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus.CLOSED,
-            	       a.closeReason = :reason,
-            	       a.closedAt = :closedAt,
-            	       a.updatedAt = :closedAt
-            	 where a.status = dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus.OPEN
-            	   and a.lastSeenAt < :runStartedAt
-            """)
+        update Alert a
+           set a.status = dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus.CLOSED,
+               a.closeReason = :reason,
+               a.closedAt = :closedAt,
+               a.updatedAt = :closedAt
+         where a.status = dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus.OPEN
+           and a.createdAt < :runStartedAt
+           and a.lastSeenAt < :runStartedAt
+       """)
     int closeStaleOpenAlerts(
             @Param("runStartedAt") LocalDateTime runStartedAt,
             @Param("reason") CloseReason reason,

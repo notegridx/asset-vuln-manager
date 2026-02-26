@@ -24,6 +24,7 @@ import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 
 @Service
 public class MatchingService {
@@ -50,8 +51,11 @@ public class MatchingService {
 	@Transactional
 	public MatchResult matchAndUpsertAlerts() {
 		// run開始時刻（この時刻以降に touchDetected(now) されなかった OPEN は stale とみなす）
-		LocalDateTime runStartedAt = LocalDateTime.now();
+		LocalDateTime runStartedAt = DbTime.now();
 		LocalDateTime now = runStartedAt;
+		// このランの検出時刻は runStartedAt に固定（touch/insert 全て同じ）
+		// ※ runStartedAt と lastSeenAt の精度差が無くなるので stale 誤判定しない
+		LocalDateTime detectedAt = runStartedAt;
 
 		int pairsFound = 0;
 		int alertsInserted = 0;
@@ -137,7 +141,7 @@ public class MatchingService {
 				Optional<Alert> existing = alertRepository.findBySoftwareInstallIdAndVulnerabilityId(si.getId(), vulnId);
 				if (existing.isPresent()) {
 					Alert a = existing.get();
-					a.touchDetected(now);
+					a.touchDetected(detectedAt);
 					a.updateMatchContext(certainty, reason, method);
 					alertRepository.save(a);
 					alertsTouched++;
@@ -145,7 +149,7 @@ public class MatchingService {
 					Vulnerability v = vulnById.get(vulnId);
 					if (v == null) continue;
 
-					Alert a = new Alert(si, v, now, certainty, reason, method);
+					Alert a = new Alert(si, v, detectedAt, certainty, reason, method);
 					alertRepository.save(a);
 					alertsInserted++;
 				}
@@ -244,10 +248,10 @@ public class MatchingService {
 		int autoClosed = alertRepository.closeStaleOpenAlerts(
 				runStartedAt,
 				CloseReason.AUTO_CLOSED_NO_LONGER_AFFECTED,
-				LocalDateTime.now()
+				DbTime.now()
 		);
 
-		return new MatchResult(pairsFound, alertsInserted, alertsTouched);
+		return new MatchResult(pairsFound, alertsInserted, alertsTouched, autoClosed);
 	}
 
 	private static String normalize(String s) {
@@ -279,7 +283,7 @@ public class MatchingService {
 		return v;
 	}
 
-	public record MatchResult(int pairsFound, int alertsInserted, int alertsTouched) {}
+	public record MatchResult(int pairsFound, int alertsInserted, int alertsTouched, int alertsAutoClosed) {}
 
 	/**
 	 * Verdict の「強さ」: MATCH > UNKNOWN/UNPARSABLE > NO_MATCH

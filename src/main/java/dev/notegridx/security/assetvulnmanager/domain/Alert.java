@@ -23,6 +23,7 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.AlertMatchMethod;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertUncertainReason;
 import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 import lombok.Getter;
 
 @Entity
@@ -103,8 +104,11 @@ public class Alert {
 	) {
 		this.softwareInstall = softwareInstall;
 		this.vulnerability = vulnerability;
-		this.firstSeenAt = detectedAt;
-		this.lastSeenAt = detectedAt;
+
+		LocalDateTime dt = DbTime.normalize(detectedAt);
+		this.firstSeenAt = dt;
+		this.lastSeenAt = dt;
+
 		this.status = AlertStatus.OPEN;
 
 		this.certainty = (certainty == null ? AlertCertainty.CONFIRMED : certainty);
@@ -113,9 +117,8 @@ public class Alert {
 	}
 
 	public void touchDetected(LocalDateTime detectedAt) {
-		this.lastSeenAt = detectedAt;
+		this.lastSeenAt = DbTime.normalize(detectedAt);
 	}
-
 	/**
 	 * 最新判定で確度が更新できるようにする（例: UNCONFIRMED → CONFIRMED への自動昇格）
 	 */
@@ -129,12 +132,12 @@ public class Alert {
 	public void close(CloseReason reason, LocalDateTime closedAt) {
 		this.status = AlertStatus.CLOSED;
 		this.closeReason = reason;
-		this.closedAt = closedAt;
+		this.closedAt = DbTime.normalize(closedAt);
 	}
 
 	@PrePersist
 	void prePersist() {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = DbTime.now();
 		this.createdAt = now;
 		this.updatedAt = now;
 
@@ -151,7 +154,7 @@ public class Alert {
 
 	@PreUpdate
 	void preUpdate() {
-		this.updatedAt = LocalDateTime.now();
+		this.updatedAt = DbTime.now();
 		if (this.status == null) this.status = AlertStatus.OPEN;
 		if (this.certainty == null) this.certainty = AlertCertainty.CONFIRMED;
 
