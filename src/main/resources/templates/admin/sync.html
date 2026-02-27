@@ -34,7 +34,7 @@
         <div class="muted" style="font-size: 12px; line-height: 1.6;">
             <b>Typical prerequisites</b>
             <ul style="margin: 8px 0 0 18px;">
-                <li>Import your inventory (assets / software) via <a th:href="@{/admin/import}">Import Inventory (CSV)</a>.</li>
+                <li>Import your inventory (assets / software) via <a th:href="@{/admin/import/csv}">Import Inventory (CSV)</a> or <a th:href="@{/admin/import/json}">import Inventory (JSON)</a>.</li>
                 <li>Update the product dictionary and review product mapping for higher match quality:
                     <a th:href="@{/admin/cpe/sync}">Update Product Dictionary</a> → <a th:href="@{/admin/canonical}">Review Product Mapping</a>.
                 </li>
