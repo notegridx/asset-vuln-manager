@@ -14,17 +14,17 @@
         </div>
     </div>
 
-    <p class="muted" style="margin-top:6px;">
-        Review installed software for this asset. Software entries are used to match against CVEs and generate alerts.
-    </p>
 
     <div class="card" style="padding:12px; margin-top:12px;">
         <div class="kv" style="grid-template-columns: 140px 1fr 140px 1fr; gap:8px 12px;">
+
+            <!-- ===== Existing fields ===== -->
             <div class="k">ID</div>
             <div class="v" th:text="${asset.id}">1</div>
 
             <div class="k">External Key</div>
-            <div class="v" th:text="${asset.externalKey != null ? asset.externalKey : '-'}">ASSET-001</div>
+            <div class="v" style="overflow-wrap:anywhere;"
+                 th:text="${asset.externalKey != null ? asset.externalKey : '-'}">ASSET-001</div>
 
             <div class="k">Name</div>
             <div class="v" th:text="${asset.name}">Example</div>
@@ -51,19 +51,70 @@
             </div>
 
             <div class="k">Created</div>
-            <div class="v"
-                 th:text="${#temporals.format(asset.createdAt, 'yyyy-MM-dd HH:mm')}">
-                2026-02-20 10:00
-            </div>
+            <div class="v" th:text="${#temporals.format(asset.createdAt, 'yyyy-MM-dd HH:mm')}">2026-02-20 10:00</div>
 
             <div class="k">Updated</div>
-            <div class="v"
-                 th:text="${#temporals.format(asset.updatedAt, 'yyyy-MM-dd HH:mm')}">
-                2026-02-24 09:30
-            </div>
+            <div class="v" th:text="${#temporals.format(asset.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-02-24 09:30</div>
 
             <div class="k">Note</div>
             <div class="v" th:text="${asset.note != null ? asset.note : '-'}">Note</div>
+
+            <!-- ===== Added fields (Priority B included) ===== -->
+
+            <!-- Identity -->
+            <div class="k">System UUID</div>
+            <div class="v" style="overflow-wrap:anywhere;"
+                 th:text="${asset.systemUuid != null ? asset.systemUuid : '-'}">-</div>
+
+            <div class="k">Serial Number</div>
+            <div class="v" style="overflow-wrap:anywhere;"
+                 th:text="${asset.serialNumber != null ? asset.serialNumber : '-'}">-</div>
+
+            <div class="k">Computer Name</div>
+            <div class="v" style="overflow-wrap:anywhere;"
+                 th:text="${asset.computerName != null ? asset.computerName : '-'}">-</div>
+
+            <div class="k">Local Hostname</div>
+            <div class="v" style="overflow-wrap:anywhere;"
+                 th:text="${asset.localHostname != null ? asset.localHostname : '-'}">-</div>
+
+            <!-- Hardware -->
+            <div class="k">Hardware Vendor</div>
+            <div class="v" th:text="${asset.hardwareVendor != null ? asset.hardwareVendor : '-'}">-</div>
+
+            <div class="k">Hardware Model</div>
+            <div class="v" th:text="${asset.hardwareModel != null ? asset.hardwareModel : '-'}">-</div>
+
+            <!-- CPU -->
+            <div class="k">CPU Brand</div>
+            <div class="v" style="overflow-wrap:anywhere;"
+                 th:text="${asset.cpuBrand != null ? asset.cpuBrand : '-'}">-</div>
+
+            <div class="k">CPU Physical Cores</div>
+            <div class="v" th:text="${asset.cpuPhysicalCores != null ? asset.cpuPhysicalCores : '-'}">-</div>
+
+            <div class="k">CPU Logical Cores</div>
+            <div class="v" th:text="${asset.cpuLogicalCores != null ? asset.cpuLogicalCores : '-'}">-</div>
+
+            <div class="k">Arch</div>
+            <div class="v" th:text="${asset.arch != null ? asset.arch : '-'}">-</div>
+
+            <!-- OS details -->
+            <div class="k">OS Name</div>
+            <div class="v" th:text="${asset.osName != null ? asset.osName : '-'}">-</div>
+
+            <div class="k">OS Build</div>
+            <div class="v" th:text="${asset.osBuild != null ? asset.osBuild : '-'}">-</div>
+
+            <div class="k">OS Major</div>
+            <div class="v" th:text="${asset.osMajor != null ? asset.osMajor : '-'}">-</div>
+
+            <div class="k">OS Minor</div>
+            <div class="v" th:text="${asset.osMinor != null ? asset.osMinor : '-'}">-</div>
+
+            <div class="k">OS Patch</div>
+            <div class="v" th:text="${asset.osPatch != null ? asset.osPatch : '-'}">-</div>
+
         </div>
     </div>
 
@@ -73,11 +124,6 @@
         <h2 style="margin:0;">Installed Software</h2>
         <a th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
     </div>
-
-    <p class="muted" style="margin-top:6px;">
-        Tip: If CPE is blank, you can map vendor/product via <b>Data → Review Product Mapping</b> to improve matching
-        accuracy.
-    </p>
 
     <table>
         <thead>
@@ -110,9 +156,9 @@
             <td th:text="${s.version != null && !#strings.isEmpty(s.version) ? s.version : '(not set)'}">1.0</td>
 
             <td>
-        <span th:if="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
-              class="muted"
-              th:text="${s.cpeName}">cpe:2.3:...</span>
+                <span th:if="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
+                      class="muted"
+                      th:text="${s.cpeName}">cpe:2.3:...</span>
 
                 <span th:unless="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
                       class="badge badge--unmapped">UNMAPPED (CPE)</span>
