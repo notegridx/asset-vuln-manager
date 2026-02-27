@@ -390,9 +390,10 @@ CREATE INDEX IF NOT EXISTS idx_vuln_severity ON vulnerabilities(severity);
 
 -- =========================================================
 -- Vulnerability affected CPEs
--- 重要: H2では UNIQUE 制約に NULL を含むと「NULL同士は別物」扱いになり、
---      同一に見える affected spec が重複 INSERT され得る。
--- 対策: NULL潰し用の *_nn 列（NOT NULL）を持ち、そこに UNIQUE を張る。
+-- 設計方針:
+-- - *_nn 列は廃止
+-- - version range 4列は NOT NULL + DEFAULT ''（NULLを使わない）
+-- - dedupe は本体6列（vuln_id + cpe_name + range4）で UNIQUE
 -- =========================================================
 
 CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
@@ -401,62 +402,47 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
 
     vulnerability_id BIGINT NOT NULL,
 
-    cpe_name VARCHAR(512),
+    -- NVD criteria (CPE 2.3 URI)
+    cpe_name VARCHAR(512) NOT NULL,
 
+    -- optional (dictionary linkage)
     cpe_vendor_id BIGINT,
     cpe_product_id BIGINT,
 
+    -- optional (normalized fallback)
     vendor_norm VARCHAR(255),
     product_norm VARCHAR(255),
 
-    version_start_including VARCHAR(64),
-    version_start_excluding VARCHAR(64),
-    version_end_including VARCHAR(64),
-    version_end_excluding VARCHAR(64),
-
-    -- NULL潰し専用列（UNIQUEキー用）
-    cpe_name_nn VARCHAR(512) NOT NULL DEFAULT '',
-    cpe_vendor_id_nn BIGINT NOT NULL DEFAULT -1,
-    cpe_product_id_nn BIGINT NOT NULL DEFAULT -1,
-    vendor_norm_nn VARCHAR(255) NOT NULL DEFAULT '',
-    product_norm_nn VARCHAR(255) NOT NULL DEFAULT '',
-    version_start_including_nn VARCHAR(64) NOT NULL DEFAULT '',
-    version_start_excluding_nn VARCHAR(64) NOT NULL DEFAULT '',
-    version_end_including_nn VARCHAR(64) NOT NULL DEFAULT '',
-    version_end_excluding_nn VARCHAR(64) NOT NULL DEFAULT '',
+    -- version range: never NULL, empty string means "unspecified"
+    version_start_including VARCHAR(255) NOT NULL DEFAULT '',
+    version_start_excluding VARCHAR(255) NOT NULL DEFAULT '',
+    version_end_including   VARCHAR(255) NOT NULL DEFAULT '',
+    version_end_excluding   VARCHAR(255) NOT NULL DEFAULT '',
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-    CONSTRAINT fk_vac_vuln FOREIGN KEY (vulnerability_id) REFERENCES vulnerabilities(id),
+    CONSTRAINT fk_vac_vuln       FOREIGN KEY (vulnerability_id) REFERENCES vulnerabilities(id),
     CONSTRAINT fk_vac_cpe_vendor FOREIGN KEY (cpe_vendor_id) REFERENCES cpe_vendors(id),
     CONSTRAINT fk_vac_cpe_product FOREIGN KEY (cpe_product_id) REFERENCES cpe_products(id)
     );
 
--- NULL潰し列で一意性を保証（重複INSERT防止）
+-- dedupe key（6列、本体列）
 CREATE UNIQUE INDEX IF NOT EXISTS ux_vac_dedupe
-    ON vulnerability_affected_cpes(
+    ON vulnerability_affected_cpes (
     vulnerability_id,
-    cpe_name_nn,
-    cpe_vendor_id_nn,
-    cpe_product_id_nn,
-    vendor_norm_nn,
-    product_norm_nn,
-    version_start_including_nn,
-    version_start_excluding_nn,
-    version_end_including_nn,
-    version_end_excluding_nn
+    cpe_name,
+    version_start_including,
+    version_start_excluding,
+    version_end_including,
+    version_end_excluding
     );
 
--- 検索用インデックス（既存列）
+-- search indexes（既存）
 CREATE INDEX IF NOT EXISTS idx_vac_cpe ON vulnerability_affected_cpes(cpe_name);
 CREATE INDEX IF NOT EXISTS idx_vac_vuln ON vulnerability_affected_cpes(vulnerability_id);
 CREATE INDEX IF NOT EXISTS idx_vac_vendor_product_id ON vulnerability_affected_cpes(cpe_vendor_id, cpe_product_id);
 CREATE INDEX IF NOT EXISTS idx_vac_vendor_product_norm ON vulnerability_affected_cpes(vendor_norm, product_norm);
-
--- （任意）NULL潰し列での検索が増えるならこちらも有効
-CREATE INDEX IF NOT EXISTS idx_vac_vendor_product_nn ON vulnerability_affected_cpes(cpe_vendor_id_nn, cpe_product_id_nn);
-CREATE INDEX IF NOT EXISTS idx_vac_vendor_product_norm_nn ON vulnerability_affected_cpes(vendor_norm_nn, product_norm_nn);
 
 -- =========================================================
 -- Alerts

@@ -11,6 +11,7 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -102,34 +103,28 @@ public class NvdImportService {
 
 			for (AffectedSpec spec : specs) {
 
-				// *_nn（NOT NULL）値を生成して exists 判定に使う（NULL問題を完全回避）
-				long vendorIdNn = (spec.vendorId() != null) ? spec.vendorId() : SENTINEL_ID;
-				long productIdNn = (spec.productId() != null) ? spec.productId() : SENTINEL_ID;
+				// range 4列は NULL を使わない（未指定は ""）
+				String vStartInc = nullToEmpty(spec.versionStartIncluding());
+				String vStartExc = nullToEmpty(spec.versionStartExcluding());
+				String vEndInc   = nullToEmpty(spec.versionEndIncluding());
+				String vEndExc   = nullToEmpty(spec.versionEndExcluding());
 
-				String cpeNameNn = nullToEmpty(spec.criteria());
-				String vendorNormNn = nullToEmpty(spec.vendorNorm());
-				String productNormNn = nullToEmpty(spec.productNorm());
-				String vStartIncNn = nullToEmpty(spec.versionStartIncluding());
-				String vStartExcNn = nullToEmpty(spec.versionStartExcluding());
-				String vEndIncNn = nullToEmpty(spec.versionEndIncluding());
-				String vEndExcNn = nullToEmpty(spec.versionEndExcluding());
+				String vsi = (vStartInc == null) ? "" : vStartInc;
+				String vse = (vStartExc == null) ? "" : vStartExc;
+				String vei = (vEndInc   == null) ? "" : vEndInc;
+				String vee = (vEndExc   == null) ? "" : vEndExc;
 
-				boolean exists = affectedCpeRepository
-						.existsByVulnerabilityIdAndCpeNameNnAndCpeVendorIdNnAndCpeProductIdNnAndVendorNormNnAndProductNormNnAndVersionStartIncludingNnAndVersionStartExcludingNnAndVersionEndIncludingNnAndVersionEndExcludingNn(
-								v.getId(),
-								cpeNameNn,
-								vendorIdNn,
-								productIdNn,
-								vendorNormNn,
-								productNormNn,
-								vStartIncNn,
-								vStartExcNn,
-								vEndIncNn,
-								vEndExcNn
-						);
-
-				if (exists) {
-					continue;
+				Long vulnId = v.getId(); // v は save 済み前提
+				if (vulnId != null) {
+					boolean exists = affectedCpeRepository
+							.existsByVulnerabilityIdAndCpeNameAndVersionStartIncludingAndVersionStartExcludingAndVersionEndIncludingAndVersionEndExcluding(
+									vulnId,
+									spec.criteria(),
+									vsi, vse, vei, vee
+							);
+					if (exists) {
+						continue; // duplicate skip
+					}
 				}
 
 				affectedCpeRepository.save(new VulnerabilityAffectedCpe(
@@ -139,10 +134,7 @@ public class NvdImportService {
 						spec.productId(),
 						spec.vendorNorm(),
 						spec.productNorm(),
-						spec.versionStartIncluding(),
-						spec.versionStartExcluding(),
-						spec.versionEndIncluding(),
-						spec.versionEndExcluding()
+						vsi, vse, vei, vee
 				));
 				affectedInserted++;
 			}

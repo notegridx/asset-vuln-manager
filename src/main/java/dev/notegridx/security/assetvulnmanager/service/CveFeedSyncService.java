@@ -738,6 +738,7 @@ public class CveFeedSyncService {
 
     private int upsertAffectedOne(Vulnerability v, ParsedAffectedCpe a) {
         if (a == null) return 0;
+
         String criteria = norm(a.criteria);
         if (criteria == null || !criteria.startsWith("cpe:2.3:")) return 0;
 
@@ -761,36 +762,12 @@ public class CveFeedSyncService {
             }
         }
 
-        // ---- Phase: insert-only but idempotent (avoid UX_VAC_DEDUPE violations) ----
-        // UX_VAC_DEDUPE is based on *_NN columns; align existence check with those keys.
-        final long vid = (v == null || v.getId() == null) ? 0L : v.getId();
-        final String cpeNameNn = nn(criteria);
-        final Long vendorIdNn = nn(vendorId);
-        final Long productIdNn = nn(productId);
-        final String vendorNormNn = nn(vendorNorm);
-        final String productNormNn = nn(productNorm);
-        final String vsiNn = nn(a.versionStartIncluding);
-        final String vseNn = nn(a.versionStartExcluding);
-        final String veiNn = nn(a.versionEndIncluding);
-        final String veeNn = nn(a.versionEndExcluding);
-
-        // If already exists, skip without touching persistence context
-        if (vid != 0L) {
-            boolean exists = affectedCpeRepository
-                    .existsByVulnerabilityIdAndCpeNameNnAndCpeVendorIdNnAndCpeProductIdNnAndVendorNormNnAndProductNormNnAndVersionStartIncludingNnAndVersionStartExcludingNnAndVersionEndIncludingNnAndVersionEndExcludingNn(
-                            vid,
-                            cpeNameNn,
-                            vendorIdNn,
-                            productIdNn,
-                            vendorNormNn,
-                            productNormNn,
-                            vsiNn,
-                            vseNn,
-                            veiNn,
-                            veeNn
-                    );
-            if (exists) return 0;
-        }
+        // ★ version range 4列は NULL を使わない（未指定は ""）
+        //   Entity側でも normalize しているが、ここでも明示しておく
+        String vsi = nullToEmpty(a.versionStartIncluding);
+        String vse = nullToEmpty(a.versionStartExcluding);
+        String vei = nullToEmpty(a.versionEndIncluding);
+        String vee = nullToEmpty(a.versionEndExcluding);
 
         VulnerabilityAffectedCpe vac = new VulnerabilityAffectedCpe(
                 v,
@@ -799,49 +776,30 @@ public class CveFeedSyncService {
                 productId,
                 vendorNorm,
                 productNorm,
-                a.versionStartIncluding,
-                a.versionStartExcluding,
-                a.versionEndIncluding,
-                a.versionEndExcluding
+                vsi,
+                vse,
+                vei,
+                vee
         );
 
         try {
             affectedCpeRepository.save(vac);
-            // Ensure constraint violations occur here (not later on unrelated SELECT autoFlush)
+
+            // UNIQUE違反をこの場で確定させて握りつぶす（後続 flush で chunk rollback しないように）
             em.flush();
             return 1;
+
         } catch (DataIntegrityViolationException e) {
-            // unique constraint hit: ignore
-            // But the persistence context may now contain a "broken" entity state -> clear it to avoid
-            // "Entry ... has a null identifier" cascading on next autoFlush.
-            try {
-                em.clear();
-            } catch (Exception ignore) {
-            }
+            // ux_vac_dedupe hit → duplicate skip
+            // 例外後に persistence context が不安定になるのを避けてクリア
+            try { em.clear(); } catch (Exception ignore) {}
             return 0;
+
         } catch (PersistenceException e) {
-            // Defensive: some providers throw PersistenceException directly for constraint violations.
-            try {
-                em.clear();
-            } catch (Exception ignore) {
-            }
-            // Re-throw unexpected persistence issues so chunkTx can rollback properly
+            // Providerにより直接PersistenceExceptionになる場合に備える
+            try { em.clear(); } catch (Exception ignore) {}
             throw e;
         }
-    }
-
-    /**
-     * Normalize NOT-NULL "NN" columns (schema uses *_NN with defaults).
-     * Keep it consistent with your schema defaults:
-     * - Strings: null -> ""
-     * - Long ids: null -> 0
-     */
-    private static String nn(String s) {
-        return (s == null) ? "" : s;
-    }
-
-    private static Long nn(Long v) {
-        return (v == null) ? -1L : v;
     }
 
     private Long cachedVendorId(String vendorNorm) {
@@ -921,6 +879,12 @@ public class CveFeedSyncService {
         m = m.replace('\n', ' ').replace('\r', ' ');
         if (m.length() > 400) m = m.substring(0, 400) + "...";
         return e.getClass().getSimpleName() + ": " + m;
+    }
+
+    private static String nullToEmpty(String s) {
+        if (s == null) return "";
+        String t = s.trim();
+        return t.isEmpty() ? "" : t;
     }
 
     // ---- results ----
