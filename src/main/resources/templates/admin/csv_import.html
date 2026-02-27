@@ -1,37 +1,80 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
 <head th:replace="~{layout/base :: head('CSV Import')}"></head>
+
 <body th:replace="~{layout/base :: layout('CSV Import', 'admin', ~{::main})}">
 <main>
-  <div class="page-header">
-    <h1>CSV Import (Staged)</h1>
-    <div class="muted mt-6">Upload → Preview → Import</div>
+
+  <!-- Page Header (match JSON Import style) -->
+  <div class="page-header"
+       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header__left">
+      <h1 style="margin:0;">CSV Import</h1>
+      <p class="muted" style="margin:6px 0 0 0;">
+        Upload CSV files and import inventory in 3 steps: <b>Upload → Preview → Import</b>.
+        (This page stages CSV for preview.)
+      </p>
+    </div>
+    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill">CSV Upload</span>
+      <span class="pill">Admin Tool</span>
+    </div>
   </div>
 
-  <div class="grid gap-16">
-    <section class="card p-16">
-      <h2>Upload Assets CSV</h2>
-      <form th:action="@{/admin/import/csv/assets/stage}" method="post" enctype="multipart/form-data" class="mt-10">
-        <input type="file" name="file" accept=".csv" required>
-        <button class="btn btn-primary" type="submit">Upload &amp; Preview</button>
-      </form>
-      <div class="muted mt-10">
-        Required headers: <code>external_key</code>, <code>name</code>
-      </div>
-    </section>
-
-    <section class="card p-16">
-      <h2>Upload Software CSV</h2>
-      <form th:action="@{/admin/import/csv/software/stage}" method="post" enctype="multipart/form-data" class="mt-10">
-        <input type="file" name="file" accept=".csv" required>
-        <button class="btn btn-primary" type="submit">Upload &amp; Preview</button>
-      </form>
-      <div class="muted mt-10">
-        Required headers: <code>external_key</code>, <code>product</code><br>
-        Note: asset must exist (import assets first)
-      </div>
-    </section>
+  <!-- Tips / Policy card (same rhythm as JSON Import) -->
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="muted" style="font-size:12px; line-height:1.6;">
+      <b>Tips</b>
+      <ul style="margin:6px 0 0 18px;">
+        <li>Import order: <b>Assets</b> → <b>Software</b></li>
+        <li><b>Upload &amp; Preview</b> uploads the file and runs validation in staging (no direct DB writes here).</li>
+        <li>Required headers are shown under each uploader.</li>
+      </ul>
+    </div>
   </div>
+
+  <!-- Upload Assets CSV -->
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <h2 style="margin:0 0 10px 0;">Upload Assets CSV</h2>
+
+    <form th:action="@{/admin/import/csv/assets/stage}" method="post" enctype="multipart/form-data">
+      <div class="field">
+        <label>assets.csv</label>
+        <input type="file" name="file" accept=".csv,text/csv" required>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Required headers: <b>external_key</b>, <b>name</b>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:14px;">
+        <button type="submit" class="btn btn-primary">Upload → Preview Assets</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Upload Software CSV -->
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <h2 style="margin:0 0 10px 0;">Upload Software CSV</h2>
+
+    <form th:action="@{/admin/import/csv/software/stage}" method="post" enctype="multipart/form-data">
+      <div class="field">
+        <label>software.csv</label>
+        <input type="file" name="file" accept=".csv,text/csv" required>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Required headers: <b>external_key</b>, <b>product</b> (version is optional)
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:4px;">
+          Note: assets must already exist (import assets first).
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:14px;">
+        <button type="submit" class="btn btn-primary">Upload → Preview Software</button>
+      </div>
+    </form>
+  </div>
+
 </main>
 </body>
 </html>
