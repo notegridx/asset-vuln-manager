@@ -21,6 +21,17 @@ public class SoftwareController {
     private final SoftwareInstallRepository softwareInstallRepository;
     private final SoftwareInstallService softwareInstallService;
 
+    // 追加: Software detail
+    @GetMapping("/{id}")
+    public String detail(@PathVariable Long id, Model model) {
+        SoftwareInstall s = softwareInstallRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("SoftwareInstall not found. id=" + id));
+
+        model.addAttribute("software", s);
+        model.addAttribute("assetId", s.getAsset().getId()); // 戻りリンク等で使う
+        return "software/detail";
+    }
+
     @PostMapping("/{id}/delete")
     public String deleteSoftware(
             @PathVariable("id") Long id,

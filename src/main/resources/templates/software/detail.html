@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('Software Details')}"></head>
+
+<body th:replace="~{layout/base :: layout('Software Details', 'assets', ~{::main})}">
+<main>
+
+  <!-- Header -->
+  <div class="actions">
+    <div>
+      <h1 style="margin:0;">Software Details</h1>
+      <div class="muted" style="margin-top:6px;">
+        View the installed software record and jump to related alerts.
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <a th:href="@{/assets/{id}(id=${assetId})}">← Back to Asset</a>
+      <a class="btn" th:href="@{/software}">Back to Software list</a>
+
+      <a class="btn"
+         th:href="@{/alerts(view='FLAT', status='OPEN', certainty='ALL', softwareId=${software.id})}">
+        View OPEN alerts
+      </a>
+
+      <a class="btn" th:href="@{/software/{id}/edit(id=${software.id})}">Edit</a>
+
+      <form th:action="@{/software/{id}/delete(id=${software.id})}" method="post"
+            onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
+        <input type="hidden" name="assetId" th:value="${assetId}">
+        <button class="btn btn--danger" type="submit">Delete</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="card" style="padding:12px; margin-top:12px;">
+    <div style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
+      <div>
+        <b th:text="${software.product}">product</b>
+        <span class="muted"
+              th:text="${software.version != null && !software.version.isBlank() ? ' ' + software.version : ''}"></span>
+      </div>
+      <span class="pill"
+            th:text="${software.vendor != null && !software.vendor.isBlank() ? software.vendor : '(vendor not set)'}">vendor</span>
+      <span class="pill" th:text="'installId: ' + ${software.id}">installId</span>
+    </div>
+  </div>
+
+  <!-- Details -->
+  <div class="card" style="padding:12px; margin-top:12px;">
+    <div class="kv" style="grid-template-columns: 160px 1fr 160px 1fr; gap:8px 12px;">
+
+      <div class="k">ID</div>
+      <div class="v" th:text="${software.id}">1</div>
+
+      <div class="k">Asset</div>
+      <div class="v">
+        <a th:href="@{/assets/{id}(id=${assetId})}"
+           th:text="${software.asset != null ? software.asset.name : '(unknown)'}">asset</a>
+        <span class="muted" th:text="' (assetId: ' + ${assetId} + ')'">(assetId: 1)</span>
+      </div>
+
+      <div class="k">Vendor</div>
+      <div class="v" th:text="${software.vendor != null && !software.vendor.isBlank() ? software.vendor : '-'}">vendor</div>
+
+      <div class="k">Product</div>
+      <div class="v" th:text="${software.product != null && !software.product.isBlank() ? software.product : '-'}">product</div>
+
+      <div class="k">Version</div>
+      <div class="v" th:text="${software.version != null && !software.version.isBlank() ? software.version : '-'}">1.0</div>
+
+      <div class="k">CPE 2.3 Name</div>
+      <div class="v">
+        <span th:if="${software.cpeName != null && !software.cpeName.isBlank()}"
+              th:text="${software.cpeName}">cpe:2.3:...</span>
+        <span th:unless="${software.cpeName != null && !software.cpeName.isBlank()}"
+              class="badge badge--unmapped">UNMAPPED (CPE)</span>
+      </div>
+
+      <div class="k">Canonical IDs</div>
+      <div class="v">
+        <span class="muted"
+              th:text="'vendorId: ' + ${software.cpeVendorId != null ? software.cpeVendorId : '-'} + ', productId: ' + ${software.cpeProductId != null ? software.cpeProductId : '-'}">
+          vendorId: - , productId: -
+        </span>
+      </div>
+
+      <div class="k">Source Type</div>
+      <div class="v" th:text="${software.sourceType != null && !software.sourceType.isBlank() ? software.sourceType : '-'}">JSON_UPLOAD</div>
+
+      <div class="k">Source</div>
+      <div class="v" th:text="${software.source != null && !software.source.isBlank() ? software.source : '-'}">osquery</div>
+
+      <div class="k">Type</div>
+      <div class="v" th:text="${software.type != null ? software.type : '-'}">APPLICATION</div>
+
+      <div class="k">Last Seen</div>
+      <div class="v" th:text="${software.lastSeenAt != null ? software.lastSeenAt : '-'}">2026-02-26T00:00</div>
+
+      <div class="k">Installed At</div>
+      <div class="v" th:text="${software.installedAt != null ? software.installedAt : '-'}">2026-02-01T00:00</div>
+
+      <div class="k">Install Location</div>
+      <div class="v" th:text="${software.installLocation != null && !software.installLocation.isBlank() ? software.installLocation : '-'}">/Applications</div>
+
+      <div class="k">Package Identifier</div>
+      <div class="v" th:text="${software.packageIdentifier != null && !software.packageIdentifier.isBlank() ? software.packageIdentifier : '-'}">com.example.app</div>
+
+      <div class="k">Arch</div>
+      <div class="v" th:text="${software.arch != null && !software.arch.isBlank() ? software.arch : '-'}">x86_64</div>
+
+      <div class="k">Publisher</div>
+      <div class="v" th:text="${software.publisher != null && !software.publisher.isBlank() ? software.publisher : '-'}">publisher</div>
+
+      <div class="k">Bundle ID</div>
+      <div class="v" th:text="${software.bundleId != null && !software.bundleId.isBlank() ? software.bundleId : '-'}">bundleId</div>
+
+      <div class="k">Package Manager</div>
+      <div class="v" th:text="${software.packageManager != null && !software.packageManager.isBlank() ? software.packageManager : '-'}">brew</div>
+
+      <div class="k">Install Source</div>
+      <div class="v" th:text="${software.installSource != null && !software.installSource.isBlank() ? software.installSource : '-'}">store</div>
+
+      <div class="k">Edition</div>
+      <div class="v" th:text="${software.edition != null && !software.edition.isBlank() ? software.edition : '-'}">edition</div>
+
+      <div class="k">Channel</div>
+      <div class="v" th:text="${software.channel != null && !software.channel.isBlank() ? software.channel : '-'}">stable</div>
+
+      <div class="k">Release</div>
+      <div class="v" th:text="${software.release != null && !software.release.isBlank() ? software.release : '-'}">release</div>
+
+      <div class="k">PURL</div>
+      <div class="v" th:text="${software.purl != null && !software.purl.isBlank() ? software.purl : '-'}">pkg:...</div>
+
+      <div class="k">Created At</div>
+      <div class="v" th:text="${software.createdAt != null ? software.createdAt : '-'}">createdAt</div>
+
+      <div class="k">Updated At</div>
+      <div class="v" th:text="${software.updatedAt != null ? software.updatedAt : '-'}">updatedAt</div>
+
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

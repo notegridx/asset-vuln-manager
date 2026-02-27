@@ -78,7 +78,9 @@
         <td th:text="${s.vendor}">vendor</td>
         <td class="cell-break">
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <span th:text="${s.product}">product</span>
+            <a th:href="@{/software/{id}(id=${s.id})}">
+              <b th:text="${s.product}">product</b>
+            </a>
 
             <a th:if="${alertCountMap[s.id] != null and alertCountMap[s.id] > 0}"
                class="badge"

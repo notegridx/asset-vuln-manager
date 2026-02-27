@@ -150,7 +150,9 @@
             <td th:text="${s.vendor != null && !#strings.isEmpty(s.vendor) ? s.vendor : '-'}">vendor</td>
 
             <td>
-                <b th:text="${s.product}">product</b>
+                <a th:href="@{/software/{id}(id=${s.id})}">
+                    <b th:text="${s.product}">product</b>
+                </a>
             </td>
 
             <td th:text="${s.version != null && !#strings.isEmpty(s.version) ? s.version : '(not set)'}">1.0</td>
