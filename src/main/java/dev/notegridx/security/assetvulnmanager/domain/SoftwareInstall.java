@@ -8,20 +8,13 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 
 @Entity
-@Table(name = "software_installs",
+@Table(
+        name = "software_installs",
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_sw_asset_vendor_product_version",
                 columnNames = {"asset_id", "vendor", "product", "version"}
-        ),
-        indexes = {
-                @Index(name = "idx_sw_asset_id", columnList = "asset_id"),
-                @Index(name = "idx_sw_cpe", columnList = "cpe_name"),
-                @Index(name = "idx_sw_norm", columnList = "normalized_vendor, normalized_product"),
-                @Index(name = "idx_sw_type", columnList = "type"),
-                @Index(name = "idx_sw_source", columnList = "source"),
-                @Index(name = "idx_sw_last_seen", columnList = "last_seen_at"),
-                @Index(name = "idx_sw_import_run", columnList = "import_run_id")
-        })
+        )
+)
 @Getter
 public class SoftwareInstall {
 
@@ -29,23 +22,23 @@ public class SoftwareInstall {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "asset_id", nullable = false)
     private Asset asset;
 
-    // ===== Added (osquery ingestion support) =====
-
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private SoftwareType type = SoftwareType.APPLICATION;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private String source = "MANUAL";
 
-    @Column(name = "vendor_raw")
+    // ===== Raw input (for troubleshooting & dictionary training) =====
+
+    @Column(name = "vendor_raw", length = 255)
     private String vendorRaw;
 
-    @Column(name = "product_raw")
+    @Column(name = "product_raw", length = 255)
     private String productRaw;
 
     @Column(name = "version_raw", length = 128)
@@ -80,6 +73,32 @@ public class SoftwareInstall {
 
     @Column(name = "source_type", nullable = false, length = 64)
     private String sourceType = "UNKNOWN";
+
+    // ===== Added: higher-precision identifiers / provenance =====
+
+    @Column(name = "publisher", length = 255)
+    private String publisher;
+
+    @Column(name = "bundle_id", length = 255)
+    private String bundleId;
+
+    @Column(name = "package_manager", length = 64)
+    private String packageManager;
+
+    @Column(name = "install_source", length = 64)
+    private String installSource;
+
+    @Column(name = "edition", length = 128)
+    private String edition;
+
+    @Column(name = "channel", length = 64)
+    private String channel;
+
+    @Column(name = "release", length = 128)
+    private String release;
+
+    @Column(name = "purl", length = 512)
+    private String purl;
 
     // ===== Existing (display & matching key) =====
 
@@ -164,6 +183,11 @@ public class SoftwareInstall {
         this.type = type;
     }
 
+    public void setSource(String source) {
+        String s = normalizeNullable(source);
+        this.source = (s == null) ? "MANUAL" : s;
+    }
+
     /**
      * Sets ingestion source (CSV/OSQUERY/FLEET/WAZUH/MANUAL...) and updates last_seen_at.
      */
@@ -204,6 +228,40 @@ public class SoftwareInstall {
             String sourceType,
             LocalDateTime lastSeenAt
     ) {
+        updateImportExtended(
+                installLocation,
+                installedAt,
+                packageIdentifier,
+                arch,
+                sourceType,
+                lastSeenAt,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    public void updateImportExtended(
+            String installLocation,
+            LocalDateTime installedAt,
+            String packageIdentifier,
+            String arch,
+            String sourceType,
+            LocalDateTime lastSeenAt,
+            String publisher,
+            String bundleId,
+            String packageManager,
+            String installSource,
+            String edition,
+            String channel,
+            String release,
+            String purl
+    ) {
         this.installLocation = normalizeNullable(installLocation);
         this.installedAt = installedAt;
         this.packageIdentifier = normalizeNullable(packageIdentifier);
@@ -213,6 +271,17 @@ public class SoftwareInstall {
         this.sourceType = (st == null) ? "UNKNOWN" : st;
 
         this.lastSeenAt = lastSeenAt;
+
+        this.publisher = normalizeNullable(publisher);
+        this.bundleId = normalizeNullable(bundleId);
+        this.packageManager = normalizeNullable(packageManager);
+        this.installSource = normalizeNullable(installSource);
+
+        this.edition = normalizeNullable(edition);
+        this.channel = normalizeNullable(channel);
+        this.release = normalizeNullable(release);
+
+        this.purl = normalizeNullable(purl);
     }
 
     // =========================================================
@@ -258,44 +327,23 @@ public class SoftwareInstall {
         this.createdAt = now;
         this.updatedAt = now;
 
-        // existing guards
         if (this.vendor == null) this.vendor = "";
         if (this.version == null) this.version = "";
 
-        if (this.normalizedVendor == null) this.normalizedVendor = normalizeForKey(this.vendor);
-        if (this.normalizedProduct == null) this.normalizedProduct = normalizeForKey(this.product);
-
-        // new guards
-        if (this.type == null) this.type = SoftwareType.APPLICATION;
         if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
-
         if (this.sourceType == null || this.sourceType.trim().isEmpty()) this.sourceType = "UNKNOWN";
 
-        // keep versionNorm in sync when only versionRaw is set
-        if (this.versionNorm == null && this.versionRaw != null) {
-            this.versionNorm = normalizeVersionNorm(this.versionRaw);
-        }
+        // lastSeenAt は null 許容
     }
 
     @PreUpdate
     void preUpdate() {
         this.updatedAt = LocalDateTime.now();
 
-        // existing guards
         if (this.vendor == null) this.vendor = "";
         if (this.version == null) this.version = "";
 
-        if (this.normalizedVendor == null) this.normalizedVendor = normalizeForKey(this.vendor);
-        if (this.normalizedProduct == null) this.normalizedProduct = normalizeForKey(this.product);
-
-        // new guards
-        if (this.type == null) this.type = SoftwareType.APPLICATION;
         if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
-
         if (this.sourceType == null || this.sourceType.trim().isEmpty()) this.sourceType = "UNKNOWN";
-
-        if (this.versionNorm == null && this.versionRaw != null) {
-            this.versionNorm = normalizeVersionNorm(this.versionRaw);
-        }
     }
 }

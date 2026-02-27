@@ -1,6 +1,6 @@
 -- =========================================================
--- schema.sql (H2)
--- Rebuild from scratch OK (DROP is handled outside).
+-- schema.sql (H2) - Normal use (IF NOT EXISTS)
+-- DB is usually retained; drop manually when needed.
 -- =========================================================
 
 -- =========================================================
@@ -22,6 +22,28 @@ CREATE TABLE IF NOT EXISTS assets
     platform VARCHAR(32),
     -- optional: OS display hint (free-form)
     os_version VARCHAR(128),
+
+    -- ===== Added: identity / hardware / OS details (osquery-friendly) =====
+    system_uuid VARCHAR(128),
+    serial_number VARCHAR(128),
+
+    hardware_vendor VARCHAR(255),
+    hardware_model VARCHAR(255),
+
+    computer_name VARCHAR(255),
+    local_hostname VARCHAR(255),
+
+    cpu_brand VARCHAR(255),
+    cpu_physical_cores INT,
+    cpu_logical_cores INT,
+    arch VARCHAR(64),
+
+    os_name VARCHAR(128),
+    os_build VARCHAR(128),
+    os_major INT,
+    os_minor INT,
+    os_patch INT,
+
     -- snapshot observation timestamp
     last_seen_at TIMESTAMP,
 
@@ -34,6 +56,12 @@ CREATE TABLE IF NOT EXISTS assets
 CREATE INDEX IF NOT EXISTS idx_assets_external_key ON assets(external_key);
 CREATE INDEX IF NOT EXISTS idx_assets_source ON assets(source);
 CREATE INDEX IF NOT EXISTS idx_assets_last_seen ON assets(last_seen_at);
+
+-- Added indexes (safe, optional but useful)
+CREATE INDEX IF NOT EXISTS idx_assets_system_uuid ON assets(system_uuid);
+CREATE INDEX IF NOT EXISTS idx_assets_serial_number ON assets(serial_number);
+CREATE INDEX IF NOT EXISTS idx_assets_local_hostname ON assets(local_hostname);
+CREATE INDEX IF NOT EXISTS idx_assets_platform ON assets(platform);
 
 -- =========================================================
 -- CPE Dictionary (vendors/products)
@@ -148,8 +176,7 @@ CREATE TABLE IF NOT EXISTS software_installs
     vendor VARCHAR(255) NOT NULL DEFAULT '',
     product VARCHAR(255) NOT NULL,
 
-    -- NOTE: 現行は NOT NULL DEFAULT '' だが、要件では version NULL 許容でも良い。
-    -- 既存ロジック互換のため、DBは現行通り（空文字運用でもOK）に保持。
+    -- NOTE: 既存ロジック互換のため、DBは現行通り（空文字運用でもOK）に保持。
     version VARCHAR(64) NOT NULL DEFAULT '',
     -- normalized version string (idempotency; not for numeric comparison yet)
     version_norm VARCHAR(128),
@@ -168,7 +195,7 @@ CREATE TABLE IF NOT EXISTS software_installs
     -- trace which import run produced/updated this row
     import_run_id BIGINT,
 
-    -- ===== New columns (requested) =====
+    -- existing extended columns
     install_location VARCHAR(1024),
     installed_at TIMESTAMP NULL,
     package_identifier VARCHAR(255),
@@ -177,6 +204,18 @@ CREATE TABLE IF NOT EXISTS software_installs
     -- source_type: data origin management (FLEET / JSON etc.)
     -- 既存の source と併存させる（既存コード互換）
     source_type VARCHAR(64) NOT NULL DEFAULT 'UNKNOWN',
+
+    -- ===== Added: higher-precision identifiers / provenance =====
+    publisher VARCHAR(255),
+    bundle_id VARCHAR(255),
+    package_manager VARCHAR(64),
+    install_source VARCHAR(64),
+
+    edition VARCHAR(128),
+    channel VARCHAR(64),
+    release VARCHAR(128),
+
+    purl VARCHAR(512),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -198,6 +237,13 @@ CREATE INDEX IF NOT EXISTS idx_sw_source_type ON software_installs(source_type);
 CREATE INDEX IF NOT EXISTS idx_sw_last_seen ON software_installs(last_seen_at);
 CREATE INDEX IF NOT EXISTS idx_sw_import_run ON software_installs(import_run_id);
 
+-- Added indexes (safe)
+CREATE INDEX IF NOT EXISTS idx_sw_pkg_identifier ON software_installs(package_identifier);
+CREATE INDEX IF NOT EXISTS idx_sw_publisher ON software_installs(publisher);
+CREATE INDEX IF NOT EXISTS idx_sw_bundle_id ON software_installs(bundle_id);
+CREATE INDEX IF NOT EXISTS idx_sw_pkg_manager ON software_installs(package_manager);
+CREATE INDEX IF NOT EXISTS idx_sw_purl ON software_installs(purl);
+
 -- =========================================================
 -- Staging tables for JSON Import (Upload -> Preview -> Import)
 -- import_runs.id を参照して Preview/Import の2段階を実現
@@ -215,6 +261,33 @@ CREATE TABLE IF NOT EXISTS import_staging_assets
     asset_type VARCHAR(32),
     owner VARCHAR(255),
     note CLOB,
+
+    -- Added: staging for expanded asset fields
+    source VARCHAR(32),
+    platform VARCHAR(32),
+    os_version VARCHAR(128),
+
+    system_uuid VARCHAR(128),
+    serial_number VARCHAR(128),
+
+    hardware_vendor VARCHAR(255),
+    hardware_model VARCHAR(255),
+
+    computer_name VARCHAR(255),
+    local_hostname VARCHAR(255),
+
+    cpu_brand VARCHAR(255),
+    cpu_physical_cores INT,
+    cpu_logical_cores INT,
+    arch VARCHAR(64),
+
+    os_name VARCHAR(128),
+    os_build VARCHAR(128),
+    os_major INT,
+    os_minor INT,
+    os_patch INT,
+
+    last_seen_at TIMESTAMP,
 
     is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     validation_error VARCHAR(1024),
@@ -250,6 +323,25 @@ CREATE TABLE IF NOT EXISTS import_staging_software
 
     -- snapshot observation timestamp (import時刻など)
     last_seen_at TIMESTAMP,
+
+    -- Added: staging fields for better precision
+    type VARCHAR(32),
+    source VARCHAR(32),
+
+    vendor_raw VARCHAR(255),
+    product_raw VARCHAR(255),
+    version_raw VARCHAR(128),
+
+    publisher VARCHAR(255),
+    bundle_id VARCHAR(255),
+    package_manager VARCHAR(64),
+    install_source VARCHAR(64),
+
+    edition VARCHAR(128),
+    channel VARCHAR(64),
+    release VARCHAR(128),
+
+    purl VARCHAR(512),
 
     is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     validation_error VARCHAR(1024),

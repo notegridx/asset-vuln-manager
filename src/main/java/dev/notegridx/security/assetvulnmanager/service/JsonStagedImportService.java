@@ -1,7 +1,6 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -21,6 +20,7 @@ import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingAsset;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingSoftware;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareType;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportStagingAssetRepository;
@@ -62,18 +62,73 @@ public class JsonStagedImportService {
         public String assetType;
         public String owner;
         public String note;
+
+        // optional: provenance / platform
+        public String source;
+        public String platform;
+        public String osVersion;
+
+        // optional: osquery-derived inventory identifiers / OS / hardware
+        public String systemUuid;
+        public String serialNumber;
+        public String hardwareVendor;
+        public String hardwareModel;
+        public String computerName;
+        public String localHostname;
+
+        public String cpuBrand;
+        public Integer cpuPhysicalCores;
+        public Integer cpuLogicalCores;
+        public String arch;
+
+        public String osName;
+        public String osBuild;
+        public Integer osMajor;
+        public Integer osMinor;
+        public Integer osPatch;
+
+        // optional: observation timestamp (ISO8601)
+        public String lastSeenAt;
     }
 
     public static class SoftwareJsonRow {
         public String externalKey;
+
+        // matching key (existing behavior)
         public String vendor;
         public String product;
         public String version;
 
+        // optional: extended install fields
         public String installLocation;
         public String installedAt; // ISO8601 string (optional)
         public String packageIdentifier;
         public String arch;
+
+        // optional: provenance / typing
+        public String type;      // APPLICATION / OPERATING_SYSTEM (optional)
+        public String source;    // osquery/fleet/manual... (optional)
+        public String sourceType; // JSON_UPLOAD/FLEET/... (optional)
+
+        // optional: raw values
+        public String vendorRaw;
+        public String productRaw;
+        public String versionRaw;
+
+        // optional: higher-precision identifiers / provenance
+        public String publisher;
+        public String bundleId;
+        public String packageManager;
+        public String installSource;
+
+        public String edition;
+        public String channel;
+        public String release;
+
+        public String purl;
+
+        // optional: observation timestamp (ISO8601)
+        public String lastSeenAt;
     }
 
     // =========================
@@ -101,7 +156,32 @@ public class JsonStagedImportService {
             String externalKey = normNullable(r.externalKey);
             String name = normNullable(r.name);
 
-            s.fill(externalKey, name, normNullable(r.assetType), normNullable(r.owner), r.note);
+            s.fill(
+                    externalKey,
+                    name,
+                    normNullable(r.assetType),
+                    normNullable(r.owner),
+                    r.note,
+                    normNullable(r.source),
+                    normNullable(r.platform),
+                    normNullable(r.osVersion),
+                    normNullable(r.systemUuid),
+                    normNullable(r.serialNumber),
+                    normNullable(r.hardwareVendor),
+                    normNullable(r.hardwareModel),
+                    normNullable(r.computerName),
+                    normNullable(r.localHostname),
+                    normNullable(r.cpuBrand),
+                    r.cpuPhysicalCores,
+                    r.cpuLogicalCores,
+                    normNullable(r.arch),
+                    normNullable(r.osName),
+                    normNullable(r.osBuild),
+                    r.osMajor,
+                    r.osMinor,
+                    r.osPatch,
+                    parseDateTimeNullable(r.lastSeenAt)
+            );
 
             // validation: externalKey required, name required
             if (externalKey == null) {
@@ -148,7 +228,6 @@ public class JsonStagedImportService {
 
             LocalDateTime installedAt = parseDateTimeNullable(r.installedAt);
 
-            // last_seen_at は Import 時に更新（policy）なので staging では null のままでもOK
             s.fill(
                     externalKey,
                     vendor,
@@ -158,8 +237,21 @@ public class JsonStagedImportService {
                     installedAt,
                     normNullable(r.packageIdentifier),
                     normNullable(r.arch),
-                    "JSON_UPLOAD",
-                    null
+                    normNullable(r.sourceType) == null ? "JSON_UPLOAD" : normNullable(r.sourceType),
+                    parseDateTimeNullable(r.lastSeenAt),
+                    normNullable(r.type),
+                    normNullable(r.source),
+                    normNullable(r.vendorRaw),
+                    normNullable(r.productRaw),
+                    normNullable(r.versionRaw),
+                    normNullable(r.publisher),
+                    normNullable(r.bundleId),
+                    normNullable(r.packageManager),
+                    normNullable(r.installSource),
+                    normNullable(r.edition),
+                    normNullable(r.channel),
+                    normNullable(r.release),
+                    normNullable(r.purl)
             );
 
             // validation: externalKey required, product required
@@ -212,9 +304,31 @@ public class JsonStagedImportService {
                 asset.updateDetails(externalKey, r.getAssetType(), r.getOwner(), r.getNote());
             }
 
-            // policy: last_seen_at updated at import time; source fixed
-            asset.setSource("JSON_UPLOAD");
-            asset.markSeen("JSON_UPLOAD"); // sets source + lastSeenAt now internally
+            asset.updateInventory(
+                    r.getPlatform(),
+                    r.getOsVersion(),
+                    r.getSystemUuid(),
+                    r.getSerialNumber(),
+                    r.getHardwareVendor(),
+                    r.getHardwareModel(),
+                    r.getComputerName(),
+                    r.getLocalHostname(),
+                    r.getCpuBrand(),
+                    r.getCpuPhysicalCores(),
+                    r.getCpuLogicalCores(),
+                    r.getArch(),
+                    r.getOsName(),
+                    r.getOsBuild(),
+                    r.getOsMajor(),
+                    r.getOsMinor(),
+                    r.getOsPatch()
+            );
+
+            // policy: last_seen_at updated at import time unless provided; source default JSON_UPLOAD
+            String src = normNullable(r.getSource());
+            asset.setSource(src == null ? "JSON_UPLOAD" : src);
+            LocalDateTime seenAt = (r.getLastSeenAt() != null) ? r.getLastSeenAt() : now;
+            asset.markSeenAt(asset.getSource(), seenAt);
 
             assetRepository.save(asset);
             upserted++;
@@ -266,14 +380,38 @@ public class JsonStagedImportService {
                 sw.updateDetails(vendor, product, version, sw.getCpeName());
             }
 
-            // policy: last_seen_at updated at import time; source_type fixed JSON_UPLOAD
+            // policy: last_seen_at updated at import time unless provided; source/sourceType default JSON_UPLOAD
+            String st = normNullable(r.getSourceType());
+            String src = normNullable(r.getSource());
+            LocalDateTime seenAt = (r.getLastSeenAt() != null) ? r.getLastSeenAt() : now;
+
+            if (src == null) src = "JSON_UPLOAD";
+            if (st == null) st = "JSON_UPLOAD";
+
+            // optional: type
+            trySetSoftwareType(sw, r.getType());
+
+            // optional: raw values (dictionary training / troubleshooting)
+            sw.captureRaw(r.getVendorRaw(), r.getProductRaw(), r.getVersionRaw());
+
+            // keep provenance
+            sw.setSource(src);
+
             sw.updateImportExtended(
                     r.getInstallLocation(),
                     r.getInstalledAt(),
                     r.getPackageIdentifier(),
                     r.getArch(),
-                    "JSON_UPLOAD",
-                    now
+                    st,
+                    seenAt,
+                    r.getPublisher(),
+                    r.getBundleId(),
+                    r.getPackageManager(),
+                    r.getInstallSource(),
+                    r.getEdition(),
+                    r.getChannel(),
+                    r.getRelease(),
+                    r.getPurl()
             );
 
             softwareInstallRepository.save(sw);
@@ -287,6 +425,16 @@ public class JsonStagedImportService {
     // =========================
     // Helpers
     // =========================
+    private static void trySetSoftwareType(SoftwareInstall sw, String type) {
+        String t = normNullable(type);
+        if (t == null) return;
+        try {
+            sw.setType(SoftwareType.valueOf(t));
+        } catch (IllegalArgumentException ex) {
+            // ignore unknown values to keep import tolerant
+        }
+    }
+
     private <T> List<T> parseJsonArray(byte[] bytes, TypeReference<List<T>> typeRef) {
         try {
             return objectMapper.readValue(bytes, typeRef);

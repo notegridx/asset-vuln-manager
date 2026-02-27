@@ -50,6 +50,49 @@ public class ImportStagingSoftware {
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
 
+    // ===== Added: matching precision / provenance =====
+
+    @Column(name = "type", length = 32)
+    private String type; // APPLICATION / OPERATING_SYSTEM (optional)
+
+    @Column(name = "source", length = 32)
+    private String source; // osquery/fleet/manual... (optional)
+
+    @Column(name = "vendor_raw", length = 255)
+    private String vendorRaw;
+
+    @Column(name = "product_raw", length = 255)
+    private String productRaw;
+
+    @Column(name = "version_raw", length = 128)
+    private String versionRaw;
+
+    @Column(name = "publisher", length = 255)
+    private String publisher;
+
+    @Column(name = "bundle_id", length = 255)
+    private String bundleId;
+
+    @Column(name = "package_manager", length = 64)
+    private String packageManager;
+
+    @Column(name = "install_source", length = 64)
+    private String installSource;
+
+    @Column(name = "edition", length = 128)
+    private String edition;
+
+    @Column(name = "channel", length = 64)
+    private String channel;
+
+    @Column(name = "release", length = 128)
+    private String release;
+
+    @Column(name = "purl", length = 512)
+    private String purl;
+
+    // ===== Validation / bookkeeping =====
+
     @Column(name = "is_valid", nullable = false)
     private boolean isValid = true;
 
@@ -82,7 +125,20 @@ public class ImportStagingSoftware {
             String packageIdentifier,
             String arch,
             String sourceType,
-            LocalDateTime lastSeenAt
+            LocalDateTime lastSeenAt,
+            String type,
+            String source,
+            String vendorRaw,
+            String productRaw,
+            String versionRaw,
+            String publisher,
+            String bundleId,
+            String packageManager,
+            String installSource,
+            String edition,
+            String channel,
+            String release,
+            String purl
     ) {
         this.externalKey = externalKey;
         this.vendor = vendor;
@@ -92,8 +148,27 @@ public class ImportStagingSoftware {
         this.installedAt = installedAt;
         this.packageIdentifier = packageIdentifier;
         this.arch = arch;
+
         this.sourceType = (sourceType == null || sourceType.isBlank()) ? "JSON_UPLOAD" : sourceType;
         this.lastSeenAt = lastSeenAt;
+
+        this.type = type;
+        this.source = source;
+
+        this.vendorRaw = vendorRaw;
+        this.productRaw = productRaw;
+        this.versionRaw = versionRaw;
+
+        this.publisher = publisher;
+        this.bundleId = bundleId;
+        this.packageManager = packageManager;
+        this.installSource = installSource;
+
+        this.edition = edition;
+        this.channel = channel;
+        this.release = release;
+
+        this.purl = purl;
     }
 
     public void markInvalid(String error) {
