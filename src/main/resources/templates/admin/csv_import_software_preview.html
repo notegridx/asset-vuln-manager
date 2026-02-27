@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('Software CSV Preview')}"></head>
+
+<body th:replace="~{layout/base :: layout('Software CSV Preview', 'admin', ~{::main})}">
+<main>
+
+  <div class="page-header flex items-end justify-between gap-16 flex-wrap">
+    <div>
+      <h1>Software CSV Preview</h1>
+      <div class="muted mt-6">
+        runId=<span th:text="${run.id}">0</span>,
+        status=<span th:text="${run.status}">STAGED</span>,
+        total=<span th:text="${run.totalRows}">0</span>,
+        valid=<span th:text="${run.validRows}">0</span>,
+        invalid=<span th:text="${run.invalidRows}">0</span>
+      </div>
+      <div class="muted mt-6">
+        file=<span th:text="${run.originalFilename}">-</span>,
+        sha256=<span th:text="${run.sha256}">-</span>
+      </div>
+    </div>
+
+    <form th:action="@{|/admin/import/csv/software/${run.id}/import|}" method="post">
+      <button class="btn btn-primary" type="submit" th:disabled="${run.validRows == 0}">Import (Upsert)</button>
+    </form>
+  </div>
+
+  <div class="card p-16">
+    <table class="table">
+      <thead>
+      <tr>
+        <th>Row</th>
+        <th>external_key</th>
+        <th>vendor</th>
+        <th>product</th>
+        <th>version</th>
+        <th>source_type</th>
+        <th>valid</th>
+        <th>error</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="r : ${rows}">
+        <td th:text="${r.rowNo}">1</td>
+        <td th:text="${r.externalKey}">EK</td>
+        <td th:text="${r.vendor}">Vendor</td>
+        <td th:text="${r.product}">Product</td>
+        <td th:text="${r.version}">Version</td>
+        <td th:text="${r.sourceType}">CSV_UPLOAD</td>
+        <td th:text="${r.valid}">true</td>
+        <td th:text="${r.validationError}">-</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+</body>
+</html>

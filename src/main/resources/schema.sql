@@ -308,7 +308,7 @@ CREATE TABLE IF NOT EXISTS import_staging_software
     import_run_id BIGINT NOT NULL,
     row_no INT NOT NULL,
 
-    external_key VARCHAR(128) NOT NULL,     -- assets.external_key と紐付け前提
+    external_key VARCHAR(128),     -- assets.external_key と紐付け前提
 
     vendor VARCHAR(255),
     product VARCHAR(255),

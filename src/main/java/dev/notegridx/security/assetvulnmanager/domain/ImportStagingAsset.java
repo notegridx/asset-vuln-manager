@@ -20,10 +20,12 @@ public class ImportStagingAsset {
     @Column(name = "row_no", nullable = false)
     private int rowNo;
 
-    @Column(name = "external_key", length = 128, nullable = false)
+    // invalid行も保存してPreviewで見せるため nullable=true にする
+    @Column(name = "external_key", length = 128)
     private String externalKey;
 
-    @Column(nullable = false)
+    // invalid行も保存してPreviewで見せるため nullable=true にする
+    @Column(length = 255)
     private String name;
 
     @Column(name = "asset_type")
@@ -34,7 +36,7 @@ public class ImportStagingAsset {
     @Lob
     private String note;
 
-    // ===== Existing columns =====
+    // source は fill で必ず入れる（NOT NULLのままでOK）
     @Column(nullable = false)
     private String source = "JSON_UPLOAD";
 
@@ -43,8 +45,6 @@ public class ImportStagingAsset {
 
     @Column(name = "os_version", length = 128)
     private String osVersion;
-
-    // ===== Added (osquery-derived inventory identifiers / OS / hardware) =====
 
     @Column(name = "system_uuid", length = 128)
     private String systemUuid;
@@ -93,8 +93,6 @@ public class ImportStagingAsset {
 
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
-
-    // ===== Validation / bookkeeping =====
 
     @Column(name = "is_valid", nullable = false)
     private boolean isValid = true;

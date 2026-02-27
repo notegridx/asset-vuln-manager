@@ -20,7 +20,8 @@ public class ImportStagingSoftware {
     @Column(name = "row_no", nullable = false)
     private int rowNo;
 
-    @Column(name = "external_key", length = 128, nullable = false)
+    // invalid行も保存してPreviewで見せるため nullable=true にする
+    @Column(name = "external_key", length = 128)
     private String externalKey;
 
     @Column(length = 255)
@@ -50,13 +51,11 @@ public class ImportStagingSoftware {
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
 
-    // ===== Added: matching precision / provenance =====
-
     @Column(name = "type", length = 32)
-    private String type; // APPLICATION / OPERATING_SYSTEM (optional)
+    private String type;
 
     @Column(name = "source", length = 32)
-    private String source; // osquery/fleet/manual... (optional)
+    private String source;
 
     @Column(name = "vendor_raw", length = 255)
     private String vendorRaw;
@@ -90,8 +89,6 @@ public class ImportStagingSoftware {
 
     @Column(name = "purl", length = 512)
     private String purl;
-
-    // ===== Validation / bookkeeping =====
 
     @Column(name = "is_valid", nullable = false)
     private boolean isValid = true;
