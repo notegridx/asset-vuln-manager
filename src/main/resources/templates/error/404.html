@@ -1,13 +1,60 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-<head>
-<meta charset="UTF-8">
-<title>Not Found</title>
-</head>
-<body>
-  <h1>404 Not Found</h1>
-  <p th:text="${message}">Not found</p>
-  <p><a th:href="@{/assets}">Back to Assets</a></p>
 
+<head th:replace="~{layout/base :: head('Not Found')}"></head>
+
+<body th:replace="~{layout/base :: layout('Not Found', 'admin', ~{::main})}">
+<main>
+
+  <!-- Page Header (unified) -->
+  <div class="page-header"
+       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header__left">
+      <h1 style="margin:0;">404 Not Found</h1>
+      <div class="muted" style="margin-top:6px;">
+        The requested page could not be found.。
+      </div>
+    </div>
+
+    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill">Error</span>
+      <span class="pill">404</span>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="card" style="padding:14px; margin:12px 0;">
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">What you can do</h2>
+      <div class="muted" style="font-size:12px;">
+        You can navigate using the menu above or use the link below.
+      </div>
+    </div>
+
+    <!-- Optional detail -->
+    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;"
+         th:if="${message != null and !#strings.isEmpty(#strings.trim(message))}">
+      <div style="margin-bottom:6px;"><b>Details</b></div>
+      <code th:text="${message}">Not found</code>
+    </div>
+
+    <div class="actions" style="margin-top:14px;">
+      <a class="btn btn-primary" th:href="@{/dashboard}">
+        Back to Dashboard
+      </a>
+    </div>
+
+    <hr/>
+
+    <div class="muted" style="font-size:12px; line-height:1.7;">
+      ヒント:
+      <ul style="margin:6px 0 0 18px;">
+        <li>If the URL is an outdated bookmark, please navigate again from the Dashboard.</li>
+        <li>If this page appears during an operation, the target data may have been deleted.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
 </body>
 </html>
