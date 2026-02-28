@@ -45,8 +45,8 @@ import java.util.*;
  * Upsert policy aligned with current domain:
  * - Vulnerability unique: (source, external_id) -> update via applyNvdDetails()
  * - VulnerabilityAffectedCpe unique:
- *   (vulnerability_id, cpe_name, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
- *   -> insert-only, duplicates ignored
+ * (vulnerability_id, cpe_name, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
+ * -> insert-only, duplicates ignored
  */
 @Service
 public class CveFeedSyncService {
@@ -769,6 +769,26 @@ public class CveFeedSyncService {
         String vei = nullToEmpty(a.versionEndIncluding);
         String vee = nullToEmpty(a.versionEndExcluding);
 
+        // ---- Idempotency guard (avoid UX_VAC_DEDUPE violation) ----
+        // UNIQUE: (vulnerability_id, cpe_name, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
+        // 一度 UNIQUE違反を踏むと JPA が TX を rollback-only にすることがあり、catchしても最後に UnexpectedRollbackException になりうる。
+        // → 先に existence check で弾いて、そもそも UNIQUE違反を発生させない。
+        if (v.getId() != null) {
+            boolean exists = affectedCpeRepository
+                    .existsByVulnerabilityIdAndCpeNameAndVersionStartIncludingAndVersionStartExcludingAndVersionEndIncludingAndVersionEndExcluding(
+                            v.getId(),
+                            criteria,
+                            vsi,
+                            vse,
+                            vei,
+                            vee
+                    );
+            if (exists) {
+                return 0;
+            }
+        }
+
+
         VulnerabilityAffectedCpe vac = new VulnerabilityAffectedCpe(
                 v,
                 criteria,
@@ -792,12 +812,18 @@ public class CveFeedSyncService {
         } catch (DataIntegrityViolationException e) {
             // ux_vac_dedupe hit → duplicate skip
             // 例外後に persistence context が不安定になるのを避けてクリア
-            try { em.clear(); } catch (Exception ignore) {}
+            try {
+                em.clear();
+            } catch (Exception ignore) {
+            }
             return 0;
 
         } catch (PersistenceException e) {
             // Providerにより直接PersistenceExceptionになる場合に備える
-            try { em.clear(); } catch (Exception ignore) {}
+            try {
+                em.clear();
+            } catch (Exception ignore) {
+            }
             throw e;
         }
     }
