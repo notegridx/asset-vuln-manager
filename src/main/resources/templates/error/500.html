@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('Internal Server Error')}"></head>
+
+<body th:replace="~{layout/base :: layout('Internal Server Error', 'admin', ~{::main})}">
+<main>
+
+  <!-- Page Header (unified) -->
+  <div class="page-header"
+       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header__left">
+      <h1 style="margin:0;">500 Internal Server Error</h1>
+      <div class="muted" style="margin-top:6px;">
+        An unexpected error occurred while processing your request.
+      </div>
+    </div>
+
+    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill">Error</span>
+      <span class="pill">500</span>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="card" style="padding:14px; margin:12px 0;">
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">What you can do</h2>
+      <div class="muted" style="font-size:12px;">
+        Try again, go back, or navigate from the Dashboard.
+      </div>
+    </div>
+
+    <!-- Minimal safe context (Spring Boot ErrorAttributes) -->
+    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.7;">
+      <div><b>Context</b></div>
+      <div>
+        status: <code th:text="${status != null ? status : 500}">500</code>
+        <span class="muted">/</span>
+        error: <code th:text="${error != null ? error : 'Internal Server Error'}">Internal Server Error</code>
+      </div>
+      <div th:if="${path != null}">
+        path: <code th:text="${path}">/some/path</code>
+      </div>
+      <div th:if="${timestamp != null}">
+        time: <code th:text="${timestamp}">2026-02-28T00:00:00.000+09:00</code>
+      </div>
+    </div>
+
+    <!-- Optional detail (keep short; avoid leaking stack traces) -->
+    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;"
+         th:if="${message != null and !#strings.isEmpty(#strings.trim(message))}">
+      <div style="margin-bottom:6px;"><b>Details</b></div>
+      <code th:text="${message}">Unexpected error</code>
+    </div>
+
+    <div class="actions" style="margin-top:14px; gap:10px; flex-wrap:wrap;">
+      <a class="btn btn-primary" th:href="@{/dashboard}">
+        Back to Dashboard
+      </a>
+
+      <!-- "Retry" (reload current URL) -->
+      <a class="btn" th:if="${path != null}" th:href="@{${path}}">
+        Retry
+      </a>
+
+      <!-- Fallback: JS back -->
+      <button class="btn btn-ghost" type="button" onclick="history.back()">
+        Go Back
+      </button>
+    </div>
+
+    <hr/>
+
+    <div class="muted" style="font-size:12px; line-height:1.7;">
+      ヒント:
+      <ul style="margin:6px 0 0 18px;">
+        <li>If this happened during a data update/import, check the server logs for the root cause.</li>
+        <li>If it keeps happening, it may indicate a DB schema mismatch or an unexpected input format.</li>
+        <li>In development, you can re-run the same action after fixing the cause (then Retry).</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>
