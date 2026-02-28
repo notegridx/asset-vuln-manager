@@ -1,7 +1,13 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
+import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
+import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
 import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +16,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class CanonicalBackfillService {
@@ -21,19 +30,36 @@ public class CanonicalBackfillService {
     private static final int LOG_EVERY = 10_000;
     private static final int FLUSH_EVERY = 2_000;
 
+    private static final int CAND_LIMIT = 20;
+
     private final SoftwareInstallRepository softwareRepo;
     private final CanonicalCpeLinkingService linker;
+
+    private final UnresolvedMappingRepository unresolvedMappingRepository;
+    private final VendorProductNormalizer normalizer;
+
+    private final CpeVendorRepository cpeVendorRepository;
+    private final CpeProductRepository cpeProductRepository;
+
     private final EntityManager em;
     private final TransactionTemplate chunkTx;
 
     public CanonicalBackfillService(
             SoftwareInstallRepository softwareRepo,
             CanonicalCpeLinkingService linker,
+            UnresolvedMappingRepository unresolvedMappingRepository,
+            VendorProductNormalizer normalizer,
+            CpeVendorRepository cpeVendorRepository,
+            CpeProductRepository cpeProductRepository,
             EntityManager em,
             PlatformTransactionManager txManager
     ) {
         this.softwareRepo = softwareRepo;
         this.linker = linker;
+        this.unresolvedMappingRepository = unresolvedMappingRepository;
+        this.normalizer = normalizer;
+        this.cpeVendorRepository = cpeVendorRepository;
+        this.cpeProductRepository = cpeProductRepository;
         this.em = em;
 
         TransactionTemplate tt = new TransactionTemplate(txManager);
@@ -48,7 +74,8 @@ public class CanonicalBackfillService {
         int linked = 0;
         int missed = 0;
 
-        List<SoftwareInstall> all = softwareRepo.findAll();
+        List<SoftwareInstall> all = forceRebuild ? softwareRepo.findAll()
+                : softwareRepo.findNeedsCanonicalLink();
 
         for (int offset = 0; offset < all.size() && scanned < safeMax; offset += TX_CHUNK) {
             int to = Math.min(all.size(), offset + TX_CHUNK);
@@ -76,6 +103,13 @@ public class CanonicalBackfillService {
                         s.linkCanonical(res.vendorId(), res.productId());
                         _linked++;
                     } else {
+                        // unresolved_mappings に積む（alias学習/辞書育成用のキュー）
+                        upsertUnresolvedMapping(
+                                safeString(s.getSource()),
+                                coalesceNullable(s.getVendorRaw(), s.getVendor()),
+                                coalesceNullable(s.getProductRaw(), s.getProduct()),
+                                coalesceNullable(s.getVersionRaw(), s.getVersion())
+                        );
                         _missed++;
                     }
 
@@ -106,5 +140,131 @@ public class CanonicalBackfillService {
         log.info("Canonical backfill done: scanned={}, linked={}, missed={}", scanned, linked, missed);
         return new BackfillResult(scanned, linked, missed, forceRebuild);
     }
-    public record BackfillResult(int scanned, int linked, int missed, boolean forceRebuild) {}
+
+    public record BackfillResult(int scanned, int linked, int missed, boolean forceRebuild) {
+    }
+
+    // =========================================================
+    // UnresolvedMapping upsert（候補IDも埋める）
+    // =========================================================
+    private void upsertUnresolvedMapping(String source, String vendorRaw, String productRaw, String versionRaw) {
+        String v = normalizeNullable(vendorRaw);
+        String p = normalizeNullable(productRaw);
+        String ver = normalizeNullable(versionRaw);
+        if (p == null) return; // product が空のものはキューに積まない
+
+        LocalDateTime now = LocalDateTime.now();
+
+        Optional<UnresolvedMapping> existing =
+                unresolvedMappingRepository.findTopBySourceAndVendorRawAndProductRawAndVersionRaw(source, v, p, ver);
+
+        if (existing.isPresent()) {
+            UnresolvedMapping um = existing.get();
+            um.setLastSeenAt(now);
+
+            // normalized を補完
+            if (isBlank(um.getNormalizedVendor())) {
+                um.setNormalizedVendor(normalizeVendorForAlias(v));
+            }
+            if (isBlank(um.getNormalizedProduct())) {
+                um.setNormalizedProduct(normalizeProductForAlias(p));
+            }
+
+            // candidates を補完（空なら埋める。毎回更新すると重いので最小に）
+            if (isBlank(um.getCandidateVendorIds()) || isBlank(um.getCandidateProductIds())) {
+                fillCandidatesIfPossible(um);
+            }
+
+            unresolvedMappingRepository.save(um);
+            return;
+        }
+
+        UnresolvedMapping um = UnresolvedMapping.create(source, v, p, ver);
+
+        // alias 登録フォームで使うので必ず埋める
+        um.setNormalizedVendor(normalizeVendorForAlias(v));
+        um.setNormalizedProduct(normalizeProductForAlias(p));
+
+        // candidates も埋める
+        fillCandidatesIfPossible(um);
+
+        unresolvedMappingRepository.save(um);
+    }
+
+    private void fillCandidatesIfPossible(UnresolvedMapping um) {
+        String vn = normalizeNullable(um.getNormalizedVendor());
+        String pn = normalizeNullable(um.getNormalizedProduct());
+
+        // vendor候補（vnが空でも空のまま）
+        List<CpeVendor> vCands = List.of();
+        if (vn != null) {
+            vCands = cpeVendorRepository.findTop20ByNameNormStartingWithOrderByNameNormAsc(vn);
+        }
+        um.setCandidateVendorIds(encodeVendors(vCands));
+
+        // product候補は安全側で「vendor候補が1件に確定した場合のみ」
+        if (pn != null && vCands.size() == 1) {
+            Long vendorId = vCands.get(0).getId();
+            List<CpeProduct> pCands =
+                    cpeProductRepository.findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendorId, pn);
+            um.setCandidateProductIds(encodeProducts(pCands));
+        } else {
+            // 多義的なら null/空にして UI に「まず vendor を確定させてね」と示す
+            if (isBlank(um.getCandidateProductIds())) {
+                um.setCandidateProductIds(null);
+            }
+        }
+    }
+
+    private String normalizeVendorForAlias(String vendor) {
+        return normalizer.normalizeVendor(vendor);
+    }
+
+    private String normalizeProductForAlias(String product) {
+        return normalizer.normalizeProduct(product);
+    }
+
+    // --- encoders: "id:nameNorm,id:nameNorm" ---
+    private static String encodeVendors(List<CpeVendor> vendors) {
+        if (vendors == null || vendors.isEmpty()) return null;
+        return vendors.stream()
+                .limit(CAND_LIMIT)
+                .map(v -> v.getId() + ":" + safeText(v.getNameNorm()))
+                .collect(Collectors.joining(","));
+    }
+
+    private static String encodeProducts(List<CpeProduct> products) {
+        if (products == null || products.isEmpty()) return null;
+        return products.stream()
+                .limit(CAND_LIMIT)
+                .map(p -> p.getId() + ":" + safeText(p.getNameNorm()))
+                .collect(Collectors.joining(","));
+    }
+
+    private static String safeText(String s) {
+        if (s == null) return "-";
+        String t = s.trim();
+        return t.isEmpty() ? "-" : t;
+    }
+
+    private static String normalizeNullable(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private static String safeString(String s) {
+        String t = normalizeNullable(s);
+        return t == null ? "UNKNOWN" : t;
+    }
+
+    private static String coalesceNullable(String a, String b) {
+        String x = normalizeNullable(a);
+        if (x != null) return x;
+        return normalizeNullable(b);
+    }
 }

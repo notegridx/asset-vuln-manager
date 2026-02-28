@@ -6,6 +6,29 @@
 <body th:replace="~{layout/base :: layout('Generate Alerts', 'admin', ~{::main})}">
 <main>
 
+  <!-- Backfill Result -->
+  <div th:if="${backfillResult != null}" class="card" style="padding:12px; margin:12px 0;">
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">Canonical Backfill Result</h2>
+      <div class="muted" style="font-size:12px;">
+        Linked CPE vendor/product IDs into software_installs before generating alerts.
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:12px;">
+      <table style="margin-top:0;">
+        <thead>
+        <tr><th>Metric</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+        <tr><td>scanned</td><td th:text="${backfillResult.scanned}">0</td></tr>
+        <tr><td>linked</td><td th:text="${backfillResult.linked}">0</td></tr>
+        <tr><td>missed</td><td th:text="${backfillResult.missed}">0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Page Header (unified) -->
   <div class="page-header"
        style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">

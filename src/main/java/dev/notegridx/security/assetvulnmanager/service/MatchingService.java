@@ -36,20 +36,25 @@ public class MatchingService {
 
 	private final VersionRangeMatcher versionMatcher = new VersionRangeMatcher();
 
+	private final CanonicalBackfillService canonicalBackfillService;
+
 	public MatchingService(
 			SoftwareInstallRepository softwareInstallRepository,
 			VulnerabilityAffectedCpeRepository affectedCpeRepository,
 			VulnerabilityRepository vulnerabilityRepository,
-			AlertRepository alertRepository
+			AlertRepository alertRepository,
+			CanonicalBackfillService canonicalBackfillService
 	) {
 		this.softwareInstallRepository = softwareInstallRepository;
 		this.affectedCpeRepository = affectedCpeRepository;
 		this.vulnerabilityRepository = vulnerabilityRepository;
 		this.alertRepository = alertRepository;
+		this.canonicalBackfillService = canonicalBackfillService;
 	}
 
 	@Transactional
 	public MatchResult matchAndUpsertAlerts() {
+
 		// run開始時刻（この時刻以降に touchDetected(now) されなかった OPEN は stale とみなす）
 		LocalDateTime runStartedAt = DbTime.now();
 		LocalDateTime now = runStartedAt;
@@ -228,7 +233,7 @@ public class MatchingService {
 					Optional<Alert> existing = alertRepository.findBySoftwareInstallIdAndVulnerabilityId(si.getId(), vulnId);
 					if (existing.isPresent()) {
 						Alert a = existing.get();
-						a.touchDetected(now);
+						a.touchDetected(detectedAt);
 						a.updateMatchContext(certainty, reason, AlertMatchMethod.CPE_NAME);
 						alertRepository.save(a);
 						alertsTouched++;
@@ -236,7 +241,7 @@ public class MatchingService {
 						Vulnerability v = vulnById.get(vulnId);
 						if (v == null) continue;
 
-						Alert a = new Alert(si, v, now, certainty, reason, AlertMatchMethod.CPE_NAME);
+						Alert a = new Alert(si, v, detectedAt, certainty, reason, AlertMatchMethod.CPE_NAME);
 						alertRepository.save(a);
 						alertsInserted++;
 					}

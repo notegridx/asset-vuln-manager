@@ -1243,3 +1243,29 @@ a.badge--certainty-unconfirmed:hover {
 .nav-admin-item.is-muted {
     opacity: .85;
 }
+
+.chips {
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    max-height:160px;
+    overflow-y:auto;
+    padding-right:4px;
+}
+
+.chip {
+    border:1px solid var(--line);
+    background: var(--panel);
+    padding:4px 8px;
+    border-radius:999px;
+    font-size:12px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+.chip .id {
+    opacity:0.6;
+    font-size:11px;
+}
