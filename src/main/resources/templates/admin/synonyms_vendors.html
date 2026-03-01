@@ -124,6 +124,49 @@
       </label>
       <button class="btn" type="submit">Run Canonical Backfill</button>
     </form>
+    <!-- Batch seed (Top vendors/products) -->
+    <form th:action="@{/admin/aliases/seed-top}" method="post"
+          class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
+      <input type="hidden" name="redirect" value="/admin/synonyms/vendors">
+      <button class="btn btn-soft" type="submit">Seed Top Aliases</button>
+      <span class="muted" style="font-size:12px;">
+        Inserts/updates curated vendor+product aliases (idempotent).
+      </span>
+    </form>
+
+    <!-- Seed result (flash) -->
+    <div class="card" th:if="${seedReport != null}"
+         style="padding:12px; margin-top:10px; border:1px solid rgba(255,255,255,0.10);">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <h3 style="margin:0;">Seed report</h3>
+        <span class="muted" style="font-size:12px;" th:text="${seedReport.batchName}">seedTopAliases</span>
+      </div>
+
+      <div class="muted" style="margin-top:8px; line-height:1.8;">
+        <div>
+          Vendors:
+          ins=<span class="mono" th:text="${seedReport.vendorInserted}">0</span>,
+          upd=<span class="mono" th:text="${seedReport.vendorUpdated}">0</span>,
+          same=<span class="mono" th:text="${seedReport.vendorUnchanged}">0</span>,
+          skip=<span class="mono" th:text="${seedReport.vendorSkipped}">0</span>
+        </div>
+        <div>
+          Products:
+          ins=<span class="mono" th:text="${seedReport.productInserted}">0</span>,
+          upd=<span class="mono" th:text="${seedReport.productUpdated}">0</span>,
+          same=<span class="mono" th:text="${seedReport.productUnchanged}">0</span>,
+          skip=<span class="mono" th:text="${seedReport.productSkipped}">0</span>
+        </div>
+      </div>
+
+      <details style="margin-top:10px;" th:if="${seedReport.messages != null && !#lists.isEmpty(seedReport.messages)}">
+        <summary class="btn btn-soft" style="display:inline-flex;">Show details</summary>
+        <div style="margin-top:8px;">
+          <div class="muted mono" th:each="m : ${seedReport.messages}" th:text="${m}"
+               style="font-size:12px; line-height:1.6; padding:2px 0;"></div>
+        </div>
+      </details>
+    </div>
   </div>
 
   <!-- List -->

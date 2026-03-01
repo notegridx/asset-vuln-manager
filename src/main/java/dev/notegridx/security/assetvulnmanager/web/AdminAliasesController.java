@@ -6,11 +6,13 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.AliasReviewState;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AliasSource;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductAliasRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorAliasRepository;
+import dev.notegridx.security.assetvulnmanager.service.AliasBatchService;
 import dev.notegridx.security.assetvulnmanager.service.CanonicalBackfillService;
 import dev.notegridx.security.assetvulnmanager.service.SynonymService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class AdminAliasesController {
@@ -19,17 +21,20 @@ public class AdminAliasesController {
     private final CpeProductAliasRepository productAliasRepo;
     private final CanonicalBackfillService backfillService;
     private final SynonymService synonymService;
+    private final AliasBatchService aliasBatchService;
 
     public AdminAliasesController(
             CpeVendorAliasRepository vendorAliasRepo,
             CpeProductAliasRepository productAliasRepo,
             CanonicalBackfillService backfillService,
-            SynonymService synonymService
+            SynonymService synonymService,
+            AliasBatchService aliasBatchService
     ) {
         this.vendorAliasRepo = vendorAliasRepo;
         this.productAliasRepo = productAliasRepo;
         this.backfillService = backfillService;
         this.synonymService = synonymService;
+        this.aliasBatchService = aliasBatchService;
     }
 
     /**
@@ -43,11 +48,9 @@ public class AdminAliasesController {
     ) {
         String a = normalize(aliasNorm);
         if (a == null) {
-            // 入力が空の場合は何もしない（現状のUXを崩したくなければ redirect は同じ）
             return "redirect:/admin/unresolved?status=NEW";
         }
 
-        // ✅ factory/seeded に統一（コンストラクタ順に依存しない）
         CpeVendorAlias entity = CpeVendorAlias.seeded(
                 cpeVendorId,
                 a,
@@ -78,7 +81,6 @@ public class AdminAliasesController {
             return "redirect:/admin/unresolved?status=NEW";
         }
 
-        // ✅ factory/seeded に統一（コンストラクタ順に依存しない）
         CpeProductAlias entity = CpeProductAlias.seeded(
                 cpeVendorId,
                 cpeProductId,
@@ -93,6 +95,25 @@ public class AdminAliasesController {
         productAliasRepo.save(entity);
         synonymService.clearCaches();
         return "redirect:/admin/unresolved?status=NEW";
+    }
+
+    /**
+     * Top aliases seed（vendor + product を一括投入）
+     * - 結果は flash attribute で画面に表示
+     * - redirect を受け取り、どの画面からでも呼べる
+     */
+    @PostMapping("/admin/aliases/seed-top")
+    public String seedTopAliases(
+            @RequestParam(name = "redirect", required = false) String redirect,
+            RedirectAttributes ra
+    ) {
+        AliasBatchService.BatchReport report = aliasBatchService.seedTopAliases();
+        ra.addFlashAttribute("seedReport", report);
+
+        if (redirect != null && redirect.startsWith("/")) {
+            return "redirect:" + redirect;
+        }
+        return "redirect:/admin/synonyms/vendors";
     }
 
     /**
