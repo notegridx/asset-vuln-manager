@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('Synonyms - Products')}"></head>
+
+<body th:replace="~{layout/base :: layout('Synonyms - Products', 'admin', ~{::main})}">
+<main>
+
+  <h1>Synonyms (Product)</h1>
+  <p class="muted">
+    Product alias dictionary is <strong>vendor-scoped</strong>. Select a vendor first, then search products within that vendor.
+  </p>
+
+  <style>
+    .suggest-box{
+      position:absolute;
+      top:42px; left:0; right:0;
+      z-index:60;
+      padding:6px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(12,16,24,0.92);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      max-height: 280px;
+      overflow:auto;
+    }
+    .suggest-item{
+      padding:10px 10px;
+      border-radius:12px;
+      cursor:pointer;
+    }
+    .suggest-item:hover{
+      background: rgba(255,255,255,0.05);
+    }
+    .suggest-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap:12px;
+    }
+    .suggest-label{
+      font-weight:700;
+    }
+    .suggest-id{
+      font-size:12px;
+      opacity:0.75;
+    }
+    .suggest-sub{
+      font-size:12px;
+      opacity:0.75;
+      margin-top:2px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .suggest-box mark{
+      background: rgba(255,255,255,0.14);
+      color: inherit;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+  </style>
+
+  <!-- Search (alias list) -->
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <h2 style="margin:0 0 10px 0;">Search aliases</h2>
+
+    <form method="get" th:action="@{/admin/synonyms/products}" class="actions" style="gap:10px; flex-wrap:wrap;">
+      <input class="input" type="text" name="vendorId" placeholder="vendorId (optional filter)" th:value="${vendorId}" style="width:200px;">
+      <input class="input" type="text" name="q" placeholder="aliasNorm contains..." th:value="${q}" style="min-width:260px;">
+      <select name="status">
+        <option value="" th:selected="${status == null}">All</option>
+        <option value="ACTIVE" th:selected="${status == 'ACTIVE'}">ACTIVE</option>
+        <option value="INACTIVE" th:selected="${status == 'INACTIVE'}">INACTIVE</option>
+      </select>
+      <button class="btn btn-primary" type="submit">Apply</button>
+      <a class="btn btn-soft" th:href="@{/admin/synonyms/products}">Reset</a>
+    </form>
+
+    <div class="muted" style="font-size:12px; margin-top:10px;">
+      Showing up to <span th:text="${limit}">500</span> rows (latest first).
+    </div>
+  </div>
+
+  <!-- Add product alias -->
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <h2 style="margin:0 0 10px 0;">Add product alias</h2>
+
+    <form id="productAliasForm" th:action="@{/admin/aliases/product}" method="post"
+          class="actions" style="gap:10px; flex-wrap:wrap; align-items:flex-start;">
+
+      <!-- Vendor selector -->
+      <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
+        <input id="vendorSearchInputP" class="input" type="text"
+               placeholder="Vendor (type to search, e.g. microsoft)" autocomplete="off" required>
+        <input id="cpeVendorIdP" type="hidden" name="cpeVendorId" required>
+
+        <div id="vendorSuggestBoxP" class="suggest-box" style="display:none;">
+          <div id="vendorSuggestListP"></div>
+          <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
+            Select vendor first.
+          </div>
+        </div>
+
+        <div id="vendorSelectedHintP" class="muted" style="font-size:12px;"></div>
+      </div>
+
+      <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;" required>
+
+      <!-- Product selector (depends on vendor) -->
+      <div style="display:flex; flex-direction:column; gap:6px; min-width:420px; position:relative;">
+        <input id="productSearchInput" class="input" type="text"
+               placeholder="Canonical product (select vendor first)" autocomplete="off" required disabled>
+        <input id="cpeProductId" type="hidden" name="cpeProductId" required>
+
+        <div id="productSuggestBox" class="suggest-box" style="display:none;">
+          <div id="productSuggestList"></div>
+          <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
+            Tip: vendor-scoped search.
+          </div>
+        </div>
+
+        <div id="productSelectedHint" class="muted" style="font-size:12px;"></div>
+      </div>
+
+      <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
+
+      <button class="btn btn-primary" type="submit">Save</button>
+      <a class="btn" th:href="@{/admin/unresolved(status='NEW')}">Open Unresolved</a>
+    </form>
+
+    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
+      Save only updates the dictionary and clears caches. Run Canonical Backfill when you want to relink SoftwareInstalls.
+    </div>
+
+    <!-- Canonical backfill (separate button) -->
+    <form th:action="@{/admin/canonical/backfill}" method="post" class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
+      <input type="hidden" name="redirect" value="/admin/synonyms/products">
+      <input class="input" name="maxRows" value="5000000" style="width:160px;">
+      <label class="muted" style="display:flex; gap:8px; align-items:center;">
+        <input type="checkbox" name="forceRebuild" value="true">
+        forceRebuild
+      </label>
+      <button class="btn" type="submit">Run Canonical Backfill</button>
+    </form>
+  </div>
+
+  <!-- List -->
+  <div class="card">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+        <tr>
+          <th style="width:90px;">ID</th>
+          <th style="width:120px;">vendorId</th>
+          <th>vendor</th>
+          <th>aliasNorm</th>
+          <th style="width:120px;">productId</th>
+          <th>canonical product</th>
+          <th style="width:110px;">status</th>
+          <th>note</th>
+          <th style="width:140px;">Action</th>
+        </tr>
+        </thead>
+        <tbody>
+
+        <tr th:if="${rows == null || #lists.isEmpty(rows)}">
+          <td colspan="9" class="muted" style="padding:14px;">No rows.</td>
+        </tr>
+
+        <tr th:each="r : ${rows}">
+          <td class="mono" th:text="${r.id}">1</td>
+          <td class="mono" th:text="${r.cpeVendorId}">10</td>
+          <td th:text="${vendorLabels[r.cpeVendorId]}">Microsoft</td>
+          <td class="mono" th:text="${r.aliasNorm}">edge</td>
+          <td class="mono" th:text="${r.cpeProductId}">999</td>
+          <td th:text="${productLabels[r.cpeProductId]}">Edge</td>
+          <td><span class="badge" th:text="${r.status}">ACTIVE</span></td>
+          <td th:text="${r.note}">-</td>
+          <td>
+            <form th:action="@{/admin/synonyms/products/toggle}" method="post" style="display:inline;">
+              <input type="hidden" name="id" th:value="${r.id}">
+              <input type="hidden" name="redirect" value="/admin/synonyms/products">
+              <button class="btn btn-soft" type="submit">Toggle</button>
+            </form>
+          </td>
+        </tr>
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      function escapeHtml(s) {
+        return (s ?? '').replace(/[&<>"']/g, (c) => ({
+          '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+        }[c]));
+      }
+
+      function highlight(text, q){
+        const t = text || '';
+        if (!q) return escapeHtml(t);
+        const idx = t.toLowerCase().indexOf(q.toLowerCase());
+        if (idx < 0) return escapeHtml(t);
+        const a = escapeHtml(t.slice(0, idx));
+        const b = escapeHtml(t.slice(idx, idx + q.length));
+        const c = escapeHtml(t.slice(idx + q.length));
+        return `${a}<mark>${b}</mark>${c}`;
+      }
+
+      function openBox(box) { box.style.display = 'block'; }
+      function closeBox(box) { box.style.display = 'none'; }
+
+      function rank(item, qLower){
+        const label = (item.label || '').toLowerCase();
+        const norm  = (item.nameNorm || '').toLowerCase();
+        if (label === qLower || norm === qLower) return 0;
+        if (label.startsWith(qLower) || norm.startsWith(qLower)) return 1;
+        if (label.includes(qLower) || norm.includes(qLower)) return 2;
+        return 9;
+      }
+
+      // vendor selector
+      const vInput = document.getElementById('vendorSearchInputP');
+      const vHidden = document.getElementById('cpeVendorIdP');
+      const vBox = document.getElementById('vendorSuggestBoxP');
+      const vList = document.getElementById('vendorSuggestListP');
+      const vHint = document.getElementById('vendorSelectedHintP');
+
+      // product selector
+      const pInput = document.getElementById('productSearchInput');
+      const pHidden = document.getElementById('cpeProductId');
+      const pBox = document.getElementById('productSuggestBox');
+      const pList = document.getElementById('productSuggestList');
+      const pHint = document.getElementById('productSelectedHint');
+
+      const form = document.getElementById('productAliasForm');
+
+      let vTimer = null, vLast = '', vSelected = null;
+      let pTimer = null, pLast = '', pSelected = null;
+
+      async function fetchVendors(q) {
+        const url = `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return [];
+        const json = await res.json();
+        const exact = Array.isArray(json.exact) ? json.exact : [];
+        const others = Array.isArray(json.others) ? json.others : [];
+        return exact.concat(others);
+      }
+
+      async function fetchProducts(vendorId, q) {
+        const url = `/api/dict/products/search2?vendorId=${encodeURIComponent(vendorId)}&q=${encodeURIComponent(q)}`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return [];
+        const json = await res.json();
+        const exact = Array.isArray(json.exact) ? json.exact : [];
+        const others = Array.isArray(json.others) ? json.others : [];
+        return exact.concat(others);
+      }
+
+      function resetProductSelection() {
+        pSelected = null;
+        pHidden.value = '';
+        pInput.value = '';
+        pHint.textContent = '';
+        pInput.disabled = true;
+        pInput.placeholder = 'Canonical product (select vendor first)';
+        closeBox(pBox);
+      }
+
+      function clearVendorSelectionIfTextChanged() {
+        if (vSelected && vInput.value !== (vSelected.label || vSelected.nameNorm || '')) {
+          vSelected = null;
+          vHidden.value = '';
+          vHint.textContent = '';
+          resetProductSelection();
+        }
+      }
+
+      function clearProductSelectionIfTextChanged() {
+        if (pSelected && pInput.value !== (pSelected.label || pSelected.nameNorm || '')) {
+          pSelected = null;
+          pHidden.value = '';
+          pHint.textContent = '';
+        }
+      }
+
+      function setVendorSelected(item) {
+        vSelected = item;
+        vHidden.value = String(item.id);
+        vInput.value = item.label || item.nameNorm || '';
+        vHint.textContent = `Selected: id=${item.id} / ${item.nameNorm || ''}`;
+        closeBox(vBox);
+
+        pInput.disabled = false;
+        pInput.placeholder = 'Canonical product (type to search within vendor)';
+      }
+
+      function setProductSelected(item) {
+        pSelected = item;
+        pHidden.value = String(item.id);
+        pInput.value = item.label || item.nameNorm || '';
+        pHint.textContent = `Selected: id=${item.id} / ${item.nameNorm || ''}`;
+        closeBox(pBox);
+      }
+
+      function renderVendor(items) {
+        const q = vInput.value.trim();
+        const qLower = q.toLowerCase();
+
+        if (!items || items.length === 0) {
+          vList.innerHTML = `<div class="muted" style="padding:8px;">No matches.</div>`;
+          openBox(vBox);
+          return;
+        }
+
+        const sorted = items.slice().sort((a,b) => rank(a, qLower) - rank(b, qLower));
+
+        vList.innerHTML = sorted.slice(0, 10).map(it => {
+          const label = it.label || '';
+          const norm = it.nameNorm || '';
+          return `
+            <div class="suggest-item"
+                 data-id="${it.id}"
+                 data-label="${escapeHtml(label)}"
+                 data-norm="${escapeHtml(norm)}">
+              <div class="suggest-top">
+                <div class="suggest-label">${highlight(label, q)}</div>
+                <div class="suggest-id mono">id=${it.id}</div>
+              </div>
+              <div class="suggest-sub">${highlight(norm, q)}</div>
+            </div>
+          `;
+        }).join('');
+
+        Array.from(vList.querySelectorAll('[data-id]')).forEach(el => {
+          el.addEventListener('click', () => {
+            setVendorSelected({
+              id: Number(el.getAttribute('data-id')),
+              label: el.getAttribute('data-label'),
+              nameNorm: el.getAttribute('data-norm')
+            });
+          });
+        });
+
+        openBox(vBox);
+      }
+
+      function renderProduct(items) {
+        const q = pInput.value.trim();
+        const qLower = q.toLowerCase();
+
+        if (!items || items.length === 0) {
+          pList.innerHTML = `<div class="muted" style="padding:8px;">No matches.</div>`;
+          openBox(pBox);
+          return;
+        }
+
+        const sorted = items.slice().sort((a,b) => rank(a, qLower) - rank(b, qLower));
+
+        pList.innerHTML = sorted.slice(0, 10).map(it => {
+          const label = it.label || '';
+          const norm = it.nameNorm || '';
+          return `
+            <div class="suggest-item"
+                 data-id="${it.id}"
+                 data-label="${escapeHtml(label)}"
+                 data-norm="${escapeHtml(norm)}">
+              <div class="suggest-top">
+                <div class="suggest-label">${highlight(label, q)}</div>
+                <div class="suggest-id mono">id=${it.id}</div>
+              </div>
+              <div class="suggest-sub">${highlight(norm, q)}</div>
+            </div>
+          `;
+        }).join('');
+
+        Array.from(pList.querySelectorAll('[data-id]')).forEach(el => {
+          el.addEventListener('click', () => {
+            setProductSelected({
+              id: Number(el.getAttribute('data-id')),
+              label: el.getAttribute('data-label'),
+              nameNorm: el.getAttribute('data-norm')
+            });
+          });
+        });
+
+        openBox(pBox);
+      }
+
+      // vendor input events
+      vInput.addEventListener('input', () => {
+        clearVendorSelectionIfTextChanged();
+        const q = vInput.value.trim();
+        if (q.length < 2) { closeBox(vBox); return; }
+
+        vLast = q;
+        if (vTimer) clearTimeout(vTimer);
+        vTimer = setTimeout(async () => {
+          if (vLast !== q) return;
+          const items = await fetchVendors(q);
+          renderVendor(items);
+        }, 180);
+      });
+
+      // ★変更：フォーカス時も再検索
+      vInput.addEventListener('focus', async () => {
+        const q = vInput.value.trim();
+        if (q.length < 2) return;
+        const items = await fetchVendors(q);
+        renderVendor(items);
+      });
+
+      // product input events
+      pInput.addEventListener('input', () => {
+        clearProductSelectionIfTextChanged();
+
+        const vendorId = vHidden.value;
+        if (!vendorId) { closeBox(pBox); return; }
+
+        const q = pInput.value.trim();
+        if (q.length < 2) { closeBox(pBox); return; }
+
+        pLast = q;
+        if (pTimer) clearTimeout(pTimer);
+        pTimer = setTimeout(async () => {
+          if (pLast !== q) return;
+          const items = await fetchProducts(vendorId, q);
+          renderProduct(items);
+        }, 180);
+      });
+
+      // ★変更：フォーカス時も再検索（vendorIdがある時だけ）
+      pInput.addEventListener('focus', async () => {
+        const vendorId = vHidden.value;
+        const q = pInput.value.trim();
+        if (!vendorId || q.length < 2) return;
+        const items = await fetchProducts(vendorId, q);
+        renderProduct(items);
+      });
+
+      // close on outside click
+      document.addEventListener('click', (e) => {
+        if (!vBox.contains(e.target) && e.target !== vInput) closeBox(vBox);
+        if (!pBox.contains(e.target) && e.target !== pInput) closeBox(pBox);
+      });
+
+      // submit validation
+      form.addEventListener('submit', (e) => {
+        if (!vHidden.value) {
+          e.preventDefault();
+          alert('Please select a vendor from suggestions (so vendorId is set).');
+          vInput.focus();
+          return;
+        }
+        if (!pHidden.value) {
+          e.preventDefault();
+          alert('Please select a canonical product from suggestions (so productId is set).');
+          pInput.focus();
+        }
+      });
+    })();
+  </script>
+
+</main>
+</body>
+</html>

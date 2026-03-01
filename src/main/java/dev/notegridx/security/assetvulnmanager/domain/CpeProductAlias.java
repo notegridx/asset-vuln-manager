@@ -56,6 +56,14 @@ public class CpeProductAlias {
         this.status = "ACTIVE";
     }
 
+    public void setStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            this.status = "ACTIVE";
+            return;
+        }
+        this.status = status.trim().toUpperCase(java.util.Locale.ROOT);
+    }
+
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();

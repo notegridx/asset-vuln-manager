@@ -30,6 +30,9 @@ public class AdminAliasesController {
         this.synonymService = synonymService;
     }
 
+    /**
+     * vendor alias 追加：保存 + キャッシュクリアのみ（backfillは別ボタンに分離）
+     */
     @PostMapping("/admin/aliases/vendor")
     public String addVendorAlias(
             @RequestParam("aliasNorm") String aliasNorm,
@@ -38,10 +41,12 @@ public class AdminAliasesController {
     ) {
         vendorAliasRepo.save(new CpeVendorAlias(aliasNorm.trim(), cpeVendorId, note));
         synonymService.clearCaches();
-        backfillService.backfill(5_000_000, false);
         return "redirect:/admin/unresolved?status=NEW";
     }
 
+    /**
+     * product alias 追加：保存 + キャッシュクリアのみ（backfillは別ボタンに分離）
+     */
     @PostMapping("/admin/aliases/product")
     public String addProductAlias(
             @RequestParam("cpeVendorId") Long cpeVendorId,
@@ -51,7 +56,24 @@ public class AdminAliasesController {
     ) {
         productAliasRepo.save(new CpeProductAlias(cpeVendorId, aliasNorm.trim(), cpeProductId, note));
         synonymService.clearCaches();
-        backfillService.backfill(5_000_000, false);
+        return "redirect:/admin/unresolved?status=NEW";
+    }
+
+    /**
+     * Canonical backfill を単独実行（どの画面からでも呼べるように redirect を受ける）
+     */
+    @PostMapping("/admin/canonical/backfill")
+    public String runCanonicalBackfill(
+            @RequestParam(name = "maxRows", defaultValue = "5000000") int maxRows,
+            @RequestParam(name = "forceRebuild", defaultValue = "false") boolean forceRebuild,
+            @RequestParam(name = "redirect", required = false) String redirect
+    ) {
+        synonymService.clearCaches();
+        backfillService.backfill(maxRows, forceRebuild);
+
+        if (redirect != null && redirect.startsWith("/")) {
+            return "redirect:" + redirect;
+        }
         return "redirect:/admin/unresolved?status=NEW";
     }
 }

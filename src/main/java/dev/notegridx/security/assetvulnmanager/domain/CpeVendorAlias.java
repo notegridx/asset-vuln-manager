@@ -51,6 +51,15 @@ public class CpeVendorAlias {
         this.status = "ACTIVE";
     }
 
+    // 既存の class に追記（@Getter のままでOK）
+    public void setStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            this.status = "ACTIVE";
+            return;
+        }
+        this.status = status.trim().toUpperCase(java.util.Locale.ROOT);
+    }
+
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();
