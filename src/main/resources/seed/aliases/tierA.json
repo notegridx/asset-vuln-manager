@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "source": "tierA",
+  "vendors": [
+    {
+      "canonicalVendor": "microsoft",
+      "aliases": [
+        { "raw": "Microsoft", "confidence": 95 },
+        { "raw": "Microsoft Corporation", "confidence": 95 },
+        { "raw": "Microsoft Corp", "confidence": 95 },
+        { "raw": "MSFT", "confidence": 80 }
+      ]
+    },
+    {
+      "canonicalVendor": "google",
+      "aliases": [
+        { "raw": "Google", "confidence": 95 },
+        { "raw": "Google LLC", "confidence": 95 }
+      ]
+    }
+  ],
+  "products": [
+    {
+      "canonicalVendor": "google",
+      "canonicalProduct": "chrome",
+      "aliases": [
+        { "raw": "Google Chrome", "confidence": 95 },
+        { "raw": "Chrome", "confidence": 85 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('Seed Alias Dictionary (JSON)')}"></head>
+
+<body th:replace="~{layout/base :: layout('Seed Alias Dictionary (JSON)', 'admin', ~{::main})}">
+<main>
+
+    <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div>
+            <h1>Seed Alias Dictionary (JSON)</h1>
+            <p class="muted" style="margin:6px 0 0 0;">
+                Canonicals are resolved by <code>name_norm</code>. Aliases are normalized before insert.
+                Conflicts are skipped (no overwrite). Confidence is integer (0-100).
+            </p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a class="btn btn-ghost" th:href="@{/admin/aliases/seed/import(preset='tierA')}">Load preset: tierA</a>
+        </div>
+    </div>
+
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <form th:action="@{/admin/aliases/seed/import}" method="post">
+            <div class="field">
+                <label>Seed JSON</label>
+                <textarea name="json" rows="18" style="width:100%; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
+                          th:text="${json}"></textarea>
+                <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.6;">
+                    - <b>canonicalVendor</b>/<b>canonicalProduct</b> must match CPE dictionary <code>name_norm</code>.<br>
+                    - Aliases are normalized. ACTIVE only. Conflicts are skipped.
+                </div>
+            </div>
+
+            <div class="actions" style="margin-top:12px;">
+                <button type="submit" class="btn btn-primary">Import Seed</button>
+                <a class="btn btn-ghost" th:href="@{/admin/aliases/seed/import}">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <div th:if="${result != null}" class="card" style="padding:12px; margin:12px 0;">
+        <h2 style="margin:0;">Result</h2>
+
+        <div class="kv" style="margin-top:12px; grid-template-columns: 240px 1fr;">
+            <b>vendorInserted</b> <span th:text="${result.vendorInserted}">0</span>
+            <b>vendorSkippedExisting</b> <span th:text="${result.vendorSkippedExisting}">0</span>
+            <b>vendorConflicted</b> <span th:text="${result.vendorConflicted}">0</span>
+            <b>vendorCanonicalNotFound</b> <span th:text="${result.vendorCanonicalNotFound}">0</span>
+
+            <b>productInserted</b> <span th:text="${result.productInserted}">0</span>
+            <b>productSkippedExisting</b> <span th:text="${result.productSkippedExisting}">0</span>
+            <b>productConflicted</b> <span th:text="${result.productConflicted}">0</span>
+            <b>productCanonicalNotFound</b> <span th:text="${result.productCanonicalNotFound}">0</span>
+
+            <b>dedupedAliases</b> <span th:text="${result.dedupedAliases}">0</span>
+        </div>
+
+        <details style="margin-top:12px;" th:if="${result.notes != null and !result.notes.isEmpty()}">
+            <summary style="cursor:pointer; font-weight:600;">Notes</summary>
+            <ul style="margin:10px 0 0 18px;">
+                <li th:each="n : ${result.notes}" th:text="${n}">note</li>
+            </ul>
+        </details>
+    </div>
+
+</main>
+</body>
+</html>
