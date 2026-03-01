@@ -52,6 +52,10 @@ public class DictionarySuggestController {
     // Existing APIs (keep backward compatibility)
     // =========================================================
 
+    /**
+     * Vendor候補（ID selector用）
+     * exact -> prefix -> contains
+     */
     @GetMapping("/api/dict/vendors/search")
     public List<SuggestIdItem> searchVendorsById(
             @RequestParam(name = "q", defaultValue = "") String q
@@ -75,6 +79,10 @@ public class DictionarySuggestController {
                 .toList();
     }
 
+    /**
+     * Product候補（ID selector用）
+     * vendorId配下で prefix（0件なら contains）にフォールバック
+     */
     @GetMapping("/api/dict/products/search")
     public List<SuggestIdItem> searchProductsById(
             @RequestParam(name = "vendorId") Long vendorId,
@@ -85,7 +93,14 @@ public class DictionarySuggestController {
         String p0 = normalizer.normalizeProduct(q);
         if (p0 == null || p0.isBlank() || p0.length() < 2) return List.of();
 
-        List<CpeProduct> rows = productRepo.findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendorId, p0);
+        List<CpeProduct> rows = productRepo
+                .findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendorId, p0);
+
+        // fallback: contains
+        if (rows.isEmpty()) {
+            rows = productRepo
+                    .findTop20ByVendorIdAndNameNormContainingOrderByNameNormAsc(vendorId, p0);
+        }
 
         return rows.stream()
                 .map(p -> new SuggestIdItem(
@@ -97,7 +112,9 @@ public class DictionarySuggestController {
     }
 
     /**
-     * Vendor候補（name_norm 前方一致）
+     * Vendor候補（unresolved等の文字列検索用）
+     * prefix（0件なら contains）にフォールバック
+     *
      * Example: GET /api/dict/vendors?q=mic
      */
     @GetMapping("/api/dict/vendors")
@@ -112,6 +129,11 @@ public class DictionarySuggestController {
 
         List<CpeVendor> rows = vendorRepo.findTop20ByNameNormStartingWithOrderByNameNormAsc(v1);
 
+        // fallback: contains
+        if (rows.isEmpty()) {
+            rows = vendorRepo.findTop20ByNameNormContainingOrderByNameNormAsc(v1);
+        }
+
         return rows.stream()
                 .map(v -> new SuggestItem(
                         v.getNameNorm(),
@@ -121,7 +143,9 @@ public class DictionarySuggestController {
     }
 
     /**
-     * Product候補（vendor確定 → vendor配下の product を name_norm 前方一致）
+     * Product候補（unresolved等の文字列検索用）
+     * vendor確定 → vendor配下の product を prefix（0件なら contains）にフォールバック
+     *
      * Example: GET /api/dict/products?vendor=microsoft&q=ed
      */
     @GetMapping("/api/dict/products")
@@ -144,7 +168,14 @@ public class DictionarySuggestController {
         String p1 = synonymService.canonicalProductOrSame(v1, p0);
         if (p1 == null || p1.isBlank() || p1.length() < 2) return List.of();
 
-        List<CpeProduct> rows = productRepo.findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendor.getId(), p1);
+        List<CpeProduct> rows = productRepo
+                .findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendor.getId(), p1);
+
+        // fallback: contains
+        if (rows.isEmpty()) {
+            rows = productRepo
+                    .findTop20ByVendorIdAndNameNormContainingOrderByNameNormAsc(vendor.getId(), p1);
+        }
 
         return rows.stream()
                 .map(p -> new SuggestItem(
@@ -233,14 +264,18 @@ public class DictionarySuggestController {
             map.put(e.id(), e);
         }
         for (CpeVendor v : prefix) {
-            map.putIfAbsent(v.getId(), new SuggestIdItem(v.getId(),
+            map.putIfAbsent(v.getId(), new SuggestIdItem(
+                    v.getId(),
                     (v.getDisplayName() == null || v.getDisplayName().isBlank()) ? v.getNameNorm() : v.getDisplayName(),
-                    v.getNameNorm()));
+                    v.getNameNorm()
+            ));
         }
         for (CpeVendor v : contains) {
-            map.putIfAbsent(v.getId(), new SuggestIdItem(v.getId(),
+            map.putIfAbsent(v.getId(), new SuggestIdItem(
+                    v.getId(),
                     (v.getDisplayName() == null || v.getDisplayName().isBlank()) ? v.getNameNorm() : v.getDisplayName(),
-                    v.getNameNorm()));
+                    v.getNameNorm()
+            ));
         }
         // drop exact from others
         for (SuggestIdItem e : exact) map.remove(e.id());
@@ -260,14 +295,18 @@ public class DictionarySuggestController {
             map.put(e.id(), e);
         }
         for (CpeProduct p : prefix) {
-            map.putIfAbsent(p.getId(), new SuggestIdItem(p.getId(),
+            map.putIfAbsent(p.getId(), new SuggestIdItem(
+                    p.getId(),
                     (p.getDisplayName() == null || p.getDisplayName().isBlank()) ? p.getNameNorm() : p.getDisplayName(),
-                    p.getNameNorm()));
+                    p.getNameNorm()
+            ));
         }
         for (CpeProduct p : contains) {
-            map.putIfAbsent(p.getId(), new SuggestIdItem(p.getId(),
+            map.putIfAbsent(p.getId(), new SuggestIdItem(
+                    p.getId(),
                     (p.getDisplayName() == null || p.getDisplayName().isBlank()) ? p.getNameNorm() : p.getDisplayName(),
-                    p.getNameNorm()));
+                    p.getNameNorm()
+            ));
         }
         for (SuggestIdItem e : exact) map.remove(e.id());
 

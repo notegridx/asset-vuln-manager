@@ -17,6 +17,8 @@ public interface CpeProductRepository extends JpaRepository<CpeProduct, Long> {
     // 前方一致サジェスト用（vendor scope）
     List<CpeProduct> findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(Long vendorId, String prefix);
 
+    List<CpeProduct> findTop20ByVendorIdAndNameNormContainingOrderByNameNormAsc(Long vendorId, String q);
+
     // exact within vendor
     @Query("""
   select p from CpeProduct p

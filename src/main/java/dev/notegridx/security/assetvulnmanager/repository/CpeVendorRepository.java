@@ -17,6 +17,8 @@ public interface CpeVendorRepository extends JpaRepository<CpeVendor, Long> {
     // 前方一致サジェスト用
     List<CpeVendor> findTop20ByNameNormStartingWithOrderByNameNormAsc(String prefix);
 
+    List<CpeVendor> findTop20ByNameNormContainingOrderByNameNormAsc(String q);
+
     @Query("""
     select v from CpeVendor v
     where lower(v.nameNorm) = lower(:q)
