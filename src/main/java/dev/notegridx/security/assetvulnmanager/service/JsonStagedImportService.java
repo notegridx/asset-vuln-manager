@@ -38,6 +38,7 @@ public class JsonStagedImportService {
 
     private final AssetRepository assetRepository;
     private final SoftwareInstallRepository softwareInstallRepository;
+    private final SoftwareDictionaryValidator softwareDictionaryValidator;
 
     public JsonStagedImportService(
             ObjectMapper objectMapper,
@@ -45,7 +46,8 @@ public class JsonStagedImportService {
             ImportStagingAssetRepository stagingAssetRepository,
             ImportStagingSoftwareRepository stagingSoftwareRepository,
             AssetRepository assetRepository,
-            SoftwareInstallRepository softwareInstallRepository
+            SoftwareInstallRepository softwareInstallRepository,
+            SoftwareDictionaryValidator softwareDictionaryValidator
     ) {
         this.objectMapper = objectMapper;
         this.importRunRepository = importRunRepository;
@@ -53,6 +55,7 @@ public class JsonStagedImportService {
         this.stagingSoftwareRepository = stagingSoftwareRepository;
         this.assetRepository = assetRepository;
         this.softwareInstallRepository = softwareInstallRepository;
+        this.softwareDictionaryValidator = softwareDictionaryValidator;
     }
 
     // ===== DTOs (JSON input) =====
@@ -141,7 +144,8 @@ public class JsonStagedImportService {
         ImportRun run = ImportRun.newStaged("JSON_UPLOAD", "JSON_ASSETS", originalFilename, sha256);
         run = importRunRepository.save(run);
 
-        List<AssetJsonRow> rows = parseJsonArray(bytes, new TypeReference<List<AssetJsonRow>>() {});
+        List<AssetJsonRow> rows = parseJsonArray(bytes, new TypeReference<List<AssetJsonRow>>() {
+        });
         int total = rows.size();
         int valid = 0;
         int invalid = 0;
@@ -190,7 +194,8 @@ public class JsonStagedImportService {
                 s.markInvalid("name is required");
             }
 
-            if (s.isValid()) valid++; else invalid++;
+            if (s.isValid()) valid++;
+            else invalid++;
             staging.add(s);
         }
 
@@ -209,7 +214,8 @@ public class JsonStagedImportService {
         ImportRun run = ImportRun.newStaged("JSON_UPLOAD", "JSON_SOFTWARE", originalFilename, sha256);
         run = importRunRepository.save(run);
 
-        List<SoftwareJsonRow> rows = parseJsonArray(bytes, new TypeReference<List<SoftwareJsonRow>>() {});
+        List<SoftwareJsonRow> rows = parseJsonArray(bytes, new TypeReference<List<SoftwareJsonRow>>() {
+        });
         int total = rows.size();
         int valid = 0;
         int invalid = 0;
@@ -266,7 +272,8 @@ public class JsonStagedImportService {
                 }
             }
 
-            if (s.isValid()) valid++; else invalid++;
+            if (s.isValid()) valid++;
+            else invalid++;
             staging.add(s);
         }
 
@@ -323,6 +330,7 @@ public class JsonStagedImportService {
                     r.getOsMinor(),
                     r.getOsPatch()
             );
+
 
             // policy: last_seen_at updated at import time unless provided; source default JSON_UPLOAD
             String src = normNullable(r.getSource());
@@ -413,6 +421,25 @@ public class JsonStagedImportService {
                     r.getRelease(),
                     r.getPurl()
             );
+
+
+            // =========================================================
+            // Resolve canonical IDs at import-time (Top20 vendor guarantee)
+            // Prefer raw (vendor_raw/product_raw) if present.
+            // =========================================================
+            String vIn = normNullable(r.getVendorRaw());
+            String pIn = normNullable(r.getProductRaw());
+            if (vIn == null) vIn = normNullable(vendor);   // vendor is ""-allowed; normNullable("") -> null
+            if (pIn == null) pIn = normNullable(product);
+
+            var res = softwareDictionaryValidator.resolve(vIn, pIn);
+            if (res.hit()) {
+                // productId may be null (vendor-only link) - still OK for KPI1
+                sw.linkCanonical(res.vendorId(), res.productId());
+            } else {
+                // Safety: avoid leaving stale links when inputs change
+                sw.unlinkCanonical();
+            }
 
             softwareInstallRepository.save(sw);
             upserted++;

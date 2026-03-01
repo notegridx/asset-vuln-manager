@@ -11,6 +11,8 @@ import java.util.Optional;
 
 public interface CpeProductAliasRepository extends JpaRepository<CpeProductAlias, Long> {
 
+    Optional<CpeProductAlias> findByCpeVendorIdAndAliasNorm(Long cpeVendorId, String aliasNorm);
+
     Optional<CpeProductAlias> findFirstByCpeVendorIdAndAliasNormAndStatusIgnoreCase(Long cpeVendorId, String aliasNorm, String status);
 
     @Query("""

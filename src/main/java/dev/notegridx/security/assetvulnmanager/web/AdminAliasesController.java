@@ -2,6 +2,8 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.CpeProductAlias;
 import dev.notegridx.security.assetvulnmanager.domain.CpeVendorAlias;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AliasReviewState;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AliasSource;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductAliasRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorAliasRepository;
 import dev.notegridx.security.assetvulnmanager.service.CanonicalBackfillService;
@@ -39,7 +41,24 @@ public class AdminAliasesController {
             @RequestParam("cpeVendorId") Long cpeVendorId,
             @RequestParam(value = "note", required = false) String note
     ) {
-        vendorAliasRepo.save(new CpeVendorAlias(aliasNorm.trim(), cpeVendorId, note));
+        String a = normalize(aliasNorm);
+        if (a == null) {
+            // 入力が空の場合は何もしない（現状のUXを崩したくなければ redirect は同じ）
+            return "redirect:/admin/unresolved?status=NEW";
+        }
+
+        // ✅ factory/seeded に統一（コンストラクタ順に依存しない）
+        CpeVendorAlias entity = CpeVendorAlias.seeded(
+                cpeVendorId,
+                a,
+                note,
+                AliasSource.MANUAL,
+                AliasReviewState.MANUAL,
+                null,
+                null
+        );
+
+        vendorAliasRepo.save(entity);
         synonymService.clearCaches();
         return "redirect:/admin/unresolved?status=NEW";
     }
@@ -54,7 +73,24 @@ public class AdminAliasesController {
             @RequestParam("cpeProductId") Long cpeProductId,
             @RequestParam(value = "note", required = false) String note
     ) {
-        productAliasRepo.save(new CpeProductAlias(cpeVendorId, aliasNorm.trim(), cpeProductId, note));
+        String a = normalize(aliasNorm);
+        if (a == null) {
+            return "redirect:/admin/unresolved?status=NEW";
+        }
+
+        // ✅ factory/seeded に統一（コンストラクタ順に依存しない）
+        CpeProductAlias entity = CpeProductAlias.seeded(
+                cpeVendorId,
+                cpeProductId,
+                a,
+                note,
+                AliasSource.MANUAL,
+                AliasReviewState.MANUAL,
+                null,
+                null
+        );
+
+        productAliasRepo.save(entity);
         synonymService.clearCaches();
         return "redirect:/admin/unresolved?status=NEW";
     }
@@ -75,5 +111,11 @@ public class AdminAliasesController {
             return "redirect:" + redirect;
         }
         return "redirect:/admin/unresolved?status=NEW";
+    }
+
+    private String normalize(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
     }
 }

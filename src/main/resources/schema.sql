@@ -600,3 +600,41 @@ CREATE TABLE IF NOT EXISTS cpe_product_aliases
 CREATE INDEX IF NOT EXISTS idx_product_alias_vendor ON cpe_product_aliases(cpe_vendor_id);
 CREATE INDEX IF NOT EXISTS idx_product_alias_product ON cpe_product_aliases(cpe_product_id);
 CREATE INDEX IF NOT EXISTS idx_product_alias_status ON cpe_product_aliases(status);
+
+-- =========================================================
+-- Alias metadata extension (Top20 auto-seeding)
+-- =========================================================
+
+-- ---------- cpe_vendor_aliases ----------
+ALTER TABLE cpe_vendor_aliases
+    ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'MANUAL';
+
+ALTER TABLE cpe_vendor_aliases
+    ADD COLUMN IF NOT EXISTS confidence INT NOT NULL DEFAULT 0;
+
+ALTER TABLE cpe_vendor_aliases
+    ADD COLUMN IF NOT EXISTS evidence_url VARCHAR(1024);
+
+ALTER TABLE cpe_vendor_aliases
+    ADD COLUMN IF NOT EXISTS review_state VARCHAR(16) NOT NULL DEFAULT 'MANUAL';
+
+CREATE INDEX IF NOT EXISTS idx_cpe_vendor_aliases_review_state ON cpe_vendor_aliases(review_state);
+CREATE INDEX IF NOT EXISTS idx_cpe_vendor_aliases_source       ON cpe_vendor_aliases(source);
+
+
+-- ---------- cpe_product_aliases ----------
+ALTER TABLE cpe_product_aliases
+    ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'MANUAL';
+
+ALTER TABLE cpe_product_aliases
+    ADD COLUMN IF NOT EXISTS confidence INT NOT NULL DEFAULT 0;
+
+ALTER TABLE cpe_product_aliases
+    ADD COLUMN IF NOT EXISTS evidence_url VARCHAR(1024);
+
+ALTER TABLE cpe_product_aliases
+    ADD COLUMN IF NOT EXISTS review_state VARCHAR(16) NOT NULL DEFAULT 'MANUAL';
+
+CREATE INDEX IF NOT EXISTS idx_cpe_product_aliases_review_state ON cpe_product_aliases(review_state);
+CREATE INDEX IF NOT EXISTS idx_cpe_product_aliases_source       ON cpe_product_aliases(source);
+CREATE INDEX IF NOT EXISTS idx_cpe_product_aliases_vendor_id    ON cpe_product_aliases(cpe_vendor_id);

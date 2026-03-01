@@ -37,19 +37,22 @@ public class CsvStagedImportService {
     private final ImportStagingSoftwareRepository stagingSoftwareRepository;
     private final AssetRepository assetRepository;
     private final SoftwareInstallRepository softwareInstallRepository;
+    private final SoftwareDictionaryValidator softwareDictionaryValidator;
 
     public CsvStagedImportService(
             ImportRunRepository importRunRepository,
             ImportStagingAssetRepository stagingAssetRepository,
             ImportStagingSoftwareRepository stagingSoftwareRepository,
             AssetRepository assetRepository,
-            SoftwareInstallRepository softwareInstallRepository
+            SoftwareInstallRepository softwareInstallRepository,
+            SoftwareDictionaryValidator softwareDictionaryValidator
     ) {
         this.importRunRepository = importRunRepository;
         this.stagingAssetRepository = stagingAssetRepository;
         this.stagingSoftwareRepository = stagingSoftwareRepository;
         this.assetRepository = assetRepository;
         this.softwareInstallRepository = softwareInstallRepository;
+        this.softwareDictionaryValidator = softwareDictionaryValidator;
     }
 
     // =========================
@@ -111,7 +114,8 @@ public class CsvStagedImportService {
                 s.markInvalid("name is required");
             }
 
-            if (s.isValid()) valid++; else invalid++;
+            if (s.isValid()) valid++;
+            else invalid++;
             staging.add(s);
         }
 
@@ -186,7 +190,8 @@ public class CsvStagedImportService {
                 }
             }
 
-            if (s.isValid()) valid++; else invalid++;
+            if (s.isValid()) valid++;
+            else invalid++;
             staging.add(s);
         }
 
@@ -329,6 +334,24 @@ public class CsvStagedImportService {
                     r.getRelease(),
                     r.getPurl()
             );
+
+            // =========================================================
+            // Resolve canonical IDs at import-time (Top20 vendor guarantee)
+            // Prefer raw (vendor_raw/product_raw) if present.
+            // =========================================================
+            String vIn = normNullable(r.getVendorRaw());
+            String pIn = normNullable(r.getProductRaw());
+            if (vIn == null) vIn = normNullable(vendor);   // vendor may be "" (normEmpty) -> null here
+            if (pIn == null) pIn = normNullable(product);
+
+            var res = softwareDictionaryValidator.resolve(vIn, pIn);
+            if (res.hit()) {
+                // productId may be null (vendor-only link). That still satisfies KPI1.
+                sw.linkCanonical(res.vendorId(), res.productId());
+            } else {
+                // Safety: avoid leaving stale links when raw changes
+                sw.unlinkCanonical();
+            }
 
             softwareInstallRepository.save(sw);
             upserted++;
