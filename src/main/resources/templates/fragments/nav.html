@@ -50,44 +50,106 @@
 
         <!-- Operations dropdown -->
         <details class="nav-admin" th:classappend="${active == 'admin'} ? ' is-active' : ''">
-            <summary class="nav-link nav-admin__trigger" th:classappend="${active == 'admin'} ? ' active' : ''">
+            <summary class="nav-link nav-admin__trigger"
+                     th:classappend="${active == 'admin'} ? ' active' : ''">
                 Operations
                 <span class="nav-admin__chev" aria-hidden="true">▾</span>
             </summary>
 
             <div class="nav-admin-menu" role="menu" aria-label="Operations menu">
+
+                <!-- Data Updates -->
                 <div class="nav-admin-section">
                     <div class="nav-admin-section__title">Data Updates</div>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/cpe/sync}">Update Product Dictionary</a>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/synonyms/vendors}">Vendor Synonyms</a>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/synonyms/products}">Product Synonyms</a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/cpe/sync}">
+                        Update Product Dictionary
+                    </a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/synonyms/vendors}">
+                        Vendor Synonyms
+                    </a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/synonyms/products}">
+                        Product Synonyms
+                    </a>
+
+                    <!-- ✅ Added -->
                     <a class="nav-admin-item"
                        role="menuitem"
                        th:href="@{/admin/aliases/seed/import}">
                         Import Alias Seed
                     </a>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/cve/sync}">Update Vulnerability Data</a>
-                    <a class="nav-admin-item is-muted" role="menuitem" th:href="@{/admin/sync}">CVE Delta Update
-                        (API)</a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/cve/sync}">
+                        Update Vulnerability Data
+                    </a>
+
+                    <a class="nav-admin-item is-muted"
+                       role="menuitem"
+                       th:href="@{/admin/sync}">
+                        CVE Delta Update (API)
+                    </a>
                 </div>
 
                 <div class="nav-admin-divider" role="separator"></div>
 
+                <!-- Inventory -->
                 <div class="nav-admin-section">
                     <div class="nav-admin-section__title">Inventory</div>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/import/csv}">CSV Import</a>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/import/json}">JSON Import</a>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/import-runs}">Import Runs</a>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/unresolved}">Unresolved Mappings</a>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/canonical}">Review Product Mapping</a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/import/csv}">
+                        CSV Import
+                    </a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/import/json}">
+                        JSON Import
+                    </a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/import-runs}">
+                        Import Runs
+                    </a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/unresolved}">
+                        Unresolved Mappings
+                    </a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/canonical}">
+                        Review Product Mapping
+                    </a>
                 </div>
 
                 <div class="nav-admin-divider" role="separator"></div>
 
+                <!-- Matching -->
                 <div class="nav-admin-section">
                     <div class="nav-admin-section__title">Matching</div>
-                    <a class="nav-admin-item" role="menuitem" th:href="@{/admin/alerts/recalculate}">Generate Alerts</a>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/alerts/recalculate}">
+                        Generate Alerts
+                    </a>
                 </div>
+
             </div>
         </details>
 
