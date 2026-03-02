@@ -264,6 +264,76 @@
 
     </div>
 
+    <!-- Top 10 by CVE count -->
+    <div class="actions" style="margin:18px 0 0 0; align-items:flex-end;">
+        <h2 style="margin:0;">Top 10 Vendors / Products by CVE Count</h2>
+        <div class="muted" style="font-size:12px;">
+            Based on distinct CVE count in vulnerability_affected_cpe (canonical IDs only).
+        </div>
+    </div>
+
+    <div class="card" style="padding:12px; margin-top:12px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <!-- Vendors -->
+            <div>
+                <div class="muted" style="font-size:12px; margin-bottom:8px;">Top Vendors</div>
+                <div style="overflow:auto;">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th style="min-width:60px;">Rank</th>
+                            <th style="min-width:220px;">Vendor</th>
+                            <th style="min-width:120px;">CVE count</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="r, st : ${topVendors}">
+                            <td class="muted" th:text="${st.index + 1}">1</td>
+                            <td>
+                                <span class="mono" th:text="${r.label}">microsoft</span>
+                                <span class="muted" style="font-size:12px;" th:text="' (#' + ${r.id} + ')'">(#0)</span>
+                            </td>
+                            <td><span class="pill" th:text="${r.cveCount}">0</span></td>
+                        </tr>
+                        <tr th:if="${topVendors == null || #lists.isEmpty(topVendors)}">
+                            <td colspan="3" class="muted">No items.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Products -->
+            <div>
+                <div class="muted" style="font-size:12px; margin-bottom:8px;">Top Products</div>
+                <div style="overflow:auto;">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th style="min-width:60px;">Rank</th>
+                            <th style="min-width:260px;">Product</th>
+                            <th style="min-width:120px;">CVE count</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="r, st : ${topProducts}">
+                            <td class="muted" th:text="${st.index + 1}">1</td>
+                            <td>
+                                <span class="mono" th:text="${r.label}">windows</span>
+                                <span class="muted" style="font-size:12px;" th:text="' (#' + ${r.id} + ')'">(#0)</span>
+                            </td>
+                            <td><span class="pill" th:text="${r.cveCount}">0</span></td>
+                        </tr>
+                        <tr th:if="${topProducts == null || #lists.isEmpty(topProducts)}">
+                            <td colspan="3" class="muted">No items.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <hr/>
 
     <!-- Critical CVEs without CPE -->
@@ -279,7 +349,6 @@
             Count:
             <span class="pill" th:text="${criticalNoCpeCount}">0</span>
         </div>
-
 
         <div style="margin-top:10px; overflow:auto;">
             <table class="table">
@@ -329,8 +398,6 @@
                 </tbody>
             </table>
         </div>
-
-
     </div>
 
 </main>
