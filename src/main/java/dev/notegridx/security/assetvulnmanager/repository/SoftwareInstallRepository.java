@@ -116,4 +116,7 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             order by s.id desc
             """)
     List<SoftwareInstall> findNeedsCanonicalLink();
+
+    @org.springframework.data.jpa.repository.Query("select s.id from SoftwareInstall s where s.importRunId = :runId")
+    java.util.List<Long> findIdsByImportRunId(@org.springframework.data.repository.query.Param("runId") Long runId);
 }

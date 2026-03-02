@@ -39,13 +39,16 @@ public class CsvStagedImportService {
     private final SoftwareInstallRepository softwareInstallRepository;
     private final SoftwareDictionaryValidator softwareDictionaryValidator;
 
+    private final CanonicalBackfillService canonicalBackfillService;
+
     public CsvStagedImportService(
             ImportRunRepository importRunRepository,
             ImportStagingAssetRepository stagingAssetRepository,
             ImportStagingSoftwareRepository stagingSoftwareRepository,
             AssetRepository assetRepository,
             SoftwareInstallRepository softwareInstallRepository,
-            SoftwareDictionaryValidator softwareDictionaryValidator
+            SoftwareDictionaryValidator softwareDictionaryValidator,
+            CanonicalBackfillService canonicalBackfillService
     ) {
         this.importRunRepository = importRunRepository;
         this.stagingAssetRepository = stagingAssetRepository;
@@ -53,6 +56,7 @@ public class CsvStagedImportService {
         this.assetRepository = assetRepository;
         this.softwareInstallRepository = softwareInstallRepository;
         this.softwareDictionaryValidator = softwareDictionaryValidator;
+        this.canonicalBackfillService = canonicalBackfillService;
     }
 
     // =========================
@@ -150,7 +154,7 @@ public class CsvStagedImportService {
             String externalKey = normNullable(r.get("external_key"));
             String vendor = normNullable(r.get("vendor"));
             String product = normNullable(r.get("product"));
-            String version = normNullableAllowEmpty(r.get("version")); // null許容
+            String version = normNullableAllowEmpty(r.get("version"));
 
             LocalDateTime installedAt = parseDateTimeNullable(r.get("installed_at"));
 
@@ -265,7 +269,6 @@ public class CsvStagedImportService {
 
     // =========================
     // Import Software (upsert)
-    // Key: asset_id + vendor + product + version (DB unique)
     // =========================
     @Transactional
     public ImportRun importSoftware(Long runId) {
@@ -301,13 +304,13 @@ public class CsvStagedImportService {
                 sw.updateDetails(vendor, product, version, sw.getCpeName());
             }
 
-            // optional: type
+            // ★ import_run_id を必ず付与（importRunId方式の要）
+            sw.attachImportRun(runId);
+
             trySetSoftwareType(sw, r.getType());
 
-            // raw values
             sw.captureRaw(r.getVendorRaw(), r.getProductRaw(), r.getVersionRaw());
 
-            // provenance
             String st = normNullable(r.getSourceType());
             String src = normNullable(r.getSource());
             if (src == null) src = "CSV_UPLOAD";
@@ -317,7 +320,6 @@ public class CsvStagedImportService {
 
             sw.setSource(src);
 
-            // extended columns
             sw.updateImportExtended(
                     r.getInstallLocation(),
                     r.getInstalledAt(),
@@ -335,21 +337,15 @@ public class CsvStagedImportService {
                     r.getPurl()
             );
 
-            // =========================================================
-            // Resolve canonical IDs at import-time (Top20 vendor guarantee)
-            // Prefer raw (vendor_raw/product_raw) if present.
-            // =========================================================
             String vIn = normNullable(r.getVendorRaw());
             String pIn = normNullable(r.getProductRaw());
-            if (vIn == null) vIn = normNullable(vendor);   // vendor may be "" (normEmpty) -> null here
+            if (vIn == null) vIn = normNullable(vendor);
             if (pIn == null) pIn = normNullable(product);
 
             var res = softwareDictionaryValidator.resolve(vIn, pIn);
             if (res.hit()) {
-                // productId may be null (vendor-only link). That still satisfies KPI1.
                 sw.linkCanonical(res.vendorId(), res.productId());
             } else {
-                // Safety: avoid leaving stale links when raw changes
                 sw.unlinkCanonical();
             }
 
@@ -357,7 +353,19 @@ public class CsvStagedImportService {
             upserted++;
         }
 
-        run.markImported(0, upserted, "Software imported (CSV): upserted=" + upserted + " at " + now);
+        // ★ DBに確実に入ったIDを runId で取得して targeted backfill
+        List<Long> ids = softwareInstallRepository.findIdsByImportRunId(runId);
+        var bf = canonicalBackfillService.backfillForSoftwareIds(ids, false);
+
+        run.markImported(
+                0,
+                upserted,
+                "Software imported (CSV): upserted=" + upserted
+                        + ", backfill(scanned=" + bf.scanned()
+                        + ", linked=" + bf.linked()
+                        + ", missed=" + bf.missed()
+                        + ") at " + now
+        );
         return importRunRepository.save(run);
     }
 

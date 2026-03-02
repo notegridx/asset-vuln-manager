@@ -89,7 +89,6 @@ public class CanonicalBackfillService {
                 int _missed = 0;
 
                 for (SoftwareInstall s : chunk) {
-
                     if (processedInChunk >= remaining) break;
 
                     boolean already = (s.getCpeVendorId() != null || s.getCpeProductId() != null);
@@ -103,7 +102,6 @@ public class CanonicalBackfillService {
                         s.linkCanonical(res.vendorId(), res.productId());
                         _linked++;
                     } else {
-                        // unresolved_mappings に積む（alias学習/辞書育成用のキュー）
                         upsertUnresolvedMapping(
                                 safeString(s.getSource()),
                                 coalesceNullable(s.getVendorRaw(), s.getVendor()),
@@ -141,6 +139,96 @@ public class CanonicalBackfillService {
         return new BackfillResult(scanned, linked, missed, forceRebuild);
     }
 
+    /**
+     * import直後など、特定の SoftwareInstall だけを対象に canonical link を試す。
+     * - hit: software_install に cpe_vendor_id / cpe_product_id をセット
+     * - miss: unresolved_mappings に upsert（候補IDも埋める）
+     *
+     * forceRebuild=false の場合、既にリンク済み（vendor/productいずれか埋まっている）はスキップ。
+     */
+    public BackfillResult backfillForSoftwareIds(List<Long> softwareIds, boolean forceRebuild) {
+        if (softwareIds == null || softwareIds.isEmpty()) {
+            return new BackfillResult(0, 0, 0, forceRebuild);
+        }
+
+        // null排除 + 重複排除（順序は維持）
+        List<Long> ids = softwareIds.stream()
+                .filter(x -> x != null && x > 0)
+                .distinct()
+                .toList();
+
+        if (ids.isEmpty()) {
+            return new BackfillResult(0, 0, 0, forceRebuild);
+        }
+
+        int scanned = 0;
+        int linked = 0;
+        int missed = 0;
+
+        for (int offset = 0; offset < ids.size(); offset += TX_CHUNK) {
+            int to = Math.min(ids.size(), offset + TX_CHUNK);
+            List<Long> chunkIds = ids.subList(offset, to);
+
+            int[] result = chunkTx.execute(status -> {
+                int processedInChunk = 0;
+                int _linked = 0;
+                int _missed = 0;
+
+                List<SoftwareInstall> chunk = softwareRepo.findAllById(chunkIds);
+
+                for (SoftwareInstall s : chunk) {
+                    if (s == null) continue;
+
+                    boolean already = (s.getCpeVendorId() != null || s.getCpeProductId() != null);
+                    if (already && !forceRebuild) {
+                        processedInChunk++;
+                        continue;
+                    }
+
+                    var res = linker.resolve(s);
+                    if (res.hit()) {
+                        s.linkCanonical(res.vendorId(), res.productId());
+                        _linked++;
+                    } else {
+                        upsertUnresolvedMapping(
+                                safeString(s.getSource()),
+                                coalesceNullable(s.getVendorRaw(), s.getVendor()),
+                                coalesceNullable(s.getProductRaw(), s.getProduct()),
+                                coalesceNullable(s.getVersionRaw(), s.getVersion())
+                        );
+                        _missed++;
+                    }
+
+                    processedInChunk++;
+
+                    if (processedInChunk % FLUSH_EVERY == 0) {
+                        em.flush();
+                        em.clear();
+                    }
+                }
+
+                em.flush();
+                em.clear();
+                return new int[]{processedInChunk, _linked, _missed};
+            });
+
+            if (result != null) {
+                scanned += result[0];
+                linked += result[1];
+                missed += result[2];
+            }
+        }
+
+        log.info("Canonical backfill (by ids) done: scanned={}, linked={}, missed={}, forceRebuild={}",
+                scanned, linked, missed, forceRebuild);
+
+        return new BackfillResult(scanned, linked, missed, forceRebuild);
+    }
+
+    public BackfillResult backfillForSoftwareIds(List<Long> softwareIds) {
+        return backfillForSoftwareIds(softwareIds, false);
+    }
+
     public record BackfillResult(int scanned, int linked, int missed, boolean forceRebuild) {
     }
 
@@ -162,7 +250,6 @@ public class CanonicalBackfillService {
             UnresolvedMapping um = existing.get();
             um.setLastSeenAt(now);
 
-            // normalized を補完
             if (isBlank(um.getNormalizedVendor())) {
                 um.setNormalizedVendor(normalizeVendorForAlias(v));
             }
@@ -170,7 +257,6 @@ public class CanonicalBackfillService {
                 um.setNormalizedProduct(normalizeProductForAlias(p));
             }
 
-            // candidates を補完（空なら埋める。毎回更新すると重いので最小に）
             if (isBlank(um.getCandidateVendorIds()) || isBlank(um.getCandidateProductIds())) {
                 fillCandidatesIfPossible(um);
             }
@@ -181,11 +267,9 @@ public class CanonicalBackfillService {
 
         UnresolvedMapping um = UnresolvedMapping.create(source, v, p, ver);
 
-        // alias 登録フォームで使うので必ず埋める
         um.setNormalizedVendor(normalizeVendorForAlias(v));
         um.setNormalizedProduct(normalizeProductForAlias(p));
 
-        // candidates も埋める
         fillCandidatesIfPossible(um);
 
         unresolvedMappingRepository.save(um);
@@ -195,21 +279,18 @@ public class CanonicalBackfillService {
         String vn = normalizeNullable(um.getNormalizedVendor());
         String pn = normalizeNullable(um.getNormalizedProduct());
 
-        // vendor候補（vnが空でも空のまま）
         List<CpeVendor> vCands = List.of();
         if (vn != null) {
             vCands = cpeVendorRepository.findTop20ByNameNormStartingWithOrderByNameNormAsc(vn);
         }
         um.setCandidateVendorIds(encodeVendors(vCands));
 
-        // product候補は安全側で「vendor候補が1件に確定した場合のみ」
         if (pn != null && vCands.size() == 1) {
             Long vendorId = vCands.get(0).getId();
             List<CpeProduct> pCands =
                     cpeProductRepository.findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendorId, pn);
             um.setCandidateProductIds(encodeProducts(pCands));
         } else {
-            // 多義的なら null/空にして UI に「まず vendor を確定させてね」と示す
             if (isBlank(um.getCandidateProductIds())) {
                 um.setCandidateProductIds(null);
             }
@@ -224,7 +305,6 @@ public class CanonicalBackfillService {
         return normalizer.normalizeProduct(product);
     }
 
-    // --- encoders: "id:nameNorm,id:nameNorm" ---
     private static String encodeVendors(List<CpeVendor> vendors) {
         if (vendors == null || vendors.isEmpty()) return null;
         return vendors.stream()

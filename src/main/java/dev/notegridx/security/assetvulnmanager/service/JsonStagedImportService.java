@@ -40,6 +40,8 @@ public class JsonStagedImportService {
     private final SoftwareInstallRepository softwareInstallRepository;
     private final SoftwareDictionaryValidator softwareDictionaryValidator;
 
+    private final CanonicalBackfillService canonicalBackfillService;
+
     public JsonStagedImportService(
             ObjectMapper objectMapper,
             ImportRunRepository importRunRepository,
@@ -47,7 +49,8 @@ public class JsonStagedImportService {
             ImportStagingSoftwareRepository stagingSoftwareRepository,
             AssetRepository assetRepository,
             SoftwareInstallRepository softwareInstallRepository,
-            SoftwareDictionaryValidator softwareDictionaryValidator
+            SoftwareDictionaryValidator softwareDictionaryValidator,
+            CanonicalBackfillService canonicalBackfillService
     ) {
         this.objectMapper = objectMapper;
         this.importRunRepository = importRunRepository;
@@ -56,6 +59,7 @@ public class JsonStagedImportService {
         this.assetRepository = assetRepository;
         this.softwareInstallRepository = softwareInstallRepository;
         this.softwareDictionaryValidator = softwareDictionaryValidator;
+        this.canonicalBackfillService = canonicalBackfillService;
     }
 
     // ===== DTOs (JSON input) =====
@@ -66,12 +70,10 @@ public class JsonStagedImportService {
         public String owner;
         public String note;
 
-        // optional: provenance / platform
         public String source;
         public String platform;
         public String osVersion;
 
-        // optional: osquery-derived inventory identifiers / OS / hardware
         public String systemUuid;
         public String serialNumber;
         public String hardwareVendor;
@@ -90,35 +92,29 @@ public class JsonStagedImportService {
         public Integer osMinor;
         public Integer osPatch;
 
-        // optional: observation timestamp (ISO8601)
         public String lastSeenAt;
     }
 
     public static class SoftwareJsonRow {
         public String externalKey;
 
-        // matching key (existing behavior)
         public String vendor;
         public String product;
         public String version;
 
-        // optional: extended install fields
         public String installLocation;
-        public String installedAt; // ISO8601 string (optional)
+        public String installedAt;
         public String packageIdentifier;
         public String arch;
 
-        // optional: provenance / typing
-        public String type;      // APPLICATION / OPERATING_SYSTEM (optional)
-        public String source;    // osquery/fleet/manual... (optional)
-        public String sourceType; // JSON_UPLOAD/FLEET/... (optional)
+        public String type;
+        public String source;
+        public String sourceType;
 
-        // optional: raw values
         public String vendorRaw;
         public String productRaw;
         public String versionRaw;
 
-        // optional: higher-precision identifiers / provenance
         public String publisher;
         public String bundleId;
         public String packageManager;
@@ -130,7 +126,6 @@ public class JsonStagedImportService {
 
         public String purl;
 
-        // optional: observation timestamp (ISO8601)
         public String lastSeenAt;
     }
 
@@ -187,7 +182,6 @@ public class JsonStagedImportService {
                     parseDateTimeNullable(r.lastSeenAt)
             );
 
-            // validation: externalKey required, name required
             if (externalKey == null) {
                 s.markInvalid("externalKey is required");
             } else if (name == null) {
@@ -230,7 +224,7 @@ public class JsonStagedImportService {
             String externalKey = normNullable(r.externalKey);
             String vendor = normNullable(r.vendor);
             String product = normNullable(r.product);
-            String version = normNullableAllowEmpty(r.version); // null許容（運用上空でもOK）
+            String version = normNullableAllowEmpty(r.version);
 
             LocalDateTime installedAt = parseDateTimeNullable(r.installedAt);
 
@@ -260,13 +254,11 @@ public class JsonStagedImportService {
                     normNullable(r.purl)
             );
 
-            // validation: externalKey required, product required
             if (externalKey == null) {
                 s.markInvalid("externalKey is required");
             } else if (product == null) {
                 s.markInvalid("product is required");
             } else {
-                // 追加バリデーション：assetが存在する前提（Asset/Software分離）
                 if (!assetRepository.existsByExternalKey(externalKey)) {
                     s.markInvalid("asset not found for externalKey=" + externalKey + " (import assets first)");
                 }
@@ -300,7 +292,7 @@ public class JsonStagedImportService {
 
             String externalKey = normNullable(r.getExternalKey());
             String name = normNullable(r.getName());
-            if (externalKey == null || name == null) continue; // safety
+            if (externalKey == null || name == null) continue;
 
             Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
             if (asset == null) {
@@ -331,10 +323,9 @@ public class JsonStagedImportService {
                     r.getOsPatch()
             );
 
-
-            // policy: last_seen_at updated at import time unless provided; source default JSON_UPLOAD
             String src = normNullable(r.getSource());
             asset.setSource(src == null ? "JSON_UPLOAD" : src);
+
             LocalDateTime seenAt = (r.getLastSeenAt() != null) ? r.getLastSeenAt() : now;
             asset.markSeenAt(asset.getSource(), seenAt);
 
@@ -348,7 +339,6 @@ public class JsonStagedImportService {
 
     // =========================
     // Import Software (upsert)
-    // Key: asset_id + vendor + product + version (DB unique)
     // =========================
     @Transactional
     public ImportRun importSoftware(Long runId) {
@@ -368,12 +358,8 @@ public class JsonStagedImportService {
             if (externalKey == null || product == null) continue;
 
             Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
-            if (asset == null) {
-                // stage時点で弾いている想定だが、安全のためスキップ
-                continue;
-            }
+            if (asset == null) continue;
 
-            // vendor/version は空文字運用OK（既存互換）
             String vendor = normEmpty(r.getVendor());
             String version = normEmpty(r.getVersion());
 
@@ -388,7 +374,9 @@ public class JsonStagedImportService {
                 sw.updateDetails(vendor, product, version, sw.getCpeName());
             }
 
-            // policy: last_seen_at updated at import time unless provided; source/sourceType default JSON_UPLOAD
+            // ★ import_run_id を必ず付与（importRunId方式の要）
+            sw.attachImportRun(runId);
+
             String st = normNullable(r.getSourceType());
             String src = normNullable(r.getSource());
             LocalDateTime seenAt = (r.getLastSeenAt() != null) ? r.getLastSeenAt() : now;
@@ -396,13 +384,10 @@ public class JsonStagedImportService {
             if (src == null) src = "JSON_UPLOAD";
             if (st == null) st = "JSON_UPLOAD";
 
-            // optional: type
             trySetSoftwareType(sw, r.getType());
 
-            // optional: raw values (dictionary training / troubleshooting)
             sw.captureRaw(r.getVendorRaw(), r.getProductRaw(), r.getVersionRaw());
 
-            // keep provenance
             sw.setSource(src);
 
             sw.updateImportExtended(
@@ -422,22 +407,16 @@ public class JsonStagedImportService {
                     r.getPurl()
             );
 
-
-            // =========================================================
-            // Resolve canonical IDs at import-time (Top20 vendor guarantee)
-            // Prefer raw (vendor_raw/product_raw) if present.
-            // =========================================================
+            // resolve at import-time (existing behavior)
             String vIn = normNullable(r.getVendorRaw());
             String pIn = normNullable(r.getProductRaw());
-            if (vIn == null) vIn = normNullable(vendor);   // vendor is ""-allowed; normNullable("") -> null
+            if (vIn == null) vIn = normNullable(vendor);
             if (pIn == null) pIn = normNullable(product);
 
             var res = softwareDictionaryValidator.resolve(vIn, pIn);
             if (res.hit()) {
-                // productId may be null (vendor-only link) - still OK for KPI1
                 sw.linkCanonical(res.vendorId(), res.productId());
             } else {
-                // Safety: avoid leaving stale links when inputs change
                 sw.unlinkCanonical();
             }
 
@@ -445,7 +424,19 @@ public class JsonStagedImportService {
             upserted++;
         }
 
-        run.markImported(0, upserted, "Software imported: upserted=" + upserted + " at " + now);
+        // ★ DBに確実に入ったIDを runId で取得して targeted backfill
+        List<Long> ids = softwareInstallRepository.findIdsByImportRunId(runId);
+        var bf = canonicalBackfillService.backfillForSoftwareIds(ids, false);
+
+        run.markImported(
+                0,
+                upserted,
+                "Software imported: upserted=" + upserted
+                        + ", backfill(scanned=" + bf.scanned()
+                        + ", linked=" + bf.linked()
+                        + ", missed=" + bf.missed()
+                        + ") at " + now
+        );
         return importRunRepository.save(run);
     }
 
@@ -458,7 +449,7 @@ public class JsonStagedImportService {
         try {
             sw.setType(SoftwareType.valueOf(t));
         } catch (IllegalArgumentException ex) {
-            // ignore unknown values to keep import tolerant
+            // ignore unknown values
         }
     }
 
@@ -487,7 +478,6 @@ public class JsonStagedImportService {
     }
 
     private static String normNullableAllowEmpty(String s) {
-        // version は null 許容（空文字運用もOK） → stagingでは nullでもよい
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
@@ -503,15 +493,12 @@ public class JsonStagedImportService {
         String t = normNullable(s);
         if (t == null) return null;
 
-        // ISO8601想定: "2026-02-25T01:02:03Z" or "+09:00" etc
         try {
             return OffsetDateTime.parse(t).toLocalDateTime();
         } catch (DateTimeParseException ex) {
-            // "2026-02-25T01:02:03" のように offset無しなら LocalDateTime として解釈
             try {
                 return LocalDateTime.parse(t);
             } catch (DateTimeParseException ex2) {
-                // invalid format -> treat as null (validation対象にしたいならここで例外化してもよい)
                 return null;
             }
         }
