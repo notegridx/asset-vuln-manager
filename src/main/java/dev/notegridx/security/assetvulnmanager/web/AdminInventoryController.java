@@ -7,9 +7,13 @@ import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepos
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedResolutionService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Controller
@@ -48,10 +52,11 @@ public class AdminInventoryController {
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
+            // ★ unchecked のとき activeOnly が飛んでこない問題を判定するフラグ
+            @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             Model model
     ) {
-        // default: true
-        boolean active = (activeOnly == null) ? true : activeOnly;
+        boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
 
         List<UnresolvedMapping> list = active
                 ? unresolvedMappingRepository.findAllActive()
@@ -62,10 +67,8 @@ public class AdminInventoryController {
             list.removeIf(m -> m.getStatus() == null || !m.getStatus().equalsIgnoreCase(s));
         }
 
-        // NOTE: runId filtering is not implemented in the current code base,
-        // so keep behavior consistent (the UI passes runId for future extension).
-        // If you want, we can later add repo-level filtering by runId once data model is confirmed.
-
+        // NOTE: runId filtering is not implemented in the current code base.
+        // Keep runId as "UI state" only (passes through).
         list.sort((a, b) -> {
             if (a.getId() == null && b.getId() == null) return 0;
             if (a.getId() == null) return 1;
@@ -77,11 +80,15 @@ public class AdminInventoryController {
         model.addAttribute("status", (status == null || status.isBlank()) ? null : status.trim().toUpperCase());
         model.addAttribute("runId", runId);
         model.addAttribute("activeOnly", active);
+
+        // hidden input の値固定に使う（未使用でもOKだが置いとくとデバッグしやすい）
+        model.addAttribute("activeOnlyPresent", activeOnlyPresent);
+
         return "admin/unresolved";
     }
 
     // =========================================================
-    // Apply resolution (NO 400 on parse failure)
+    // Apply resolution
     // =========================================================
 
     @PostMapping("/admin/unresolved/apply")
@@ -92,25 +99,27 @@ public class AdminInventoryController {
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
+            // ここは未送信でも redirectQuery が activeOnly を必ず付けるので実害なし
+            @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             RedirectAttributes ra
     ) {
         Long mappingId = parseLong(mappingIdRaw);
         Long vendorId = parseLongNullable(cpeVendorIdRaw);
         Long productId = parseLongNullable(cpeProductIdRaw);
 
-        boolean active = (activeOnly == null) ? true : activeOnly;
+        boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
 
         if (mappingId == null) {
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
         }
         if (vendorId == null) {
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates (chips).");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
         }
 
         try {
-            var result = unresolvedResolutionService.apply(mappingId, vendorId, productId);
+            var result = unresolvedResolutionService.apply(mappingId, vendorId, productId); // :contentReference[oaicite:1]{index=1}
             ra.addFlashAttribute("success",
                     "Applied: mappingId=" + result.mappingId()
                             + " vendorId=" + result.vendorId()
@@ -122,10 +131,28 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", "Apply failed: " + safeMsg(e));
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
     }
 
-    private static String redirectQuery(String status, Long runId, boolean activeOnly) {
+    /**
+     * checkbox の仕様：
+     * - checked の時だけ activeOnly=true が飛ぶ
+     * - unchecked の時は activeOnly 自体が飛ばない
+     *
+     * そこで、form側で activeOnlyPresent=1 を常に送るようにして、
+     * 「Filter押下の結果 activeOnly が無い」= unchecked と判断する。
+     */
+    private static boolean effectiveActiveOnly(Boolean activeOnly, String activeOnlyPresent) {
+        // 初回アクセス（activeOnlyPresent が無い）ではデフォルト true
+        if (activeOnlyPresent == null) {
+            return (activeOnly == null) ? true : activeOnly;
+        }
+        // Filter 押下（activeOnlyPresent がある）では
+        // activeOnly が null なら unchecked 扱い（false）
+        return Boolean.TRUE.equals(activeOnly);
+    }
+
+    private static String redirectQuery(String status, Long runId, boolean activeOnly, boolean includeActiveOnlyPresent) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
 
@@ -137,33 +164,27 @@ public class AdminInventoryController {
             sb.append(first ? "?" : "&").append("runId=").append(runId);
             first = false;
         }
-        // Always keep it explicit, so reloads/redirects are stable.
+
+        // redirect 後も状態がブレないように常に明示
         sb.append(first ? "?" : "&").append("activeOnly=").append(activeOnly);
+        first = false;
+
+        // Filterフォームの設計に合わせて、付けておくと次のGETでも判定が安定する
+        if (includeActiveOnlyPresent) {
+            sb.append(first ? "?" : "&").append("activeOnlyPresent=1");
+        }
 
         return sb.toString();
     }
 
     private static String url(String s) {
-        // minimal (safe enough for status like NEW/RESOLVED)
-        return s.replace(" ", "%20");
-    }
-
-    private static Long parseLong(String s) {
-        if (s == null) return null;
-        String t = s.trim();
-        if (t.isEmpty()) return null;
-        try {
-            return Long.parseLong(t);
-        } catch (Exception e) {
-            return null;
-        }
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 
     private static Long parseLongNullable(String s) {
         if (s == null) return null;
         String t = s.trim();
         if (t.isEmpty()) return null;
-        // 数字以外が入った場合は null 扱いにして 400 を出さない
         try {
             return Long.parseLong(t);
         } catch (Exception e) {
@@ -171,8 +192,13 @@ public class AdminInventoryController {
         }
     }
 
-    private static String safeMsg(Throwable t) {
-        String m = t.getMessage();
-        return (m == null) ? t.getClass().getSimpleName() : m;
+    private static Long parseLong(String s) {
+        return parseLongNullable(s);
+    }
+
+    private static String safeMsg(Exception e) {
+        String m = e.getMessage();
+        if (m == null || m.isBlank()) return e.getClass().getSimpleName();
+        return m;
     }
 }

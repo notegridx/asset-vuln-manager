@@ -120,6 +120,11 @@
     <div class="card" style="padding:12px; margin:12px 0;">
         <form method="get" th:action="@{/admin/unresolved}"
               style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+
+            <!-- ★重要：checkboxはuncheckedだとパラメータが送られないため、
+                 「Filterが押された」ことを判定するフラグを常に送る -->
+            <input type="hidden" name="activeOnlyPresent" value="1"/>
+
             <div class="field" style="min-width:180px;">
                 <label>Status</label>
                 <input name="status" placeholder="NEW / RESOLVED / ..." th:value="${status}">
@@ -190,8 +195,7 @@
                         <div style="display:flex; flex-direction:column; gap:6px;">
                             <div>
                                 <span class="muted" style="font-size:12px;">raw</span>
-                                <div class="mono" th:text="${m.vendorRaw} + ' / ' + ${m.productRaw}">vendor/product
-                                </div>
+                                <div class="mono" th:text="${m.vendorRaw} + ' / ' + ${m.productRaw}">vendor/product</div>
                                 <div class="muted mono" style="font-size:12px;" th:text="${m.versionRaw}">version</div>
                             </div>
                             <div>
