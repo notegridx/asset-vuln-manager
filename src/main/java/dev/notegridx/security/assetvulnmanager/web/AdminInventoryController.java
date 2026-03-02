@@ -47,14 +47,24 @@ public class AdminInventoryController {
     public String unresolved(
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
+            @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             Model model
     ) {
-        List<UnresolvedMapping> list = unresolvedMappingRepository.findAll();
+        // default: true
+        boolean active = (activeOnly == null) ? true : activeOnly;
+
+        List<UnresolvedMapping> list = active
+                ? unresolvedMappingRepository.findAllActive()
+                : unresolvedMappingRepository.findAll();
 
         if (status != null && !status.isBlank()) {
             String s = status.trim();
             list.removeIf(m -> m.getStatus() == null || !m.getStatus().equalsIgnoreCase(s));
         }
+
+        // NOTE: runId filtering is not implemented in the current code base,
+        // so keep behavior consistent (the UI passes runId for future extension).
+        // If you want, we can later add repo-level filtering by runId once data model is confirmed.
 
         list.sort((a, b) -> {
             if (a.getId() == null && b.getId() == null) return 0;
@@ -66,6 +76,7 @@ public class AdminInventoryController {
         model.addAttribute("mappings", list);
         model.addAttribute("status", (status == null || status.isBlank()) ? null : status.trim().toUpperCase());
         model.addAttribute("runId", runId);
+        model.addAttribute("activeOnly", active);
         return "admin/unresolved";
     }
 
@@ -80,19 +91,22 @@ public class AdminInventoryController {
             @RequestParam(name = "cpeProductId", required = false) String cpeProductIdRaw,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
+            @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             RedirectAttributes ra
     ) {
         Long mappingId = parseLong(mappingIdRaw);
         Long vendorId = parseLongNullable(cpeVendorIdRaw);
         Long productId = parseLongNullable(cpeProductIdRaw);
 
+        boolean active = (activeOnly == null) ? true : activeOnly;
+
         if (mappingId == null) {
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active);
         }
         if (vendorId == null) {
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates (chips).");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active);
         }
 
         try {
@@ -108,19 +122,24 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", "Apply failed: " + safeMsg(e));
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active);
     }
 
-    private static String redirectQuery(String status, Long runId) {
+    private static String redirectQuery(String status, Long runId, boolean activeOnly) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
+
         if (status != null && !status.isBlank()) {
             sb.append(first ? "?" : "&").append("status=").append(url(status));
             first = false;
         }
         if (runId != null) {
             sb.append(first ? "?" : "&").append("runId=").append(runId);
+            first = false;
         }
+        // Always keep it explicit, so reloads/redirects are stable.
+        sb.append(first ? "?" : "&").append("activeOnly=").append(activeOnly);
+
         return sb.toString();
     }
 

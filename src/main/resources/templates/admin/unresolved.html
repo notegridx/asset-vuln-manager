@@ -128,9 +128,19 @@
                 <label>Run ID (optional)</label>
                 <input name="runId" placeholder="e.g. 12" th:value="${runId}">
             </div>
+
+            <div class="field" style="min-width:160px;">
+                <label style="display:block;">Active only</label>
+                <label class="muted" style="display:flex; align-items:center; gap:8px; user-select:none;">
+                    <input type="checkbox" name="activeOnly" value="true"
+                           th:checked="${activeOnly}">
+                    Show only mappings that still exist in current inventory
+                </label>
+            </div>
+
             <div class="actions" style="margin:0;">
                 <button class="btn btn-primary" type="submit">Filter</button>
-                <a class="btn btn-soft" th:href="@{/admin/unresolved}">Reset</a>
+                <a class="btn btn-soft" th:href="@{/admin/unresolved(activeOnly=true)}">Reset</a>
             </div>
         </form>
     </div>
@@ -234,6 +244,7 @@
                             <input type="hidden" name="mappingId" th:value="${m.id}">
                             <input type="hidden" name="status" th:value="${status}">
                             <input type="hidden" name="runId" th:value="${runId}">
+                            <input type="hidden" name="activeOnly" th:value="${activeOnly}">
                             <input type="hidden" name="cpeVendorId" class="js-submit-vendor-id" value="">
                             <input type="hidden" name="cpeProductId" class="js-submit-product-id" value="">
 
