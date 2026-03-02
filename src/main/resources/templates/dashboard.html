@@ -273,6 +273,79 @@
     </div>
 
     <div class="card" style="padding:12px; margin-top:12px;">
+
+        <!-- Top10 Range Filter (practical UI) -->
+        <form method="get" th:action="@{/dashboard}" style="margin-bottom:12px;">
+            <div class="actions" style="margin:0; align-items:flex-end; gap:10px; flex-wrap:wrap;">
+                <div class="field" style="min-width:220px;">
+                    <label>Range (based on Vulnerability.lastModifiedAt)</label>
+                    <select name="range" id="topRangeSelect">
+                        <option value="ALL" th:selected="${topRange == 'ALL'}">All time</option>
+                        <option value="D7" th:selected="${topRange == 'D7'}">Last 7 days</option>
+                        <option value="D30" th:selected="${topRange == 'D30'}">Last 30 days</option>
+                        <option value="D90" th:selected="${topRange == 'D90'}">Last 90 days</option>
+                        <option value="D180" th:selected="${topRange == 'D180'}">Last 180 days</option>
+                        <option value="D365" th:selected="${topRange == 'D365'}">Last 365 days</option>
+                        <option value="YTD" th:selected="${topRange == 'YTD'}">Year to date</option>
+                        <option value="CUSTOM" th:selected="${topRange == 'CUSTOM'}">Custom</option>
+                    </select>
+                </div>
+
+                <div class="field" style="min-width:160px;">
+                    <label>From</label>
+                    <input type="date" name="from" id="topFrom" th:value="${from}">
+                </div>
+
+                <div class="field" style="min-width:160px;">
+                    <label>To</label>
+                    <input type="date" name="to" id="topTo" th:value="${to}">
+                </div>
+
+                <div class="actions" style="margin:0;">
+                    <button type="submit" class="btn btn-primary">Apply</button>
+                    <a class="btn btn-ghost" th:href="@{/dashboard}">Reset</a>
+                </div>
+
+                <div class="muted" style="font-size:12px; margin-left:auto;">
+                    Current: <span class="pill" th:text="${topRangeLabel != null ? topRangeLabel : 'All time'}">All time</span>
+                </div>
+            </div>
+        </form>
+
+        <script>
+            (function () {
+                var sel = document.getElementById('topRangeSelect');
+                var from = document.getElementById('topFrom');
+                var to = document.getElementById('topTo');
+
+                function apply() {
+                    var isCustom = sel && sel.value === 'CUSTOM';
+                    if (!from || !to) return;
+
+                    from.disabled = !isCustom;
+                    to.disabled = !isCustom;
+
+                    if (!isCustom) {
+                        // preset 時は date 値を送らない（Controller側はrangeだけで決まる）
+                        from.value = '';
+                        to.value = '';
+                    }
+                }
+
+                if (sel) {
+                    sel.addEventListener('change', apply);
+                    apply();
+                }
+            })();
+        </script>
+
+        <!-- existing grid (vendors/products tables) -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            ...
+        </div>
+    </div>
+
+    <div class="card" style="padding:12px; margin-top:12px;">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
             <!-- Vendors -->
             <div>
