@@ -16,6 +16,32 @@
         <!-- use toolbar rhythm (same as .toolbar .form-row) -->
         <div class="form-row">
 
+            <div class="field minw-220">
+                <label>Search</label>
+                <input type="text" name="q" placeholder="CVE / keyword"
+                       th:value="${q}">
+            </div>
+
+            <div class="field minw-160">
+                <label>Published From</label>
+                <input type="date" name="publishedFrom" th:value="${publishedFrom}">
+            </div>
+
+            <div class="field minw-160">
+                <label>Published To</label>
+                <input type="date" name="publishedTo" th:value="${publishedTo}">
+            </div>
+
+            <div class="field minw-170">
+                <label>Last Modified From</label>
+                <input type="date" name="lastModifiedFrom" th:value="${lastModifiedFrom}">
+            </div>
+
+            <div class="field minw-170">
+                <label>Last Modified To</label>
+                <input type="date" name="lastModifiedTo" th:value="${lastModifiedTo}">
+            </div>
+
             <div class="field minw-160">
                 <label>Sort</label>
                 <select name="sort">
@@ -76,11 +102,22 @@
                     <input type="checkbox" name="withRange" value="true" th:checked="${withRange}">
                     With version range
                 </label>
+
+                <label class="check-label">
+                    <input type="checkbox" name="hasAlerts" value="true" th:checked="${hasAlerts}">
+                    Has alerts
+                </label>
+
+                <label class="check-label">
+                    <input type="checkbox" name="openOnly" value="true" th:checked="${openOnly}">
+                    Open only
+                </label>
             </div>
 
             <div class="actions ml-auto">
                 <input type="hidden" name="page" value="0">
-                <button type="submit" class="btn btn-primary">Apply</button>            </div>
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </div>
 
         </div>
     </form>
@@ -99,11 +136,12 @@
                 <th class="col-cvss">CVSS</th>
                 <th class="col-desc">Description</th>
                 <th class="col-lastmod">Last Modified</th>
+                <th class="col-open">Open</th>
             </tr>
             </thead>
             <tbody>
             <tr th:if="${vulns.totalElements == 0}">
-                <td colspan="5" class="muted cell-empty">No results.</td>
+                <td colspan="6" class="muted cell-empty">No results.</td>
             </tr>
 
             <tr th:each="v : ${vulns.content}">
@@ -131,6 +169,11 @@
                 <td class="muted"
                     th:text="${v.lastModifiedAt != null ? #temporals.format(v.lastModifiedAt, 'yyyy-MM-dd HH:mm') : '-'}">
                     -
+                </td>
+
+                <td class="muted"
+                    th:text="${openAlertCountByVulnId != null ? (openAlertCountByVulnId.get(v.id) != null ? openAlertCountByVulnId.get(v.id) : 0) : 0}">
+                    0
                 </td>
             </tr>
             </tbody>

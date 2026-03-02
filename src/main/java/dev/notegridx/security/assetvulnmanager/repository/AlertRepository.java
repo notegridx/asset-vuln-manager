@@ -84,4 +84,13 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
                 group by a.softwareInstall.id
             """)
     List<Object[]> countBySoftwareInstallIds(@Param("ids") List<Long> ids);
+
+    @Query("""
+        select a.vulnerability.id, count(a)
+        from Alert a
+        where a.vulnerability.id in :ids
+          and a.status = dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus.OPEN
+        group by a.vulnerability.id
+    """)
+    List<Object[]> countOpenByVulnerabilityIds(@Param("ids") List<Long> ids);
 }
