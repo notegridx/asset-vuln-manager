@@ -24,7 +24,9 @@
 
     <div class="actions" style="margin:0;">
       <a class="btn" th:href="@{/admin/import/json}">Back</a>
-      <form th:if="${run.validRows > 0}" th:action="@{/admin/import/json/assets/{runId}/import(runId=${run.id})}" method="post">
+      <form th:if="${run.validRows > 0}"
+            th:action="@{/admin/import/json/assets/{runId}/import(runId=${run.id})}"
+            method="post">
         <button class="btn btn-primary" type="submit"
                 onclick="return confirm('Import valid rows? This will upsert assets and update last_seen_at.');">
           Import Assets (Upsert)
@@ -43,34 +45,37 @@
     </div>
   </div>
 
-  <div class="table-wrap" style="margin-top:12px;">
-    <table>
-      <thead>
-      <tr>
-        <th style="width:60px;">#</th>
-        <th style="width:120px;">Valid</th>
-        <th style="width:220px;">externalKey</th>
-        <th style="width:220px;">name</th>
-        <th style="width:140px;">assetType</th>
-        <th style="width:160px;">owner</th>
-        <th>error</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr th:each="r : ${rows}">
-        <td th:text="${r.rowNo}">1</td>
-        <td>
-          <span th:if="${r.valid}" class="badge badge--ok">OK</span>
-          <span th:unless="${r.valid}" class="badge badge--danger">INVALID</span>
-        </td>
-        <td th:text="${r.externalKey}">k</td>
-        <td th:text="${r.name}">n</td>
-        <td th:text="${r.assetType}">t</td>
-        <td th:text="${r.owner}">o</td>
-        <td class="muted" th:text="${r.validationError}">-</td>
-      </tr>
-      </tbody>
-    </table>
+  <!-- Table: keep layout stable even with long strings (UUID/keys/etc.) -->
+  <div class="card p-0 overflow-auto" style="margin-top:12px;">
+    <div class="table-wrap table--fixed">
+      <table class="table m-0">
+        <thead>
+        <tr>
+          <th style="width:60px;">#</th>
+          <th style="width:120px;">Valid</th>
+          <th style="width:220px;">externalKey</th>
+          <th style="width:220px;">name</th>
+          <th style="width:140px;">assetType</th>
+          <th style="width:160px;">owner</th>
+          <th>error</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${rows}">
+          <td th:text="${r.rowNo}">1</td>
+          <td>
+            <span th:if="${r.valid}" class="badge badge--ok">OK</span>
+            <span th:unless="${r.valid}" class="badge badge--danger">INVALID</span>
+          </td>
+          <td class="cell-break" th:text="${r.externalKey}">k</td>
+          <td class="cell-break" th:text="${r.name}">n</td>
+          <td th:text="${r.assetType}">t</td>
+          <td class="cell-break" th:text="${r.owner}">o</td>
+          <td class="muted cell-break" th:text="${r.validationError}">-</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </main>

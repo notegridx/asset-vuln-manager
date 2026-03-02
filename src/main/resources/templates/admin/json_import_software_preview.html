@@ -24,7 +24,9 @@
 
         <div class="actions" style="margin:0;">
             <a class="btn" th:href="@{/admin/import/json}">Back</a>
-            <form th:if="${run.validRows > 0}" th:action="@{/admin/import/json/software/{runId}/import(runId=${run.id})}" method="post">
+            <form th:if="${run.validRows > 0}"
+                  th:action="@{/admin/import/json/software/{runId}/import(runId=${run.id})}"
+                  method="post">
                 <button class="btn btn-primary" type="submit"
                         onclick="return confirm('Import valid rows? This will upsert software and update last_seen_at (software_installs).');">
                     Import Software (Upsert)
@@ -45,42 +47,45 @@
         </div>
     </div>
 
-    <div class="table-wrap" style="margin-top:12px;">
-        <table>
-            <thead>
-            <tr>
-                <th style="width:60px;">#</th>
-                <th style="width:120px;">Valid</th>
-                <th style="width:220px;">externalKey</th>
-                <th style="width:160px;">vendor</th>
-                <th style="width:220px;">product</th>
-                <th style="width:140px;">version</th>
-                <th style="width:240px;">installLocation</th>
-                <th style="width:180px;">installedAt</th>
-                <th style="width:180px;">packageIdentifier</th>
-                <th style="width:120px;">arch</th>
-                <th>error</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="r : ${rows}">
-                <td th:text="${r.rowNo}">1</td>
-                <td>
-                    <span th:if="${r.valid}" class="badge badge--ok">OK</span>
-                    <span th:unless="${r.valid}" class="badge badge--danger">INVALID</span>
-                </td>
-                <td th:text="${r.externalKey}">k</td>
-                <td th:text="${r.vendor}">v</td>
-                <td th:text="${r.product}">p</td>
-                <td th:text="${r.version}">ver</td>
-                <td th:text="${r.installLocation}">loc</td>
-                <td th:text="${r.installedAt}">at</td>
-                <td th:text="${r.packageIdentifier}">pkg</td>
-                <td th:text="${r.arch}">arch</td>
-                <td class="muted" th:text="${r.validationError}">-</td>
-            </tr>
-            </tbody>
-        </table>
+    <!-- Table: keep layout stable even with long strings (UUID/bundleId/path) -->
+    <div class="card p-0 overflow-auto" style="margin-top:12px;">
+        <div class="table-wrap table--fixed">
+            <table class="table m-0">
+                <thead>
+                <tr>
+                    <th style="width:60px;">#</th>
+                    <th style="width:120px;">Valid</th>
+                    <th style="width:220px;">externalKey</th>
+                    <th style="width:160px;">vendor</th>
+                    <th style="width:220px;">product</th>
+                    <th style="width:140px;">version</th>
+                    <th style="width:240px;">installLocation</th>
+                    <th style="width:180px;">installedAt</th>
+                    <th style="width:180px;">packageIdentifier</th>
+                    <th style="width:120px;">arch</th>
+                    <th>error</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${rows}">
+                    <td th:text="${r.rowNo}">1</td>
+                    <td>
+                        <span th:if="${r.valid}" class="badge badge--ok">OK</span>
+                        <span th:unless="${r.valid}" class="badge badge--danger">INVALID</span>
+                    </td>
+                    <td class="cell-break" th:text="${r.externalKey}">k</td>
+                    <td class="cell-break" th:text="${r.vendor}">v</td>
+                    <td th:text="${r.product}">p</td>
+                    <td th:text="${r.version}">ver</td>
+                    <td class="cell-break" th:text="${r.installLocation}">loc</td>
+                    <td th:text="${r.installedAt}">at</td>
+                    <td class="cell-break" th:text="${r.packageIdentifier}">pkg</td>
+                    <td th:text="${r.arch}">arch</td>
+                    <td class="muted cell-break" th:text="${r.validationError}">-</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
 </main>
