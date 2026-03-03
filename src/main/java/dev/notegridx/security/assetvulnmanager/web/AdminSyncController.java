@@ -1,5 +1,7 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
+import dev.notegridx.security.assetvulnmanager.repository.AdminRunRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminCveDeltaUpdateService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -11,13 +13,22 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class AdminSyncController {
 
 	private final AdminCveDeltaUpdateService deltaUpdateService;
+	private final AdminRunRepository adminRunRepository;
 
-	public AdminSyncController(AdminCveDeltaUpdateService deltaUpdateService) {
+	public AdminSyncController(
+			AdminCveDeltaUpdateService deltaUpdateService,
+			AdminRunRepository adminRunRepository
+	) {
 		this.deltaUpdateService = deltaUpdateService;
+		this.adminRunRepository = adminRunRepository;
 	}
 
 	@GetMapping("/admin/sync")
-	public String view() {
+	public String view(Model model) {
+		adminRunRepository
+				.findTop1ByJobTypeOrderByStartedAtDescIdDesc(AdminJobType.CVE_DELTA_UPDATE)
+				.ifPresent(r -> model.addAttribute("lastRun", r));
+
 		return "admin/sync";
 	}
 
@@ -32,6 +43,11 @@ public class AdminSyncController {
 		model.addAttribute("daysBack", daysBack);
 		model.addAttribute("maxResults", maxResults);
 		model.addAttribute("result", result);
+
+		// After run, show the latest job run record too.
+		adminRunRepository
+				.findTop1ByJobTypeOrderByStartedAtDescIdDesc(AdminJobType.CVE_DELTA_UPDATE)
+				.ifPresent(r -> model.addAttribute("lastRun", r));
 
 		return "admin/sync";
 	}

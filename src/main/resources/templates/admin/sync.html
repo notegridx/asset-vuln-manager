@@ -27,6 +27,68 @@
         </div>
     </div>
 
+    <!-- Last Run (admin_runs) -->
+    <div th:if="${lastRun != null}" class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Last run</h2>
+            <div class="muted" style="font-size:12px;">
+                job=<span th:text="${lastRun.jobType}">CVE_DELTA_UPDATE</span>
+                /
+                status=<span th:text="${lastRun.status}">SUCCESS</span>
+            </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:12px;">
+            <table style="margin-top:0;">
+                <thead>
+                <tr>
+                    <th style="width: 220px;">Field</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>startedAt</td>
+                    <td th:text="${lastRun.startedAt}">-</td>
+                </tr>
+                <tr>
+                    <td>finishedAt</td>
+                    <td th:text="${lastRun.finishedAt}">-</td>
+                </tr>
+                <tr>
+                    <td>durationMs</td>
+                    <td th:text="${lastRun.durationMs}">-</td>
+                </tr>
+                <tr>
+                    <td>paramsJson</td>
+                    <td>
+                        <pre style="margin:0; white-space:pre-wrap; word-break:break-word;"
+                             th:text="${lastRun.paramsJson}">-</pre>
+                    </td>
+                </tr>
+                <tr th:if="${lastRun.resultJson != null}">
+                    <td>resultJson</td>
+                    <td>
+                        <pre style="margin:0; white-space:pre-wrap; word-break:break-word;"
+                             th:text="${lastRun.resultJson}">-</pre>
+                    </td>
+                </tr>
+                <tr th:if="${lastRun.errorMessage != null}">
+                    <td>errorMessage</td>
+                    <td>
+                        <pre style="margin:0; white-space:pre-wrap; word-break:break-word;"
+                             th:text="${lastRun.errorMessage}">-</pre>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="muted" style="font-size: 12px; margin-top: 10px; line-height: 1.6;">
+            Note: This log is stored in <code>admin_runs</code>.
+        </div>
+    </div>
+
     <!-- Prerequisites (same card rhythm as other pages) -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <h2 style="margin:0 0 10px 0;">Run delta update</h2>
