@@ -59,27 +59,58 @@
                     <td>durationMs</td>
                     <td th:text="${lastRun.durationMs}">-</td>
                 </tr>
+
+                <!-- paramsJson: friendly pills + raw collapsible -->
                 <tr>
-                    <td>paramsJson</td>
+                    <td>params</td>
                     <td>
-                        <pre style="margin:0; white-space:pre-wrap; word-break:break-word;"
-                             th:text="${lastRun.paramsJson}">-</pre>
+                        <div th:if="${lastParams != null}" class="kv-pills">
+                            <div th:each="e : ${lastParams.entrySet()}"
+                                 th:if="${e.key != '_raw' and e.key != '_parseError'}"
+                                 class="kv-pill">
+                                <span class="k" th:text="${e.key}">key</span>
+                                <code class="v" th:text="${e.value}">value</code>
+                            </div>
+                        </div>
+
+                        <div th:if="${lastParams != null and lastParams.containsKey('_parseError')}"
+                             class="muted" style="font-size:12px; margin-top:6px;">
+                            JSON parse error: <span th:text="${lastParams.get('_parseError')}">Error</span>
+                        </div>
                     </td>
                 </tr>
+
+                <!-- resultJson: friendly pills + raw collapsible -->
                 <tr th:if="${lastRun.resultJson != null}">
-                    <td>resultJson</td>
+                    <td>result</td>
                     <td>
-                        <pre style="margin:0; white-space:pre-wrap; word-break:break-word;"
-                             th:text="${lastRun.resultJson}">-</pre>
+                        <div th:if="${lastResult != null}" class="kv-pills">
+                            <div th:each="e : ${lastResult.entrySet()}"
+                                 th:if="${e.key != '_raw' and e.key != '_parseError'}"
+                                 class="kv-pill">
+                                <span class="k" th:text="${e.key}">key</span>
+                                <code class="v" th:text="${e.value}">value</code>
+                            </div>
+                        </div>
+
+                        <div th:if="${lastResult != null and lastResult.containsKey('_parseError')}"
+                             class="muted" style="font-size:12px; margin-top:6px;">
+                            JSON parse error: <span th:text="${lastResult.get('_parseError')}">Error</span>
+                        </div>
                     </td>
                 </tr>
+
+                <!-- errorMessage: collapsible to avoid breaking layout -->
                 <tr th:if="${lastRun.errorMessage != null}">
                     <td>errorMessage</td>
                     <td>
-                        <pre style="margin:0; white-space:pre-wrap; word-break:break-word;"
-                             th:text="${lastRun.errorMessage}">-</pre>
+                        <details class="json-details" open>
+                            <summary class="muted">Show error</summary>
+                            <pre class="json-pre" th:text="${lastRun.errorMessage}">-</pre>
+                        </details>
                     </td>
                 </tr>
+
                 </tbody>
             </table>
         </div>
@@ -129,7 +160,6 @@
             </div>
 
             <div class="actions" style="margin-top: 14px;">
-                <!-- style only: add btn classes; no behavior change -->
                 <button type="submit" class="btn btn-primary">Run CVE Delta Update</button>
             </div>
         </form>
