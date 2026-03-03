@@ -1304,3 +1304,31 @@ a.badge--certainty-unconfirmed:hover {
     opacity:0.6;
     font-size:11px;
 }
+
+/* ---- Collapsible JSON/Error blocks ---- */
+.json-details {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-1);
+    background: rgba(255, 255, 255, 0.01);
+    padding: 8px 10px;
+}
+
+.json-details > summary {
+    cursor: pointer;
+    user-select: none;
+}
+
+.json-pre {
+    margin: 8px 0 0 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(42, 53, 80, 0.7);
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--danger);
+    overflow: auto;
+    max-height: 240px;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
