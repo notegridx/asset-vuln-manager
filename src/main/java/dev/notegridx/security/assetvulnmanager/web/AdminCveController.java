@@ -1,8 +1,8 @@
+
 package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient;
-import dev.notegridx.security.assetvulnmanager.service.CveFeedSyncService;
-
+import dev.notegridx.security.assetvulnmanager.service.AdminCveFeedSyncService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,10 +14,10 @@ import java.io.IOException;
 @Controller
 public class AdminCveController {
 
-    private final CveFeedSyncService cveFeedSyncService;
+    private final AdminCveFeedSyncService adminCveFeedSyncService;
 
-    public AdminCveController(CveFeedSyncService cveFeedSyncService) {
-        this.cveFeedSyncService = cveFeedSyncService;
+    public AdminCveController(AdminCveFeedSyncService adminCveFeedSyncService) {
+        this.adminCveFeedSyncService = adminCveFeedSyncService;
     }
 
     @GetMapping("/admin/cve/sync")
@@ -51,7 +51,7 @@ public class AdminCveController {
             return "admin/cve_sync";
         }
 
-        var result = cveFeedSyncService.sync(k, year, force, maxItems);
+        var result = adminCveFeedSyncService.runSync(k, year, force, maxItems);
 
         model.addAttribute("kind", k.name());
         model.addAttribute("year", year);
@@ -60,5 +60,4 @@ public class AdminCveController {
         model.addAttribute("result", result);
         return "admin/cve_sync";
     }
-
 }
