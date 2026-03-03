@@ -372,6 +372,8 @@ footer {
 .table-wrap {
     /* default: shrink to content (avoid huge blank area) */
     min-height: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* only for pages that intentionally want a tall table area */
@@ -803,6 +805,7 @@ select option {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    min-width: 0;
 }
 
 .kv-pill {
@@ -816,6 +819,7 @@ select option {
     font-size: 12px;
     line-height: 1.3;
     max-width: 100%;
+    min-width: 0;
 }
 
 .kv-pill .k {
@@ -824,6 +828,9 @@ select option {
 
 .kv-pill .v {
     color: var(--text);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
 }
 
 
