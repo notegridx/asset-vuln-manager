@@ -1339,3 +1339,117 @@ a.badge--certainty-unconfirmed:hover {
     white-space: pre-wrap;
     word-break: break-word;
 }
+
+/* ---- Admin Runs: collapsible params/result ---- */
+.run-details {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-1);
+    background: rgba(255, 255, 255, 0.01);
+    padding: 6px 10px;
+}
+
+.run-details + .run-details {
+    margin-top: 10px;
+}
+
+.run-details > summary {
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.run-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.run-details__summary::before {
+    content: "▸";
+    opacity: .8;
+    transform: translateY(-1px);
+}
+
+.run-details[open] > summary.run-details__summary::before {
+    content: "▾";
+}
+
+.run-details__label {
+    font-size: 12px;
+}
+
+.run-details__meta {
+    font-size: 12px;
+    opacity: .85;
+}
+
+.run-details__preview {
+    margin-left: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: right;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.run-details__preview-text {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    opacity: .9;
+}
+
+.run-details__kv .k {
+    opacity: .8;
+    font-size: 12px;
+}
+
+.run-details__kv .v {
+    font-size: 12px;
+    padding: 0 4px;
+}
+
+/* ---- Admin Runs table layout ---- */
+
+.table--fixed {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.table--fixed th,
+.table--fixed td {
+    overflow: hidden;
+}
+
+/* Column sizing */
+.col-id       { width: 70px; }
+.col-job      { width: 140px; }
+.col-status   { width: 110px; }
+.col-started  { width: 170px; }
+.col-finished { width: 170px; }
+.col-duration { width: 90px;  text-align:right; }
+
+/* Params/Result takes remaining space */
+.col-pr { width: auto; }
+
+/* IMPORTANT: allow this cell to shrink */
+td.cell-break {
+    min-width: 0 !important;
+}
+
+.run-details {
+    min-width: 0;
+    width: 100%;
+}
+
+.run-details__preview {
+    min-width: 0;
+}

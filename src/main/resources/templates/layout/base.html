@@ -45,10 +45,7 @@
   (function () {
     // Close any open <details> when clicking outside
     document.addEventListener('click', function (e) {
-      // If the click is inside a <details>, do nothing
       if (e.target.closest('details')) return;
-
-      // Otherwise close all open <details>
       document.querySelectorAll('details[open]').forEach(function (d) {
         d.removeAttribute('open');
       });
@@ -62,13 +59,16 @@
       });
     });
 
-    // Optional: close other <details> when opening one (keeps nav tidy)
+    // Close other <details> ONLY for nav dropdowns
     document.addEventListener('toggle', function (e) {
       var d = e.target;
       if (!(d instanceof HTMLDetailsElement)) return;
       if (!d.open) return;
 
-      document.querySelectorAll('details[open]').forEach(function (other) {
+      // only scope to nav dropdowns
+      if (!d.classList.contains('nav-admin')) return;
+
+      document.querySelectorAll('details.nav-admin[open]').forEach(function (other) {
         if (other !== d) other.removeAttribute('open');
       });
     }, true);
