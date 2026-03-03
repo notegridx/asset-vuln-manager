@@ -1,5 +1,6 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.service.AdminCpeSyncService;
 import dev.notegridx.security.assetvulnmanager.service.CpeFeedSyncService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -13,9 +14,12 @@ import java.io.IOException;
 public class AdminCpeController {
 
     private final CpeFeedSyncService cpeFeedSyncService;
+    private final AdminCpeSyncService adminCpeSyncService;
 
-    public AdminCpeController(CpeFeedSyncService cpeFeedSyncService) {
+    public AdminCpeController(CpeFeedSyncService cpeFeedSyncService,
+                              AdminCpeSyncService adminCpeSyncService) {
         this.cpeFeedSyncService = cpeFeedSyncService;
+        this.adminCpeSyncService = adminCpeSyncService;
     }
 
     @GetMapping("/admin/cpe/sync")
@@ -30,10 +34,12 @@ public class AdminCpeController {
             Model model
     ) throws IOException {
 
-        var result = cpeFeedSyncService.sync(force, maxItems);
+        var result = adminCpeSyncService.runSync(force, maxItems);
+
         model.addAttribute("result", result);
         model.addAttribute("force", force);
         model.addAttribute("maxItems", maxItems);
+
         return "admin/cpe_sync";
     }
 }
