@@ -135,6 +135,7 @@
                 <th class="col-sev">Severity</th>
                 <th class="col-cvss">CVSS</th>
                 <th class="col-desc">Description</th>
+                <th class="col-kev">KEV</th>
                 <th class="col-lastmod">Last Modified</th>
                 <th class="col-open">Open</th>
             </tr>
@@ -142,6 +143,7 @@
             <tbody>
             <tr th:if="${vulns.totalElements == 0}">
                 <td colspan="6" class="muted cell-empty">No results.</td>
+                <td colspan="7" class="muted cell-empty">No results.</td>
             </tr>
 
             <tr th:each="v : ${vulns.content}">
@@ -164,6 +166,23 @@
                 <td>
                     <div class="muted vuln-desc line-clamp-2"
                          th:text="${v.description != null ? v.description : '-'}"></div>
+                </td>
+
+                <!-- KEV -->
+                <td>
+                                    <span th:if="${v.kevFlag}"
+                                          class="badge"
+                                          title=""
+                                          th:attr="title=${'Added: ' + (v.kevDateAdded != null ? #temporals.format(v.kevDateAdded,'yyyy-MM-dd') : '-') +
+                                          ' / Due: ' + (v.kevDueDate != null ? #temporals.format(v.kevDueDate,'yyyy-MM-dd') : '-') +
+                                          ' / Ransomware: ' + (v.kevRansomwareUse != null ? v.kevRansomwareUse : '-') }"
+                                          style="background: var(--warn); color: #111;">
+                        KEV
+                    </span>
+                    <span th:unless="${v.kevFlag}" class="muted">-</span>
+                    <div th:if="${v.kevFlag}" class="muted" style="font-size:12px; margin-top:2px;">
+                        <span th:text="${v.kevDueDate != null ? 'Due ' + #temporals.format(v.kevDueDate,'yyyy-MM-dd') : ''}"></span>
+                    </div>
                 </td>
 
                 <td class="muted"

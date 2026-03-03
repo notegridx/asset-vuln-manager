@@ -6,7 +6,8 @@
 <main>
 
     <!-- Page Header (unified style) -->
-    <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
         <div class="page-header__left">
             <h1>Vulnerability Detail</h1>
 
@@ -26,7 +27,8 @@
         <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <a class="btn" th:href="@{/vulnerabilities}">← Back</a>
 
-            <span class="pill" th:text="'severity: ' + ${v.severity != null ? v.severity : 'NONE'}">severity: HIGH</span>
+            <span class="pill"
+                  th:text="'severity: ' + ${v.severity != null ? v.severity : 'NONE'}">severity: HIGH</span>
             <span class="pill" th:text="'cvss: ' + ${(v.cvssScore != null ? v.cvssScore : '-')}">cvss: 7.5</span>
             <span class="pill" th:text="'affected: ' + ${#lists.size(cpes)}">affected: 0</span>
         </div>
@@ -61,6 +63,32 @@
         </div>
     </div>
 
+    <!-- KEV -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="gap:10px; margin:0; justify-content:flex-start; align-items:center;">
+            <h2 style="margin:0; font-size:18px;">KEV</h2>
+            <span th:if="${v.kevFlag}" class="badge" style="background: var(--warn); color:#111;">KEV</span>
+            <span th:unless="${v.kevFlag}" class="muted">No</span>
+        </div>
+
+        <div class="kv" style="margin-top:10px;">
+            <b>In KEV</b>
+            <span th:text="${v.kevFlag ? 'Yes' : 'No'}">No</span>
+
+            <b>Date Added</b>
+            <span th:text="${v.kevDateAdded != null ? #temporals.format(v.kevDateAdded,'yyyy-MM-dd') : '-'}">-</span>
+
+            <b>Due Date</b>
+            <span th:text="${v.kevDueDate != null ? #temporals.format(v.kevDueDate,'yyyy-MM-dd') : '-'}">-</span>
+
+            <b>Ransomware</b>
+            <span th:text="${v.kevRansomwareUse != null ? v.kevRansomwareUse : '-'}">-</span>
+
+            <b>KEV Updated</b>
+            <span th:text="${v.kevUpdatedAt != null ? v.kevUpdatedAt : '-'}">-</span>
+        </div>
+    </div>
+
     <!-- Description -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <div class="actions" style="gap:10px; margin:0; justify-content:flex-start; align-items:center;">
@@ -68,7 +96,8 @@
         </div>
 
         <div class="muted" style="margin-top:8px; white-space:pre-wrap;"
-             th:text="${v.description != null ? v.description : '-'}">description</div>
+             th:text="${v.description != null ? v.description : '-'}">description
+        </div>
     </div>
 
     <!-- Affected CPEs -->
