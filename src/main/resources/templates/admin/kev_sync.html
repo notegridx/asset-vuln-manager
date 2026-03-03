@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('KEV Sync (CISA)')}"></head>
+
+<body th:replace="~{layout/base :: layout('KEV Sync (CISA)', 'admin', ~{::main})}">
+<main>
+
+  <!-- Page Header -->
+  <div class="page-header"
+       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header__left">
+      <h1>KEV Sync (CISA)</h1>
+      <p class="muted" style="margin:6px 0 0 0;">
+        Fetch CISA Known Exploited Vulnerabilities catalog, flag matching CVEs in your database.
+      </p>
+      <p class="muted" style="font-size:12px; margin:6px 0 0 0;">
+        KEV does not include CPE/version ranges; this job updates vulnerability metadata only.
+      </p>
+    </div>
+    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill">CISA KEV</span>
+      <span class="pill">Admin Tool</span>
+    </div>
+  </div>
+
+  <!-- Last Run -->
+  <div th:if="${lastRun != null}" class="card" style="padding:12px; margin:12px 0;">
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">Last run</h2>
+      <div class="muted" style="font-size:12px;">
+        job=<span th:text="${lastRun.jobType}">KEV_SYNC</span>
+        /
+        status=<span th:text="${lastRun.status}">SUCCESS</span>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:12px;">
+      <table style="margin-top:0;">
+        <thead>
+        <tr>
+          <th style="width: 220px;">Field</th>
+          <th>Value</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>startedAt</td>
+          <td th:text="${lastRun.startedAt}">-</td>
+        </tr>
+        <tr>
+          <td>finishedAt</td>
+          <td th:text="${lastRun.finishedAt}">-</td>
+        </tr>
+        <tr>
+          <td>durationMs</td>
+          <td th:text="${lastRun.durationMs}">-</td>
+        </tr>
+
+        <tr>
+          <td>params</td>
+          <td>
+            <div th:if="${lastParams != null}" class="kv-pills">
+              <div th:each="e : ${lastParams.entrySet()}"
+                   th:if="${e.key != '_raw' and e.key != '_parseError'}"
+                   class="kv-pill">
+                <span class="k" th:text="${e.key}">key</span>
+                <code class="v" th:text="${e.value}">value</code>
+              </div>
+            </div>
+            <div th:if="${lastParams != null and lastParams.containsKey('_parseError')}"
+                 class="muted" style="font-size:12px; margin-top:6px;">
+              JSON parse error: <span th:text="${lastParams.get('_parseError')}">Error</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr th:if="${lastRun.resultJson != null}">
+          <td>result</td>
+          <td>
+            <div th:if="${lastResult != null}" class="kv-pills">
+              <div th:each="e : ${lastResult.entrySet()}"
+                   th:if="${e.key != '_raw' and e.key != '_parseError'}"
+                   class="kv-pill">
+                <span class="k" th:text="${e.key}">key</span>
+                <code class="v" th:text="${e.value}">value</code>
+              </div>
+            </div>
+            <div th:if="${lastResult != null and lastResult.containsKey('_parseError')}"
+                 class="muted" style="font-size:12px; margin-top:6px;">
+              JSON parse error: <span th:text="${lastResult.get('_parseError')}">Error</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr th:if="${lastRun.errorMessage != null}">
+          <td>errorMessage</td>
+          <td>
+            <details class="json-details" open>
+              <summary class="muted">Show error</summary>
+              <pre class="json-pre" th:text="${lastRun.errorMessage}">-</pre>
+            </details>
+          </td>
+        </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
+      Note: This log is stored in <code>admin_runs</code>.
+    </div>
+  </div>
+
+  <!-- Run form -->
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <h2 style="margin:0 0 10px 0;">Run KEV sync</h2>
+
+    <div class="muted" style="font-size:12px; line-height:1.6;">
+      Downloads the KEV catalog and marks matching CVEs in your DB as KEV.
+      Missing CVEs are counted as <b>missingInDb</b> (no placeholder is created).
+    </div>
+
+    <form th:action="@{/admin/kev/sync}" method="post" style="margin-top:12px;">
+      <div class="field">
+        <label>Force fetch</label>
+        <label class="check-label" style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+          <input type="checkbox" name="force" value="true" th:checked="${force}">
+          <span class="muted">Ignore cache headers (ETag/Last-Modified) and fetch anyway.</span>
+        </label>
+      </div>
+
+      <div class="field">
+        <label>Max items (safety cap)</label>
+        <input type="number" name="maxItems" min="1" max="50000"
+               th:value="${maxItems != null ? maxItems : 50000}">
+        <div class="muted" style="font-size:12px;">
+          KEV is usually small. This cap prevents accidental overload.
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:14px;">
+        <button type="submit" class="btn btn-primary">Run KEV Sync</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Result -->
+  <div th:if="${result != null}" class="card" style="padding:12px; margin:12px 0;">
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">Result</h2>
+      <div class="muted" style="font-size:12px;">
+        KEV updates vulnerability metadata only.
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:12px;">
+      <table style="margin-top:0;">
+        <thead>
+        <tr>
+          <th style="width: 260px;">Metric</th>
+          <th style="width: 120px;">Value</th>
+          <th>Description</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>skippedNotModified</td>
+          <td th:text="${result.skippedNotModified}">false</td>
+          <td class="muted">True when server returned HTTP 304 and force=false.</td>
+        </tr>
+        <tr>
+          <td>catalogEntries</td>
+          <td th:text="${result.catalogEntries}">0</td>
+          <td class="muted">Total KEV entries in the catalog.</td>
+        </tr>
+        <tr>
+          <td>processedEntries</td>
+          <td th:text="${result.processedEntries}">0</td>
+          <td class="muted">How many entries were processed (after maxItems cap).</td>
+        </tr>
+        <tr>
+          <td>updatedVulns</td>
+          <td th:text="${result.updatedVulns}">0</td>
+          <td class="muted">Vulnerabilities marked/updated as KEV.</td>
+        </tr>
+        <tr>
+          <td>missingInDb</td>
+          <td th:text="${result.missingInDb}">0</td>
+          <td class="muted">KEV CVEs not found in your DB (source=NVD).</td>
+        </tr>
+        <tr>
+          <td>bodySha256</td>
+          <td><code th:text="${result.bodySha256}">-</code></td>
+          <td class="muted">SHA-256 hash of the downloaded JSON body.</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>
