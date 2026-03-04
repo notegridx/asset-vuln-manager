@@ -11,16 +11,33 @@
     Pick a canonical vendor first to avoid product mis-linking.
   </p>
 
+  <!-- Workspace Context (always visible when selected) -->
+  <div class="workspace-context" th:if="${vendorId != null}">
+    <span class="muted">Vendor context:</span>
+    <span class="pill pill--accent" th:text="${selectedVendorLabel != null ? selectedVendorLabel : 'vendorId=' + vendorId}">
+      adobe
+    </span>
+    <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
+  </div>
+
   <!-- Workspace: canonical vendor selector -->
   <div class="context-card">
     <div class="context-card__left">
       <div class="context-card__title">
         <div class="name">Canonical vendor</div>
+
+        <!-- Selected state (make it obvious) -->
         <div class="meta" th:if="${vendorId != null}">
-          Selected: <span class="mono" th:text="${vendorId}">123</span>
-          <span th:if="${selectedVendorLabel != null}"> / <span th:text="${selectedVendorLabel}">Microsoft</span></span>
+          <span class="muted">Selected:</span>
+          <span class="pill pill--accent" th:text="${selectedVendorLabel != null ? selectedVendorLabel : 'vendorId=' + vendorId}">
+            adobe
+          </span>
+          <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
         </div>
-        <div class="meta" th:if="${vendorId == null}">Not selected</div>
+
+        <div class="meta" th:if="${vendorId == null}">
+          Not selected
+        </div>
       </div>
 
       <div style="margin-top:8px; position:relative; max-width: 560px;">
