@@ -95,6 +95,9 @@ public class AdminAliasesController {
         return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
     }
 
+    /**
+     * Top aliases seed（vendor + product を一括投入）
+     */
     @PostMapping("/admin/aliases/seed-top")
     public String seedTopAliases(
             @RequestParam(name = "redirect", required = false) String redirect,
@@ -106,16 +109,24 @@ public class AdminAliasesController {
         return safeRedirectOrDefault(redirect, "/admin/synonyms/vendors");
     }
 
+    /**
+     * SoftwareInstalls を CPE 辞書へ再リンク（Canonical Backfill）
+     * - どの画面からでも呼べるように redirect を受ける
+     * - 結果を flash で返して、実行した画面で見えるようにする
+     */
     @PostMapping("/admin/canonical/backfill")
     public String runCanonicalBackfill(
             @RequestParam(name = "maxRows", defaultValue = "5000000") int maxRows,
             @RequestParam(name = "forceRebuild", defaultValue = "false") boolean forceRebuild,
-            @RequestParam(name = "redirect", required = false) String redirect
+            @RequestParam(name = "redirect", required = false) String redirect,
+            RedirectAttributes ra
     ) {
         synonymService.clearCaches();
-        backfillService.backfill(maxRows, forceRebuild);
 
-        return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
+        CanonicalBackfillService.BackfillResult result = backfillService.backfill(maxRows, forceRebuild);
+        ra.addFlashAttribute("backfillResult", result);
+
+        return safeRedirectOrDefault(redirect, "/admin/canonical");
     }
 
     private String normalize(String s) {

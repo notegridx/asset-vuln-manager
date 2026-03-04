@@ -87,6 +87,49 @@
         </form>
     </div>
 
+    <!-- ✅ Re-link (Canonical Backfill) moved here -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Re-link Software to Dictionary</h2>
+            <div class="muted" style="font-size:12px;">
+                Re-run canonical linking for <code>software_installs</code> using the current alias dictionary + CPE dictionary.
+            </div>
+        </div>
+
+        <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
+            Use this after you add/edit vendor/product aliases. It updates <code>cpe_vendor_id</code> and <code>cpe_product_id</code>,
+            and queues misses into <code>unresolved_mappings</code>.
+        </div>
+
+        <!-- Result flash -->
+        <div th:if="${backfillResult != null}"
+             class="kv"
+             style="margin-top:10px; padding:10px; border:1px solid rgba(138,180,255,0.35); border-radius:12px;">
+            <b>scanned</b> <span th:text="${backfillResult.scanned()}">0</span>
+            <b>linked</b> <span th:text="${backfillResult.linked()}">0</span>
+            <b>missed</b> <span th:text="${backfillResult.missed()}">0</span>
+            <span class="pill" th:text="${backfillResult.forceRebuild() ? 'forceRebuild: true' : 'forceRebuild: false'}">forceRebuild: false</span>
+        </div>
+
+        <form th:action="@{/admin/canonical/backfill}" method="post"
+              class="actions" style="margin-top:12px; gap:10px; flex-wrap:wrap;">
+            <!-- redirect back to this page (filters are optional; keep it simple first) -->
+            <input type="hidden" name="redirect" value="/admin/canonical">
+
+            <div class="field" style="margin:0;">
+                <label style="font-size:12px;">Max rows</label>
+                <input class="input" name="maxRows" value="5000000" style="width:180px;">
+            </div>
+
+            <label class="muted" style="display:flex; gap:8px; align-items:center; margin-top:18px;">
+                <input type="checkbox" name="forceRebuild" value="true">
+                forceRebuild (relink even if already linked)
+            </label>
+
+            <button class="btn btn-primary" type="submit">Re-link Now</button>
+        </form>
+    </div>
+
     <!-- Summary (Overall) -->
     <div th:if="${summaryOverall != null}" class="card" style="padding:12px; margin:12px 0;">
         <div class="actions" style="margin:0; align-items:flex-end;">

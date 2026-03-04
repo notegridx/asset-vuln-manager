@@ -145,18 +145,6 @@
         Save updates the dictionary and clears caches. Run Canonical Backfill when you want to relink SoftwareInstalls.
       </div>
 
-      <!-- Canonical backfill -->
-      <form th:action="@{/admin/canonical/backfill}" method="post"
-            class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
-        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
-        <input class="input" name="maxRows" value="5000000" style="width:160px;">
-        <label class="muted" style="display:flex; gap:8px; align-items:center;">
-          <input type="checkbox" name="forceRebuild" value="true">
-          forceRebuild
-        </label>
-        <button class="btn" type="submit">Run Canonical Backfill</button>
-      </form>
-
       <!-- Batch seed -->
       <form th:action="@{/admin/aliases/seed-top}" method="post"
             class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
