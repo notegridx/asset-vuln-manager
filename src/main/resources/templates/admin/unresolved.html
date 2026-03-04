@@ -3,64 +3,115 @@
 <head th:replace="~{layout/base :: head('Unresolved Mappings')}"></head>
 
 <style>
-    /* grid: vendor/product side-by-side */
-    .um-select {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        align-items: start;
-    }
-
-    .um-block {
+    /* =========================
+       Unresolved: Filter bar
+       ========================= */
+    .um-filterbar {
         display: flex;
-        flex-direction: column;
-        gap: 8px;
-        min-width: 0;
-    }
-
-    .um-label {
-        font-size: 12px;
-    }
-
-    .um-row {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        min-width: 0;
-    }
-
-    .um-row input {
-        flex: 1;
-        min-width: 0;
-        width: 100%;
-    }
-
-    .um-row button {
-        flex: 0 0 auto;
-    }
-
-    .um-hint summary {
-        cursor: pointer;
-        font-size: 12px;
-    }
-
-    .um-selected {
-        font-size: 12px;
-        padding: 6px 8px;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.03);
-        display: inline-block;
-        width: fit-content;
-    }
-
-    .um-apply {
-        display: flex;
-        flex-direction: column;
+        gap: 16px;
         align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
     }
 
-    .um-meta {
+    .um-filterbar__left {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 320px;
+        flex: 1 1 520px;
+    }
+
+    .um-filterbar__right {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        justify-content: flex-end;
+        flex: 0 1 auto;
+        white-space: nowrap;
+    }
+
+    .um-rowhead {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: nowrap;
+    }
+
+    .um-rowhead__label {
+        font-weight: 700;
+        color: var(--text);
+        font-size: 12px;
+        letter-spacing: .02em;
+        white-space: nowrap;
+    }
+
+    .um-seg {
+        display: inline-flex;
+        width: fit-content;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .um-seg__btn {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 10px 14px;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .um-seg__btn + .um-seg__btn {
+        border-left: 1px solid var(--line);
+    }
+
+    .um-seg__btn.is-active {
+        color: var(--text);
+        background: rgba(138, 180, 255, 0.18);
+    }
+
+    .um-toggle {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 2px;
+    }
+
+    .um-toggle__text {
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .um-toggle__hint {
+        color: var(--muted);
+        font-size: 12px;
+        max-width: 520px;
+    }
+
+    .um-viewing {
+        margin-top: 2px;
+        opacity: .9;
+        font-size: 12px;
+    }
+
+    @media (min-width: 981px) {
+        .um-viewing { text-align: right; }
+    }
+
+    @media (max-width: 980px) {
+        .um-filterbar__right { justify-content: flex-start; }
+        .um-rowhead { flex-wrap: wrap; }
+    }
+
+    /* =========================
+       Unresolved: Table / rows
+       ========================= */
+    .um-table td {
+        overflow: hidden; /* グローバル td を汚染しない */
         vertical-align: top;
     }
 
@@ -83,14 +134,7 @@
         flex-wrap: wrap;
     }
 
-    .um-meta__source {
-        opacity: 0.9;
-    }
-
-    /* ついで：Vendor/Product列で長い文字列が暴れないように */
-    td {
-        overflow: hidden;
-    }
+    .um-meta__source { opacity: .9; }
 
     /* small “explainability” pills */
     .um-mini {
@@ -105,9 +149,63 @@
         align-items: center;
         max-width: 100%;
     }
+    .um-mini code { font-size: 11px; }
 
-    .um-mini code {
-        font-size: 11px;
+    /* =========================
+       Unresolved: Selector UI
+       ========================= */
+    .um-select {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+    }
+
+    @media (max-width: 980px) {
+        .um-select { grid-template-columns: 1fr; }
+    }
+
+    .um-block {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .um-label { font-size: 12px; }
+
+    .um-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .um-row input {
+        flex: 1;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .um-row button { flex: 0 0 auto; }
+
+    /* =========================
+       Unresolved: Apply column
+       ========================= */
+    .um-selected {
+        font-size: 12px;
+        padding: 6px 8px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        display: inline-block;
+        width: fit-content;
+    }
+
+    .um-apply {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
     }
 </style>
 
@@ -122,10 +220,6 @@
                 Resolve missing canonical IDs by selecting vendor/product from the selector. Exact match appears first.
             </p>
         </div>
-        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <a class="btn" th:href="@{/admin/import-runs}">Import Runs</a>
-            <a class="btn btn-soft" th:href="@{/admin/import}">Import</a>
-        </div>
     </div>
 
     <!-- flash messages -->
@@ -138,54 +232,58 @@
         <span class="mono" th:text="${error}">error</span>
     </div>
 
+    <!-- Filters -->
     <div class="card" style="padding:12px; margin:12px 0;">
-        <form method="get" th:action="@{/admin/unresolved}"
-              style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-
-            <!-- ★重要：checkboxはuncheckedだとパラメータが送られないため、
-                 「Filterが押された」ことを判定するフラグを常に送る -->
+        <form method="get" th:action="@{/admin/unresolved}" class="um-filterbar">
+            <!-- unchecked 判定用 -->
             <input type="hidden" name="activeOnlyPresent" value="1"/>
 
-            <div class="field">
-                <label>Status</label>
-                <select name="status">
-                    <!-- Controller側で null/blank は NEW に正規化する前提 -->
-                    <option value="NEW" th:selected="${status == null or status == '' or status == 'NEW'}">NEW</option>
-                    <option value="RESOLVED" th:selected="${status == 'RESOLVED'}">RESOLVED</option>
-                    <option value="ALL" th:selected="${status == 'ALL'}">ALL</option>
-                </select>
-                <div class="muted" style="font-size:12px; margin-top:4px;">
-                    Default is <b>NEW</b>. Choose <b>ALL</b> to include resolved history.
+            <div class="um-filterbar__left">
+                <div class="field" style="margin:0;">
+                    <div class="um-rowhead">
+                        <span class="um-rowhead__label">Status</span>
+                        <div class="um-seg" role="group" aria-label="Status filter">
+                            <button class="um-seg__btn" type="submit" name="status" value="NEW"
+                                    th:classappend="${status == null or status == '' or status == 'NEW'} ? ' is-active' : ''">
+                                NEW
+                            </button>
+                            <button class="um-seg__btn" type="submit" name="status" value="RESOLVED"
+                                    th:classappend="${status == 'RESOLVED'} ? ' is-active' : ''">
+                                RESOLVED
+                            </button>
+                            <button class="um-seg__btn" type="submit" name="status" value="ALL"
+                                    th:classappend="${status == 'ALL'} ? ' is-active' : ''">
+                                ALL
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="muted" style="font-size:12px; margin-top:6px;">
+                        Default is NEW. Choose ALL to include resolved history.
+                    </div>
+                </div>
+
+                <label class="um-toggle muted">
+                    <input type="checkbox" name="activeOnly" value="true" th:checked="${activeOnly}">
+                    <span class="um-toggle__text">Active only</span>
+                    <span class="um-toggle__hint">Show only mappings that still exist in current inventory</span>
+                </label>
+
+                <div class="muted um-viewing">
+                    Viewing:
+                    <span th:text="${status != null ? status : 'NEW'}">NEW</span>
+                    /
+                    activeOnly=<span th:text="${activeOnly}">true</span>
+                    <!-- runId がURLで渡ってきた場合だけ表示（UI入力は撤去） -->
+                    <span th:if="${runId != null}"> / runId=<span th:text="${runId}">-</span></span>
                 </div>
             </div>
 
-            <div class="field" style="min-width:180px;">
-                <label>Run ID (optional)</label>
-                <input name="runId" placeholder="e.g. 12" th:value="${runId}">
-            </div>
-
-            <div class="field" style="min-width:160px;">
-                <label style="display:block;">Active only</label>
-                <label class="muted" style="display:flex; align-items:center; gap:8px; user-select:none;">
-                    <input type="checkbox" name="activeOnly" value="true"
-                           th:checked="${activeOnly}">
-                    Show only mappings that still exist in current inventory
-                </label>
-            </div>
-
-            <div class="actions" style="margin:0;">
-                <button class="btn btn-primary" type="submit">Filter</button>
-                <a class="btn btn-soft" th:href="@{/admin/unresolved(activeOnly=true)}">Reset</a>
+            <div class="um-filterbar__right">
+                <button class="btn" type="submit">Apply</button>
+                <a class="btn btn-ghost" th:href="@{/admin/unresolved}">Reset</a>
             </div>
         </form>
-
-        <!-- Blackbox低減：いま何を見ているかを明示 -->
-        <div class="muted" style="margin-top:10px; font-size:12px; line-height:1.6;">
-            Viewing:
-            <b th:text="${status}">NEW</b>
-            <span th:if="${runId != null and runId != ''}"> / runId=<code th:text="${runId}">-</code></span>
-            <span> / activeOnly=<code th:text="${activeOnly}">true</code></span>
-        </div>
     </div>
 
     <div class="um-help">
@@ -194,15 +292,15 @@
             <div class="muted" style="margin-top:8px; line-height:1.6;">
                 • Exact vendor/product matches appear first.<br>
                 • Use “Search” if quick candidates are insufficient.<br>
-                • Apply sets canonical IDs to matching SoftwareInstalls (bulk update),
-                then updates this mapping status.
+                • Apply sets canonical IDs to matching SoftwareInstalls (bulk update), then updates this mapping status.
             </div>
         </details>
     </div>
 
+    <!-- Table -->
     <div class="card">
         <div class="table-wrap" style="margin-top:12px; overflow-x:auto;">
-            <table style="width:100%; table-layout:fixed;">
+            <table class="um-table" style="width:100%; table-layout:fixed;">
                 <thead>
                 <tr>
                     <th style="width:190px;">Meta</th>
@@ -219,7 +317,8 @@
 
                 <tr th:each="m : ${mappings}"
                     th:attr="data-row-id=${m.id}"
-                    th:classappend="${m.status == 'RESOLVED'} ? 'row-resolved' : ''">                    <td class="um-meta">
+                    th:classappend="${m.status == 'RESOLVED'} ? 'row-resolved' : ''">
+                    <td class="um-meta">
                         <div class="um-meta__top">
                             <span class="mono um-meta__id" th:text="${m.id}">1</span>
                             <span class="badge" th:text="${m.status}">NEW</span>
@@ -228,16 +327,16 @@
                         <div class="um-meta__sub">
                             <span class="badge um-meta__source" th:text="${m.source}">CSV</span>
 
-                            <!-- Blackbox低減：候補IDがある/ない を明示 -->
                             <span class="um-mini" th:if="${m.candidateVendorIds != null and m.candidateVendorIds != ''}">
-                                quickV=<code th:text="${m.candidateVendorIds}">1,2</code>
-                            </span>
+                quickV=<code th:text="${m.candidateVendorIds}">1,2</code>
+              </span>
                             <span class="um-mini" th:if="${m.candidateProductIds != null and m.candidateProductIds != ''}">
-                                quickP=<code th:text="${m.candidateProductIds}">10,11</code>
-                            </span>
-                            <span class="um-mini" th:if="${(m.candidateVendorIds == null or m.candidateVendorIds == '') and (m.candidateProductIds == null or m.candidateProductIds == '')}">
-                                no quick candidates (use Search)
-                            </span>
+                quickP=<code th:text="${m.candidateProductIds}">10,11</code>
+              </span>
+                            <span class="um-mini"
+                                  th:if="${(m.candidateVendorIds == null or m.candidateVendorIds == '') and (m.candidateProductIds == null or m.candidateProductIds == '')}">
+                no quick candidates (use Search)
+              </span>
                         </div>
                     </td>
 
@@ -255,7 +354,6 @@
                         </div>
                     </td>
 
-                    <!-- Selector UI -->
                     <td>
                         <div class="um-select">
                             <div class="um-block">
@@ -288,17 +386,17 @@
                         </div>
                     </td>
 
-                    <!-- Apply form -->
                     <td>
-                        <form th:action="@{/admin/unresolved/apply}" method="post"
-                              class="js-apply-form um-apply">
+                        <form th:action="@{/admin/unresolved/apply}" method="post" class="js-apply-form um-apply">
                             <input type="hidden" name="mappingId" th:value="${m.id}">
 
                             <!-- current filter state (keep user context after apply) -->
                             <input type="hidden" name="status" th:value="${status}">
-                            <input type="hidden" name="runId" th:value="${runId}">
                             <input type="hidden" name="activeOnly" th:value="${activeOnly}">
                             <input type="hidden" name="activeOnlyPresent" value="1"/>
+
+                            <!-- runId がURLで来ている場合だけ維持（UI入力は撤去済み） -->
+                            <input type="hidden" name="runId" th:value="${runId}">
 
                             <input type="hidden" name="cpeVendorId" class="js-submit-vendor-id" value="">
                             <input type="hidden" name="cpeProductId" class="js-submit-product-id" value="">
@@ -310,51 +408,18 @@
 
                             <div class="um-row" style="margin-top:10px;">
                                 <button class="btn btn-primary" type="submit">Apply</button>
-                                <button class="btn btn-soft" type="submit"
-                                        th:formaction="@{/admin/unresolved/quick-add}">
+                                <button class="btn btn-soft" type="submit" th:formaction="@{/admin/unresolved/quick-add}">
                                     Quick add alias + Apply
                                 </button>
                                 <button class="btn btn-soft js-clear" type="button">Clear</button>
                             </div>
-
                         </form>
                     </td>
                 </tr>
-
                 </tbody>
             </table>
         </div>
     </div>
-
-    <style>
-        select {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 8px 10px;
-            color: var(--text);
-        }
-
-        select:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-
-        optgroup {
-            color: var(--muted);
-        }
-
-        option {
-            color: var(--text);
-        }
-
-        .hint-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-    </style>
 
     <script>
         function splitIds(csv) {
@@ -362,11 +427,11 @@
             return csv.split(',')
                 .map(s => s.trim())
                 .filter(s => s.length > 0)
-                .filter(s => /^\d+$/.test(s)); // numeric only
+                .filter(s => /^\d+$/.test(s));
         }
 
         async function fetchJson(url) {
-            const res = await fetch(url, {headers: {'Accept': 'application/json'}});
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             return await res.json();
         }
@@ -394,14 +459,12 @@
 
         function fillSelectWithGrouped(selectEl, grouped, placeholder) {
             clearSelect(selectEl, placeholder);
-
             appendOptGroup(selectEl, 'Exact match', grouped.exact, (it) => `${it.label} (#${it.id})`);
             appendOptGroup(selectEl, 'Other candidates', grouped.others, (it) => `${it.label} (#${it.id})`);
         }
 
         function fillSelectWithQuickIds(selectEl, ids, placeholder) {
             clearSelect(selectEl, placeholder);
-
             if (!ids || ids.length === 0) return;
 
             const og = document.createElement('optgroup');
@@ -437,7 +500,6 @@
             syncSubmitHidden(form, null, null);
         }
 
-        // Initialize rows
         document.querySelectorAll('tr[data-row-id]').forEach(row => {
             const form = row.querySelector('.js-apply-form');
             const vSel = row.querySelector('.js-vendor-select');
@@ -445,17 +507,13 @@
             const vQ = row.querySelector('.js-vendor-q');
             const pQ = row.querySelector('.js-product-q');
 
-            // Pre-fill search boxes with normalized values (for convenience)
             if (vQ && vQ.dataset.defaultQ) vQ.value = vQ.dataset.defaultQ;
             if (pQ && pQ.dataset.defaultQ) pQ.value = pQ.dataset.defaultQ;
 
-            // Fill initial selects with quick candidate IDs (if any)
             fillSelectWithQuickIds(vSel, splitIds(vSel.dataset.candidateIds), '-- Select vendor --');
             fillSelectWithQuickIds(pSel, splitIds(pSel.dataset.candidateIds), '-- Select product --');
 
-            // Change handlers: keep submit hidden fields in sync
             vSel.addEventListener('change', () => {
-                // when vendor changes, product must be reset (vendor-dependent)
                 clearSelect(pSel, '-- Select product --');
                 syncSubmitHidden(form, vSel.value || null, null);
             });
@@ -464,21 +522,18 @@
                 syncSubmitHidden(form, vSel.value || null, pSel.value || null);
             });
 
-            // Search vendor (grouped: exact/others)
             row.querySelector('.js-vendor-search').addEventListener('click', async () => {
                 const q = vQ.value || '';
                 try {
                     const grouped = await fetchJson('/api/dict/vendors/search2?q=' + encodeURIComponent(q));
                     fillSelectWithGrouped(vSel, grouped, '-- Select vendor --');
 
-                    // UX: if exact is single, auto-select it
                     if (grouped.exact && grouped.exact.length === 1) {
                         vSel.value = String(grouped.exact[0].id);
                     } else {
                         vSel.value = '';
                     }
 
-                    // Reset product on vendor search
                     clearSelect(pSel, '-- Select product --');
                     syncSubmitHidden(form, vSel.value || null, null);
                 } catch (e) {
@@ -486,7 +541,6 @@
                 }
             });
 
-            // Search product (requires vendorId)
             row.querySelector('.js-product-search').addEventListener('click', async () => {
                 const vendorId = vSel.value;
                 if (!vendorId || !/^\d+$/.test(vendorId)) {
@@ -501,7 +555,6 @@
 
                     fillSelectWithGrouped(pSel, grouped, '-- Select product --');
 
-                    // UX: if exact is single, auto-select it
                     if (grouped.exact && grouped.exact.length === 1) {
                         pSel.value = String(grouped.exact[0].id);
                     } else {
@@ -514,10 +567,8 @@
                 }
             });
 
-            // Clear button
             row.querySelector('.js-clear').addEventListener('click', () => clearSelected(row));
 
-            // Submit guard: vendor required, numeric only
             form.addEventListener('submit', (e) => {
                 const v = form.querySelector('.js-submit-vendor-id').value;
                 const p = form.querySelector('.js-submit-product-id').value;
@@ -535,7 +586,6 @@
                 return true;
             });
 
-            // Initial sync
             syncSubmitHidden(form, vSel.value || null, pSel.value || null);
         });
     </script>
