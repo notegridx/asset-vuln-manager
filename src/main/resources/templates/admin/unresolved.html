@@ -195,7 +195,8 @@
                         <div style="display:flex; flex-direction:column; gap:6px;">
                             <div>
                                 <span class="muted" style="font-size:12px;">raw</span>
-                                <div class="mono" th:text="${m.vendorRaw} + ' / ' + ${m.productRaw}">vendor/product</div>
+                                <div class="mono" th:text="${m.vendorRaw} + ' / ' + ${m.productRaw}">vendor/product
+                                </div>
                                 <div class="muted mono" style="font-size:12px;" th:text="${m.versionRaw}">version</div>
                             </div>
                             <div>
@@ -249,6 +250,7 @@
                             <input type="hidden" name="status" th:value="${status}">
                             <input type="hidden" name="runId" th:value="${runId}">
                             <input type="hidden" name="activeOnly" th:value="${activeOnly}">
+                            <input type="hidden" name="activeOnlyPresent" value="1"/>
                             <input type="hidden" name="cpeVendorId" class="js-submit-vendor-id" value="">
                             <input type="hidden" name="cpeProductId" class="js-submit-product-id" value="">
 
@@ -259,6 +261,10 @@
 
                             <div class="um-row" style="margin-top:10px;">
                                 <button class="btn btn-primary" type="submit">Apply</button>
+                                <button class="btn btn-soft" type="submit"
+                                        th:formaction="@{/admin/unresolved/quick-add}">
+                                    Quick add alias + Apply
+                                </button>
                                 <button class="btn btn-soft js-clear" type="button">Clear</button>
                             </div>
 

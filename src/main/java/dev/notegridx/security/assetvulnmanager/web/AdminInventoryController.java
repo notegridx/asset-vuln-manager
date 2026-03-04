@@ -4,6 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
+import dev.notegridx.security.assetvulnmanager.service.UnresolvedQuickAddService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedResolutionService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,15 +23,18 @@ public class AdminInventoryController {
     private final ImportRunRepository importRunRepository;
     private final UnresolvedMappingRepository unresolvedMappingRepository;
     private final UnresolvedResolutionService unresolvedResolutionService;
+    private final UnresolvedQuickAddService unresolvedQuickAddService;
 
     public AdminInventoryController(
             ImportRunRepository importRunRepository,
             UnresolvedMappingRepository unresolvedMappingRepository,
-            UnresolvedResolutionService unresolvedResolutionService
+            UnresolvedResolutionService unresolvedResolutionService,
+            UnresolvedQuickAddService unresolvedQuickAddService
     ) {
         this.importRunRepository = importRunRepository;
         this.unresolvedMappingRepository = unresolvedMappingRepository;
         this.unresolvedResolutionService = unresolvedResolutionService;
+        this.unresolvedQuickAddService = unresolvedQuickAddService;
     }
 
     @GetMapping("/admin/import-runs")
@@ -200,5 +204,50 @@ public class AdminInventoryController {
         String m = e.getMessage();
         if (m == null || m.isBlank()) return e.getClass().getSimpleName();
         return m;
+    }
+
+    @PostMapping("/admin/unresolved/quick-add")
+    public String quickAddAndApply(
+            @RequestParam("mappingId") String mappingIdRaw,
+            @RequestParam(name = "cpeVendorId", required = false) String cpeVendorIdRaw,
+            @RequestParam(name = "cpeProductId", required = false) String cpeProductIdRaw,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "runId", required = false) Long runId,
+            @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
+            @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
+            RedirectAttributes ra
+    ) {
+        Long mappingId = parseLong(mappingIdRaw);
+        Long vendorId = parseLongNullable(cpeVendorIdRaw);
+        Long productId = parseLongNullable(cpeProductIdRaw);
+
+        boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
+
+        if (mappingId == null) {
+            ra.addFlashAttribute("error", "Invalid mappingId.");
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
+        }
+        if (vendorId == null) {
+            ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates.");
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
+        }
+
+        try {
+            var result = unresolvedQuickAddService.quickAddAndApply(mappingId, vendorId, productId);
+
+            ra.addFlashAttribute("success",
+                    "QuickAdd+Applied: mappingId=" + result.apply().mappingId()
+                            + " vendorId=" + result.apply().vendorId()
+                            + (result.apply().productId() == null ? "" : (" productId=" + result.apply().productId()))
+                            + " → affectedSoftware=" + result.apply().affectedSoftwareRows()
+                            + " status=" + result.apply().status()
+                            + " | vendorAlias=" + result.vendorAliasOutcome()
+                            + " productAlias=" + result.productAliasOutcome()
+            );
+        } catch (Exception e) {
+            ra.addFlashAttribute("error", "QuickAdd failed: " + safeMsg(e));
+        }
+
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
     }
 }
