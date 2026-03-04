@@ -44,10 +44,21 @@
     </div>
 
     <div class="actions" style="margin-top:14px;">
-      <a class="btn btn-primary" th:href="@{/admin/import/json}">Back to JSON Import</a>
+      <!-- Next step -->
+      <a class="btn btn-primary" th:href="@{/admin/canonical}">
+        Review Product Mapping
+      </a>
+
+      <!-- Contextual troubleshooting: only this import run -->
+      <a class="btn btn-soft"
+         th:href="@{/admin/unresolved(runId=${run.id}, status='NEW', activeOnly=true, activeOnlyPresent='1')}">
+        Unresolved Mappings (this run)
+      </a>
+
+      <!-- Existing -->
+      <a class="btn" th:href="@{/admin/import/json}">Back to JSON Import</a>
       <a class="btn" th:href="@{/admin/import-runs}">Open Import Runs</a>
     </div>
-  </div>
 
 </main>
 </body>
