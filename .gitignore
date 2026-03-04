@@ -1,35 +1,144 @@
-HELP.md
-/target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# =========================================================
+# Asset-Vuln-Manager .gitignore (complete)
+# - Java / Spring Boot / Maven
+# - IntelliJ IDEA / Eclipse / VS Code
+# - H2 (file DB), logs, OS junk
+# =========================================================
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# -------------------------
+# OS / Editor junk
+# -------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+*.bak
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# -------------------------
+# IntelliJ IDEA
+# -------------------------
+.idea/
 *.iml
+*.iws
 *.ipr
+out/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+# -------------------------
+# Eclipse / STS
+# -------------------------
+.classpath
+.project
+.settings/
+.springBeans
+.factorypath
 
-### VS Code ###
+# -------------------------
+# VS Code
+# -------------------------
 .vscode/
+*.code-workspace
 
+# -------------------------
+# Java build outputs
+# -------------------------
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# If you ever use Gradle too
+.gradle/
+build/
+
+# -------------------------
+# Maven wrapper (keep wrapper JAR + properties)
+# -------------------------
+# Usually we keep these committed:
+# .mvn/wrapper/maven-wrapper.jar
+# .mvn/wrapper/maven-wrapper.properties
+# mvnw
+# mvnw.cmd
+#
+# So do NOT ignore .mvn/ or mvnw by default.
+
+# -------------------------
+# Logs / dumps
+# -------------------------
+logs/
 *.log
+*.tmp
+*.dump
+*.dmp
+hs_err_pid*
+replay_pid*
+*.hprof
+*.jfr
+
+# -------------------------
+# Spring Boot / temp
+# -------------------------
+/tmp/
+temp/
+*.pid
+*.pid.lock
+
+# -------------------------
+# H2 database files (file mode)
+# - Your repo currently has: data/assetvulndb.mv.db etc.
+# -------------------------
+data/
+*.db
+*.mv.db
+*.trace.db
+*.h2.db
+*.lock.db
+
+# Sometimes H2 / local files appear here too
+*.mvstore
+*.mvstore.db
+
+# -------------------------
+# Local config overrides (keep application.yml committed)
+# -------------------------
+# Keep: src/main/resources/application.yml
+# Ignore local-only variants:
+src/main/resources/application-local.yml
+src/main/resources/application-dev.yml
+src/main/resources/application-prod.yml
+src/main/resources/application-*.local.yml
+src/main/resources/application-*.dev.yml
+src/main/resources/application-*.prod.yml
+src/main/resources/application-override.yml
+
+# If you keep secrets in .env
+.env
+.env.*
+!.env.example
+
+# -------------------------
+# Test reports / coverage
+# -------------------------
+/surefire-reports/
+/failsafe-reports/
+**/surefire-reports/
+/jacoco.exec
+/jacoco*.exec
+/coverage/
+/site/
+
+# -------------------------
+# Node / frontend (if ever added)
+# -------------------------
+node_modules/
+dist/
+.cache/
+
+# -------------------------
+# Misc
+# -------------------------
+*.orig
+*.rej
+*.patch
