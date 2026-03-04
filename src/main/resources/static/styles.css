@@ -1511,3 +1511,122 @@ td.cell-break {
     font-size: 12px;
     white-space: nowrap;
 }
+
+/* =========================================================
+   Synonyms workspace: tabs + suggest box (moved from inline)
+   ========================================================= */
+
+.tabs {
+    display: inline-flex;
+    gap: 6px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.02);
+}
+
+.tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.tab:hover {
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+}
+
+.tab.is-active {
+    border-color: rgba(138, 180, 255, 0.55);
+    background: rgba(138, 180, 255, 0.10);
+    color: var(--text);
+}
+
+.context-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-2);
+    background: rgba(255,255,255,0.01);
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.context-card__left { min-width: 0; }
+
+.context-card__title {
+    display:flex;
+    gap:10px;
+    align-items: baseline;
+    flex-wrap: wrap;
+}
+
+.context-card__title .name { font-weight: 700; }
+.context-card__title .meta { color: var(--muted); font-size: 12px; }
+
+.context-card__right {
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap: wrap;
+}
+
+/* Suggest UI (shared) */
+.suggest-box{
+    position:absolute;
+    top:42px; left:0; right:0;
+    z-index:60;
+    padding:6px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.10);
+    background: rgba(12,16,24,0.92);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    max-height: 280px;
+    overflow:auto;
+}
+
+.suggest-item{
+    padding:10px 10px;
+    border-radius:12px;
+    cursor:pointer;
+}
+
+.suggest-item:hover{ background: rgba(255,255,255,0.05); }
+
+.suggest-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:12px;
+}
+
+.suggest-label{ font-weight:700; }
+
+.suggest-id{
+    font-size:12px;
+    opacity:0.75;
+}
+
+.suggest-sub{
+    font-size:12px;
+    opacity:0.75;
+    margin-top:2px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.suggest-box mark{
+    background: rgba(255,255,255,0.14);
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 4px;
+}

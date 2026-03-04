@@ -37,18 +37,16 @@ public class AdminAliasesController {
         this.aliasBatchService = aliasBatchService;
     }
 
-    /**
-     * vendor alias 追加：保存 + キャッシュクリアのみ（backfillは別ボタンに分離）
-     */
     @PostMapping("/admin/aliases/vendor")
     public String addVendorAlias(
             @RequestParam("aliasNorm") String aliasNorm,
             @RequestParam("cpeVendorId") Long cpeVendorId,
-            @RequestParam(value = "note", required = false) String note
+            @RequestParam(value = "note", required = false) String note,
+            @RequestParam(name = "redirect", required = false) String redirect
     ) {
         String a = normalize(aliasNorm);
         if (a == null) {
-            return "redirect:/admin/unresolved?status=NEW";
+            return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
         }
 
         CpeVendorAlias entity = CpeVendorAlias.seeded(
@@ -63,22 +61,21 @@ public class AdminAliasesController {
 
         vendorAliasRepo.save(entity);
         synonymService.clearCaches();
-        return "redirect:/admin/unresolved?status=NEW";
+
+        return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
     }
 
-    /**
-     * product alias 追加：保存 + キャッシュクリアのみ（backfillは別ボタンに分離）
-     */
     @PostMapping("/admin/aliases/product")
     public String addProductAlias(
             @RequestParam("cpeVendorId") Long cpeVendorId,
             @RequestParam("aliasNorm") String aliasNorm,
             @RequestParam("cpeProductId") Long cpeProductId,
-            @RequestParam(value = "note", required = false) String note
+            @RequestParam(value = "note", required = false) String note,
+            @RequestParam(name = "redirect", required = false) String redirect
     ) {
         String a = normalize(aliasNorm);
         if (a == null) {
-            return "redirect:/admin/unresolved?status=NEW";
+            return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
         }
 
         CpeProductAlias entity = CpeProductAlias.seeded(
@@ -94,14 +91,10 @@ public class AdminAliasesController {
 
         productAliasRepo.save(entity);
         synonymService.clearCaches();
-        return "redirect:/admin/unresolved?status=NEW";
+
+        return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
     }
 
-    /**
-     * Top aliases seed（vendor + product を一括投入）
-     * - 結果は flash attribute で画面に表示
-     * - redirect を受け取り、どの画面からでも呼べる
-     */
     @PostMapping("/admin/aliases/seed-top")
     public String seedTopAliases(
             @RequestParam(name = "redirect", required = false) String redirect,
@@ -110,15 +103,9 @@ public class AdminAliasesController {
         AliasBatchService.BatchReport report = aliasBatchService.seedTopAliases();
         ra.addFlashAttribute("seedReport", report);
 
-        if (redirect != null && redirect.startsWith("/")) {
-            return "redirect:" + redirect;
-        }
-        return "redirect:/admin/synonyms/vendors";
+        return safeRedirectOrDefault(redirect, "/admin/synonyms/vendors");
     }
 
-    /**
-     * Canonical backfill を単独実行（どの画面からでも呼べるように redirect を受ける）
-     */
     @PostMapping("/admin/canonical/backfill")
     public String runCanonicalBackfill(
             @RequestParam(name = "maxRows", defaultValue = "5000000") int maxRows,
@@ -128,15 +115,19 @@ public class AdminAliasesController {
         synonymService.clearCaches();
         backfillService.backfill(maxRows, forceRebuild);
 
-        if (redirect != null && redirect.startsWith("/")) {
-            return "redirect:" + redirect;
-        }
-        return "redirect:/admin/unresolved?status=NEW";
+        return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
     }
 
     private String normalize(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private static String safeRedirectOrDefault(String redirect, String defaultPath) {
+        if (redirect != null && redirect.startsWith("/")) {
+            return "redirect:" + redirect;
+        }
+        return "redirect:" + defaultPath;
     }
 }

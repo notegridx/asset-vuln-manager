@@ -5,231 +5,361 @@
 <body th:replace="~{layout/base :: layout('Synonyms - Vendors', 'admin', ~{::main})}">
 <main>
 
-  <h1>Synonyms (Vendor)</h1>
+  <h1>Synonyms Workspace</h1>
   <p class="muted">
-    This page manages <strong>vendor alias</strong> dictionary. Search targets <code>aliasNorm</code> (not CPE vendor names).
-    Use the "Canonical vendor" selector below to find vendors like Microsoft without knowing IDs.
+    Manage <strong>vendor</strong> and <strong>product</strong> alias dictionaries in the same vendor context.
+    Pick a canonical vendor first to avoid product mis-linking.
   </p>
 
-  <style>
-    .suggest-box{
-      position:absolute;
-      top:42px; left:0; right:0;
-      z-index:60;
-      padding:6px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,0.10);
-      background: rgba(12,16,24,0.92);
-      backdrop-filter: blur(8px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
-      max-height: 280px;
-      overflow:auto;
-    }
-    .suggest-item{
-      padding:10px 10px;
-      border-radius:12px;
-      cursor:pointer;
-    }
-    .suggest-item:hover{
-      background: rgba(255,255,255,0.05);
-    }
-    .suggest-top{
-      display:flex;
-      justify-content:space-between;
-      align-items:baseline;
-      gap:12px;
-    }
-    .suggest-label{
-      font-weight:700;
-    }
-    .suggest-id{
-      font-size:12px;
-      opacity:0.75;
-    }
-    .suggest-sub{
-      font-size:12px;
-      opacity:0.75;
-      margin-top:2px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    }
-    .suggest-box mark{
-      background: rgba(255,255,255,0.14);
-      color: inherit;
-      padding: 0 2px;
-      border-radius: 4px;
-    }
-  </style>
+  <!-- Workspace: canonical vendor selector -->
+  <div class="context-card">
+    <div class="context-card__left">
+      <div class="context-card__title">
+        <div class="name">Canonical vendor</div>
+        <div class="meta" th:if="${vendorId != null}">
+          Selected: <span class="mono" th:text="${vendorId}">123</span>
+          <span th:if="${selectedVendorLabel != null}"> / <span th:text="${selectedVendorLabel}">Microsoft</span></span>
+        </div>
+        <div class="meta" th:if="${vendorId == null}">Not selected</div>
+      </div>
 
-  <!-- Search (alias list) -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <h2 style="margin:0 0 10px 0;">Search aliases</h2>
+      <div style="margin-top:8px; position:relative; max-width: 560px;">
+        <input id="workspaceVendorInput" class="input" type="text"
+               placeholder="Type to search canonical vendor (e.g. microsoft)" autocomplete="off">
+        <div id="workspaceVendorSuggestBox" class="suggest-box" style="display:none;">
+          <div id="workspaceVendorSuggestList"></div>
+          <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
+            Select one item to open vendor workspace.
+          </div>
+        </div>
+      </div>
 
-    <form method="get" th:action="@{/admin/synonyms/vendors}" class="actions" style="gap:10px; flex-wrap:wrap;">
-      <input class="input" type="text" name="q" placeholder="aliasNorm contains..." th:value="${q}" style="min-width:260px;">
-      <select name="status">
-        <option value="" th:selected="${status == null}">All</option>
-        <option value="ACTIVE" th:selected="${status == 'ACTIVE'}">ACTIVE</option>
-        <option value="INACTIVE" th:selected="${status == 'INACTIVE'}">INACTIVE</option>
-      </select>
-      <button class="btn btn-primary" type="submit">Apply</button>
-      <a class="btn btn-soft" th:href="@{/admin/synonyms/vendors}">Reset</a>
-    </form>
+      <div class="muted text-12 mt-6">
+        Tip: Once a vendor is selected, use the <strong>Product Aliases</strong> tab to add scoped product aliases safely.
+      </div>
+    </div>
 
-    <div class="muted" style="font-size:12px; margin-top:10px;">
-      Showing up to <span th:text="${limit}">500</span> rows (latest first).
+    <div class="context-card__right">
+      <div class="tabs" role="tablist" aria-label="Synonyms tabs">
+        <a class="tab"
+           th:classappend="${tab == 'vendors'} ? ' is-active' : ''"
+           th:href="@{/admin/synonyms/vendors(vendorId=${vendorId}, tab='vendors', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
+          Vendor Aliases
+        </a>
+        <a class="tab"
+           th:classappend="${tab == 'products'} ? ' is-active' : ''"
+           th:href="@{/admin/synonyms/vendors(vendorId=${vendorId}, tab='products', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
+          Product Aliases (scoped)
+        </a>
+      </div>
+
+      <a class="btn btn-ghost"
+         th:href="@{/admin/synonyms/vendors(tab=${tab})}">
+        Clear vendor
+      </a>
     </div>
   </div>
 
-  <!-- Add vendor alias -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <h2 style="margin:0 0 10px 0;">Add vendor alias</h2>
+  <!-- =========================
+       Vendor tab
+       ========================= -->
+  <div th:if="${tab == 'vendors'}">
 
-    <form id="vendorAliasForm" th:action="@{/admin/aliases/vendor}" method="post" class="actions" style="gap:10px; flex-wrap:wrap;">
-      <!-- aliasNorm -->
-      <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;" required>
+    <!-- Search (vendor alias list) -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+      <h2 style="margin:0 0 10px 0;">Search vendor aliases</h2>
 
-      <!-- Canonical vendor selector -->
-      <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
-        <input id="vendorSearchInput" class="input" type="text"
-               placeholder="Canonical vendor (type to search, e.g. microsoft)" autocomplete="off" required>
-        <input id="cpeVendorId" type="hidden" name="cpeVendorId" required>
+      <form method="get" th:action="@{/admin/synonyms/vendors}" class="actions" style="gap:10px; flex-wrap:wrap;">
+        <input type="hidden" name="vendorId" th:value="${vendorId}">
+        <input type="hidden" name="tab" value="vendors">
 
-        <div id="vendorSuggestBox" class="suggest-box" style="display:none;">
-          <div id="vendorSuggestList"></div>
-          <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-            Tip: select one item to set vendorId.
+        <input class="input" type="text" name="q" placeholder="aliasNorm contains..." th:value="${q}" style="min-width:260px;">
+        <select name="status">
+          <option value="" th:selected="${status == null}">All</option>
+          <option value="ACTIVE" th:selected="${status == 'ACTIVE'}">ACTIVE</option>
+          <option value="INACTIVE" th:selected="${status == 'INACTIVE'}">INACTIVE</option>
+        </select>
+
+        <button class="btn btn-primary" type="submit">Apply</button>
+        <a class="btn btn-ghost"
+           th:href="@{/admin/synonyms/vendors(vendorId=${vendorId}, tab='vendors')}">Reset</a>
+      </form>
+
+      <div class="muted text-12 mt-8">
+        Showing up to <span th:text="${limit}">500</span> rows (latest first).
+      </div>
+    </div>
+
+    <!-- Add vendor alias -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+      <h2 style="margin:0 0 10px 0;">Add vendor alias</h2>
+
+      <form id="vendorAliasForm" th:action="@{/admin/aliases/vendor}" method="post"
+            class="actions" style="gap:10px; flex-wrap:wrap;">
+
+        <!-- Keep workspace context after POST -->
+        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+
+        <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;" required>
+
+        <!-- Canonical vendor selector (reuse existing suggest UX) -->
+        <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
+          <input id="vendorSearchInput" class="input" type="text"
+                 placeholder="Canonical vendor (type to search, e.g. microsoft)" autocomplete="off" required>
+          <input id="cpeVendorId" type="hidden" name="cpeVendorId" required>
+
+          <div id="vendorSuggestBox" class="suggest-box" style="display:none;">
+            <div id="vendorSuggestList"></div>
+            <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
+              Tip: select one item to set vendorId.
+            </div>
+          </div>
+
+          <div id="vendorSelectedHint" class="muted" style="font-size:12px;"></div>
+        </div>
+
+        <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
+
+        <button class="btn btn-primary" type="submit">Save</button>
+        <a class="btn btn-ghost" th:href="@{/admin/unresolved(status='NEW')}">Open Unresolved</a>
+      </form>
+
+      <div class="muted text-12 mt-8" style="line-height:1.6;">
+        Save updates the dictionary and clears caches. Run Canonical Backfill when you want to relink SoftwareInstalls.
+      </div>
+
+      <!-- Canonical backfill -->
+      <form th:action="@{/admin/canonical/backfill}" method="post"
+            class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
+        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+        <input class="input" name="maxRows" value="5000000" style="width:160px;">
+        <label class="muted" style="display:flex; gap:8px; align-items:center;">
+          <input type="checkbox" name="forceRebuild" value="true">
+          forceRebuild
+        </label>
+        <button class="btn" type="submit">Run Canonical Backfill</button>
+      </form>
+
+      <!-- Batch seed -->
+      <form th:action="@{/admin/aliases/seed-top}" method="post"
+            class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
+        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+        <button class="btn" type="submit">Seed Top Aliases</button>
+        <span class="muted" style="font-size:12px;">
+          Inserts/updates curated vendor+product aliases (idempotent).
+        </span>
+      </form>
+
+      <!-- Seed report (flash) -->
+      <div class="card" th:if="${seedReport != null}"
+           style="padding:12px; margin-top:10px; border:1px solid rgba(255,255,255,0.10);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <h3 style="margin:0;">Seed report</h3>
+          <span class="muted" style="font-size:12px;" th:text="${seedReport.batchName}">seedTopAliases</span>
+        </div>
+
+        <div class="muted" style="margin-top:8px; line-height:1.8;">
+          <div>
+            Vendors:
+            ins=<span class="mono" th:text="${seedReport.vendorInserted}">0</span>,
+            upd=<span class="mono" th:text="${seedReport.vendorUpdated}">0</span>,
+            same=<span class="mono" th:text="${seedReport.vendorUnchanged}">0</span>,
+            skip=<span class="mono" th:text="${seedReport.vendorSkipped}">0</span>
+          </div>
+          <div>
+            Products:
+            ins=<span class="mono" th:text="${seedReport.productInserted}">0</span>,
+            upd=<span class="mono" th:text="${seedReport.productUpdated}">0</span>,
+            same=<span class="mono" th:text="${seedReport.productUnchanged}">0</span>,
+            skip=<span class="mono" th:text="${seedReport.productSkipped}">0</span>
           </div>
         </div>
 
-        <div id="vendorSelectedHint" class="muted" style="font-size:12px;"></div>
+        <details style="margin-top:10px;" th:if="${seedReport.messages != null && !#lists.isEmpty(seedReport.messages)}">
+          <summary class="btn btn-ghost" style="display:inline-flex;">Show details</summary>
+          <div style="margin-top:8px;">
+            <div class="muted mono" th:each="m : ${seedReport.messages}" th:text="${m}"
+                 style="font-size:12px; line-height:1.6; padding:2px 0;"></div>
+          </div>
+        </details>
       </div>
-
-      <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
-
-      <button class="btn btn-primary" type="submit">Save</button>
-      <a class="btn" th:href="@{/admin/unresolved(status='NEW')}">Open Unresolved</a>
-    </form>
-
-    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
-      Save only updates the dictionary and clears caches. Run Canonical Backfill when you want to relink SoftwareInstalls.
     </div>
 
-    <!-- Canonical backfill (separate button) -->
-    <form th:action="@{/admin/canonical/backfill}" method="post" class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
-      <input type="hidden" name="redirect" value="/admin/synonyms/vendors">
-      <input class="input" name="maxRows" value="5000000" style="width:160px;">
-      <label class="muted" style="display:flex; gap:8px; align-items:center;">
-        <input type="checkbox" name="forceRebuild" value="true">
-        forceRebuild
-      </label>
-      <button class="btn" type="submit">Run Canonical Backfill</button>
-    </form>
-    <!-- Batch seed (Top vendors/products) -->
-    <form th:action="@{/admin/aliases/seed-top}" method="post"
-          class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
-      <input type="hidden" name="redirect" value="/admin/synonyms/vendors">
-      <button class="btn btn-soft" type="submit">Seed Top Aliases</button>
-      <span class="muted" style="font-size:12px;">
-        Inserts/updates curated vendor+product aliases (idempotent).
-      </span>
-    </form>
+    <!-- Vendor alias list -->
+    <div class="card">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+          <tr>
+            <th style="width:90px;">ID</th>
+            <th>aliasNorm</th>
+            <th style="width:120px;">vendorId</th>
+            <th>canonical vendor</th>
+            <th style="width:110px;">status</th>
+            <th>note</th>
+            <th style="width:140px;">Action</th>
+          </tr>
+          </thead>
+          <tbody>
 
-    <!-- Seed result (flash) -->
-    <div class="card" th:if="${seedReport != null}"
-         style="padding:12px; margin-top:10px; border:1px solid rgba(255,255,255,0.10);">
-      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-        <h3 style="margin:0;">Seed report</h3>
-        <span class="muted" style="font-size:12px;" th:text="${seedReport.batchName}">seedTopAliases</span>
+          <tr th:if="${rows == null || #lists.isEmpty(rows)}">
+            <td colspan="7" class="muted" style="padding:14px;">No rows.</td>
+          </tr>
+
+          <tr th:each="r : ${rows}">
+            <td class="mono" th:text="${r.id}">1</td>
+            <td class="mono" th:text="${r.aliasNorm}">microsoft corp</td>
+            <td class="mono" th:text="${r.cpeVendorId}">123</td>
+            <td th:text="${vendorLabels[r.cpeVendorId]}">Microsoft</td>
+            <td><span class="badge" th:text="${r.status}">ACTIVE</span></td>
+            <td th:text="${r.note}">-</td>
+            <td>
+              <form th:action="@{/admin/synonyms/vendors/toggle}" method="post" style="display:inline;">
+                <input type="hidden" name="id" th:value="${r.id}">
+                <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+                <button class="btn btn-ghost" type="submit">Toggle</button>
+              </form>
+            </td>
+          </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- =========================
+       Product tab (scoped)
+       ========================= -->
+  <div th:if="${tab == 'products'}">
+
+    <div th:if="${vendorId == null}" class="empty-state" style="margin-top:12px;">
+      Select a canonical vendor to manage product aliases in a safe vendor context.
+    </div>
+
+    <div th:if="${vendorId != null}">
+
+      <!-- Search product aliases -->
+      <div class="card" style="padding:12px; margin:12px 0;">
+        <h2 style="margin:0 0 10px 0;">Search product aliases (scoped)</h2>
+
+        <form method="get" th:action="@{/admin/synonyms/vendors}" class="actions" style="gap:10px; flex-wrap:wrap;">
+          <input type="hidden" name="vendorId" th:value="${vendorId}">
+          <input type="hidden" name="tab" value="products">
+
+          <input class="input" type="text" name="qP" placeholder="aliasNorm contains..." th:value="${qP}" style="min-width:260px;">
+          <select name="statusP">
+            <option value="" th:selected="${statusP == null}">All</option>
+            <option value="ACTIVE" th:selected="${statusP == 'ACTIVE'}">ACTIVE</option>
+            <option value="INACTIVE" th:selected="${statusP == 'INACTIVE'}">INACTIVE</option>
+          </select>
+
+          <button class="btn btn-primary" type="submit">Apply</button>
+          <a class="btn btn-ghost"
+             th:href="@{/admin/synonyms/vendors(vendorId=${vendorId}, tab='products')}">Reset</a>
+        </form>
+
+        <div class="muted text-12 mt-8">
+          Showing up to <span th:text="${limit}">500</span> rows (latest first).
+        </div>
       </div>
 
-      <div class="muted" style="margin-top:8px; line-height:1.8;">
-        <div>
-          Vendors:
-          ins=<span class="mono" th:text="${seedReport.vendorInserted}">0</span>,
-          upd=<span class="mono" th:text="${seedReport.vendorUpdated}">0</span>,
-          same=<span class="mono" th:text="${seedReport.vendorUnchanged}">0</span>,
-          skip=<span class="mono" th:text="${seedReport.vendorSkipped}">0</span>
-        </div>
-        <div>
-          Products:
-          ins=<span class="mono" th:text="${seedReport.productInserted}">0</span>,
-          upd=<span class="mono" th:text="${seedReport.productUpdated}">0</span>,
-          same=<span class="mono" th:text="${seedReport.productUnchanged}">0</span>,
-          skip=<span class="mono" th:text="${seedReport.productSkipped}">0</span>
+      <!-- Add product alias (vendor scoped) -->
+      <div class="card" style="padding:12px; margin:12px 0;">
+        <h2 style="margin:0 0 10px 0;">Add product alias (scoped)</h2>
+
+        <form id="productAliasForm" th:action="@{/admin/aliases/product}" method="post"
+              class="actions" style="gap:10px; flex-wrap:wrap;">
+
+          <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+          <input type="hidden" name="cpeVendorId" th:value="${vendorId}">
+
+          <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;" required>
+
+          <!-- Canonical product selector (scoped by vendorId) -->
+          <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
+            <input id="productSearchInput" class="input" type="text"
+                   placeholder="Canonical product (type to search)" autocomplete="off" required>
+            <input id="cpeProductId" type="hidden" name="cpeProductId" required>
+
+            <div id="productSuggestBox" class="suggest-box" style="display:none;">
+              <div id="productSuggestList"></div>
+              <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
+                Tip: select one item to set productId.
+              </div>
+            </div>
+
+            <div id="productSelectedHint" class="muted" style="font-size:12px;"></div>
+          </div>
+
+          <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
+
+          <button class="btn btn-primary" type="submit">Save</button>
+        </form>
+
+        <div class="muted text-12 mt-8" style="line-height:1.6;">
+          This form pins <span class="mono">vendorId</span> to the selected workspace vendor to prevent cross-vendor mistakes.
         </div>
       </div>
 
-      <details style="margin-top:10px;" th:if="${seedReport.messages != null && !#lists.isEmpty(seedReport.messages)}">
-        <summary class="btn btn-soft" style="display:inline-flex;">Show details</summary>
-        <div style="margin-top:8px;">
-          <div class="muted mono" th:each="m : ${seedReport.messages}" th:text="${m}"
-               style="font-size:12px; line-height:1.6; padding:2px 0;"></div>
+      <!-- Product alias list -->
+      <div class="card">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+            <tr>
+              <th style="width:90px;">ID</th>
+              <th>aliasNorm</th>
+              <th style="width:120px;">vendorId</th>
+              <th style="width:160px;">productId</th>
+              <th>canonical product</th>
+              <th style="width:110px;">status</th>
+              <th>note</th>
+              <th style="width:140px;">Action</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <tr th:if="${productRows == null || #lists.isEmpty(productRows)}">
+              <td colspan="8" class="muted" style="padding:14px;">No rows.</td>
+            </tr>
+
+            <tr th:each="r : ${productRows}">
+              <td class="mono" th:text="${r.id}">1</td>
+              <td class="mono" th:text="${r.aliasNorm}">visual studio code</td>
+              <td class="mono" th:text="${r.cpeVendorId}">123</td>
+              <td class="mono" th:text="${r.cpeProductId}">456</td>
+              <td th:text="${productLabels[r.cpeProductId]}">Microsoft Visual Studio Code</td>
+              <td><span class="badge" th:text="${r.status}">ACTIVE</span></td>
+              <td th:text="${r.note}">-</td>
+              <td>
+                <form th:action="@{/admin/synonyms/products/toggle}" method="post" style="display:inline;">
+                  <input type="hidden" name="id" th:value="${r.id}">
+                  <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+                  <button class="btn btn-ghost" type="submit">Toggle</button>
+                </form>
+              </td>
+            </tr>
+
+            </tbody>
+          </table>
         </div>
-      </details>
+      </div>
+
     </div>
   </div>
 
-  <!-- List -->
-  <div class="card">
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-        <tr>
-          <th style="width:90px;">ID</th>
-          <th>aliasNorm</th>
-          <th style="width:120px;">vendorId</th>
-          <th>canonical vendor</th>
-          <th style="width:110px;">status</th>
-          <th>note</th>
-          <th style="width:140px;">Action</th>
-        </tr>
-        </thead>
-        <tbody>
-
-        <tr th:if="${rows == null || #lists.isEmpty(rows)}">
-          <td colspan="7" class="muted" style="padding:14px;">No rows.</td>
-        </tr>
-
-        <tr th:each="r : ${rows}">
-          <td class="mono" th:text="${r.id}">1</td>
-          <td class="mono" th:text="${r.aliasNorm}">microsoft corp</td>
-          <td class="mono" th:text="${r.cpeVendorId}">123</td>
-          <td th:text="${vendorLabels[r.cpeVendorId]}">Microsoft</td>
-          <td><span class="badge" th:text="${r.status}">ACTIVE</span></td>
-          <td th:text="${r.note}">-</td>
-          <td>
-            <form th:action="@{/admin/synonyms/vendors/toggle}" method="post" style="display:inline;">
-              <input type="hidden" name="id" th:value="${r.id}">
-              <input type="hidden" name="redirect" value="/admin/synonyms/vendors">
-              <button class="btn btn-soft" type="submit">Toggle</button>
-            </form>
-          </td>
-        </tr>
-
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <script>
+  <!-- =========================
+       Suggest JS (vendor + product)
+       ========================= -->
+  <script th:inline="javascript">
     (function() {
-      const input = document.getElementById('vendorSearchInput');
-      const hiddenId = document.getElementById('cpeVendorId');
-      const box = document.getElementById('vendorSuggestBox');
-      const list = document.getElementById('vendorSuggestList');
-      const hint = document.getElementById('vendorSelectedHint');
-      const form = document.getElementById('vendorAliasForm');
-
-      let timer = null;
-      let lastQuery = '';
-      let selected = null;
-
       function escapeHtml(s) {
         return (s ?? '').replace(/[&<>"']/g, (c) => ({
           '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
         }[c]));
       }
-
       function highlight(text, q){
         const t = text || '';
         if (!q) return escapeHtml(t);
@@ -240,20 +370,16 @@
         const c = escapeHtml(t.slice(idx + q.length));
         return `${a}<mark>${b}</mark>${c}`;
       }
-
-      function closeBox() { box.style.display = 'none'; }
-      function openBox() { box.style.display = 'block'; }
-
-      function setSelected(item) {
-        selected = item;
-        hiddenId.value = String(item.id);
-        input.value = item.label || item.nameNorm || '';
-        hint.textContent = `Selected: id=${item.id} / ${item.nameNorm || ''}`;
-        closeBox();
+      function rank(item, qLower){
+        const label = (item.label || '').toLowerCase();
+        const norm  = (item.nameNorm || '').toLowerCase();
+        if (label === qLower || norm === qLower) return 0;
+        if (label.startsWith(qLower) || norm.startsWith(qLower)) return 1;
+        if (label.includes(qLower) || norm.includes(qLower)) return 2;
+        return 9;
       }
 
-      async function fetchVendors(q) {
-        const url = `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`;
+      async function fetchGrouped(url) {
         const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
         if (!res.ok) return [];
         const json = await res.json();
@@ -262,102 +388,188 @@
         return exact.concat(others);
       }
 
-      function rank(item, qLower){
-        const label = (item.label || '').toLowerCase();
-        const norm  = (item.nameNorm || '').toLowerCase();
-        if (label === qLower || norm === qLower) return 0;         // exact
-        if (label.startsWith(qLower) || norm.startsWith(qLower)) return 1; // prefix
-        if (label.includes(qLower) || norm.includes(qLower)) return 2;     // contains
-        return 9;
-      }
+      function bindSuggest(inputId, boxId, listId, onSelect, buildUrl) {
+        const input = document.getElementById(inputId);
+        const box = document.getElementById(boxId);
+        const list = document.getElementById(listId);
+        if (!input || !box || !list) return;
 
-      function render(items) {
-        const q = input.value.trim();
-        const qLower = q.toLowerCase();
+        let timer = null;
+        let lastQuery = '';
 
-        if (!items || items.length === 0) {
-          list.innerHTML = `<div class="muted" style="padding:8px;">No matches.</div>`;
+        function closeBox() { box.style.display = 'none'; }
+        function openBox() { box.style.display = 'block'; }
+
+        function render(items) {
+          const q = input.value.trim();
+          const qLower = q.toLowerCase();
+
+          if (!items || items.length === 0) {
+            list.innerHTML = `<div class="muted" style="padding:8px;">No matches.</div>`;
+            openBox();
+            return;
+          }
+
+          const sorted = items.slice().sort((a,b) => rank(a, qLower) - rank(b, qLower));
+          const rows = sorted.slice(0, 10).map(it => {
+            const label = it.label || '';
+            const norm = it.nameNorm || '';
+            return `
+              <div class="suggest-item"
+                   data-id="${it.id}"
+                   data-label="${escapeHtml(label)}"
+                   data-norm="${escapeHtml(norm)}">
+                <div class="suggest-top">
+                  <div class="suggest-label">${highlight(label, q)}</div>
+                  <div class="suggest-id mono">id=${it.id}</div>
+                </div>
+                <div class="suggest-sub">${highlight(norm, q)}</div>
+              </div>
+            `;
+          }).join('');
+
+          list.innerHTML = rows;
+
+          Array.from(list.querySelectorAll('[data-id]')).forEach(el => {
+            el.addEventListener('click', () => {
+              onSelect({
+                id: Number(el.getAttribute('data-id')),
+                label: el.getAttribute('data-label'),
+                nameNorm: el.getAttribute('data-norm')
+              });
+              closeBox();
+            });
+          });
+
           openBox();
-          return;
         }
 
-        const sorted = items.slice().sort((a,b) => rank(a, qLower) - rank(b, qLower));
-
-        const rows = sorted.slice(0, 10).map(it => {
-          const label = it.label || '';
-          const norm = it.nameNorm || '';
-          return `
-            <div class="suggest-item"
-                 data-id="${it.id}"
-                 data-label="${escapeHtml(label)}"
-                 data-norm="${escapeHtml(norm)}">
-              <div class="suggest-top">
-                <div class="suggest-label">${highlight(label, q)}</div>
-                <div class="suggest-id mono">id=${it.id}</div>
-              </div>
-              <div class="suggest-sub">${highlight(norm, q)}</div>
-            </div>
-          `;
-        }).join('');
-
-        list.innerHTML = rows;
-
-        Array.from(list.querySelectorAll('[data-id]')).forEach(el => {
-          el.addEventListener('click', () => {
-            const item = {
-              id: Number(el.getAttribute('data-id')),
-              label: el.getAttribute('data-label'),
-              nameNorm: el.getAttribute('data-norm')
-            };
-            setSelected(item);
-          });
+        input.addEventListener('input', () => {
+          const q = input.value.trim();
+          if (q.length < 2) { closeBox(); return; }
+          lastQuery = q;
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(async () => {
+            if (lastQuery !== q) return;
+            const url = buildUrl(q);
+            const items = await fetchGrouped(url);
+            render(items);
+          }, 180);
         });
 
-        openBox();
-      }
-
-      function clearSelectionIfTextChanged() {
-        if (selected && input.value !== (selected.label || selected.nameNorm || '')) {
-          selected = null;
-          hiddenId.value = '';
-          hint.textContent = '';
-        }
-      }
-
-      input.addEventListener('input', () => {
-        clearSelectionIfTextChanged();
-        const q = input.value.trim();
-        if (q.length < 2) { closeBox(); return; }
-
-        lastQuery = q;
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(async () => {
-          if (lastQuery !== q) return;
-          const items = await fetchVendors(q);
+        input.addEventListener('focus', async () => {
+          const q = input.value.trim();
+          if (q.length < 2) return;
+          const url = buildUrl(q);
+          const items = await fetchGrouped(url);
           render(items);
-        }, 180);
-      });
+        });
 
-      // ★変更：フォーカス時も再検索して候補を必ず出す（完全一致でも他候補が見える）
-      input.addEventListener('focus', async () => {
-        const q = input.value.trim();
-        if (q.length < 2) return;
-        const items = await fetchVendors(q);
-        render(items);
-      });
+        document.addEventListener('click', (e) => {
+          if (!box.contains(e.target) && e.target !== input) closeBox();
+        });
+      }
 
-      document.addEventListener('click', (e) => {
-        if (!box.contains(e.target) && e.target !== input) closeBox();
-      });
+      // Workspace vendor selector: navigate to vendorId
+      bindSuggest(
+              'workspaceVendorInput',
+              'workspaceVendorSuggestBox',
+              'workspaceVendorSuggestList',
+              function(item){
+                // keep current tab if present in URL; default vendors
+                const params = new URLSearchParams(window.location.search);
+                const tab = params.get('tab') || 'vendors';
+                window.location.href = `/admin/synonyms/vendors?vendorId=${item.id}&tab=${encodeURIComponent(tab)}`;
+              },
+              function(q){ return `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`; }
+      );
 
-      // form validation: must select vendor (hidden id)
-      form.addEventListener('submit', (e) => {
-        if (!hiddenId.value) {
-          e.preventDefault();
-          alert('Please select a canonical vendor from suggestions (so vendorId is set).');
-          input.focus();
+      // Vendor alias add: set hidden vendorId
+      (function(){
+        const input = document.getElementById('vendorSearchInput');
+        const hiddenId = document.getElementById('cpeVendorId');
+        const hint = document.getElementById('vendorSelectedHint');
+        const form = document.getElementById('vendorAliasForm');
+        let selected = null;
+
+        bindSuggest(
+                'vendorSearchInput',
+                'vendorSuggestBox',
+                'vendorSuggestList',
+                function(item){
+                  selected = item;
+                  hiddenId.value = String(item.id);
+                  input.value = item.label || item.nameNorm || '';
+                  hint.textContent = `Selected: id=${item.id} / ${item.nameNorm || ''}`;
+                },
+                function(q){ return `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`; }
+        );
+
+        function clearSelectionIfTextChanged() {
+          if (selected && input.value !== (selected.label || selected.nameNorm || '')) {
+            selected = null;
+            hiddenId.value = '';
+            hint.textContent = '';
+          }
         }
-      });
+        if (input) {
+          input.addEventListener('input', clearSelectionIfTextChanged);
+        }
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            if (!hiddenId.value) {
+              e.preventDefault();
+              alert('Please select a canonical vendor from suggestions (so vendorId is set).');
+              input && input.focus();
+            }
+          });
+        }
+      })();
+
+      // Product alias add: vendor scoped
+      (function(){
+        const vendorId = /*[[${vendorId}]]*/ null; // thymeleaf inline
+        const input = document.getElementById('productSearchInput');
+        const hiddenId = document.getElementById('cpeProductId');
+        const hint = document.getElementById('productSelectedHint');
+        const form = document.getElementById('productAliasForm');
+        let selected = null;
+
+        if (!input || !hiddenId) return;
+        if (!vendorId) return;
+
+        bindSuggest(
+                'productSearchInput',
+                'productSuggestBox',
+                'productSuggestList',
+                function(item){
+                  selected = item;
+                  hiddenId.value = String(item.id);
+                  input.value = item.label || item.nameNorm || '';
+                  hint.textContent = `Selected: id=${item.id} / ${item.nameNorm || ''}`;
+                },
+                function(q){ return `/api/dict/products/search2?vendorId=${vendorId}&q=${encodeURIComponent(q)}`; }
+        );
+
+        function clearSelectionIfTextChanged() {
+          if (selected && input.value !== (selected.label || selected.nameNorm || '')) {
+            selected = null;
+            hiddenId.value = '';
+            hint.textContent = '';
+          }
+        }
+        input.addEventListener('input', clearSelectionIfTextChanged);
+
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            if (!hiddenId.value) {
+              e.preventDefault();
+              alert('Please select a canonical product from suggestions (so productId is set).');
+              input.focus();
+            }
+          });
+        }
+      })();
     })();
   </script>
 
