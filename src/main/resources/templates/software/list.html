@@ -11,7 +11,7 @@
     <a class="btn" th:href="@{/software}">Clear</a>
   </div>
 
-  <!-- Controls: same card style as alerts/vulns -->
+  <!-- Controls -->
   <div class="card" style="padding:12px; margin:12px 0;">
     <form method="get" th:action="@{/software}"
           style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
@@ -32,12 +32,13 @@
         </select>
       </div>
 
+      <!-- keep: existing filter (cpeName presence), but label more explicitly -->
       <div class="field" style="min-width:220px; margin:0;">
-        <label>CPE mapping</label>
+        <label>CPE name (legacy)</label>
         <select name="unmappedCpe">
           <option value="" th:selected="${unmappedCpe == null}">All</option>
-          <option value="true" th:selected="${unmappedCpe != null and unmappedCpe == true}">UNMAPPED only</option>
-          <option value="false" th:selected="${unmappedCpe != null and unmappedCpe == false}">MAPPED only</option>
+          <option value="true" th:selected="${unmappedCpe != null and unmappedCpe == true}">Empty only</option>
+          <option value="false" th:selected="${unmappedCpe != null and unmappedCpe == false}">Has value only</option>
         </select>
       </div>
 
@@ -45,84 +46,142 @@
         <button class="btn" type="submit">Apply</button>
       </div>
 
-      <!-- keep page size -->
       <input type="hidden" name="size" th:value="${page.size}"/>
     </form>
 
+    <!-- New: show link/resolve summary for the current page (based on CanonicalCpeLinkingService.stats(rows)) -->
     <p class="muted" style="margin:10px 0 0;">
       Total installs: <b th:text="${totalInstalls}">0</b>
-      / Unmapped (CPE): <b th:text="${unmappedCount}">0</b>
+      <span style="opacity:.7;">/</span>
+      This page: checked <b th:text="${pageLinkStats != null ? pageLinkStats.checked : 0}">0</b>,
+      linked <b th:text="${pageLinkStats != null ? pageLinkStats.linked : 0}">0</b>
+      (valid <b th:text="${pageLinkStats != null ? pageLinkStats.linkedValid : 0}">0</b>,
+      stale <b th:text="${pageLinkStats != null ? pageLinkStats.linkedStale : 0}">0</b>),
+      resolvable <b th:text="${pageLinkStats != null ? pageLinkStats.resolvable : 0}">0</b>,
+      unresolvable <b th:text="${pageLinkStats != null ? pageLinkStats.unresolvable : 0}">0</b>,
+      needsNorm <b th:text="${pageLinkStats != null ? pageLinkStats.needsNormalization : 0}">0</b>
     </p>
   </div>
 
-  <!-- Table: use table-wrap like alerts/vulns -->
+  <!-- Table -->
   <div class="card p-0 overflow-auto">
     <div class="table-wrap table--fixed">
       <table class="table m-0">
-      <thead>
-      <tr>
-        <th style="width:72px;">ID</th>
-        <th>Vendor</th>
-        <th>Product</th>
-        <th>Version</th>
-        <th>CPE</th>
-        <th>Asset</th>
-        <th style="width: 160px;">Actions</th>
-      </tr>
-      </thead>
+        <thead>
+        <tr>
+          <th style="width:72px;">ID</th>
+          <th>Vendor</th>
+          <th>Product</th>
+          <th>Version</th>
+          <th style="width:260px;">Link status</th>
+          <th>Asset</th>
+          <th style="width: 160px;">Actions</th>
+        </tr>
+        </thead>
 
-      <tbody>
-      <tr th:each="s : ${page.content}">
-        <td th:text="${s.id}">1</td>
+        <tbody>
+        <tr th:each="s : ${page.content}"
+            th:with="a=${(linkAnalysisMap != null) ? linkAnalysisMap[s.id] : null}">
 
-        <td th:text="${s.vendor}">vendor</td>
-        <td class="cell-break">
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <a th:href="@{/software/{id}(id=${s.id})}">
-              <b th:text="${s.product}">product</b>
-            </a>
+          <td th:text="${s.id}">1</td>
 
-            <a th:if="${alertCountMap[s.id] != null and alertCountMap[s.id] > 0}"
-               class="badge"
-               th:href="@{/alerts(view='FLAT', status='OPEN', softwareId=${s.id})}">
-              <span th:text="${alertCountMap[s.id]}">0</span> alerts
-            </a>
+          <td th:text="${s.vendor}">vendor</td>
 
-          </div>
-        </td>
-        <td th:text="${s.version}">version</td>
+          <td class="cell-break">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <a th:href="@{/software/{id}(id=${s.id})}">
+                <b th:text="${s.product}">product</b>
+              </a>
 
-        <td class="cell-break">
-          <span th:if="${s.cpeName == null or #strings.trim(s.cpeName) == ''}" class="badge badge--warn">UNMAPPED</span>
-          <span th:unless="${s.cpeName == null or #strings.trim(s.cpeName) == ''}"
-                class="mono" th:text="${s.cpeName}">cpe:2.3:...</span>
-        </td>
+              <a th:if="${alertCountMap[s.id] != null and alertCountMap[s.id] > 0}"
+                 class="badge"
+                 th:href="@{/alerts(view='FLAT', status='OPEN', softwareId=${s.id})}">
+                <span th:text="${alertCountMap[s.id]}">0</span> alerts
+              </a>
+            </div>
+          </td>
 
-        <td>
-          <a th:href="@{/assets/{id}(id=${s.asset.id})}" th:text="${s.asset.name}">AssetName</a>
-        </td>
+          <td th:text="${s.version}">version</td>
 
-        <td>
-          <div class="actions" style="margin:0; justify-content:flex-start; gap:6px; flex-wrap:wrap;">
-            <a class="btn btn--small" th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
+          <!-- Link status (CanonicalCpeLinkingService.ItemResult) -->
+          <td class="cell-break">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 
-            <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
-                  style="display:inline;"
-                  onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
-              <input type="hidden" name="assetId" th:value="${s.asset.id}">
-              <input type="hidden" name="returnTo" value="software">
-              <button class="btn btn--small btn--danger" type="submit">Delete</button>
-            </form>
-          </div>
-        </td>
-      </tr>
+                <!-- LINKED -->
+                <span th:if="${a != null and a.result != null and a.result.name() == 'LINKED'}"
+                      class="badge">LINKED</span>
 
-      <tr th:if="${page.totalElements == 0}">
-        <td colspan="7" class="muted" style="padding:14px;">No software installs found.</td>
-      </tr>
-      </tbody>
-    </table>
-  </div>
+                <!-- STALE -->
+                <span th:if="${a != null and a.result != null and a.result.name() == 'STALE'}"
+                      class="badge badge--warn"
+                      th:title="${a.reason}">STALE</span>
+
+                <!-- RESOLVED (resolvable but not linked) -->
+                <span th:if="${a != null and a.result != null and a.result.name() == 'RESOLVED'}"
+                      class="badge"
+                      th:title="${a.reason}">RESOLVABLE</span>
+
+                <!-- UNRESOLVED -->
+                <span th:if="${a != null and a.result != null and a.result.name() == 'UNRESOLVED'}"
+                      class="badge badge--danger"
+                      th:title="${a.reason}">UNRESOLVABLE</span>
+
+                <!-- needs normalization -->
+                <span th:if="${a != null and a.needsNormalization}"
+                      class="badge badge--warn"
+                      title="normalizedVendor / normalizedProduct missing or blank">NEEDS NORM</span>
+
+                <!-- Fallback if analysis missing -->
+                <span th:if="${a == null}" class="badge badge--warn"
+                      title="analysis not provided by controller">UNKNOWN</span>
+              </div>
+
+              <!-- Optional: show canonical IDs when available (from resolve result) -->
+              <div class="muted mono" style="font-size:12px;"
+                   th:if="${a != null and a.resolve != null and a.resolve.hit}">
+                dict:
+                <span th:text="${a.resolve.vendorId}">0</span>
+                /
+                <span th:text="${a.resolve.productId}">0</span>
+                ·
+                <span th:text="${a.resolve.vendorNorm}">vendor_norm</span>
+                :
+                <span th:text="${a.resolve.productNorm}">product_norm</span>
+              </div>
+
+              <!-- Keep showing cpeName if present (legacy) -->
+              <div class="mono" style="font-size:12px;"
+                   th:if="${s.cpeName != null and #strings.trim(s.cpeName) != ''}"
+                   th:text="${s.cpeName}">cpe:2.3:...</div>
+            </div>
+          </td>
+
+          <td>
+            <a th:href="@{/assets/{id}(id=${s.asset.id})}" th:text="${s.asset.name}">AssetName</a>
+          </td>
+
+          <td>
+            <div class="actions" style="margin:0; justify-content:flex-start; gap:6px; flex-wrap:wrap;">
+              <a class="btn btn--small" th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
+
+              <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
+                    style="display:inline;"
+                    onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
+                <input type="hidden" name="assetId" th:value="${s.asset.id}">
+                <input type="hidden" name="returnTo" value="software">
+                <button class="btn btn--small btn--danger" type="submit">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+
+        <tr th:if="${page.totalElements == 0}">
+          <td colspan="7" class="muted" style="padding:14px;">No software installs found.</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- pager -->
