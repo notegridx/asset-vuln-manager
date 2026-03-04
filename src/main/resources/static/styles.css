@@ -1453,3 +1453,61 @@ td.cell-break {
 .run-details__preview {
     min-width: 0;
 }
+
+/* =========================================================
+   Dashboard: Top10 Vendors / Products
+   - prevent overflow on narrow screens
+   ========================================================= */
+
+.dash-top10-grid{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+/* IMPORTANT: allow grid children to shrink (avoid overlap/overflow) */
+.dash-top10-grid > *{
+    min-width: 0;
+}
+
+@media (max-width: 900px){
+    .dash-top10-grid{
+        grid-template-columns: 1fr; /* stack on narrow screens */
+    }
+}
+
+.dash-top10-col{
+    min-width: 0;
+}
+
+/* Use existing pattern: scroll only inside table wrapper if ever needed */
+.table-wrap{
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Make table shrinkable; keep columns stable */
+.dash-top10-table{
+    width: 100%;
+    table-layout: fixed;
+}
+
+.dash-top10-rank{ width: 60px; }
+.dash-top10-count{ width: 120px; }
+
+/* Truncate long labels so page never horizontally overflows */
+.dash-top10-label{
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+.dash-top10-id{
+    font-size: 12px;
+    white-space: nowrap;
+}

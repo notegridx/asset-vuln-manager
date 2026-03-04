@@ -307,7 +307,8 @@
                 </div>
 
                 <div class="muted" style="font-size:12px; margin-left:auto;">
-                    Current: <span class="pill" th:text="${topRangeLabel != null ? topRangeLabel : 'All time'}">All time</span>
+                    Current:
+                    <span class="pill" th:text="${topRangeLabel != null ? topRangeLabel : 'All time'}">All time</span>
                 </div>
             </div>
         </form>
@@ -339,34 +340,30 @@
             })();
         </script>
 
-        <!-- existing grid (vendors/products tables) -->
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-            ...
-        </div>
-    </div>
+        <!-- Vendors + Products (responsive, no overflow) -->
+        <div class="dash-top10-grid">
 
-    <div class="card" style="padding:12px; margin-top:12px;">
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
             <!-- Vendors -->
-            <div>
+            <div class="dash-top10-col">
                 <div class="muted" style="font-size:12px; margin-bottom:8px;">Top Vendors</div>
-                <div style="overflow:auto;">
-                    <table class="table">
+
+                <div class="table-wrap">
+                    <table class="table dash-top10-table">
                         <thead>
                         <tr>
-                            <th style="min-width:60px;">Rank</th>
-                            <th style="min-width:220px;">Vendor</th>
-                            <th style="min-width:120px;">CVE count</th>
+                            <th class="dash-top10-rank">Rank</th>
+                            <th>Vendor</th>
+                            <th class="dash-top10-count">CVE count</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr th:each="r, st : ${topVendors}">
-                            <td class="muted" th:text="${st.index + 1}">1</td>
+                            <td class="muted dash-top10-rank" th:text="${st.index + 1}">1</td>
                             <td>
-                                <span class="mono" th:text="${r.label}">microsoft</span>
-                                <span class="muted" style="font-size:12px;" th:text="' (#' + ${r.id} + ')'">(#0)</span>
+                                <span class="mono dash-top10-label" th:text="${r.label}">microsoft</span>
+                                <span class="muted dash-top10-id" th:text="' (#' + ${r.id} + ')'">(#0)</span>
                             </td>
-                            <td><span class="pill" th:text="${r.cveCount}">0</span></td>
+                            <td class="dash-top10-count"><span class="pill" th:text="${r.cveCount}">0</span></td>
                         </tr>
                         <tr th:if="${topVendors == null || #lists.isEmpty(topVendors)}">
                             <td colspan="3" class="muted">No items.</td>
@@ -377,25 +374,26 @@
             </div>
 
             <!-- Products -->
-            <div>
+            <div class="dash-top10-col">
                 <div class="muted" style="font-size:12px; margin-bottom:8px;">Top Products</div>
-                <div style="overflow:auto;">
-                    <table class="table">
+
+                <div class="table-wrap">
+                    <table class="table dash-top10-table">
                         <thead>
                         <tr>
-                            <th style="min-width:60px;">Rank</th>
-                            <th style="min-width:260px;">Product</th>
-                            <th style="min-width:120px;">CVE count</th>
+                            <th class="dash-top10-rank">Rank</th>
+                            <th>Product</th>
+                            <th class="dash-top10-count">CVE count</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr th:each="r, st : ${topProducts}">
-                            <td class="muted" th:text="${st.index + 1}">1</td>
+                            <td class="muted dash-top10-rank" th:text="${st.index + 1}">1</td>
                             <td>
-                                <span class="mono" th:text="${r.label}">windows</span>
-                                <span class="muted" style="font-size:12px;" th:text="' (#' + ${r.id} + ')'">(#0)</span>
+                                <span class="mono dash-top10-label" th:text="${r.label}">windows</span>
+                                <span class="muted dash-top10-id" th:text="' (#' + ${r.id} + ')'">(#0)</span>
                             </td>
-                            <td><span class="pill" th:text="${r.cveCount}">0</span></td>
+                            <td class="dash-top10-count"><span class="pill" th:text="${r.cveCount}">0</span></td>
                         </tr>
                         <tr th:if="${topProducts == null || #lists.isEmpty(topProducts)}">
                             <td colspan="3" class="muted">No items.</td>
@@ -404,6 +402,7 @@
                     </table>
                 </div>
             </div>
+
         </div>
     </div>
 
