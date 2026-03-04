@@ -1659,3 +1659,14 @@ td.cell-break {
     background: rgba(255,255,255,0.03);
     color: var(--muted);
 }
+
+/* =========================================
+   Unresolved Mappings: resolved rows style
+   ========================================= */
+tr.row-resolved {
+    opacity: 0.55;
+}
+
+tr.row-resolved .badge {
+    filter: grayscale(0.6);
+}

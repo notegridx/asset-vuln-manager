@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 
 @Controller
 public class AdminInventoryController {
@@ -56,7 +57,6 @@ public class AdminInventoryController {
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
-            // ★ unchecked のとき activeOnly が飛んでこない問題を判定するフラグ
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             Model model
     ) {
@@ -66,9 +66,13 @@ public class AdminInventoryController {
                 ? unresolvedMappingRepository.findAllActive()
                 : unresolvedMappingRepository.findAll();
 
-        if (status != null && !status.isBlank()) {
-            String s = status.trim();
-            list.removeIf(m -> m.getStatus() == null || !m.getStatus().equalsIgnoreCase(s));
+        // status filter (null/blank => NEW, ALL => no filter)
+        String effectiveStatus = (status == null || status.isBlank())
+                ? "NEW"
+                : status.trim().toUpperCase(Locale.ROOT);
+
+        if (!"ALL".equals(effectiveStatus)) {
+            list.removeIf(m -> m.getStatus() == null || !m.getStatus().equalsIgnoreCase(effectiveStatus));
         }
 
         // NOTE: runId filtering is not implemented in the current code base.
@@ -81,11 +85,9 @@ public class AdminInventoryController {
         });
 
         model.addAttribute("mappings", list);
-        model.addAttribute("status", (status == null || status.isBlank()) ? null : status.trim().toUpperCase());
+        model.addAttribute("status", effectiveStatus);
         model.addAttribute("runId", runId);
         model.addAttribute("activeOnly", active);
-
-        // hidden input の値固定に使う（未使用でもOKだが置いとくとデバッグしやすい）
         model.addAttribute("activeOnlyPresent", activeOnlyPresent);
 
         return "admin/unresolved";
@@ -142,7 +144,7 @@ public class AdminInventoryController {
      * checkbox の仕様：
      * - checked の時だけ activeOnly=true が飛ぶ
      * - unchecked の時は activeOnly 自体が飛ばない
-     *
+     * <p>
      * そこで、form側で activeOnlyPresent=1 を常に送るようにして、
      * 「Filter押下の結果 activeOnly が無い」= unchecked と判断する。
      */
