@@ -360,18 +360,29 @@ public class JsonStagedImportService {
             Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
             if (asset == null) continue;
 
-            String vendor = normEmpty(r.getVendor());
+            String vendorOriginal = normEmpty(r.getVendor());
+            String vendorDisplay = normEmpty(cleanVendorDisplay(r.getVendor())); // DN吸収
+            String productDisplay = product; // product側ノイズは normalizer/Synonym/token matching側で強化していく
             String version = normEmpty(r.getVersion());
 
+// upsert: まず新しい正規化済みvendorで探す
             SoftwareInstall sw = softwareInstallRepository
-                    .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendor, product, version)
+                    .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendorDisplay, productDisplay, version)
                     .orElse(null);
 
+// 互換フォールバック：過去に DN のまま保存していた行を拾って一本化
+            if (sw == null && !vendorOriginal.equals(vendorDisplay)) {
+                sw = softwareInstallRepository
+                        .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendorOriginal, productDisplay, version)
+                        .orElse(null);
+            }
+
             if (sw == null) {
-                sw = new SoftwareInstall(asset, product);
-                sw.updateDetails(vendor, product, version, null);
+                sw = new SoftwareInstall(asset, productDisplay);
+                sw.updateDetails(vendorDisplay, productDisplay, version, null);
             } else {
-                sw.updateDetails(vendor, product, version, sw.getCpeName());
+                // 既存行が vendorOriginal（DN）だった場合もここで vendorDisplay に寄せられる
+                sw.updateDetails(vendorDisplay, productDisplay, version, sw.getCpeName());
             }
 
             // ★ import_run_id を必ず付与（importRunId方式の要）
@@ -410,14 +421,16 @@ public class JsonStagedImportService {
             // resolve at import-time (existing behavior)
             String vIn = normNullable(r.getVendorRaw());
             String pIn = normNullable(r.getProductRaw());
-            if (vIn == null) vIn = normNullable(vendor);
-            if (pIn == null) pIn = normNullable(product);
+            if (vIn == null) vIn = vendorDisplay;
+            if (pIn == null) pIn = productDisplay;
 
-            var res = softwareDictionaryValidator.resolve(vIn, pIn);
-            if (res.hit()) {
-                sw.linkCanonical(res.vendorId(), res.productId());
-            } else {
+// Windows OS/AppX/GUID系はリンク対象外（誤リンク防止）
+            if (looksLikeWindowsComponent(pIn)) {
                 sw.unlinkCanonical();
+            } else {
+                var res = softwareDictionaryValidator.resolve(vIn, pIn);
+                if (res.hit()) sw.linkCanonical(res.vendorId(), res.productId());
+                else sw.unlinkCanonical();
             }
 
             softwareInstallRepository.save(sw);
@@ -502,5 +515,49 @@ public class JsonStagedImportService {
                 return null;
             }
         }
+    }
+
+    // ===== DN / noise helpers (Import-time display cleanup) =====
+    private static final java.util.regex.Pattern DN_O =
+            java.util.regex.Pattern.compile("(?i)(?:^|,)\\s*O\\s*=\\s*([^,]+)");
+    private static final java.util.regex.Pattern DN_CN =
+            java.util.regex.Pattern.compile("(?i)(?:^|,)\\s*CN\\s*=\\s*([^,]+)");
+
+    private static final java.util.regex.Pattern GUID =
+            java.util.regex.Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+
+    private static String cleanVendorDisplay(String vendorInput) {
+        String t = normNullable(vendorInput);
+        if (t == null) return "";
+
+        // DN -> prefer O=, fallback CN=
+        if (t.contains("=")) {
+            var mo = DN_O.matcher(t);
+            if (mo.find()) t = mo.group(1).trim();
+            else {
+                var mcn = DN_CN.matcher(t);
+                if (mcn.find()) t = mcn.group(1).trim();
+            }
+        }
+
+        // light legal-suffix cleanup (display用なので小さく)
+        t = t.replaceAll("(?i)\\band/or its affiliates\\b", " ");
+        t = t.replaceAll("(?i)\\b(inc\\.?|llc|ltd\\.?|corp\\.?|corporation|company|co\\.?|gmbh|ag|s\\.a\\.?|technologies|technology|foundation)\\b", " ");
+        t = t.replaceAll("\\s+", " ").trim();
+        return t;
+    }
+
+    private static boolean looksLikeWindowsComponent(String productRawOrDisplay) {
+        String t = normNullable(productRawOrDisplay);
+        if (t == null) return false;
+
+        if (GUID.matcher(t).matches()) return true;
+
+        String lower = t.toLowerCase(java.util.Locale.ROOT);
+        if (lower.startsWith("windows.") || lower.startsWith("microsoft.") || lower.startsWith("microsoftwindows.")) return true;
+
+        int dots = 0;
+        for (int i = 0; i < t.length(); i++) if (t.charAt(i) == '.') dots++;
+        return dots >= 2;
     }
 }

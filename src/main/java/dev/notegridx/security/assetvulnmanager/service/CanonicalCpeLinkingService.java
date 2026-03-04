@@ -6,12 +6,16 @@ import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 public class CanonicalCpeLinkingService {
 
@@ -20,19 +24,22 @@ public class CanonicalCpeLinkingService {
     private final CpeProductRepository productRepo;
     private final VendorProductNormalizer normalizer;
     private final SynonymService synonymService;
+    private final TokenMatchingService tokenMatchingService;
 
     public CanonicalCpeLinkingService(
             SoftwareInstallRepository softwareRepo,
             CpeVendorRepository vendorRepo,
             CpeProductRepository productRepo,
             VendorProductNormalizer normalizer,
-            SynonymService synonymService
+            SynonymService synonymService,
+            TokenMatchingService tokenMatchingService
     ) {
         this.softwareRepo = softwareRepo;
         this.vendorRepo = vendorRepo;
         this.productRepo = productRepo;
         this.normalizer = normalizer;
         this.synonymService = synonymService;
+        this.tokenMatchingService = tokenMatchingService;
     }
 
     // ------------------------------------------------------------
@@ -165,7 +172,9 @@ public class CanonicalCpeLinkingService {
     }
 
     // ------------------------------------------------------------
-    // Existing: resolve (string -> dictionary lookup)
+    // resolve (string -> dictionary lookup)
+    //  - exact vendor/product (after synonym)
+    //  - fallback: product token matching within vendor
     // ------------------------------------------------------------
 
     @Transactional(readOnly = true)
@@ -184,7 +193,7 @@ public class CanonicalCpeLinkingService {
         String v1 = synonymService.canonicalVendorOrSame(v0);
         String p1 = synonymService.canonicalProductOrSame(v1, p0);
 
-        // 3) dictionary lookup
+        // 3) dictionary lookup (vendor)
         if (v1 == null || v1.isBlank()) {
             return ResolveResult.miss("vendor missing (cannot lookup cpe_products)", needsNorm);
         }
@@ -194,12 +203,36 @@ public class CanonicalCpeLinkingService {
             return ResolveResult.miss("vendor not found in cpe_vendors: " + v1, needsNorm);
         }
 
+        // 4) exact product
         CpeProduct prod = productRepo.findByVendorIdAndNameNorm(vendor.getId(), p1).orElse(null);
-        if (prod == null) {
-            return ResolveResult.miss("product not found in cpe_products: " + v1 + ":" + p1, needsNorm);
+        if (prod != null) {
+            return ResolveResult.hit(vendor.getId(), prod.getId(), v1, p1, needsNorm);
         }
 
-        return ResolveResult.hit(vendor.getId(), prod.getId(), v1, p1, needsNorm);
+        // 5) fallback: token matching (within vendor only)
+        if (shouldSkipTokenMatching(s.getProduct(), p1)) {
+            if (log.isDebugEnabled()) {
+                log.debug("CPE token-match skipped: swId={}, vendorNorm={}, productNorm={}, productRaw='{}'",
+                        safeId(s), v1, p1, safeStr(s.getProduct()));
+            }
+            return ResolveResult.miss("product not found (token-matching skipped): " + v1 + ":" + p1, needsNorm);
+        }
+
+        Optional<CpeProduct> best = tokenMatchingService.bestProduct(vendor.getId(), p1);
+        if (best.isPresent()) {
+            CpeProduct bp = best.get();
+            if (log.isDebugEnabled()) {
+                log.debug("CPE token-match HIT: swId={}, vendorId={}, vendorNorm={}, inputProductNorm={}, matchedProductId={}, matchedProductNorm={}",
+                        safeId(s), vendor.getId(), v1, p1, bp.getId(), bp.getNameNorm());
+            }
+            return ResolveResult.hit(vendor.getId(), bp.getId(), v1, bp.getNameNorm(), needsNorm);
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("CPE token-match MISS: swId={}, vendorId={}, vendorNorm={}, productNorm={}, productRaw='{}'",
+                    safeId(s), vendor.getId(), v1, p1, safeStr(s.getProduct()));
+        }
+        return ResolveResult.miss("product not found in cpe_products: " + v1 + ":" + p1, needsNorm);
     }
 
     private static String bestEffortVendor(SoftwareInstall s) {
@@ -225,5 +258,57 @@ public class CanonicalCpeLinkingService {
         public static ResolveResult miss(String reason, boolean needsNorm) {
             return new ResolveResult(false, null, null, null, null, reason, needsNorm);
         }
+    }
+
+    // ============================================================
+    // Token matching skip heuristics
+    // ============================================================
+
+    private static final Pattern GUID = Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+    private static final Pattern APPX_PREFIX = Pattern.compile("(?i)^(microsoft\\.|microsoftwindows\\.|windows\\.)");
+    private static final Pattern NAMESPACE_DOT = Pattern.compile("(?i)[a-z]\\.[a-z]"); // letter.dot.letter
+
+    /**
+     * WindowsのOS/Store/AppX系・GUID系は token matching の誤爆が多いので対象外にする。
+     */
+    private boolean shouldSkipTokenMatching(String productRaw, String productNorm) {
+        String pr = (productRaw == null) ? "" : productRaw.trim();
+        if (pr.isEmpty()) return true;
+
+        // GUID product names
+        if (GUID.matcher(pr).matches()) return true;
+
+        // AppX-ish (dot-separated namespace style) by normalized form
+        String pn = (productNorm == null) ? "" : productNorm.trim();
+        if (!pn.isEmpty() && APPX_PREFIX.matcher(pn).find()) return true;
+
+        // Namespace-ish dot chaining (avoid false positives caused by "14.42.34433" etc.)
+        // e.g. "Microsoft.Windows.CloudExperienceHost" => many occurrences of letter.dot.letter
+        int hits = 0;
+        var m = NAMESPACE_DOT.matcher(pr);
+        while (m.find()) {
+            hits++;
+            if (hits >= 2) return true; // 2回以上ならほぼ namespace
+        }
+
+        // Also skip AppX name style: contains dot but no spaces (e.g. Microsoft.AAD.BrokerPlugin / Clipchamp.Clipchamp)
+        if (pr.contains(".") && !pr.contains(" ")) return true;
+
+        return false;
+    }
+
+    private static Object safeId(SoftwareInstall s) {
+        try {
+            // SoftwareInstall#getId() がある想定。無ければコンパイルが落ちるのでその場合は呼び出し箇所ごと削除。
+            return s.getId();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String safeStr(String s) {
+        if (s == null) return "";
+        String t = s.trim();
+        return (t.length() > 200) ? t.substring(0, 200) + "..." : t;
     }
 }

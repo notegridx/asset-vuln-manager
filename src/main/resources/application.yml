@@ -32,6 +32,8 @@ logging:
   level:
     org.hibernate.SQL: info
     dev.notegridx.security.assetvulnmanager: info
+    dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService: DEBUG
+    dev.notegridx.security.assetvulnmanager.service.TokenMatchingService: DEBUG
 
 app:
 

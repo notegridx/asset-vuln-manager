@@ -36,4 +36,6 @@ public interface CpeProductRepository extends JpaRepository<CpeProduct, Long> {
   order by p.nameNorm asc
 """)
     List<CpeProduct> findTop50ByVendorIdAndNameNormContainsOrderByNameNormAsc(@Param("vendorId") Long vendorId, @Param("q") String q);
+
+    List<CpeProduct> findTop200ByVendorIdAndNameNormContainingOrderByNameNormAsc(Long vendorId, String q);
 }
