@@ -87,18 +87,19 @@
         </form>
     </div>
 
-    <!-- ✅ Re-link (Canonical Backfill) moved here -->
+    <!-- ✅ Link (Canonical Backfill) -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <div class="actions" style="margin:0; align-items:flex-end;">
-            <h2 style="margin:0;">Re-link Software to Dictionary</h2>
+            <h2 style="margin:0;">Link Software to Dictionary</h2>
             <div class="muted" style="font-size:12px;">
-                Re-run canonical linking for <code>software_installs</code> using the current alias dictionary + CPE dictionary.
+                Apply dictionary-based canonical links to <code>software_installs</code> using the current alias dictionary + CPE dictionary.
             </div>
         </div>
 
         <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
-            Use this after you add/edit vendor/product aliases. It updates <code>cpe_vendor_id</code> and <code>cpe_product_id</code>,
-            and queues misses into <code>unresolved_mappings</code>.
+            After JSON/CSV import, software rows may be <b>resolvable</b> (dictionary matchable) but not <b>linked</b> yet (IDs not written).
+            This action writes <code>cpe_vendor_id</code> and <code>cpe_product_id</code> for resolvable rows, and queues misses into
+            <code>unresolved_mappings</code>. Use <b>Force relink</b> after updating aliases to overwrite existing links.
         </div>
 
         <!-- Result flash -->
@@ -108,7 +109,8 @@
             <b>scanned</b> <span th:text="${backfillResult.scanned()}">0</span>
             <b>linked</b> <span th:text="${backfillResult.linked()}">0</span>
             <b>missed</b> <span th:text="${backfillResult.missed()}">0</span>
-            <span class="pill" th:text="${backfillResult.forceRebuild() ? 'forceRebuild: true' : 'forceRebuild: false'}">forceRebuild: false</span>
+            <span class="pill"
+                  th:text="${backfillResult.forceRebuild() ? 'forceRebuild: true' : 'forceRebuild: false'}">forceRebuild: false</span>
         </div>
 
         <form th:action="@{/admin/canonical/backfill}" method="post"
@@ -123,10 +125,10 @@
 
             <label class="muted" style="display:flex; gap:8px; align-items:center; margin-top:18px;">
                 <input type="checkbox" name="forceRebuild" value="true">
-                forceRebuild (relink even if already linked)
+                Force relink (overwrite existing links)
             </label>
 
-            <button class="btn btn-primary" type="submit">Re-link Now</button>
+            <button class="btn btn-primary" type="submit">Apply Links Now</button>
         </form>
     </div>
 
