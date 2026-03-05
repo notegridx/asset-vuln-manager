@@ -222,9 +222,22 @@ public class JsonStagedImportService {
             ImportStagingSoftware s = ImportStagingSoftware.of(run.getId(), rowNo);
 
             String externalKey = normNullable(r.externalKey);
+
+            // DISPLAY inputs (current schema fields)
             String vendor = normNullable(r.vendor);
             String product = normNullable(r.product);
             String version = normNullableAllowEmpty(r.version);
+
+            // RAW inputs: prefer explicit vendorRaw/productRaw/versionRaw from JSON.
+            // Fallback to vendor/product/version if raw fields are not present.
+            String vendorRaw = normNullable(r.vendorRaw);
+            if (vendorRaw == null) vendorRaw = vendor;
+
+            String productRaw = normNullable(r.productRaw);
+            if (productRaw == null) productRaw = product;
+
+            String versionRaw = normNullableAllowEmpty(r.versionRaw);
+            if (versionRaw == null) versionRaw = version;
 
             LocalDateTime installedAt = parseDateTimeNullable(r.installedAt);
 
@@ -241,9 +254,9 @@ public class JsonStagedImportService {
                     parseDateTimeNullable(r.lastSeenAt),
                     normNullable(r.type),
                     normNullable(r.source),
-                    normNullable(r.vendorRaw),
-                    normNullable(r.productRaw),
-                    normNullable(r.versionRaw),
+                    vendorRaw,
+                    productRaw,
+                    versionRaw,
                     normNullable(r.publisher),
                     normNullable(r.bundleId),
                     normNullable(r.packageManager),
@@ -256,7 +269,8 @@ public class JsonStagedImportService {
 
             if (externalKey == null) {
                 s.markInvalid("externalKey is required");
-            } else if (product == null) {
+            } else if (product == null && productRaw == null) {
+                // product is required; accept either product (display) or productRaw (raw)
                 s.markInvalid("product is required");
             } else {
                 if (!assetRepository.existsByExternalKey(externalKey)) {
@@ -354,35 +368,40 @@ public class JsonStagedImportService {
             if (!r.isValid()) continue;
 
             String externalKey = normNullable(r.getExternalKey());
-            String product = normNullable(r.getProduct());
-            if (externalKey == null || product == null) continue;
+            if (externalKey == null) continue;
 
             Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
             if (asset == null) continue;
 
-            String vendorOriginal = normEmpty(r.getVendor());
-            String vendorDisplay = normEmpty(cleanVendorDisplay(r.getVendor())); // DN吸収
-            String productDisplay = product; // product側ノイズは normalizer/Synonym/token matching側で強化していく
-            String version = normEmpty(r.getVersion());
+            // ===== RAW is the source of truth for import-time mapping =====
+            // Stage step guarantees raw fields are filled (fallback to display).
+            String vendorRaw = normEmpty(r.getVendorRaw());
+            String productRaw = normEmpty(r.getProductRaw());
+            String versionRaw = normEmpty(r.getVersionRaw());
 
-// upsert: まず新しい正規化済みvendorで探す
+            // If somehow raw is empty, fallback to display columns in staging.
+            if (vendorRaw.isEmpty()) vendorRaw = normEmpty(r.getVendor());
+            if (productRaw.isEmpty()) productRaw = normEmpty(r.getProduct());
+            if (versionRaw.isEmpty()) versionRaw = normEmpty(r.getVersion());
+
+            // ===== DISPLAY initial value: same as RAW (per design decision) =====
+            String vendorDisplay = vendorRaw;
+            String productDisplay = productRaw;
+            String versionDisplay = versionRaw;
+
+            // Require at least product (raw or display). By here productRaw should be set.
+            if (productDisplay.isEmpty()) continue;
+
+            // upsert: by DISPLAY (which equals RAW on import)
             SoftwareInstall sw = softwareInstallRepository
-                    .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendorDisplay, productDisplay, version)
+                    .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendorDisplay, productDisplay, versionDisplay)
                     .orElse(null);
-
-// 互換フォールバック：過去に DN のまま保存していた行を拾って一本化
-            if (sw == null && !vendorOriginal.equals(vendorDisplay)) {
-                sw = softwareInstallRepository
-                        .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendorOriginal, productDisplay, version)
-                        .orElse(null);
-            }
 
             if (sw == null) {
                 sw = new SoftwareInstall(asset, productDisplay);
-                sw.updateDetails(vendorDisplay, productDisplay, version, null);
+                sw.updateDetails(vendorDisplay, productDisplay, versionDisplay, null);
             } else {
-                // 既存行が vendorOriginal（DN）だった場合もここで vendorDisplay に寄せられる
-                sw.updateDetails(vendorDisplay, productDisplay, version, sw.getCpeName());
+                sw.updateDetails(vendorDisplay, productDisplay, versionDisplay, sw.getCpeName());
             }
 
             // ★ import_run_id を必ず付与（importRunId方式の要）
@@ -397,7 +416,8 @@ public class JsonStagedImportService {
 
             trySetSoftwareType(sw, r.getType());
 
-            sw.captureRaw(r.getVendorRaw(), r.getProductRaw(), r.getVersionRaw());
+            // RAW capture: this also sets version_norm (trimmed)
+            sw.captureRaw(vendorRaw, productRaw, versionRaw);
 
             sw.setSource(src);
 
@@ -418,13 +438,11 @@ public class JsonStagedImportService {
                     r.getPurl()
             );
 
-            // resolve at import-time (existing behavior)
-            String vIn = normNullable(r.getVendorRaw());
-            String pIn = normNullable(r.getProductRaw());
-            if (vIn == null) vIn = vendorDisplay;
-            if (pIn == null) pIn = productDisplay;
+            // resolve at import-time (existing behavior) — use RAW explicitly
+            String vIn = normNullable(vendorRaw);
+            String pIn = normNullable(productRaw);
 
-// Windows OS/AppX/GUID系はリンク対象外（誤リンク防止）
+            // Windows OS/AppX/GUID系はリンク対象外（誤リンク防止）
             if (looksLikeWindowsComponent(pIn)) {
                 sw.unlinkCanonical();
             } else {
@@ -526,6 +544,8 @@ public class JsonStagedImportService {
     private static final java.util.regex.Pattern GUID =
             java.util.regex.Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
+    // (Kept for future use; currently not used by importSoftware per RAW==DISPLAY decision)
+    @SuppressWarnings("unused")
     private static String cleanVendorDisplay(String vendorInput) {
         String t = normNullable(vendorInput);
         if (t == null) return "";
