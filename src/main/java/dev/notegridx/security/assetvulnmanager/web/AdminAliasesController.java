@@ -17,6 +17,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class AdminAliasesController {
 
+    private static final int DEFAULT_MANUAL_CONFIDENCE = 80; // 0..100
+
     private final CpeVendorAliasRepository vendorAliasRepo;
     private final CpeProductAliasRepository productAliasRepo;
     private final CanonicalBackfillService backfillService;
@@ -55,7 +57,7 @@ public class AdminAliasesController {
                 note,
                 AliasSource.MANUAL,
                 AliasReviewState.MANUAL,
-                null,
+                DEFAULT_MANUAL_CONFIDENCE,
                 null
         );
 
@@ -85,7 +87,7 @@ public class AdminAliasesController {
                 note,
                 AliasSource.MANUAL,
                 AliasReviewState.MANUAL,
-                null,
+                DEFAULT_MANUAL_CONFIDENCE,
                 null
         );
 
@@ -95,9 +97,6 @@ public class AdminAliasesController {
         return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
     }
 
-    /**
-     * Top aliases seed（vendor + product を一括投入）
-     */
     @PostMapping("/admin/aliases/seed-top")
     public String seedTopAliases(
             @RequestParam(name = "redirect", required = false) String redirect,
@@ -109,36 +108,18 @@ public class AdminAliasesController {
         return safeRedirectOrDefault(redirect, "/admin/synonyms/vendors");
     }
 
-    /**
-     * SoftwareInstalls を CPE 辞書へ再リンク（Canonical Backfill）
-     * - どの画面からでも呼べるように redirect を受ける
-     * - 結果を flash で返して、実行した画面で見えるようにする
-     */
-    @PostMapping("/admin/canonical/backfill")
-    public String runCanonicalBackfill(
-            @RequestParam(name = "maxRows", defaultValue = "5000000") int maxRows,
-            @RequestParam(name = "forceRebuild", defaultValue = "false") boolean forceRebuild,
-            @RequestParam(name = "redirect", required = false) String redirect,
-            RedirectAttributes ra
-    ) {
-        synonymService.clearCaches();
-
-        CanonicalBackfillService.BackfillResult result = backfillService.backfill(maxRows, forceRebuild);
-        ra.addFlashAttribute("backfillResult", result);
-
-        return safeRedirectOrDefault(redirect, "/admin/canonical");
-    }
-
-    private String normalize(String s) {
+    // ====== keep your existing helpers (normalize / safeRedirectOrDefault) ======
+    private static String normalize(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
 
-    private static String safeRedirectOrDefault(String redirect, String defaultPath) {
-        if (redirect != null && redirect.startsWith("/")) {
-            return "redirect:" + redirect;
-        }
-        return "redirect:" + defaultPath;
+    private static String safeRedirectOrDefault(String redirect, String fallback) {
+        if (redirect == null || redirect.isBlank()) return "redirect:" + fallback;
+        // assume redirect is already "redirect:/..." or "/..."
+        if (redirect.startsWith("redirect:")) return redirect;
+        if (redirect.startsWith("/")) return "redirect:" + redirect;
+        return "redirect:" + fallback;
     }
 }
