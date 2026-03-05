@@ -1,23 +1,25 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
 <head th:replace="~{layout/base :: head('Review Product Mapping')}"></head>
 
 <body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
 <main>
 
-    <!-- Page Header -->
+    <!-- Page Header (unified) -->
     <div class="page-header"
          style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
         <div class="page-header__left">
-            <h1 style="margin:0;">Review Product Mapping</h1>
-            <p class="muted" style="margin:6px 0 0 0;">
-                Shows mapping health by separating <b>SQL links</b> (vendor/product IDs) and <b>dictionary resolution</b>
-                (resolvable from normalized strings).
-            </p>
+            <h1>Review Product Mapping</h1>
+            <div class="muted" style="margin-top:6px;">
+                Inspect SQL link completeness (vendor/product IDs), mapping quality, and dictionary resolution.
+                <b>Dictionary resolution stats are counted only for “Not linked” rows.</b>
+            </div>
         </div>
+
         <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <span class="pill">Product Mapping</span>
-            <span class="pill">Admin Tool</span>
+            <span class="pill">Admin</span>
+            <span class="pill">Canonical</span>
         </div>
     </div>
 
@@ -26,9 +28,9 @@
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Filters</h2>
             <div class="muted" style="font-size:12px;">
-                Review by stage: <b>vendorLinked</b> / <b>vendorOnlyLinked</b> / <b>fullyLinked</b>,
-                or quality: <b>linkedValid</b> / <b>linkedStale</b>,
-                or dictionary: <b>resolvable</b> / <b>unresolvable</b>.
+                Review by SQL link: <b>fullyLinked</b> / <b>vendorOnlyLinked</b> / <b>notLinked</b>,
+                by quality: <b>linkedValid</b> / <b>linkedStale</b>,
+                or (not linked only) by dictionary: <b>fullyResolvable</b> / <b>vendorResolvableOnly</b> / <b>unresolvable</b>.
             </div>
         </div>
 
@@ -40,9 +42,9 @@
                         <option value="all" th:selected="${filter == 'all'}">all</option>
 
                         <optgroup label="SQL link (IDs)">
-                            <option value="vendorLinked" th:selected="${filter == 'vendorLinked'}">vendorLinked</option>
-                            <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">vendorOnlyLinked</option>
                             <option value="fullyLinked" th:selected="${filter == 'fullyLinked'}">fullyLinked</option>
+                            <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">vendorOnlyLinked</option>
+                            <option value="notLinked" th:selected="${filter == 'notLinked'}">notLinked</option>
                         </optgroup>
 
                         <optgroup label="Fully linked quality">
@@ -50,8 +52,9 @@
                             <option value="linkedStale" th:selected="${filter == 'linkedStale'}">linkedStale</option>
                         </optgroup>
 
-                        <optgroup label="Dictionary">
-                            <option value="resolvable" th:selected="${filter == 'resolvable'}">resolvable</option>
+                        <optgroup label="Dictionary (not linked only)">
+                            <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">fullyResolvable</option>
+                            <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">vendorResolvableOnly</option>
                             <option value="unresolvable" th:selected="${filter == 'unresolvable'}">unresolvable</option>
                         </optgroup>
 
@@ -89,7 +92,7 @@
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Stats (on current result set)</h2>
             <div class="muted" style="font-size:12px;">
-                SQL link is split into vendor/product.
+                Dictionary stats are counted <b>only</b> for <b>notLinked</b> rows.
             </div>
         </div>
 
@@ -103,6 +106,7 @@
                 </tr>
                 </thead>
                 <tbody>
+
                 <tr>
                     <td>total</td>
                     <td th:text="${stats.total}">0</td>
@@ -110,9 +114,9 @@
                 </tr>
 
                 <tr>
-                    <td>vendorLinkedSql</td>
-                    <td th:text="${stats.vendorLinkedSql}">0</td>
-                    <td class="muted"><code>cpe_vendor_id</code> is set (regardless of product).</td>
+                    <td>fullyLinkedSql</td>
+                    <td th:text="${stats.fullyLinkedSql}">0</td>
+                    <td class="muted">Both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are set.</td>
                 </tr>
                 <tr>
                     <td>vendorOnlyLinkedSql</td>
@@ -120,31 +124,44 @@
                     <td class="muted"><code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.</td>
                 </tr>
                 <tr>
-                    <td>fullyLinkedSql</td>
-                    <td th:text="${stats.fullyLinkedSql}">0</td>
-                    <td class="muted">Both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are set.</td>
+                    <td>notLinkedSql</td>
+                    <td th:text="${stats.notLinkedSql}">0</td>
+                    <td class="muted">Neither <code>cpe_vendor_id</code> nor <code>cpe_product_id</code> is set.</td>
                 </tr>
 
                 <tr>
                     <td>linkedValid</td>
                     <td th:text="${stats.linkedValid}">0</td>
-                    <td class="muted">Fully linked and consistent with current normalized strings.</td>
+                    <td class="muted">Fully linked and IDs are valid (dictionary rows exist).</td>
                 </tr>
                 <tr>
                     <td>linkedStale</td>
                     <td th:text="${stats.linkedStale}">0</td>
-                    <td class="muted">Fully linked but differs from current normalized strings (needs re-link).</td>
+                    <td class="muted">Fully linked but referenced dictionary rows are missing (stale IDs).</td>
+                </tr>
+
+                <tr>
+                    <td>fullyResolvable</td>
+                    <td th:text="${stats.fullyResolvable}">0</td>
+                    <td class="muted"><b>(not linked only)</b> Dictionary can resolve both vendor and product.</td>
                 </tr>
                 <tr>
-                    <td>resolvable</td>
-                    <td th:text="${stats.resolvable}">0</td>
-                    <td class="muted">Not fully linked, but dictionary can resolve from normalized strings.</td>
+                    <td>vendorResolvableOnly</td>
+                    <td th:text="${stats.vendorResolvableOnly}">0</td>
+                    <td class="muted"><b>(not linked only)</b> Vendor is resolvable, but product is not.</td>
                 </tr>
                 <tr>
                     <td>unresolvable</td>
                     <td th:text="${stats.unresolvable}">0</td>
-                    <td class="muted">Not fully linked and cannot resolve from normalized strings.</td>
+                    <td class="muted"><b>(not linked only)</b> Neither vendor nor product can be resolved from normalized strings.</td>
                 </tr>
+
+                <tr>
+                    <td>needsNormalization</td>
+                    <td th:text="${stats.needsNormalization}">0</td>
+                    <td class="muted">Row has not been normalized (or normalized fields are blank).</td>
+                </tr>
+
                 </tbody>
             </table>
         </div>
@@ -201,7 +218,6 @@
                     </td>
 
                     <td>
-                        <!-- primary result -->
                         <span class="badge"
                               th:classappend="${
                                 r.analysis.result().name() == 'LINKED' ? ' badge--status-open' :
@@ -210,7 +226,6 @@
                               }"
                               th:text="${r.analysis.result().name()}">UNRESOLVED</span>
 
-                        <!-- SQL link completeness (NEW) -->
                         <span class="badge" style="margin-left:6px;"
                               th:classappend="${r.analysis.vendorLinkedSql() ? ' badge--status-open' : ' badge--unmapped'}"
                               th:text="${r.analysis.vendorLinkedSql() ? 'V✓' : 'V-'}">V-</span>
@@ -221,8 +236,7 @@
                     </td>
 
                     <td class="muted" style="overflow-wrap:anywhere;"
-                        th:text="${r.analysis.reason != null ? r.analysis.reason : '-'}">reason
-                    </td>
+                        th:text="${r.analysis.reason != null ? r.analysis.reason : '-'}">reason</td>
 
                     <td>
                         <a class="btn btn-ghost" style="padding:6px 10px; font-size:12px; border-radius:10px;"

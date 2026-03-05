@@ -43,21 +43,26 @@ public class CanonicalCpeLinkingService {
     }
 
     // ------------------------------------------------------------
-    // Public: stats (vendor-only axis added)
+    // Public: stats
+    //  - Dictionary buckets are ONLY for "not linked" (no vendor_id & no product_id)
     // ------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public MappingStats stats(Collection<SoftwareInstall> rows) {
         int total = 0;
 
-        int vendorLinkedSql = 0;
+        // SQL link axis
         int vendorOnlyLinkedSql = 0;
         int fullyLinkedSql = 0;
+        int notLinkedSql = 0;
 
+        // fully linked quality
         int linkedValid = 0;
         int linkedStale = 0;
 
-        int resolvable = 0;
+        // dictionary resolution (ONLY for notLinkedSql)
+        int fullyResolvable = 0;
+        int vendorResolvableOnly = 0;
         int unresolvable = 0;
 
         int needsNorm = 0;
@@ -69,32 +74,34 @@ public class CanonicalCpeLinkingService {
 
             if (a.needsNormalization()) needsNorm++;
 
-            if (a.vendorLinkedSql()) vendorLinkedSql++;
-            if (a.vendorLinkedSql() && !a.productLinkedSql()) vendorOnlyLinkedSql++;
+            if (a.vendorOnlyLinkedSql()) vendorOnlyLinkedSql++;
             if (a.fullyLinkedSql()) fullyLinkedSql++;
+            if (a.notLinkedSql()) notLinkedSql++;
 
             if (a.result() == ItemResult.LINKED) linkedValid++;
             if (a.result() == ItemResult.STALE) linkedStale++;
 
-            if (a.resolvable()) resolvable++;
-            if (!a.resolvable()) unresolvable++;
+            if (a.dictFullyResolvable()) fullyResolvable++;
+            if (a.dictVendorResolvableOnly()) vendorResolvableOnly++;
+            if (a.dictUnresolvable()) unresolvable++;
         }
 
         return new MappingStats(
                 total,
-                vendorLinkedSql,
-                vendorOnlyLinkedSql,
                 fullyLinkedSql,
+                vendorOnlyLinkedSql,
+                notLinkedSql,
                 linkedValid,
                 linkedStale,
-                resolvable,
+                fullyResolvable,
+                vendorResolvableOnly,
                 unresolvable,
                 needsNorm
         );
     }
 
     /**
-     * Overall stats (first N rows, like the old dryLinkSummary).
+     * Overall stats (first N rows).
      */
     @Transactional(readOnly = true)
     public MappingStats statsOverall(int limit) {
@@ -106,7 +113,11 @@ public class CanonicalCpeLinkingService {
     // ------------------------------------------------------------
     // Public: analysis (LINKED / RESOLVED / STALE / UNRESOLVED)
     //  - LINKED/STALE: "fully linked" (vendor+product both present)
-    //  - vendor-only is expressed by vendorLinkedSql/productLinkedSql flags
+    //  - RESOLVED: not fully linked, and dictionary fully resolves vendor+product
+    //  - UNRESOLVED: otherwise
+    //
+    //  NOTE: Dictionary buckets (Fully/Vendor-only/Unresolvable) are computed
+    //        ONLY when "not linked" (neither vendor_id nor product_id is set).
     // ------------------------------------------------------------
 
     @Transactional(readOnly = true)
@@ -114,10 +125,18 @@ public class CanonicalCpeLinkingService {
 
         boolean vendorLinked = (s.getCpeVendorId() != null);
         boolean productLinked = (s.getCpeProductId() != null);
+
         boolean fullyLinked = vendorLinked && productLinked;
+        boolean vendorOnlyLinked = vendorLinked && !productLinked;
+        boolean notLinked = !vendorLinked && !productLinked;
 
         // Dictionary resolvability from strings (existing behavior)
         ResolveResult r = resolve(s);
+
+        // Dictionary buckets are ONLY for "not linked"
+        boolean dictFullyResolvable = notLinked && r.hit();
+        boolean dictVendorOnlyResolvable = notLinked && r.vendorOnly();
+        boolean dictUnresolvable = notLinked && !r.hit() && !r.vendorOnly();
 
         // Fully linked: validate referenced dictionary rows still exist.
         if (fullyLinked) {
@@ -125,52 +144,65 @@ public class CanonicalCpeLinkingService {
             boolean prodOk = productRepo.existsById(s.getCpeProductId());
 
             if (vendorOk && prodOk) {
-                // LINKED (valid). Even if r.hit is false, the record is already linked in DB.
-                return Analysis.linkedOk(r, null, vendorLinked, productLinked, fullyLinked);
+                return Analysis.linkedOk(r, null,
+                        vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
+                        dictFullyResolvable, dictVendorOnlyResolvable, dictUnresolvable);
             }
-            // STALE: linked columns exist but dictionary rows missing (or deleted)
+
             String reason = "linked IDs are stale: vendorOk=" + vendorOk + ", productOk=" + prodOk;
-            return Analysis.stale(r, reason, vendorLinked, productLinked, fullyLinked);
+            return Analysis.stale(r, reason,
+                    vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
+                    dictFullyResolvable, dictVendorOnlyResolvable, dictUnresolvable);
         }
 
         // Not fully linked:
         if (r.hit()) {
-            // RESOLVED (resolvable but not yet fully linked in DB)
-            return Analysis.resolved(r, null, vendorLinked, productLinked, fullyLinked);
+            // RESOLVED = vendor+product fully resolvable (even if vendor is already linked, this is still actionable)
+            return Analysis.resolved(r, null,
+                    vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
+                    dictFullyResolvable, dictVendorOnlyResolvable, dictUnresolvable);
         }
 
         // UNRESOLVED
         // vendor-only のときは理由を少し補強（UIで見たとき納得感が出る）
         String reason = r.reason();
-        if (vendorLinked && !productLinked) {
+        if (vendorOnlyLinked) {
             reason = (reason == null || reason.isBlank())
                     ? "Vendor is linked, but product is not resolvable from normalized strings."
                     : ("Vendor is linked, but product is not resolvable: " + reason);
+        } else if (notLinked && r.vendorOnly()) {
+            reason = (reason == null || reason.isBlank())
+                    ? "Vendor is resolvable, but product is not."
+                    : ("Vendor is resolvable, but product is not: " + reason);
         }
-        return Analysis.unresolved(r, reason, vendorLinked, productLinked, fullyLinked);
+
+        return Analysis.unresolved(r, reason,
+                vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
+                dictFullyResolvable, dictVendorOnlyResolvable, dictUnresolvable);
     }
 
     public enum ItemResult {
         LINKED,      // fully linked and IDs are valid
-        RESOLVED,    // not fully linked, but dictionary resolvable from strings
+        RESOLVED,    // not fully linked, but dictionary can fully resolve vendor+product
         STALE,       // fully linked, but referenced dictionary rows missing
-        UNRESOLVED   // not fully linked and not resolvable
+        UNRESOLVED   // otherwise
     }
 
     public record MappingStats(
             int total,
 
             // SQL link axis
-            int vendorLinkedSql,
-            int vendorOnlyLinkedSql,
             int fullyLinkedSql,
+            int vendorOnlyLinkedSql,
+            int notLinkedSql,
 
             // fully linked quality
             int linkedValid,
             int linkedStale,
 
-            // dictionary resolvability
-            int resolvable,
+            // dictionary resolution (ONLY for notLinkedSql)
+            int fullyResolvable,
+            int vendorResolvableOnly,
             int unresolvable,
 
             int needsNormalization
@@ -178,8 +210,6 @@ public class CanonicalCpeLinkingService {
 
     public record Analysis(
             ItemResult result,
-            boolean linked, // kept for compatibility (means "fully linked")
-            boolean resolvable,
             String reason,
             boolean needsNormalization,
             ResolveResult resolve,
@@ -187,30 +217,49 @@ public class CanonicalCpeLinkingService {
             // SQL link visibility
             boolean vendorLinkedSql,
             boolean productLinkedSql,
-            boolean fullyLinkedSql
+            boolean fullyLinkedSql,
+            boolean vendorOnlyLinkedSql,
+            boolean notLinkedSql,
+
+            // dictionary buckets (ONLY meaningful when notLinkedSql=true)
+            boolean dictFullyResolvable,
+            boolean dictVendorResolvableOnly,
+            boolean dictUnresolvable
     ) {
         static Analysis linkedOk(ResolveResult r, String reason,
-                                 boolean vendorLinked, boolean productLinked, boolean fullyLinked) {
-            return new Analysis(ItemResult.LINKED, true, r.hit(), reason, r.needsNormalization(), r,
-                    vendorLinked, productLinked, fullyLinked);
+                                 boolean vendorLinked, boolean productLinked, boolean fullyLinked,
+                                 boolean vendorOnlyLinked, boolean notLinked,
+                                 boolean dictFully, boolean dictVendorOnly, boolean dictUnresolvable) {
+            return new Analysis(ItemResult.LINKED, reason, r.needsNormalization(), r,
+                    vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
+                    dictFully, dictVendorOnly, dictUnresolvable);
         }
 
         static Analysis resolved(ResolveResult r, String reason,
-                                 boolean vendorLinked, boolean productLinked, boolean fullyLinked) {
-            return new Analysis(ItemResult.RESOLVED, false, true, reason, r.needsNormalization(), r,
-                    vendorLinked, productLinked, fullyLinked);
+                                 boolean vendorLinked, boolean productLinked, boolean fullyLinked,
+                                 boolean vendorOnlyLinked, boolean notLinked,
+                                 boolean dictFully, boolean dictVendorOnly, boolean dictUnresolvable) {
+            return new Analysis(ItemResult.RESOLVED, reason, r.needsNormalization(), r,
+                    vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
+                    dictFully, dictVendorOnly, dictUnresolvable);
         }
 
         static Analysis stale(ResolveResult r, String reason,
-                              boolean vendorLinked, boolean productLinked, boolean fullyLinked) {
-            return new Analysis(ItemResult.STALE, true, r.hit(), reason, r.needsNormalization(), r,
-                    vendorLinked, productLinked, fullyLinked);
+                              boolean vendorLinked, boolean productLinked, boolean fullyLinked,
+                              boolean vendorOnlyLinked, boolean notLinked,
+                              boolean dictFully, boolean dictVendorOnly, boolean dictUnresolvable) {
+            return new Analysis(ItemResult.STALE, reason, r.needsNormalization(), r,
+                    vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
+                    dictFully, dictVendorOnly, dictUnresolvable);
         }
 
         static Analysis unresolved(ResolveResult r, String reason,
-                                   boolean vendorLinked, boolean productLinked, boolean fullyLinked) {
-            return new Analysis(ItemResult.UNRESOLVED, false, false, reason, r.needsNormalization(), r,
-                    vendorLinked, productLinked, fullyLinked);
+                                   boolean vendorLinked, boolean productLinked, boolean fullyLinked,
+                                   boolean vendorOnlyLinked, boolean notLinked,
+                                   boolean dictFully, boolean dictVendorOnly, boolean dictUnresolvable) {
+            return new Analysis(ItemResult.UNRESOLVED, reason, r.needsNormalization(), r,
+                    vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
+                    dictFully, dictVendorOnly, dictUnresolvable);
         }
     }
 
@@ -332,23 +381,18 @@ public class CanonicalCpeLinkingService {
         String pr = (productRaw == null) ? "" : productRaw.trim();
         if (pr.isEmpty()) return true;
 
-        // GUID product names
         if (GUID.matcher(pr).matches()) return true;
 
-        // AppX-ish (dot-separated namespace style) by normalized form
         String pn = (productNorm == null) ? "" : productNorm.trim();
         if (!pn.isEmpty() && APPX_PREFIX.matcher(pn).find()) return true;
 
-        // Namespace-ish dot chaining (avoid false positives caused by "14.42.34433" etc.)
-        // e.g. "Microsoft.Windows.CloudExperienceHost" => many occurrences of letter.dot.letter
         int hits = 0;
         var m = NAMESPACE_DOT.matcher(pr);
         while (m.find()) {
             hits++;
-            if (hits >= 2) return true; // 2回以上ならほぼ namespace
+            if (hits >= 2) return true;
         }
 
-        // Also skip AppX name style: contains dot but no spaces (e.g. Microsoft.AAD.BrokerPlugin / Clipchamp.Clipchamp)
         if (pr.contains(".") && !pr.contains(" ")) return true;
 
         return false;

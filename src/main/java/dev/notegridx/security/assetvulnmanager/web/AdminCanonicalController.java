@@ -35,16 +35,17 @@ public class AdminCanonicalController {
         all,
 
         // SQL link (IDs)
-        vendorLinked,
-        vendorOnlyLinked,
         fullyLinked,
+        vendorOnlyLinked,
+        notLinked,
 
         // Fully linked quality
         linkedValid,
         linkedStale,
 
-        // Dictionary
-        resolvable,
+        // Dictionary (ONLY for notLinked)
+        fullyResolvable,
+        vendorResolvableOnly,
         unresolvable,
 
         // Other
@@ -114,17 +115,18 @@ public class AdminCanonicalController {
             case all -> true;
 
             // SQL link (IDs)
-            case vendorLinked -> a.vendorLinkedSql();
-            case vendorOnlyLinked -> a.vendorLinkedSql() && !a.productLinkedSql();
             case fullyLinked -> a.fullyLinkedSql();
+            case vendorOnlyLinked -> a.vendorOnlyLinkedSql();
+            case notLinked -> a.notLinkedSql();
 
             // Fully linked quality
             case linkedValid -> a.result() == CanonicalCpeLinkingService.ItemResult.LINKED;
             case linkedStale -> a.result() == CanonicalCpeLinkingService.ItemResult.STALE;
 
-            // Dictionary
-            case resolvable -> a.resolvable();
-            case unresolvable -> !a.resolvable();
+            // Dictionary (ONLY for notLinked)
+            case fullyResolvable -> a.dictFullyResolvable();
+            case vendorResolvableOnly -> a.dictVendorResolvableOnly();
+            case unresolvable -> a.dictUnresolvable();
 
             // Other
             case needsNormalization -> a.needsNormalization();
