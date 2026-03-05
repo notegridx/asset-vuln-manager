@@ -102,9 +102,10 @@ public class CanonicalBackfillService {
                         s.linkCanonical(res.vendorId(), res.productId());
                         _linked++;
                     } else if (res.vendorId() != null) {
-                        // ✅ vendor-only を先に埋める
+                        // vendor-only を先に埋める
                         s.linkCanonical(res.vendorId(), null);
                         _linked++;
+
                         // product は unresolved なので unresolved_mappings も積む
                         upsertUnresolvedMapping(
                                 safeString(s.getSource()),
@@ -306,13 +307,13 @@ public class CanonicalBackfillService {
         if (vn != null) {
             vCands = cpeVendorRepository.findTop20ByNameNormStartingWithOrderByNameNormAsc(vn);
         }
-        um.setCandidateVendorIds(encodeVendors(vCands));
+        um.setCandidateVendorIds(encodeVendors(vCands)); // ID CSV only
 
         if (pn != null && vCands.size() == 1) {
             Long vendorId = vCands.get(0).getId();
             List<CpeProduct> pCands =
                     cpeProductRepository.findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendorId, pn);
-            um.setCandidateProductIds(encodeProducts(pCands));
+            um.setCandidateProductIds(encodeProducts(pCands)); // ID CSV only
         } else {
             if (isBlank(um.getCandidateProductIds())) {
                 um.setCandidateProductIds(null);
@@ -328,26 +329,27 @@ public class CanonicalBackfillService {
         return normalizer.normalizeProduct(product);
     }
 
+    /**
+     * Persist only IDs, e.g. "97,11961,8623".
+     * (No ":nameNorm" to avoid column overflow and long-tail strings.)
+     */
     private static String encodeVendors(List<CpeVendor> vendors) {
         if (vendors == null || vendors.isEmpty()) return null;
         return vendors.stream()
                 .limit(CAND_LIMIT)
-                .map(v -> v.getId() + ":" + safeText(v.getNameNorm()))
+                .map(v -> String.valueOf(v.getId()))
                 .collect(Collectors.joining(","));
     }
 
+    /**
+     * Persist only IDs, e.g. "123,456".
+     */
     private static String encodeProducts(List<CpeProduct> products) {
         if (products == null || products.isEmpty()) return null;
         return products.stream()
                 .limit(CAND_LIMIT)
-                .map(p -> p.getId() + ":" + safeText(p.getNameNorm()))
+                .map(p -> String.valueOf(p.getId()))
                 .collect(Collectors.joining(","));
-    }
-
-    private static String safeText(String s) {
-        if (s == null) return "-";
-        String t = s.trim();
-        return t.isEmpty() ? "-" : t;
     }
 
     private static String normalizeNullable(String s) {

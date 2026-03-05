@@ -14,155 +14,25 @@
         flex-wrap: wrap;
     }
 
-    .um-filterbar__left {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-width: 320px;
-        flex: 1 1 520px;
-    }
-
+    .um-filterbar__left,
     .um-filterbar__right {
         display: flex;
         gap: 10px;
-        align-items: flex-end;
-        justify-content: flex-end;
-        flex: 0 1 auto;
-        white-space: nowrap;
-    }
-
-    .um-rowhead {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: nowrap;
-    }
-
-    .um-rowhead__label {
-        font-weight: 700;
-        color: var(--text);
-        font-size: 12px;
-        letter-spacing: .02em;
-        white-space: nowrap;
-    }
-
-    .um-seg {
-        display: inline-flex;
-        width: fit-content;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        overflow: hidden;
-        background: rgba(255, 255, 255, 0.02);
-    }
-
-    .um-seg__btn {
-        border: 0;
-        background: transparent;
-        color: var(--muted);
-        padding: 10px 14px;
-        cursor: pointer;
-        font-weight: 700;
-    }
-
-    .um-seg__btn + .um-seg__btn {
-        border-left: 1px solid var(--line);
-    }
-
-    .um-seg__btn.is-active {
-        color: var(--text);
-        background: rgba(138, 180, 255, 0.18);
-    }
-
-    .um-toggle {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        flex-wrap: wrap;
-        margin-top: 2px;
-    }
-
-    .um-toggle__text {
-        font-weight: 700;
-        color: var(--text);
-    }
-
-    .um-toggle__hint {
-        color: var(--muted);
-        font-size: 12px;
-        max-width: 520px;
-    }
-
-    .um-viewing {
-        margin-top: 2px;
-        opacity: .9;
-        font-size: 12px;
-    }
-
-    @media (min-width: 981px) {
-        .um-viewing { text-align: right; }
-    }
-
-    @media (max-width: 980px) {
-        .um-filterbar__right { justify-content: flex-start; }
-        .um-rowhead { flex-wrap: wrap; }
-    }
-
-    /* =========================
-       Unresolved: Table / rows
-       ========================= */
-    .um-table td {
-        overflow: hidden; /* グローバル td を汚染しない */
-        vertical-align: top;
-    }
-
-    .um-meta__top {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .um-meta__id {
-        font-size: 18px;
-        line-height: 1;
-    }
-
-    .um-meta__sub {
-        margin-top: 8px;
-        display: flex;
-        gap: 8px;
         align-items: center;
         flex-wrap: wrap;
     }
 
-    .um-meta__source { opacity: .9; }
-
-    /* small “explainability” pills */
-    .um-mini {
-        font-size: 11px;
-        padding: 4px 8px;
-        border: 1px solid var(--line);
-        border-radius: 999px;
+    .um-filterbar label {
+        font-size: 12px;
         color: var(--muted);
-        background: rgba(255, 255, 255, 0.02);
-        display: inline-flex;
-        gap: 6px;
-        align-items: center;
-        max-width: 100%;
     }
-    .um-mini code { font-size: 11px; }
 
-    /* =========================
-       Unresolved: Selector UI
-       ========================= */
+    /* grid: vendor/product side-by-side (inputs only) */
     .um-select {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-columns: 1fr 1fr;
         gap: 12px;
         align-items: start;
-    }
-
-    @media (max-width: 980px) {
-        .um-select { grid-template-columns: 1fr; }
     }
 
     .um-block {
@@ -172,7 +42,10 @@
         min-width: 0;
     }
 
-    .um-label { font-size: 12px; }
+    .um-label {
+        font-size: 12px;
+        color: var(--muted);
+    }
 
     .um-row {
         display: flex;
@@ -187,233 +60,262 @@
         width: 100%;
     }
 
-    .um-row button { flex: 0 0 auto; }
-
-    /* =========================
-       Unresolved: Apply column
-       ========================= */
-    .um-selected {
-        font-size: 12px;
-        padding: 6px 8px;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.03);
-        display: inline-block;
-        width: fit-content;
+    .um-row button {
+        flex: 0 0 auto;
     }
 
-    .um-apply {
+    /* selectors: vendor/product side-by-side */
+    .um-pick {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        align-items: start;
+        margin-top: 10px;
+    }
+
+    .um-pick select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* actions row */
+    .um-actions {
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-end;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    .um-note {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .um-note textarea {
+        width: 100%;
+        min-height: 54px;
+        resize: vertical;
+    }
+
+    /* hint */
+    details.um-hint {
+        margin-top: 8px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: var(--radius-2);
+        padding: 8px 10px;
+    }
+
+    details.um-hint summary {
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 12px;
+        user-select: none;
+    }
+
+    details.um-hint .muted {
+        font-size: 12px;
+        line-height: 1.5;
+        margin-top: 8px;
+    }
+
+    /* resolved rows style */
+    tr.row-resolved {
+        opacity: 0.55;
+    }
+
+    tr.row-resolved .badge {
+        filter: grayscale(0.6);
     }
 </style>
 
 <body th:replace="~{layout/base :: layout('Unresolved Mappings', 'admin', ~{::main})}">
 <main>
 
-    <div class="page-header"
-         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <!-- Page header -->
+    <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
         <div class="page-header__left">
-            <h1 style="margin:0;">Unresolved Mappings</h1>
-            <p class="muted" style="margin:6px 0 0 0;">
-                Resolve missing canonical IDs by selecting vendor/product from the selector. Exact match appears first.
-            </p>
+            <h1>Unresolved Mappings</h1>
+            <div class="muted" style="margin-top:6px;">
+                Review and resolve vendor/product mappings that couldn't be linked automatically.
+            </div>
+        </div>
+
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a class="btn btn-ghost" th:href="@{/admin}">Admin</a>
         </div>
     </div>
 
-    <!-- flash messages -->
-    <div th:if="${success}" class="card" style="padding:10px; margin:12px 0; border:1px solid var(--line);">
-        <span class="badge badge-ok">OK</span>
-        <span class="mono" th:text="${success}">success</span>
-    </div>
-    <div th:if="${error}" class="card" style="padding:10px; margin:12px 0; border:1px solid var(--line);">
-        <span class="badge badge-warn">Error</span>
-        <span class="mono" th:text="${error}">error</span>
-    </div>
-
-    <!-- Filters -->
-    <div class="card" style="padding:12px; margin:12px 0;">
-        <form method="get" th:action="@{/admin/unresolved}" class="um-filterbar">
-            <!-- unchecked 判定用 -->
-            <input type="hidden" name="activeOnlyPresent" value="1"/>
-
+    <!-- Filter bar -->
+    <form class="card" style="padding:12px; margin-top:12px;" method="get" th:action="@{/admin/unresolved}">
+        <div class="um-filterbar">
             <div class="um-filterbar__left">
-                <div class="field" style="margin:0;">
-                    <div class="um-rowhead">
-                        <span class="um-rowhead__label">Status</span>
-                        <div class="um-seg" role="group" aria-label="Status filter">
-                            <button class="um-seg__btn" type="submit" name="status" value="NEW"
-                                    th:classappend="${status == null or status == '' or status == 'NEW'} ? ' is-active' : ''">
-                                NEW
-                            </button>
-                            <button class="um-seg__btn" type="submit" name="status" value="RESOLVED"
-                                    th:classappend="${status == 'RESOLVED'} ? ' is-active' : ''">
-                                RESOLVED
-                            </button>
-                            <button class="um-seg__btn" type="submit" name="status" value="ALL"
-                                    th:classappend="${status == 'ALL'} ? ' is-active' : ''">
-                                ALL
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="muted" style="font-size:12px; margin-top:6px;">
-                        Default is NEW. Choose ALL to include resolved history.
-                    </div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        <option value="ALL" th:selected="${status == 'ALL'}">ALL</option>
+                        <option value="OPEN" th:selected="${status == 'OPEN'}">OPEN</option>
+                        <option value="RESOLVED" th:selected="${status == 'RESOLVED'}">RESOLVED</option>
+                    </select>
                 </div>
 
-                <label class="um-toggle muted">
-                    <input type="checkbox" name="activeOnly" value="true" th:checked="${activeOnly}">
-                    <span class="um-toggle__text">Active only</span>
-                    <span class="um-toggle__hint">Show only mappings that still exist in current inventory</span>
-                </label>
-
-                <div class="muted um-viewing">
-                    Viewing:
-                    <span th:text="${status != null ? status : 'NEW'}">NEW</span>
-                    /
-                    activeOnly=<span th:text="${activeOnly}">true</span>
-                    <!-- runId がURLで渡ってきた場合だけ表示（UI入力は撤去） -->
-                    <span th:if="${runId != null}"> / runId=<span th:text="${runId}">-</span></span>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <label for="q">Search</label>
+                    <input id="q" name="q" type="text" placeholder="vendor / product / note..."
+                           th:value="${q}">
                 </div>
+
+                <button class="btn btn-primary" type="submit" style="align-self:flex-end;">Apply</button>
             </div>
 
             <div class="um-filterbar__right">
-                <button class="btn" type="submit">Apply</button>
-                <a class="btn btn-ghost" th:href="@{/admin/unresolved}">Reset</a>
+                <span class="pill" th:text="'Total: ' + ${total}">Total: 0</span>
+                <span class="pill" th:text="'Open: ' + ${openCount}">Open: 0</span>
+                <span class="pill" th:text="'Resolved: ' + ${resolvedCount}">Resolved: 0</span>
             </div>
-        </form>
-    </div>
-
-    <div class="um-help">
-        <details>
-            <summary class="muted">How this works</summary>
-            <div class="muted" style="margin-top:8px; line-height:1.6;">
-                • Exact vendor/product matches appear first.<br>
-                • Use “Search” if quick candidates are insufficient.<br>
-                • Apply sets canonical IDs to matching SoftwareInstalls (bulk update), then updates this mapping status.
-            </div>
-        </details>
-    </div>
+        </div>
+    </form>
 
     <!-- Table -->
-    <div class="card">
-        <div class="table-wrap" style="margin-top:12px; overflow-x:auto;">
-            <table class="um-table" style="width:100%; table-layout:fixed;">
+    <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="table-wrap">
+            <table class="table">
                 <thead>
                 <tr>
-                    <th style="width:190px;">Meta</th>
-                    <th>Vendor / Product</th>
-                    <th style="width:420px;">Select Vendor / Product</th>
-                    <th style="width:200px;">Apply</th>
+                    <th style="width:120px;">Status</th>
+                    <th style="width:220px;">Raw</th>
+                    <th>Resolve</th>
+                    <th style="width:180px;">Meta</th>
                 </tr>
                 </thead>
-
                 <tbody>
-                <tr th:if="${mappings == null || #lists.isEmpty(mappings)}">
-                    <td colspan="4" class="muted" style="padding:14px;">No mappings found for the current filter.</td>
-                </tr>
-
-                <tr th:each="m : ${mappings}"
-                    th:attr="data-row-id=${m.id}"
-                    th:classappend="${m.status == 'RESOLVED'} ? 'row-resolved' : ''">
-                    <td class="um-meta">
-                        <div class="um-meta__top">
-                            <span class="mono um-meta__id" th:text="${m.id}">1</span>
-                            <span class="badge" th:text="${m.status}">NEW</span>
-                        </div>
-
-                        <div class="um-meta__sub">
-                            <span class="badge um-meta__source" th:text="${m.source}">CSV</span>
-
-                            <span class="um-mini" th:if="${m.candidateVendorIds != null and m.candidateVendorIds != ''}">
-                quickV=<code th:text="${m.candidateVendorIds}">1,2</code>
-              </span>
-                            <span class="um-mini" th:if="${m.candidateProductIds != null and m.candidateProductIds != ''}">
-                quickP=<code th:text="${m.candidateProductIds}">10,11</code>
-              </span>
-                            <span class="um-mini"
-                                  th:if="${(m.candidateVendorIds == null or m.candidateVendorIds == '') and (m.candidateProductIds == null or m.candidateProductIds == '')}">
-                no quick candidates (use Search)
-              </span>
-                        </div>
+                <tr th:each="r : ${rows}"
+                    th:attr="data-row-id=${r.id}"
+                    th:classappend="${r.status.name() == 'RESOLVED'} ? ' row-resolved' : ''">
+                    <td>
+                        <span class="badge"
+                              th:classappend="${r.status.name() == 'OPEN'} ? ' badge--status-open' : ' badge--neutral'"
+                              th:text="${r.status.name()}">OPEN</span>
                     </td>
 
-                    <td class="um-vp">
+                    <td>
                         <div style="display:flex; flex-direction:column; gap:6px;">
                             <div>
-                                <span class="muted" style="font-size:12px;">raw</span>
-                                <div class="mono" th:text="${m.vendorRaw} + ' / ' + ${m.productRaw}">vendor/product</div>
-                                <div class="muted mono" style="font-size:12px;" th:text="${m.versionRaw}">version</div>
+                                <span class="pill pill--dim" th:text="${r.vendorRaw}">vendor</span>
                             </div>
                             <div>
-                                <span class="muted" style="font-size:12px;">normalized</span>
-                                <div class="mono" th:text="${m.normalizedVendor} + ' / ' + ${m.normalizedProduct}">nv/np</div>
+                                <span class="pill pill--dim" th:text="${r.productRaw}">product</span>
+                            </div>
+                            <div th:if="${r.versionRaw != null and !#strings.isEmpty(r.versionRaw)}" class="muted" style="font-size:12px;">
+                                <span th:text="${r.versionRaw}">version</span>
                             </div>
                         </div>
                     </td>
 
                     <td>
-                        <div class="um-select">
-                            <div class="um-block">
-                                <div class="muted um-label">Vendor</div>
-                                <div class="um-row">
-                                    <input class="js-vendor-q" type="text"
-                                           th:attr="data-default-q=${m.normalizedVendor}"
-                                           placeholder="Search vendor"/>
-                                    <button class="btn btn-soft js-vendor-search" type="button">Search</button>
+                        <form class="js-apply-form" method="post" th:action="@{/admin/unresolved/apply}">
+                            <input type="hidden" name="id" th:value="${r.id}"/>
+                            <input type="hidden" name="status" th:value="${status}"/>
+                            <input type="hidden" name="q" th:value="${q}"/>
+
+                            <!-- hidden submit values (synced from selects) -->
+                            <input type="hidden" class="js-submit-vendor-id" name="vendorId" value=""/>
+                            <input type="hidden" class="js-submit-product-id" name="productId" value=""/>
+
+                            <div class="um-select">
+                                <div class="um-block">
+                                    <div class="um-label">Vendor search</div>
+                                    <div class="um-row">
+                                        <input class="js-vendor-q" type="text"
+                                               placeholder="type vendor..."
+                                               th:attr="data-default-q=${r.normalizedVendor}"/>
+                                        <button type="button" class="btn btn-ghost js-vendor-search">Search</button>
+                                    </div>
                                 </div>
-                                <select class="js-vendor-select" name="__dummy__"
-                                        th:attr="data-candidate-ids=${m.candidateVendorIds}">
-                                    <option value="">-- Select vendor --</option>
-                                </select>
-                            </div>
 
-                            <div class="um-block">
-                                <div class="muted um-label">Product</div>
-                                <div class="um-row">
-                                    <input class="js-product-q" type="text"
-                                           th:attr="data-default-q=${m.normalizedProduct}"
-                                           placeholder="Search product"/>
-                                    <button class="btn btn-soft js-product-search" type="button">Search</button>
+                                <div class="um-block">
+                                    <div class="um-label">Product search</div>
+                                    <div class="um-row">
+                                        <input class="js-product-q" type="text"
+                                               placeholder="type product..."
+                                               th:attr="data-default-q=${r.normalizedProduct}"/>
+                                        <button type="button" class="btn btn-ghost js-product-search">Search</button>
+                                    </div>
                                 </div>
-                                <select class="js-product-select" name="__dummy__"
-                                        th:attr="data-candidate-ids=${m.candidateProductIds}">
-                                    <option value="">-- Select product --</option>
-                                </select>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td>
-                        <form th:action="@{/admin/unresolved/apply}" method="post" class="js-apply-form um-apply">
-                            <input type="hidden" name="mappingId" th:value="${m.id}">
-
-                            <!-- current filter state (keep user context after apply) -->
-                            <input type="hidden" name="status" th:value="${status}">
-                            <input type="hidden" name="activeOnly" th:value="${activeOnly}">
-                            <input type="hidden" name="activeOnlyPresent" value="1"/>
-
-                            <!-- runId がURLで来ている場合だけ維持（UI入力は撤去済み） -->
-                            <input type="hidden" name="runId" th:value="${runId}">
-
-                            <input type="hidden" name="cpeVendorId" class="js-submit-vendor-id" value="">
-                            <input type="hidden" name="cpeProductId" class="js-submit-product-id" value="">
-
-                            <div class="um-selected mono">
-                                v=<span class="js-vendor-id-view">-</span> /
-                                p=<span class="js-product-id-view">-</span>
                             </div>
 
-                            <div class="um-row" style="margin-top:10px;">
+                            <div class="um-pick">
+                                <div class="um-block">
+                                    <div class="um-label">Pick vendor</div>
+                                    <select class="js-vendor-select"
+                                            th:attr="data-candidate-ids=${r.candidateVendorIds}">
+                                        <option value="">-- Select vendor --</option>
+                                    </select>
+                                </div>
+
+                                <div class="um-block">
+                                    <div class="um-label">Pick product (optional)</div>
+                                    <select class="js-product-select"
+                                            th:attr="data-candidate-ids=${r.candidateProductIds}">
+                                        <option value="">-- Select product --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="um-note">
+                                <div class="um-label">Note (optional)</div>
+                                <textarea name="note" placeholder="why / decision / hints..."
+                                          th:text="${r.note}"></textarea>
+                            </div>
+
+                            <div class="um-actions">
                                 <button class="btn btn-primary" type="submit">Apply</button>
-                                <button class="btn btn-soft" type="submit" th:formaction="@{/admin/unresolved/quick-add}">
-                                    Quick add alias + Apply
+
+                                <button class="btn btn-ghost" type="submit"
+                                        th:formaction="@{/admin/unresolved/mark-resolved}"
+                                        th:disabled="${r.status.name() == 'RESOLVED'}">
+                                    Mark resolved (no link)
                                 </button>
-                                <button class="btn btn-soft js-clear" type="button">Clear</button>
                             </div>
+
+                            <details class="um-hint">
+                                <summary>Tips</summary>
+                                <div class="muted">
+                                    <ul style="margin:6px 0 0 16px;">
+                                        <li>Vendorは必須。Productは任意（vendorのみ解決も可）。</li>
+                                        <li>Searchは Exact/Prefix/Contains を候補として提示します。</li>
+                                        <li>Quick candidates はバックフィル/スキャンが推測した候補です（ID保存 → 表示名は辞書から解決）。</li>
+                                    </ul>
+                                </div>
+                            </details>
                         </form>
+                    </td>
+
+                    <td class="muted" style="font-size:12px;">
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            <div>
+                                <span class="pill pill--dim" th:text="${r.source}">source</span>
+                            </div>
+                            <div>
+                                <span th:text="${#temporals.format(r.firstSeenAt, 'yyyy-MM-dd HH:mm')}">first</span>
+                                <span> / </span>
+                                <span th:text="${#temporals.format(r.lastSeenAt, 'yyyy-MM-dd HH:mm')}">last</span>
+                            </div>
+                            <div th:if="${r.normalizedVendor != null and !#strings.isEmpty(r.normalizedVendor)}">
+                                <span class="pill pill--dim" th:text="${r.normalizedVendor}">nv</span>
+                            </div>
+                            <div th:if="${r.normalizedProduct != null and !#strings.isEmpty(r.normalizedProduct)}">
+                                <span class="pill pill--dim" th:text="${r.normalizedProduct}">np</span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(rows)}">
+                    <td colspan="4" class="muted" style="padding:14px;">
+                        No unresolved mappings.
                     </td>
                 </tr>
                 </tbody>
@@ -427,7 +329,11 @@
             return csv.split(',')
                 .map(s => s.trim())
                 .filter(s => s.length > 0)
-                .filter(s => /^\d+$/.test(s));
+                .map(s => {
+                    const m = s.match(/^(\d+)/); // "97" or "97:google"
+                    return m ? Number(m[1]) : null;
+                })
+                .filter(n => Number.isInteger(n) && n > 0);
         }
 
         async function fetchJson(url) {
@@ -463,16 +369,26 @@
             appendOptGroup(selectEl, 'Other candidates', grouped.others, (it) => `${it.label} (#${it.id})`);
         }
 
-        function fillSelectWithQuickIds(selectEl, ids, placeholder) {
+        async function fillSelectWithQuick(selectEl, ids, placeholder, kind) {
             clearSelect(selectEl, placeholder);
             if (!ids || ids.length === 0) return;
 
+            let items = [];
+            try {
+                const url = `/api/dict/${kind}/by-ids?ids=` + encodeURIComponent(ids.join(','));
+                items = await fetchJson(url); // [{id,label,nameNorm},...]
+            } catch (e) {
+                items = ids.map(id => ({ id, label: `#${id}` }));
+            }
+
             const og = document.createElement('optgroup');
-            og.label = 'Quick candidates (ID only)';
-            ids.forEach(id => {
+            og.label = 'Quick candidates';
+            items.forEach(it => {
                 const opt = document.createElement('option');
-                opt.value = String(id);
-                opt.textContent = `#${id}`;
+                opt.value = String(it.id);
+                opt.textContent = (it.label && it.label.startsWith('#'))
+                    ? it.label
+                    : `${it.label} (#${it.id})`;
                 og.appendChild(opt);
             });
             selectEl.appendChild(og);
@@ -481,23 +397,21 @@
         function syncSubmitHidden(form, vendorId, productId) {
             const vHidden = form.querySelector('.js-submit-vendor-id');
             const pHidden = form.querySelector('.js-submit-product-id');
-            const vv = form.querySelector('.js-vendor-id-view');
-            const pv = form.querySelector('.js-product-id-view');
-
-            vHidden.value = vendorId ? String(vendorId) : '';
-            pHidden.value = productId ? String(productId) : '';
-            vv.textContent = vendorId ? String(vendorId) : '-';
-            pv.textContent = productId ? String(productId) : '-';
+            if (vHidden) vHidden.value = vendorId ? String(vendorId) : '';
+            if (pHidden) pHidden.value = productId ? String(productId) : '';
         }
 
-        function clearSelected(row) {
-            const vSel = row.querySelector('.js-vendor-select');
-            const pSel = row.querySelector('.js-product-select');
-            const form = row.querySelector('.js-apply-form');
-
-            vSel.value = '';
-            clearSelect(pSel, '-- Select product --');
-            syncSubmitHidden(form, null, null);
+        function uniqById(items) {
+            const seen = new Set();
+            const out = [];
+            (items || []).forEach(it => {
+                if (!it || it.id == null) return;
+                const k = String(it.id);
+                if (seen.has(k)) return;
+                seen.add(k);
+                out.push(it);
+            });
+            return out;
         }
 
         document.querySelectorAll('tr[data-row-id]').forEach(row => {
@@ -510,8 +424,11 @@
             if (vQ && vQ.dataset.defaultQ) vQ.value = vQ.dataset.defaultQ;
             if (pQ && pQ.dataset.defaultQ) pQ.value = pQ.dataset.defaultQ;
 
-            fillSelectWithQuickIds(vSel, splitIds(vSel.dataset.candidateIds), '-- Select vendor --');
-            fillSelectWithQuickIds(pSel, splitIds(pSel.dataset.candidateIds), '-- Select product --');
+            // Quick candidates (resolve labels by IDs)
+            (async () => {
+                await fillSelectWithQuick(vSel, splitIds(vSel.dataset.candidateIds), '-- Select vendor --', 'vendors');
+                await fillSelectWithQuick(pSel, splitIds(pSel.dataset.candidateIds), '-- Select product --', 'products');
+            })();
 
             vSel.addEventListener('change', () => {
                 clearSelect(pSel, '-- Select product --');
@@ -522,71 +439,50 @@
                 syncSubmitHidden(form, vSel.value || null, pSel.value || null);
             });
 
-            row.querySelector('.js-vendor-search').addEventListener('click', async () => {
-                const q = vQ.value || '';
-                try {
-                    const grouped = await fetchJson('/api/dict/vendors/search2?q=' + encodeURIComponent(q));
-                    fillSelectWithGrouped(vSel, grouped, '-- Select vendor --');
+            row.querySelector('.js-vendor-search')?.addEventListener('click', async () => {
+                const q = (vQ?.value || '').trim();
+                if (q.length < 2) return;
+                const grouped = await fetchJson('/api/dict/vendors/search2?q=' + encodeURIComponent(q));
+                fillSelectWithGrouped(vSel, grouped, '-- Select vendor --');
 
-                    if (grouped.exact && grouped.exact.length === 1) {
-                        vSel.value = String(grouped.exact[0].id);
-                    } else {
-                        vSel.value = '';
-                    }
-
-                    clearSelect(pSel, '-- Select product --');
-                    syncSubmitHidden(form, vSel.value || null, null);
-                } catch (e) {
-                    alert('Vendor search failed.');
+                // keep quick candidates at bottom (optional)
+                const quickIds = splitIds(vSel.dataset.candidateIds);
+                if (quickIds.length > 0) {
+                    const quick = await fetchJson('/api/dict/vendors/by-ids?ids=' + encodeURIComponent(quickIds.join(',')));
+                    appendOptGroup(vSel, 'Quick candidates', uniqById(quick), (it) => `${it.label} (#${it.id})`);
                 }
             });
 
-            row.querySelector('.js-product-search').addEventListener('click', async () => {
+            row.querySelector('.js-product-search')?.addEventListener('click', async () => {
                 const vendorId = vSel.value;
-                if (!vendorId || !/^\d+$/.test(vendorId)) {
-                    alert('Select vendor first.');
-                    return;
+                if (!vendorId) return;
+
+                const q = (pQ?.value || '').trim();
+                if (q.length < 2) return;
+
+                const grouped = await fetchJson('/api/dict/products/search2?vendorId=' + encodeURIComponent(vendorId) + '&q=' + encodeURIComponent(q));
+                fillSelectWithGrouped(pSel, grouped, '-- Select product --');
+
+                // keep quick candidates at bottom (optional)
+                const quickIds = splitIds(pSel.dataset.candidateIds);
+                if (quickIds.length > 0) {
+                    const quick = await fetchJson('/api/dict/products/by-ids?ids=' + encodeURIComponent(quickIds.join(',')));
+                    appendOptGroup(pSel, 'Quick candidates', uniqById(quick), (it) => `${it.label} (#${it.id})`);
                 }
-                const q = pQ.value || '';
-                try {
-                    const grouped = await fetchJson('/api/dict/products/search2?vendorId='
-                        + encodeURIComponent(vendorId)
-                        + '&q=' + encodeURIComponent(q));
 
-                    fillSelectWithGrouped(pSel, grouped, '-- Select product --');
-
-                    if (grouped.exact && grouped.exact.length === 1) {
-                        pSel.value = String(grouped.exact[0].id);
-                    } else {
-                        pSel.value = '';
-                    }
-
-                    syncSubmitHidden(form, vendorId, pSel.value || null);
-                } catch (e) {
-                    alert('Product search failed.');
-                }
+                syncSubmitHidden(form, vSel.value || null, pSel.value || null);
             });
 
-            row.querySelector('.js-clear').addEventListener('click', () => clearSelected(row));
-
+            // Apply button: enforce vendor selection
             form.addEventListener('submit', (e) => {
-                const v = form.querySelector('.js-submit-vendor-id').value;
-                const p = form.querySelector('.js-submit-product-id').value;
-
-                if (!v || !/^\d+$/.test(v)) {
+                const vendorId = vSel.value || '';
+                if (!vendorId) {
                     e.preventDefault();
-                    alert('Vendor is required. Please select a vendor from the selector.');
+                    alert('Vendor is required.');
                     return false;
                 }
-                if (p && !/^\d+$/.test(p)) {
-                    e.preventDefault();
-                    alert('Product ID must be numeric.');
-                    return false;
-                }
-                return true;
+                syncSubmitHidden(form, vSel.value || null, pSel.value || null);
             });
-
-            syncSubmitHidden(form, vSel.value || null, pSel.value || null);
         });
     </script>
 

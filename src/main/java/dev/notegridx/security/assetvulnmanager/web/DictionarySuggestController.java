@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,6 +19,8 @@ import dev.notegridx.security.assetvulnmanager.service.VendorProductNormalizer;
 
 @RestController
 public class DictionarySuggestController {
+
+    private static final Pattern ID_PREFIX = Pattern.compile("^(\\d+)");
 
     private final CpeVendorRepository vendorRepo;
     private final CpeProductRepository productRepo;
@@ -236,8 +239,84 @@ public class DictionarySuggestController {
     }
 
     // =========================================================
+    // New APIs: resolve labels by IDs (for quick candidates)
+    // =========================================================
+
+    /**
+     * Resolve vendor IDs -> label/nameNorm (preserve input order).
+     * Example: GET /api/dict/vendors/by-ids?ids=97,11961,8623
+     */
+    @GetMapping("/api/dict/vendors/by-ids")
+    public List<SuggestIdItem> vendorsByIds(
+            @RequestParam(name = "ids", defaultValue = "") String idsCsv
+    ) {
+        List<Long> ids = parseIdCsv(idsCsv);
+        if (ids.isEmpty()) return List.of();
+
+        var found = vendorRepo.findAllById(ids);
+        Map<Long, CpeVendor> map = new LinkedHashMap<>();
+        for (CpeVendor v : found) {
+            map.put(v.getId(), v);
+        }
+
+        List<SuggestIdItem> out = new ArrayList<>();
+        for (Long id : ids) {
+            CpeVendor v = map.get(id);
+            if (v != null) out.add(toSuggest(v));
+        }
+        return out;
+    }
+
+    /**
+     * Resolve product IDs -> label/nameNorm (preserve input order).
+     * Example: GET /api/dict/products/by-ids?ids=123,456
+     */
+    @GetMapping("/api/dict/products/by-ids")
+    public List<SuggestIdItem> productsByIds(
+            @RequestParam(name = "ids", defaultValue = "") String idsCsv
+    ) {
+        List<Long> ids = parseIdCsv(idsCsv);
+        if (ids.isEmpty()) return List.of();
+
+        var found = productRepo.findAllById(ids);
+        Map<Long, CpeProduct> map = new LinkedHashMap<>();
+        for (CpeProduct p : found) {
+            map.put(p.getId(), p);
+        }
+
+        List<SuggestIdItem> out = new ArrayList<>();
+        for (Long id : ids) {
+            CpeProduct p = map.get(id);
+            if (p != null) out.add(toSuggestProduct(p));
+        }
+        return out;
+    }
+
+    // =========================================================
     // Helpers
     // =========================================================
+
+    private static List<Long> parseIdCsv(String csv) {
+        if (csv == null || csv.isBlank()) return List.of();
+
+        List<Long> out = new ArrayList<>();
+        for (String part : csv.split(",")) {
+            if (part == null) continue;
+            String s = part.trim();
+            if (s.isEmpty()) continue;
+
+            // migration-friendly: allow "97:google"
+            var m = ID_PREFIX.matcher(s);
+            if (!m.find()) continue;
+
+            try {
+                out.add(Long.parseLong(m.group(1)));
+            } catch (NumberFormatException ignore) {
+                // ignore invalid
+            }
+        }
+        return out;
+    }
 
     private SuggestIdItem toSuggest(CpeVendor v) {
         String label = (v.getDisplayName() == null || v.getDisplayName().isBlank())
