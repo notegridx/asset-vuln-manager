@@ -41,81 +41,114 @@
         .um-filterbar__right { justify-content: flex-start; }
     }
 
-    /* grid: vendor/product side-by-side (inputs only) */
-    .um-select {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 12px;
-        align-items: start;
+    /* =========================
+       Resolved rows style
+       ========================= */
+    tr.row-resolved {
+        opacity: 0.55;
     }
-    @media (max-width: 980px) {
-        .um-select { grid-template-columns: 1fr; }
-    }
-
-    .um-block {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        min-width: 0;
+    tr.row-resolved .badge {
+        filter: grayscale(0.6);
     }
 
+    /* do not leak table td styling globally */
+    .um-table td {
+        overflow: hidden;
+        vertical-align: top;
+    }
+
+    /* =========================================================
+       Fix column sizing (Raw too wide / Resolve too narrow)
+       (Meta column removed; now 3 columns)
+       ========================================================= */
+    .um-table{
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    /* Status */
+    .um-table th:nth-child(1),
+    .um-table td:nth-child(1){
+        width: 120px !important;
+    }
+
+    /* Raw */
+    .um-table th:nth-child(2),
+    .um-table td:nth-child(2){
+        width: 320px !important; /* adjust 280–360 */
+    }
+
+    /* Resolve */
+    .um-table th:nth-child(3),
+    .um-table td:nth-child(3){
+        min-width: 560px; /* adjust 520–720 */
+    }
+
+    /* Raw pills should not blow width */
+    .um-table td:nth-child(2) .pill{
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: inline-block;
+    }
+
+    /* Inputs follow cell width */
+    .um-table td:nth-child(3) input,
+    .um-table td:nth-child(3) select,
+    .um-table td:nth-child(3) textarea{
+        width: 100%;
+    }
+
+    /* =========================
+       Resolve cell (Vendor/Product side-by-side)
+       ========================= */
     .um-label {
         font-size: 12px;
         color: var(--muted);
     }
 
-    .um-row {
+    .um-resolve {
         display: flex;
-        gap: 8px;
-        align-items: center;
-        min-width: 0;
+        flex-direction: column;
+        gap: 10px;
     }
 
-    .um-row input {
-        flex: 1;
-        min-width: 0;
-        width: 100%;
-    }
-
-    .um-row button { flex: 0 0 auto; }
-
-    /* selectors: vendor/product side-by-side */
-    .um-pick {
+    .um-resolve-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 12px;
         align-items: start;
-        margin-top: 10px;
     }
     @media (max-width: 980px) {
-        .um-pick { grid-template-columns: 1fr; }
+        .um-resolve-grid { grid-template-columns: 1fr; }
     }
 
-    .um-pick select {
-        width: 100%;
+    .um-resolve-col {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
         min-width: 0;
     }
 
-    /* actions row */
+    .um-resolve input { height: 34px; }
+    .um-resolve select { height: 34px; }
+
+    .um-note textarea {
+        width: 100%;
+        min-height: 44px;
+        resize: vertical;
+    }
+
     .um-actions {
         display: flex;
         gap: 10px;
         align-items: center;
         justify-content: flex-end;
-        margin-top: 10px;
         flex-wrap: wrap;
+        margin-top: 6px;
     }
-
-    .um-note {
-        width: 100%;
-        margin-top: 10px;
-    }
-
-    .um-note textarea {
-        width: 100%;
-        min-height: 54px;
-        resize: vertical;
-    }
+    .um-actions .btn { height: 34px; }
 
     /* hint */
     details.um-hint {
@@ -138,109 +171,6 @@
         line-height: 1.5;
         margin-top: 8px;
     }
-
-    /* resolved rows style */
-    tr.row-resolved {
-        opacity: 0.55;
-    }
-
-    tr.row-resolved .badge {
-        filter: grayscale(0.6);
-    }
-
-    /* do not leak table td styling globally */
-    .um-table td {
-        overflow: hidden;
-        vertical-align: top;
-    }
-
-    /* Resolveセル内は常に1カラムで縦に積む（崩れにくい） */
-    .um-table td:nth-child(3) .um-select,
-    .um-table td:nth-child(3) .um-pick {
-        grid-template-columns: 1fr !important;
-    }
-
-    /* =========================================================
-   Fix column sizing (Raw too wide / Resolve too narrow)
-   ========================================================= */
-
-    /* 1) 列幅を安定化 */
-    .um-table{
-        table-layout: fixed;
-        width: 100%;
-    }
-
-    /* 2) 固定列（Status / Raw / Meta）を明示し、Resolveに残りを渡す */
-    .um-table th:nth-child(1),
-    .um-table td:nth-child(1){
-        width: 120px !important;
-    }
-
-    .um-table th:nth-child(2),
-    .um-table td:nth-child(2){
-        width: 300px !important;      /* Rawはここで上限を決める（お好みで 280〜340） */
-    }
-
-    .um-table th:nth-child(4),
-    .um-table td:nth-child(4){
-        width: 240px !important;      /* Metaも少し広め（お好みで 220〜260） */
-    }
-
-    /* 3) Resolve列には最低幅を保証（潰れ防止） */
-    .um-table th:nth-child(3),
-    .um-table td:nth-child(3){
-        min-width: 520px;             /* お好みで 520〜680 */
-    }
-
-    /* 4) Raw の長文が原因で列が膨らむのを防ぐ */
-    .um-table td:nth-child(2) .pill{
-        max-width: 100%;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: inline-block;
-    }
-
-    /* 5) 入力/セレクトはセル幅に追従 */
-    .um-table td:nth-child(3) input,
-    .um-table td:nth-child(3) select,
-    .um-table td:nth-child(3) textarea{
-        width: 100%;
-    }
-
-    /* =========================
-   Resolve cell compact UI
-   ========================= */
-    .um-resolve { display:flex; flex-direction:column; gap:10px; }
-
-    .um-resolve .um-label { font-size: 11px; letter-spacing: .02em; }
-
-    .um-resolve .um-row { gap: 8px; }
-    .um-resolve .um-row input { height: 34px; }
-    .um-resolve .um-row button { height: 34px; padding: 0 10px; }
-
-    .um-resolve select { height: 34px; }
-
-    .um-note textarea { min-height: 44px; }
-
-    .um-actions { margin-top: 6px; }
-    .um-actions .btn { height: 34px; }
-
-    /* “Pick vendor/product” を2列に戻す（Resolve列内だけ） */
-    @media (min-width: 981px) {
-        .um-table td:nth-child(3) .um-pick {
-            grid-template-columns: 1fr 1fr !important;
-        }
-    }
-
-    /* Note を折りたたみ風に */
-    .um-note details summary {
-        cursor:pointer;
-        color: var(--muted);
-        font-size: 12px;
-        user-select:none;
-    }
-    .um-note details[open] summary { color: var(--text); }
 </style>
 
 <body th:replace="~{layout/base :: layout('Unresolved Mappings', 'admin', ~{::main})}">
@@ -320,7 +250,7 @@
             <div class="muted">
                 <ul style="margin:6px 0 0 16px;">
                     <li><strong>Vendor is required.</strong> Product is optional. You can resolve a mapping with vendor only.</li>
-                    <li><strong>Search</strong> shows exact matches and other candidates from the CPE dictionary.</li>
+                    <li>Type at least 2 characters to search dictionary candidates.</li>
                     <li><strong>Quick candidates</strong> are suggestions derived from the dictionary using candidate IDs.</li>
                     <li>If a correct mapping does not exist, use <strong>"Mark resolved (no link)"</strong>.</li>
                 </ul>
@@ -338,13 +268,13 @@
                     <th style="width:120px;">Status</th>
                     <th style="width:240px;">Raw</th>
                     <th>Resolve</th>
-                    <th style="width:200px;">Meta</th>
                 </tr>
                 </thead>
 
                 <tbody>
                 <tr th:each="r : ${mappings}"
                     th:attr="data-row-id=${r.id}"
+                    th:id="${'row-' + r.id}"
                     th:classappend="${r.status != null and r.status.toString() == 'RESOLVED'} ? ' row-resolved' : ''">
 
                     <td>
@@ -385,87 +315,65 @@
                             <input type="hidden" class="js-submit-vendor-id" name="cpeVendorId" value=""/>
                             <input type="hidden" class="js-submit-product-id" name="cpeProductId" value=""/>
 
-                            <div class="um-select">
-                                <div class="um-block">
-                                    <div class="um-label">Vendor search</div>
-                                    <div class="um-row">
-                                        <input class="js-vendor-q" type="text"
-                                               placeholder="type vendor..."
+                            <div class="um-resolve">
+
+                                <div class="um-resolve-grid">
+
+                                    <!-- Vendor -->
+                                    <div class="um-resolve-col">
+                                        <div class="um-label">Vendor</div>
+                                        <input class="js-vendor-q"
+                                               type="text"
+                                               placeholder="search vendor..."
                                                th:attr="data-default-q=${r.normalizedVendor}"/>
-                                    </div>
-                                </div>
 
-                                <div class="um-block">
-                                    <div class="um-label">Product search</div>
-                                    <div class="um-row">
-                                        <input class="js-product-q" type="text"
-                                               placeholder="type product..."
+                                        <select class="js-vendor-select"
+                                                th:attr="data-candidate-ids=${r.candidateVendorIds}">
+                                            <option value="">-- Select vendor --</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Product -->
+                                    <div class="um-resolve-col">
+                                        <div class="um-label">Product</div>
+                                        <input class="js-product-q"
+                                               type="text"
+                                               placeholder="search product..."
                                                th:attr="data-default-q=${r.normalizedProduct}"/>
+
+                                        <select class="js-product-select"
+                                                th:attr="data-candidate-ids=${r.candidateProductIds}">
+                                            <option value="">-- Select product --</option>
+                                        </select>
                                     </div>
-                                </div>
-                            </div>
 
-                            <div class="um-pick">
-                                <div class="um-block">
-                                    <div class="um-label">Pick vendor</div>
-                                    <select class="js-vendor-select"
-                                            th:attr="data-candidate-ids=${r.candidateVendorIds}">
-                                        <option value="">-- Select vendor --</option>
-                                    </select>
                                 </div>
 
-                                <div class="um-block">
-                                    <div class="um-label">Pick product (optional)</div>
-                                    <select class="js-product-select"
-                                            th:attr="data-candidate-ids=${r.candidateProductIds}">
-                                        <option value="">-- Select product --</option>
-                                    </select>
+                                <div class="um-note">
+                                    <div class="um-label">Note (optional)</div>
+                                    <textarea name="note" placeholder="why / decision / hints..."
+                                              th:text="${r.note}"></textarea>
                                 </div>
+
+                                <div class="um-actions">
+                                    <button class="btn btn-primary" type="submit">Apply</button>
+
+                                    <!-- mark-resolved を使っている場合は Controller 側が存在する前提。
+                                         無いならこのボタンは削除してください。 -->
+                                    <button class="btn btn-ghost" type="submit"
+                                            th:formaction="@{/admin/unresolved/mark-resolved}"
+                                            th:disabled="${r.status != null and r.status.toString() == 'RESOLVED'}">
+                                        Mark resolved (no link)
+                                    </button>
+                                </div>
+
                             </div>
-
-                            <div class="um-note">
-                                <div class="um-label">Note (optional)</div>
-                                <textarea name="note" placeholder="why / decision / hints..."
-                                          th:text="${r.note}"></textarea>
-                            </div>
-
-                            <div class="um-actions">
-                                <button class="btn btn-primary" type="submit">Apply</button>
-
-                                <!-- mark-resolved を使っている場合は Controller 側が存在する前提。
-                                     無いならこのボタンは削除してください。 -->
-                                <button class="btn btn-ghost" type="submit"
-                                        th:formaction="@{/admin/unresolved/mark-resolved}"
-                                        th:disabled="${r.status != null and r.status.toString() == 'RESOLVED'}">
-                                    Mark resolved (no link)
-                                </button>
-                            </div>
-
                         </form>
-                    </td>
-
-                    <td class="muted" style="font-size:12px;">
-                        <div style="display:flex; flex-direction:column; gap:6px;">
-                            <div>
-                                <span class="pill pill--dim" th:text="${r.source}">source</span>
-                            </div>
-                            <div>
-                                <span th:text="${#temporals.format(r.firstSeenAt, 'yyyy-MM-dd HH:mm')}">first</span>
-                                <span> / </span>
-                                <span th:text="${#temporals.format(r.lastSeenAt, 'yyyy-MM-dd HH:mm')}">last</span>
-                            </div>
-                            <div th:if="${r.normalizedVendor != null and !#strings.isEmpty(r.normalizedVendor)}">
-                                <span class="pill pill--dim" th:text="${r.normalizedVendor}">nv</span>
-                            </div>
-                            <div th:if="${r.normalizedProduct != null and !#strings.isEmpty(r.normalizedProduct)}">
-                                <span class="pill pill--dim" th:text="${r.normalizedProduct}">np</span>
-                            </div>
-                        </div>
                     </td>
                 </tr>
 
                 <tr th:if="${#lists.isEmpty(mappings)}">
-                    <td colspan="4" class="muted" style="padding:14px;">
+                    <td colspan="3" class="muted" style="padding:14px;">
                         No unresolved mappings.
                     </td>
                 </tr>
@@ -647,7 +555,7 @@
                     try { await runVendorSearch(); } catch (_) {}
                 }
 
-                // auto product search only if vendor already selected (user picked) and normalizedProduct exists
+                // auto product search only if vendor already selected and normalizedProduct exists
                 const pDefault = (pQ?.value || '').trim();
                 if ((vSel.value || '').trim() && pDefault.length >= 2) {
                     try { await runProductSearch(); } catch (_) {}
@@ -670,15 +578,11 @@
                 syncSubmitHidden(form, vSel.value || null, pSel.value || null);
             });
 
-            // buttons
-            row.querySelector('.js-vendor-search')?.addEventListener('click', () => runVendorSearch().catch(() => {}));
-            row.querySelector('.js-product-search')?.addEventListener('click', () => runProductSearch().catch(() => {}));
-
             // Enter key support
             onEnter(vQ, () => runVendorSearch().catch(() => {}));
             onEnter(pQ, () => runProductSearch().catch(() => {}));
 
-            // debounce auto-search while typing
+            // debounce auto-search while typing (no Search buttons)
             const vendorDebounced = debounce(() => runVendorSearch().catch(() => {}), 350);
             const productDebounced = debounce(() => runProductSearch().catch(() => {}), 350);
             vQ?.addEventListener('input', vendorDebounced);
@@ -704,7 +608,6 @@
 
         // =========================================================
         // After redirect: jump to next row (best-effort)
-        // (Requires <tr id="row-<id>"> in HTML)
         // =========================================================
         (function jumpToNextRow() {
             const jumpId = sessionStorage.getItem('um-next-row');
@@ -715,6 +618,8 @@
             if (el) el.scrollIntoView({block: 'start', behavior: 'smooth'});
         })();
     </script>
+
+    <!-- FYI: This template keeps the same overall page rhythm used across list screens (e.g., vulnerabilities list). :contentReference[oaicite:0]{index=0} -->
 
 </main>
 </body>
