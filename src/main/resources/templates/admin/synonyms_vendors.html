@@ -5,6 +5,44 @@
 <body th:replace="~{layout/base :: layout('Synonyms - Vendors', 'admin', ~{::main})}">
 <main>
 
+  <!-- Inline CSS (self-contained for this page) -->
+  <style>
+    .alias-status {
+      border: none;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1.2;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+    .alias-status--active {
+      background: rgba(138, 180, 255, 0.18);
+      color: var(--accent);
+      border: 1px solid rgba(138, 180, 255, 0.35);
+    }
+    .alias-status--inactive {
+      background: rgba(166, 173, 187, 0.14);
+      color: var(--muted);
+      border: 1px solid rgba(166, 173, 187, 0.25);
+    }
+    .alias-status:hover { filter: brightness(1.06); }
+    .alias-status:active { transform: translateY(0.5px); }
+    .alias-status[disabled] { opacity: 0.65; cursor: wait; transform: none; }
+    .alias-status__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.9;
+    }
+    .alias-status-form { display:inline; }
+  </style>
+
   <h1>Synonyms Workspace</h1>
   <p class="muted">
     Manage <strong>vendor</strong> and <strong>product</strong> alias dictionaries in the same vendor context.
@@ -200,31 +238,43 @@
             <th>aliasNorm</th>
             <th style="width:120px;">vendorId</th>
             <th>canonical vendor</th>
-            <th style="width:110px;">status</th>
+            <th style="width:130px;">Status</th>
             <th>note</th>
-            <th style="width:140px;">Action</th>
           </tr>
           </thead>
           <tbody>
 
           <tr th:if="${rows == null || #lists.isEmpty(rows)}">
-            <td colspan="7" class="muted" style="padding:14px;">No rows.</td>
+            <td colspan="6" class="muted" style="padding:14px;">No rows.</td>
           </tr>
 
-          <tr th:each="r : ${rows}">
+          <tr th:each="r : ${rows}" th:attr="id=${'row-' + r.id}">
             <td class="mono" th:text="${r.id}">1</td>
             <td class="mono" th:text="${r.aliasNorm}">microsoft corp</td>
             <td class="mono" th:text="${r.cpeVendorId}">123</td>
             <td th:text="${vendorLabels[r.cpeVendorId]}">Microsoft</td>
-            <td><span class="badge" th:text="${r.status}">ACTIVE</span></td>
-            <td th:text="${r.note}">-</td>
+
+            <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
             <td>
-              <form th:action="@{/admin/synonyms/vendors/toggle}" method="post" style="display:inline;">
+              <form class="alias-status-form js-toggle-ajax"
+                    th:action="@{/admin/synonyms/vendors/toggle}" method="post"
+                    data-scope="vendors">
                 <input type="hidden" name="id" th:value="${r.id}">
+                <!-- keep for non-JS fallback -->
                 <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
-                <button class="btn btn-ghost" type="submit">Toggle</button>
+
+                <button type="submit"
+                        class="alias-status"
+                        th:classappend="${r.status == 'ACTIVE'} ? ' alias-status--active' : ' alias-status--inactive'"
+                        th:attr="data-status=${r.status}"
+                        th:aria-label="${'Toggle status (current=' + r.status + ')'}">
+                  <span class="alias-status__dot" aria-hidden="true"></span>
+                  <span class="alias-status__text" th:text="${r.status}">ACTIVE</span>
+                </button>
               </form>
             </td>
+
+            <td th:text="${r.note}">-</td>
           </tr>
 
           </tbody>
@@ -319,32 +369,44 @@
               <th style="width:120px;">vendorId</th>
               <th style="width:160px;">productId</th>
               <th>canonical product</th>
-              <th style="width:110px;">status</th>
+              <th style="width:130px;">Status</th>
               <th>note</th>
-              <th style="width:140px;">Action</th>
             </tr>
             </thead>
             <tbody>
 
             <tr th:if="${productRows == null || #lists.isEmpty(productRows)}">
-              <td colspan="8" class="muted" style="padding:14px;">No rows.</td>
+              <td colspan="7" class="muted" style="padding:14px;">No rows.</td>
             </tr>
 
-            <tr th:each="r : ${productRows}">
+            <tr th:each="r : ${productRows}" th:attr="id=${'row-' + r.id}">
               <td class="mono" th:text="${r.id}">1</td>
               <td class="mono" th:text="${r.aliasNorm}">visual studio code</td>
               <td class="mono" th:text="${r.cpeVendorId}">123</td>
               <td class="mono" th:text="${r.cpeProductId}">456</td>
               <td th:text="${productLabels[r.cpeProductId]}">Microsoft Visual Studio Code</td>
-              <td><span class="badge" th:text="${r.status}">ACTIVE</span></td>
-              <td th:text="${r.note}">-</td>
+
+              <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
               <td>
-                <form th:action="@{/admin/synonyms/products/toggle}" method="post" style="display:inline;">
+                <form class="alias-status-form js-toggle-ajax"
+                      th:action="@{/admin/synonyms/products/toggle}" method="post"
+                      data-scope="products">
                   <input type="hidden" name="id" th:value="${r.id}">
+                  <!-- keep for non-JS fallback -->
                   <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
-                  <button class="btn btn-ghost" type="submit">Toggle</button>
+
+                  <button type="submit"
+                          class="alias-status"
+                          th:classappend="${r.status == 'ACTIVE'} ? ' alias-status--active' : ' alias-status--inactive'"
+                          th:attr="data-status=${r.status}"
+                          th:aria-label="${'Toggle status (current=' + r.status + ')'}">
+                    <span class="alias-status__dot" aria-hidden="true"></span>
+                    <span class="alias-status__text" th:text="${r.status}">ACTIVE</span>
+                  </button>
                 </form>
               </td>
+
+              <td th:text="${r.note}">-</td>
             </tr>
 
             </tbody>
@@ -356,7 +418,7 @@
   </div>
 
   <!-- =========================
-       Suggest JS (vendor + product)
+       Suggest JS (vendor + product) + Toggle AJAX
        ========================= -->
   <script th:inline="javascript">
     (function() {
@@ -481,7 +543,6 @@
               'workspaceVendorSuggestBox',
               'workspaceVendorSuggestList',
               function(item){
-                // keep current tab if present in URL; default vendors
                 const params = new URLSearchParams(window.location.search);
                 const tab = params.get('tab') || 'vendors';
                 window.location.href = `/admin/synonyms/vendors?vendorId=${item.id}&tab=${encodeURIComponent(tab)}`;
@@ -517,9 +578,8 @@
             hint.textContent = '';
           }
         }
-        if (input) {
-          input.addEventListener('input', clearSelectionIfTextChanged);
-        }
+        if (input) input.addEventListener('input', clearSelectionIfTextChanged);
+
         if (form) {
           form.addEventListener('submit', (e) => {
             if (!hiddenId.value) {
@@ -575,6 +635,103 @@
           });
         }
       })();
+
+      // =========================
+      // Toggle AJAX (root fix: no redirect, no scroll jitter)
+      // =========================
+      function toggleStatusString(s){
+        const x = (s || '').trim().toUpperCase();
+        return x === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      }
+
+      function applyStatusToButton(btn, newStatus){
+        const status = (newStatus || '').toUpperCase();
+        btn.setAttribute('data-status', status);
+        const textEl = btn.querySelector('.alias-status__text');
+        if (textEl) textEl.textContent = status;
+
+        btn.classList.remove('alias-status--active', 'alias-status--inactive');
+        if (status === 'ACTIVE') btn.classList.add('alias-status--active');
+        else btn.classList.add('alias-status--inactive');
+
+        const aria = btn.getAttribute('aria-label') || '';
+        // keep it simple; overwrite
+        btn.setAttribute('aria-label', `Toggle status (current=${status})`);
+      }
+
+      function maybeRemoveRowIfFiltered(form, newStatus){
+        // If user filters by status, toggling may make row out-of-scope; remove to avoid lying UI.
+        const scope = form.getAttribute('data-scope'); // vendors | products
+        const params = new URLSearchParams(window.location.search);
+
+        if (scope === 'vendors') {
+          const filter = (params.get('status') || '').toUpperCase(); // ACTIVE/INACTIVE/''
+          if (filter && filter !== (newStatus || '').toUpperCase()) {
+            const tr = form.closest('tr');
+            if (tr) tr.remove();
+          }
+          return;
+        }
+
+        if (scope === 'products') {
+          const filter = (params.get('statusP') || '').toUpperCase();
+          if (filter && filter !== (newStatus || '').toUpperCase()) {
+            const tr = form.closest('tr');
+            if (tr) tr.remove();
+          }
+        }
+      }
+
+      document.addEventListener('submit', async (e) => {
+        const form = e.target;
+        if (!form || !form.classList || !form.classList.contains('js-toggle-ajax')) return;
+
+        // Intercept
+        e.preventDefault();
+
+        const btn = form.querySelector('button.alias-status');
+        if (!btn || btn.disabled) return;
+
+        const currentStatus = btn.getAttribute('data-status') || '';
+        const optimistic = toggleStatusString(currentStatus);
+
+        // Optimistic UI update first (instant)
+        btn.disabled = true;
+        applyStatusToButton(btn, optimistic);
+
+        try {
+          const fd = new FormData(form);
+          // Controller expects id (and redirect for non-JS), but redirect is harmless here.
+          const body = new URLSearchParams();
+          for (const [k, v] of fd.entries()) body.append(k, String(v));
+
+          const res = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'fetch' },
+            body,
+            credentials: 'same-origin'
+          });
+
+          if (!res.ok) {
+            // revert and fallback to normal navigation
+            applyStatusToButton(btn, currentStatus);
+            btn.disabled = false;
+            form.submit();
+            return;
+          }
+
+          // Success: keep optimistic UI and optionally remove row if filtered out
+          btn.disabled = false;
+          maybeRemoveRowIfFiltered(form, optimistic);
+
+        } catch (err) {
+          // Network error: revert and fallback to normal navigation
+          applyStatusToButton(btn, currentStatus);
+          btn.disabled = false;
+          form.submit();
+        }
+      }, true);
+
     })();
   </script>
 
