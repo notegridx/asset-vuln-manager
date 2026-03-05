@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 
 @Controller
@@ -32,33 +31,39 @@ public class AdminCanonicalController {
         this.linker = linker;
     }
 
-    /**
-     * Filter vocabulary MUST match Summary keys:
-     * linked / linkedValid / linkedStale / resolvable / unresolvable / needsNormalization
-     */
     public enum Filter {
-        ALL,
-        LINKED,              // linked = linkedValid + linkedStale
-        LINKED_VALID,        // linkedValid
-        LINKED_STALE,        // linkedStale
-        RESOLVABLE,          // resolvable
-        UNRESOLVABLE,        // unresolvable
-        NEEDS_NORMALIZATION; // needsNormalization
+        all,
+
+        // SQL link (IDs)
+        vendorLinked,
+        vendorOnlyLinked,
+        fullyLinked,
+
+        // Fully linked quality
+        linkedValid,
+        linkedStale,
+
+        // Dictionary
+        resolvable,
+        unresolvable,
+
+        // Other
+        needsNormalization;
 
         static Filter parse(String s) {
-            if (s == null) return ALL;
+            if (s == null || s.isBlank()) return all;
             try {
-                return Filter.valueOf(s.trim().toUpperCase(Locale.ROOT));
+                return Filter.valueOf(s.trim());
             } catch (Exception e) {
-                return ALL;
+                return all;
             }
         }
     }
 
     @GetMapping("/admin/canonical")
     public String view(
-            @RequestParam(name = "assetId", required = false) Long assetId,
-            @RequestParam(name = "filter", required = false, defaultValue = "ALL") String filterRaw,
+            @RequestParam(name = "asset", required = false) Long assetId,
+            @RequestParam(name = "filter", required = false, defaultValue = "all") String filterRaw,
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "limit", required = false, defaultValue = "200") Integer limit,
             Model model
@@ -67,13 +72,9 @@ public class AdminCanonicalController {
         Filter filter = Filter.parse(filterRaw);
         String keyword = normalizeKeyword(q);
 
-        // Assets dropdown
+        // (optional) asset dropdownに使うなら
         List<Asset> assets = assetRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
         model.addAttribute("assets", assets);
-
-        // Overall stats (first N rows; keep approximate, consistent with UI text)
-        var overall = linker.statsOverall(5000);
-        model.addAttribute("summaryOverall", overall);
 
         // Base selection (asset + keyword, before filter)
         List<SoftwareInstall> base = softwareRepo.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
@@ -81,6 +82,10 @@ public class AdminCanonicalController {
                 .filter(s -> keyword == null || containsKeyword(s, keyword))
                 .limit(safeLimit)
                 .toList();
+
+        // Stats: “after asset/keyword filter, before filter selection” (あなたの HTML の説明文と一致)
+        var stats = linker.stats(base);
+        model.addAttribute("stats", stats);
 
         // Analyze rows
         List<Row> analyzed = base.stream()
@@ -92,14 +97,10 @@ public class AdminCanonicalController {
                 .filter(r -> matchesFilter(r, filter))
                 .toList();
 
-        // Current selection stats = after filter (what you see)
-        var current = linker.stats(rows.stream().map(Row::software).toList());
-        model.addAttribute("summaryCurrent", current);
-
         model.addAttribute("rows", rows);
 
-        // Echo states
-        model.addAttribute("assetId", assetId);
+        // Echo states (HTMLのnameと合わせる)
+        model.addAttribute("asset", assetId);
         model.addAttribute("filter", filter.name());
         model.addAttribute("q", q);
         model.addAttribute("limit", safeLimit);
@@ -108,54 +109,29 @@ public class AdminCanonicalController {
     }
 
     private static boolean matchesFilter(Row r, Filter f) {
-        var res = r.analysis.result();
+        var a = r.analysis;
         return switch (f) {
-            case ALL -> true;
+            case all -> true;
 
-            // linked = linkedValid + linkedStale
-            case LINKED -> (res == CanonicalCpeLinkingService.ItemResult.LINKED
-                    || res == CanonicalCpeLinkingService.ItemResult.STALE);
+            // SQL link (IDs)
+            case vendorLinked -> a.vendorLinkedSql();
+            case vendorOnlyLinked -> a.vendorLinkedSql() && !a.productLinkedSql();
+            case fullyLinked -> a.fullyLinkedSql();
 
-            case LINKED_VALID -> res == CanonicalCpeLinkingService.ItemResult.LINKED;
-            case LINKED_STALE -> res == CanonicalCpeLinkingService.ItemResult.STALE;
+            // Fully linked quality
+            case linkedValid -> a.result() == CanonicalCpeLinkingService.ItemResult.LINKED;
+            case linkedStale -> a.result() == CanonicalCpeLinkingService.ItemResult.STALE;
 
-            // MUST match Summary semantics:
-            // resolvable/unresolvable are dictionary-resolution flags regardless of SQL link state.
-            case RESOLVABLE -> r.analysis.resolvable();
-            case UNRESOLVABLE -> !r.analysis.resolvable();
+            // Dictionary
+            case resolvable -> a.resolvable();
+            case unresolvable -> !a.resolvable();
 
-            case NEEDS_NORMALIZATION -> r.analysis.needsNormalization();
+            // Other
+            case needsNormalization -> a.needsNormalization();
         };
     }
 
-    private static boolean containsKeyword(SoftwareInstall s, String kw) {
-        String v = safeLower(s.getVendor());
-        String p = safeLower(s.getProduct());
-        String ver = safeLower(s.getVersion());
-        String nv = safeLower(s.getNormalizedVendor());
-        String np = safeLower(s.getNormalizedProduct());
-        return v.contains(kw) || p.contains(kw) || ver.contains(kw) || nv.contains(kw) || np.contains(kw);
-    }
-
-    private static String normalizeKeyword(String q) {
-        if (q == null) return null;
-        String t = q.trim().toLowerCase(Locale.ROOT);
-        return t.isEmpty() ? null : t;
-    }
-
-    private static String safeLower(String s) {
-        if (s == null) return "";
-        return s.toLowerCase(Locale.ROOT);
-    }
-
-    private static int clamp(int v, int min, int max) {
-        if (v < min) return min;
-        if (v > max) return max;
-        return v;
-    }
-
     public record Row(
-            SoftwareInstall software,
             Long softwareId,
             Long assetId,
             String assetName,
@@ -167,20 +143,44 @@ public class AdminCanonicalController {
             CanonicalCpeLinkingService.Analysis analysis
     ) {
         static Row from(SoftwareInstall s, CanonicalCpeLinkingService.Analysis a) {
-            Long aid = (s.getAsset() == null ? null : s.getAsset().getId());
-            String an = (s.getAsset() == null ? "-" : s.getAsset().getName());
             return new Row(
-                    s,
                     s.getId(),
-                    aid,
-                    an,
-                    s.getVendor(),
-                    s.getProduct(),
-                    s.getVersion(),
+                    s.getAsset() != null ? s.getAsset().getId() : null,
+                    s.getAsset() != null ? s.getAsset().getName() : null,
+                    s.getVendorRaw(),
+                    s.getProductRaw(),
+                    s.getVersionRaw(),
                     s.getNormalizedVendor(),
                     s.getNormalizedProduct(),
                     a
             );
         }
+    }
+
+    private static boolean containsKeyword(SoftwareInstall s, String keywordLower) {
+        String hay = (safe(s.getVendorRaw()) + " " +
+                safe(s.getProductRaw()) + " " +
+                safe(s.getVersionRaw()) + " " +
+                safe(s.getNormalizedVendor()) + " " +
+                safe(s.getNormalizedProduct()))
+                .toLowerCase();
+        return hay.contains(keywordLower);
+    }
+
+    private static String safe(String s) {
+        return s == null ? "" : s;
+    }
+
+    private static String normalizeKeyword(String q) {
+        if (q == null) return null;
+        String t = q.trim();
+        if (t.isEmpty()) return null;
+        return t.toLowerCase();
+    }
+
+    private static int clamp(int v, int min, int max) {
+        if (v < min) return min;
+        if (v > max) return max;
+        return v;
     }
 }

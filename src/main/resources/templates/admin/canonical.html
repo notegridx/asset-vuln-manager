@@ -11,8 +11,8 @@
         <div class="page-header__left">
             <h1 style="margin:0;">Review Product Mapping</h1>
             <p class="muted" style="margin:6px 0 0 0;">
-                Shows mapping health by separating <b>SQL links</b> (linked IDs) and <b>dictionary resolution</b>
-                (resolvable from strings).
+                Shows mapping health by separating <b>SQL links</b> (vendor/product IDs) and <b>dictionary resolution</b>
+                (resolvable from normalized strings).
             </p>
         </div>
         <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -26,211 +26,150 @@
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Filters</h2>
             <div class="muted" style="font-size:12px;">
-                Narrow down rows to review (linked / linkedValid / linkedStale / resolvable / unresolvable /
-                needsNormalization / asset / keyword).
+                Review by stage: <b>vendorLinked</b> / <b>vendorOnlyLinked</b> / <b>fullyLinked</b>,
+                or quality: <b>linkedValid</b> / <b>linkedStale</b>,
+                or dictionary: <b>resolvable</b> / <b>unresolvable</b>.
             </div>
         </div>
 
-        <form th:action="@{/admin/canonical}" method="get" style="margin-top:12px;">
-            <div style="display:grid; grid-template-columns: 1.3fr 1fr 1.3fr 0.6fr; gap:12px; align-items:end;">
+        <form method="get" th:action="@{/admin/canonical}" style="margin-top:12px;">
+            <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; align-items:end;">
                 <div class="field">
-                    <label>Asset</label>
-                    <select name="assetId">
-                        <option value="" th:selected="${assetId == null}">All assets</option>
-                        <option th:each="a : ${assets}"
-                                th:value="${a.id}"
-                                th:selected="${assetId != null and a.id == assetId}"
-                                th:text="${a.id + '  ' + a.name}">
-                            1 Sample
-                        </option>
-                    </select>
-                </div>
-
-                <div class="field">
-                    <label>Filter</label>
+                    <label>filter</label>
                     <select name="filter">
-                        <option value="ALL" th:selected="${filter == 'ALL'}">All</option>
+                        <option value="all" th:selected="${filter == 'all'}">all</option>
 
-                        <!-- MUST match Summary keys -->
-                        <option value="LINKED" th:selected="${filter == 'LINKED'}">linked</option>
-                        <option value="LINKED_VALID" th:selected="${filter == 'LINKED_VALID'}">linkedValid</option>
-                        <option value="LINKED_STALE" th:selected="${filter == 'LINKED_STALE'}">linkedStale</option>
-                        <option value="RESOLVABLE" th:selected="${filter == 'RESOLVABLE'}">resolvable</option>
-                        <option value="UNRESOLVABLE" th:selected="${filter == 'UNRESOLVABLE'}">unresolvable</option>
-                        <option value="NEEDS_NORMALIZATION" th:selected="${filter == 'NEEDS_NORMALIZATION'}">
-                            needsNormalization
-                        </option>
+                        <optgroup label="SQL link (IDs)">
+                            <option value="vendorLinked" th:selected="${filter == 'vendorLinked'}">vendorLinked</option>
+                            <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">vendorOnlyLinked</option>
+                            <option value="fullyLinked" th:selected="${filter == 'fullyLinked'}">fullyLinked</option>
+                        </optgroup>
+
+                        <optgroup label="Fully linked quality">
+                            <option value="linkedValid" th:selected="${filter == 'linkedValid'}">linkedValid</option>
+                            <option value="linkedStale" th:selected="${filter == 'linkedStale'}">linkedStale</option>
+                        </optgroup>
+
+                        <optgroup label="Dictionary">
+                            <option value="resolvable" th:selected="${filter == 'resolvable'}">resolvable</option>
+                            <option value="unresolvable" th:selected="${filter == 'unresolvable'}">unresolvable</option>
+                        </optgroup>
+
+                        <optgroup label="Other">
+                            <option value="needsNormalization" th:selected="${filter == 'needsNormalization'}">needsNormalization</option>
+                        </optgroup>
                     </select>
                 </div>
 
                 <div class="field">
-                    <label>Keyword (vendor/product/version)</label>
-                    <input type="text" name="q" th:value="${q}" placeholder="e.g., microsoft edge 120">
+                    <label>asset</label>
+                    <input type="number" name="asset" placeholder="assetId" th:value="${asset}">
                 </div>
 
                 <div class="field">
-                    <label>Limit</label>
-                    <select name="limit">
-                        <option th:value="50" th:selected="${limit == 50}">50</option>
-                        <option th:value="200" th:selected="${limit == 200}">200</option>
-                        <option th:value="500" th:selected="${limit == 500}">500</option>
-                        <option th:value="1000" th:selected="${limit == 1000}">1000</option>
-                        <option th:value="2000" th:selected="${limit == 2000}">2000</option>
-                    </select>
+                    <label>keyword</label>
+                    <input type="text" name="q" placeholder="vendor/product/version/normalized..." th:value="${q}">
                 </div>
             </div>
 
-            <div class="actions" style="margin-top:12px;">
-                <button type="submit" class="btn btn-primary">Apply</button>
-                <a class="btn btn-ghost" th:href="@{/admin/canonical}">Reset</a>
+            <div class="actions" style="margin-top:12px; justify-content:space-between; align-items:center;">
+                <div class="muted" style="font-size:12px;">
+                    limit=<input type="number" name="limit" style="width:90px;" th:value="${limit}">
+                </div>
+                <div class="actions" style="margin:0;">
+                    <button class="btn btn-primary" type="submit">Apply</button>
+                    <a class="btn" th:href="@{/admin/canonical}">Reset</a>
+                </div>
             </div>
         </form>
     </div>
 
-    <!-- ✅ Link (Canonical Backfill) -->
-    <div class="card" style="padding:12px; margin:12px 0;">
+    <!-- Stats -->
+    <div th:if="${stats != null}" class="card" style="padding:12px; margin:12px 0;">
         <div class="actions" style="margin:0; align-items:flex-end;">
-            <h2 style="margin:0;">Link Software to Dictionary</h2>
+            <h2 style="margin:0;">Stats (on current result set)</h2>
             <div class="muted" style="font-size:12px;">
-                Apply dictionary-based canonical links to <code>software_installs</code> using the current alias dictionary + CPE dictionary.
+                SQL link is split into vendor/product.
             </div>
         </div>
 
-        <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
-            After JSON/CSV import, software rows may be <b>resolvable</b> (dictionary matchable) but not <b>linked</b> yet (IDs not written).
-            This action writes <code>cpe_vendor_id</code> and <code>cpe_product_id</code> for resolvable rows, and queues misses into
-            <code>unresolved_mappings</code>. Use <b>Force relink</b> after updating aliases to overwrite existing links.
-        </div>
-
-        <!-- Result flash -->
-        <div th:if="${backfillResult != null}"
-             class="kv"
-             style="margin-top:10px; padding:10px; border:1px solid rgba(138,180,255,0.35); border-radius:12px;">
-            <b>scanned</b> <span th:text="${backfillResult.scanned()}">0</span>
-            <b>linked</b> <span th:text="${backfillResult.linked()}">0</span>
-            <b>missed</b> <span th:text="${backfillResult.missed()}">0</span>
-            <span class="pill"
-                  th:text="${backfillResult.forceRebuild() ? 'forceRebuild: true' : 'forceRebuild: false'}">forceRebuild: false</span>
-        </div>
-
-        <form th:action="@{/admin/canonical/backfill}" method="post"
-              class="actions" style="margin-top:12px; gap:10px; flex-wrap:wrap;">
-            <!-- redirect back to this page (filters are optional; keep it simple first) -->
-            <input type="hidden" name="redirect" value="/admin/canonical">
-
-            <div class="field" style="margin:0;">
-                <label style="font-size:12px;">Max rows</label>
-                <input class="input" name="maxRows" value="5000000" style="width:180px;">
-            </div>
-
-            <label class="muted" style="display:flex; gap:8px; align-items:center; margin-top:18px;">
-                <input type="checkbox" name="forceRebuild" value="true">
-                Force relink (overwrite existing links)
-            </label>
-
-            <button class="btn btn-primary" type="submit">Apply Links Now</button>
-        </form>
-    </div>
-
-    <!-- Summary (Overall) -->
-    <div th:if="${summaryOverall != null}" class="card" style="padding:12px; margin:12px 0;">
-        <div class="actions" style="margin:0; align-items:flex-end;">
-            <h2 style="margin:0;">Summary (Overall)</h2>
-            <div class="muted" style="font-size:12px;">
-                Approximate stats (first N rows).
-            </div>
-        </div>
-
-        <div class="kv" style="margin-top:12px;">
-            <b>checked</b> <span th:text="${summaryOverall.checked}">0</span>
-
-            <b>linked</b> <span th:text="${summaryOverall.linked}">0</span>
-            <b>linkedValid</b> <span th:text="${summaryOverall.linkedValid}">0</span>
-            <b>linkedStale</b> <span th:text="${summaryOverall.linkedStale}">0</span>
-
-            <b>resolvable</b> <span th:text="${summaryOverall.resolvable}">0</span>
-            <b>unresolvable</b> <span th:text="${summaryOverall.unresolvable}">0</span>
-
-            <b>needsNormalization</b> <span th:text="${summaryOverall.needsNormalization}">0</span>
-        </div>
-
-        <!-- Foldable definitions -->
-        <details style="margin-top:12px;">
-            <summary style="cursor:pointer; font-weight:600;">Metric Definitions (click to expand)</summary>
-            <div style="margin-top:12px; font-size:13px; line-height:1.7;">
-                <div><b>checked</b><br>
-                    Number of SoftwareInstall records evaluated in this view (after applying limit and filters).
-                </div>
-
-                <div style="margin-top:10px;"><b>linked</b><br>
-                    Records where both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are filled in the
-                    database.
-                    (This is a SQL-level flag; it does not guarantee the referenced dictionary rows still exist.)
-                </div>
-
-                <div style="margin-top:10px;"><b>linkedValid</b><br>
-                    Records that are linked in SQL and whose referenced vendor/product entries still exist in the CPE
-                    dictionary and are structurally consistent.
-                </div>
-
-                <div style="margin-top:10px;"><b>linkedStale</b><br>
-                    Records that are linked in SQL but whose referenced vendor or product entries no longer exist in the
-                    CPE dictionary, or are inconsistent.
-                </div>
-
-                <div style="margin-top:10px;"><b>resolvable</b><br>
-                    Records whose current vendor/product strings (after normalization and alias resolution) can be
-                    matched to an existing vendor and product in the CPE dictionary, regardless of whether SQL-level
-                    links (cpe_vendor_id / cpe_product_id) are already set.
-                </div>
-
-                <div style="margin-top:10px;"><b>unresolvable</b><br>
-                    Records that cannot be resolved to any vendor/product entry in the current CPE dictionary using
-                    normalized strings.
-                </div>
-
-                <div style="margin-top:10px;"><b>needsNormalization</b><br>
-                    Records where normalized_vendor or normalized_product is blank or missing, indicating incomplete
-                    canonicalization.
-                </div>
-            </div>
-        </details>
-    </div>
-
-    <!-- Current selection pills -->
-    <div th:if="${summaryCurrent != null}" class="muted" style="font-size:12px; margin:8px 0 0 4px;">
-        Current selection:
-        <span class="pill" th:text="${'checked: ' + summaryCurrent.checked}">checked: 0</span>
-        <span class="pill" th:text="${'linked: ' + summaryCurrent.linked}">linked: 0</span>
-        <span class="pill" th:text="${'linkedValid: ' + summaryCurrent.linkedValid}">linkedValid: 0</span>
-        <span class="pill" th:text="${'linkedStale: ' + summaryCurrent.linkedStale}">linkedStale: 0</span>
-        <span class="pill" th:text="${'resolvable: ' + summaryCurrent.resolvable}">resolvable: 0</span>
-        <span class="pill" th:text="${'unresolvable: ' + summaryCurrent.unresolvable}">unresolvable: 0</span>
-        <span class="pill"
-              th:text="${'needsNormalization: ' + summaryCurrent.needsNormalization}">needsNormalization: 0</span>
-    </div>
-
-    <!-- Items -->
-    <div class="card" style="padding:12px; margin:12px 0;">
-        <div class="actions" style="margin:0; align-items:flex-end;">
-            <h2 style="margin:0;">Items</h2>
-            <div class="muted" style="font-size:12px;">
-                Items are categorized as LINKED / RESOLVED / STALE / UNRESOLVED. Filters "resolvable/unresolvable" are
-                dictionary-resolution flags (cross-cutting).
-            </div>
-        </div>
-
-        <div class="table-wrap" style="margin-top:12px; overflow-x:auto;">
-            <table style="margin-top:0; width:100%; table-layout:fixed;">
+        <div class="table-wrap" style="margin-top:12px;">
+            <table style="margin-top:0;">
                 <thead>
                 <tr>
-                    <th style="width: 86px;">SW ID</th>
-                    <th style="width: 90px;">Asset</th>
-                    <th>Raw</th>
-                    <th style="width: 260px;">Normalized</th>
-                    <th style="width: 120px;">Result</th>
-                    <th style="width: 260px;">Reason</th>
-                    <th style="width: 110px;">Action</th>
+                    <th style="width: 240px;">Metric</th>
+                    <th style="width: 120px;">Value</th>
+                    <th>Description</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>total</td>
+                    <td th:text="${stats.total}">0</td>
+                    <td class="muted">Rows currently loaded (after asset/keyword filter, before “filter” selection).</td>
+                </tr>
+
+                <tr>
+                    <td>vendorLinkedSql</td>
+                    <td th:text="${stats.vendorLinkedSql}">0</td>
+                    <td class="muted"><code>cpe_vendor_id</code> is set (regardless of product).</td>
+                </tr>
+                <tr>
+                    <td>vendorOnlyLinkedSql</td>
+                    <td th:text="${stats.vendorOnlyLinkedSql}">0</td>
+                    <td class="muted"><code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.</td>
+                </tr>
+                <tr>
+                    <td>fullyLinkedSql</td>
+                    <td th:text="${stats.fullyLinkedSql}">0</td>
+                    <td class="muted">Both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are set.</td>
+                </tr>
+
+                <tr>
+                    <td>linkedValid</td>
+                    <td th:text="${stats.linkedValid}">0</td>
+                    <td class="muted">Fully linked and consistent with current normalized strings.</td>
+                </tr>
+                <tr>
+                    <td>linkedStale</td>
+                    <td th:text="${stats.linkedStale}">0</td>
+                    <td class="muted">Fully linked but differs from current normalized strings (needs re-link).</td>
+                </tr>
+                <tr>
+                    <td>resolvable</td>
+                    <td th:text="${stats.resolvable}">0</td>
+                    <td class="muted">Not fully linked, but dictionary can resolve from normalized strings.</td>
+                </tr>
+                <tr>
+                    <td>unresolvable</td>
+                    <td th:text="${stats.unresolvable}">0</td>
+                    <td class="muted">Not fully linked and cannot resolve from normalized strings.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Entries</h2>
+            <div class="muted" style="font-size:12px;">
+                Result badge = mapping stage/quality, and V/P shows SQL link completeness.
+            </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:12px;">
+            <table style="margin-top:0;">
+                <thead>
+                <tr>
+                    <th style="width: 90px;">ID</th>
+                    <th style="width: 180px;">Asset</th>
+                    <th>Software</th>
+                    <th style="width: 220px;">Normalized</th>
+                    <th style="width: 190px;">Result</th>
+                    <th>Reason</th>
+                    <th style="width: 90px;">Action</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -262,13 +201,23 @@
                     </td>
 
                     <td>
-            <span class="badge"
-                  th:classappend="${
-                    r.analysis.result().name() == 'LINKED' ? ' badge--status-open' :
-                    (r.analysis.result().name() == 'RESOLVED' ? ' badge--status-open' :
-                    (r.analysis.result().name() == 'STALE' ? ' badge--warn' : ' badge--unmapped'))
-                  }"
-                  th:text="${r.analysis.result().name()}">UNRESOLVED</span>
+                        <!-- primary result -->
+                        <span class="badge"
+                              th:classappend="${
+                                r.analysis.result().name() == 'LINKED' ? ' badge--status-open' :
+                                (r.analysis.result().name() == 'RESOLVED' ? ' badge--status-open' :
+                                (r.analysis.result().name() == 'STALE' ? ' badge--warn' : ' badge--unmapped'))
+                              }"
+                              th:text="${r.analysis.result().name()}">UNRESOLVED</span>
+
+                        <!-- SQL link completeness (NEW) -->
+                        <span class="badge" style="margin-left:6px;"
+                              th:classappend="${r.analysis.vendorLinkedSql() ? ' badge--status-open' : ' badge--unmapped'}"
+                              th:text="${r.analysis.vendorLinkedSql() ? 'V✓' : 'V-'}">V-</span>
+
+                        <span class="badge" style="margin-left:6px;"
+                              th:classappend="${r.analysis.productLinkedSql() ? ' badge--status-open' : ' badge--unmapped'}"
+                              th:text="${r.analysis.productLinkedSql() ? 'P✓' : 'P-'}">P-</span>
                     </td>
 
                     <td class="muted" style="overflow-wrap:anywhere;"
