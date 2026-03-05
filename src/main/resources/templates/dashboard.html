@@ -357,7 +357,10 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="r, st : ${topVendors}">
+                        <tr class="js-top-vendor-row"
+                            th:each="r, st : ${topVendors}"
+                            th:attr="data-vendor-id=${r.id},data-vendor-label=${r.label}"
+                            title="Click to show Top Products for this vendor">
                             <td class="muted dash-top10-rank" th:text="${st.index + 1}">1</td>
                             <td>
                                 <span class="mono dash-top10-label" th:text="${r.label}">microsoft</span>
@@ -375,7 +378,10 @@
 
             <!-- Products -->
             <div class="dash-top10-col">
-                <div class="muted" style="font-size:12px; margin-bottom:8px;">Top Products</div>
+                <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:8px;">
+                    <div class="muted" style="font-size:12px;">Top Products</div>
+                    <span id="topProductsScope" class="muted" style="font-size:12px;"></span>
+                </div>
 
                 <div class="table-wrap">
                     <table class="table dash-top10-table">
@@ -386,7 +392,7 @@
                             <th class="dash-top10-count">CVE count</th>
                         </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="topProductsTbody">
                         <tr th:each="r, st : ${topProducts}">
                             <td class="muted dash-top10-rank" th:text="${st.index + 1}">1</td>
                             <td>
@@ -405,6 +411,121 @@
 
         </div>
     </div>
+
+    <script>
+        (function () {
+            var vendorRows = Array.prototype.slice.call(document.querySelectorAll('.js-top-vendor-row'));
+            var productsTbody = document.getElementById('topProductsTbody');
+            var scope = document.getElementById('topProductsScope');
+
+            if (!vendorRows.length || !productsTbody) return;
+
+            var initialProductsHtml = productsTbody.innerHTML;
+            var initialScopeText = scope ? scope.textContent : '';
+            var selectedVendorId = null;
+
+            function clearSelected() {
+                vendorRows.forEach(function (r) {
+                    r.classList.remove('is-selected');
+                });
+            }
+
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function renderLoading(label) {
+                if (scope) scope.textContent = label ? ('— for ' + label) : '';
+                productsTbody.innerHTML =
+                    '<tr><td class="muted" colspan="3" style="padding:10px;">Loading…</td></tr>';
+            }
+
+            function renderRows(rows) {
+                if (!rows || rows.length === 0) {
+                    productsTbody.innerHTML =
+                        '<tr><td class="muted" colspan="3" style="padding:10px;">No items.</td></tr>';
+                    return;
+                }
+                productsTbody.innerHTML = rows.map(function (r, idx) {
+                    var label = escapeHtml(r.label);
+                    var id = escapeHtml(r.id);
+                    var cnt = (r.cveCount != null) ? Number(r.cveCount) : Number(r.cnt || 0);
+                    return ''
+                        + '<tr>'
+                        + '  <td class="muted dash-top10-rank">' + (idx + 1) + '</td>'
+                        + '  <td>'
+                        + '    <span class="mono dash-top10-label">' + label + '</span>'
+                        + '    <span class="muted dash-top10-id"> (#' + id + ')</span>'
+                        + '  </td>'
+                        + '  <td class="dash-top10-count"><span class="pill">' + cnt + '</span></td>'
+                        + '</tr>';
+                }).join('');
+            }
+
+            function setRowCursors() {
+                vendorRows.forEach(function (row) {
+                    row.style.cursor = 'pointer';
+                });
+            }
+
+            function resetToInitial() {
+                selectedVendorId = null;
+                clearSelected();
+                if (scope) scope.textContent = initialScopeText || '';
+                productsTbody.innerHTML = initialProductsHtml;
+            }
+
+            function loadProductsForVendor(vendorId, vendorLabel) {
+                renderLoading(vendorLabel);
+                var url = '/api/dashboard/top-products?vendorId=' + encodeURIComponent(vendorId) + '&limit=10';
+                return fetch(url, {headers: {'Accept': 'application/json'}})
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    });
+            }
+
+            setRowCursors();
+
+            vendorRows.forEach(function (row) {
+                row.addEventListener('click', function () {
+                    var vendorId = row.getAttribute('data-vendor-id');
+                    var vendorLabel = row.getAttribute('data-vendor-label') || '';
+
+                    // toggle: click same vendor => reset
+                    if (selectedVendorId && String(selectedVendorId) === String(vendorId)) {
+                        resetToInitial();
+                        return;
+                    }
+
+                    selectedVendorId = vendorId;
+                    clearSelected();
+                    row.classList.add('is-selected');
+
+                    loadProductsForVendor(vendorId, vendorLabel)
+                        .then(function (data) {
+                            if (scope) scope.textContent = data && data.vendorLabel ? ('— for ' + data.vendorLabel) : ('— for ' + vendorLabel);
+                            // APIが rows を返す想定。互換のため products / topProducts も一応見る
+                            var rows = (data && data.rows) ? data.rows
+                                : ((data && data.products) ? data.products
+                                    : ((data && data.topProducts) ? data.topProducts : []));
+                            renderRows(rows);
+                        })
+                        .catch(function (e) {
+                            if (scope) scope.textContent = vendorLabel ? ('— for ' + vendorLabel) : '';
+                            productsTbody.innerHTML =
+                                '<tr><td class="muted" colspan="3" style="padding:10px;">Failed to load.</td></tr>';
+                            console.error(e);
+                        });
+                });
+            });
+        })();
+    </script>
 
     <hr/>
 
