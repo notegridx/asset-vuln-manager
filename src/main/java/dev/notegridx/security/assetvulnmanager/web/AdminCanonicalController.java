@@ -4,12 +4,16 @@ import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+import dev.notegridx.security.assetvulnmanager.service.CanonicalBackfillService;
 import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
+import dev.notegridx.security.assetvulnmanager.service.SynonymService;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 import java.util.Objects;
@@ -21,14 +25,21 @@ public class AdminCanonicalController {
     private final SoftwareInstallRepository softwareRepo;
     private final CanonicalCpeLinkingService linker;
 
+    private final CanonicalBackfillService backfillService;
+    private final SynonymService synonymService;
+
     public AdminCanonicalController(
             AssetRepository assetRepo,
             SoftwareInstallRepository softwareRepo,
-            CanonicalCpeLinkingService linker
+            CanonicalCpeLinkingService linker,
+            CanonicalBackfillService backfillService,
+            SynonymService synonymService
     ) {
         this.assetRepo = assetRepo;
         this.softwareRepo = softwareRepo;
         this.linker = linker;
+        this.backfillService = backfillService;
+        this.synonymService = synonymService;
     }
 
     public enum Filter {
@@ -73,40 +84,67 @@ public class AdminCanonicalController {
         Filter filter = Filter.parse(filterRaw);
         String keyword = normalizeKeyword(q);
 
-        // (optional) asset dropdownに使うなら
         List<Asset> assets = assetRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
         model.addAttribute("assets", assets);
 
-        // Base selection (asset + keyword, before filter)
         List<SoftwareInstall> base = softwareRepo.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
                 .filter(s -> assetId == null || (s.getAsset() != null && Objects.equals(s.getAsset().getId(), assetId)))
                 .filter(s -> keyword == null || containsKeyword(s, keyword))
                 .limit(safeLimit)
                 .toList();
 
-        // Stats: “after asset/keyword filter, before filter selection” (あなたの HTML の説明文と一致)
         var stats = linker.stats(base);
         model.addAttribute("stats", stats);
 
-        // Analyze rows
         List<Row> analyzed = base.stream()
                 .map(s -> Row.from(s, linker.analyze(s)))
                 .toList();
 
-        // Apply filter
         List<Row> rows = analyzed.stream()
                 .filter(r -> matchesFilter(r, filter))
                 .toList();
 
         model.addAttribute("rows", rows);
 
-        // Echo states (HTMLのnameと合わせる)
         model.addAttribute("asset", assetId);
         model.addAttribute("filter", filter.name());
         model.addAttribute("q", q);
         model.addAttribute("limit", safeLimit);
 
         return "admin/canonical";
+    }
+
+    /**
+     * Run Linking (Run Canonical Backfill)
+     * - relink=false: 未リンクのみ
+     * - relink=true : 既リンクも含めて再リンク（forceRebuild）
+     */
+    @PostMapping("/admin/canonical/link")
+    public String runLinking(
+            @RequestParam(name = "relink", defaultValue = "false") boolean relink,
+            @RequestParam(name = "maxRows", defaultValue = "5000000") int maxRows,
+            @RequestParam(name = "redirect", required = false) String redirect,
+            RedirectAttributes ra
+    ) {
+        // alias辞書/候補キャッシュがあるなら、安全側でクリアしてから実行
+        synonymService.clearCaches();
+
+        var result = backfillService.backfill(maxRows, relink);
+        ra.addFlashAttribute("backfillResult", result);
+
+        return safeRedirectOrDefault(redirect, "/admin/canonical");
+    }
+
+    private static String safeRedirectOrDefault(String redirect, String fallback) {
+        if (redirect == null || redirect.isBlank()) return "redirect:" + fallback;
+        String t = redirect.trim();
+
+        // open redirect対策：相対パス/絶対URLは禁止、アプリ内のパスのみ許可
+        if (!t.startsWith("/")) return "redirect:" + fallback;
+        if (t.startsWith("//")) return "redirect:" + fallback;
+        if (t.contains("://")) return "redirect:" + fallback;
+
+        return "redirect:" + t;
     }
 
     private static boolean matchesFilter(Row r, Filter f) {

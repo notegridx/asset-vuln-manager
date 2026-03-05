@@ -23,6 +23,31 @@
         </div>
     </div>
 
+    <!-- Linking -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end; justify-content:space-between; gap:12px;">
+            <div>
+                <h2 style="margin:0;">Run Linking</h2>
+                <div class="muted" style="font-size:12px; margin-top:6px;">
+                    Link installed software to CPE vendors and products.
+                </div>
+            </div>
+
+            <form method="post" th:action="@{/admin/canonical/link}" style="margin:0;">
+                <div class="actions" style="margin:0; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <label class="muted" style="font-size:12px; display:flex; align-items:center; gap:8px; user-select:none;">
+                        <input type="checkbox" name="relink" value="true">
+                        Re-link already linked products
+                    </label>
+
+                    <button class="btn btn-primary" type="submit">
+                        Run Linking
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Filters -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <div class="actions" style="margin:0; align-items:flex-end;">
