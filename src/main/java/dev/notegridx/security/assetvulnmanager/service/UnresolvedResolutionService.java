@@ -1,7 +1,12 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
+import dev.notegridx.security.assetvulnmanager.domain.CpeProductAlias;
+import dev.notegridx.security.assetvulnmanager.domain.CpeVendorAlias;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
-import dev.notegridx.security.assetvulnmanager.service.VendorProductNormalizer;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AliasReviewState;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AliasSource;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductAliasRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorAliasRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
 import org.springframework.stereotype.Service;
@@ -16,14 +21,21 @@ public class UnresolvedResolutionService {
     private final SoftwareInstallRepository softwareRepo;
     private final VendorProductNormalizer normalizer;
 
+    private final CpeVendorAliasRepository vendorAliasRepo;
+    private final CpeProductAliasRepository productAliasRepo;
+
     public UnresolvedResolutionService(
             UnresolvedMappingRepository unresolvedRepo,
             SoftwareInstallRepository softwareRepo,
-            VendorProductNormalizer normalizer
+            VendorProductNormalizer normalizer,
+            CpeVendorAliasRepository vendorAliasRepo,
+            CpeProductAliasRepository productAliasRepo
     ) {
         this.unresolvedRepo = unresolvedRepo;
         this.softwareRepo = softwareRepo;
         this.normalizer = normalizer;
+        this.vendorAliasRepo = vendorAliasRepo;
+        this.productAliasRepo = productAliasRepo;
     }
 
     public record ApplyResult(
@@ -31,69 +43,227 @@ public class UnresolvedResolutionService {
             Long vendorId,
             Long productId,
             int affectedSoftwareRows,
-            String status
+            String status,
+            String vendorAliasOutcome,
+            String productAliasOutcome
     ) {}
 
     @Transactional
     public ApplyResult apply(Long mappingId, Long vendorId, Long productId) {
+        if (mappingId == null) throw new IllegalArgumentException("mappingId is required");
+        if (vendorId == null) throw new IllegalArgumentException("vendorId is required");
+
         UnresolvedMapping um = unresolvedRepo.findById(mappingId).orElseThrow();
 
-        // 1) 正規化値が入ってなければ補完（保険）
+        // raw values (used for coalesce-match fallback and alias note)
+        String vendorRaw = safeTrim(um.getVendorRaw());
+        String productRaw = safeTrim(um.getProductRaw());
+
+        // normalized values (primary update path; insurance fill for UM only)
         String vendorNorm = normalizeVendorFallback(um);
         String productNorm = normalizeProductFallback(um);
 
-        if (vendorId == null) {
-            throw new IllegalArgumentException("vendorId is required");
-        }
-
-        int affected;
+        int affected = 0;
         String status;
 
         if (productId == null) {
-            // vendor だけ確定
-            if (vendorNorm == null || vendorNorm.isBlank()) {
-                throw new IllegalStateException("normalizedVendor is missing");
+            // =========================
+            // Vendor only
+            // =========================
+            if (!isBlank(vendorNorm)) {
+                affected = softwareRepo.bulkSetCpeVendorIdByNormalizedVendor(vendorId, vendorNorm);
             }
-            affected = softwareRepo.bulkSetCpeVendorIdByNormalizedVendor(vendorId, vendorNorm);
+            if (affected == 0 && !isBlank(vendorRaw)) {
+                affected = softwareRepo.bulkSetCpeVendorIdByVendorRawCoalesce(vendorId, vendorRaw);
+            }
             status = "VENDOR_LINKED";
+
         } else {
-            // vendor+product 確定
-            if (vendorNorm == null || vendorNorm.isBlank() || productNorm == null || productNorm.isBlank()) {
-                throw new IllegalStateException("normalizedVendor/normalizedProduct is missing");
+            // =========================
+            // Vendor + Product
+            // =========================
+            if (!isBlank(vendorNorm) && !isBlank(productNorm)) {
+                affected = softwareRepo.bulkSetCpeVendorProductIdByNormalizedVendorProduct(
+                        vendorId, productId, vendorNorm, productNorm
+                );
             }
-            affected = softwareRepo.bulkSetCpeVendorProductIdByNormalizedVendorProduct(
-                    vendorId, productId, vendorNorm, productNorm
-            );
+            if (affected == 0 && !isBlank(vendorRaw) && !isBlank(productRaw)) {
+                affected = softwareRepo.bulkSetCpeVendorProductIdByVendorProductRawCoalesce(
+                        vendorId, productId, vendorRaw, productRaw
+                );
+            }
             status = "RESOLVED";
         }
 
-        // 2) Unresolved のステータス更新
+        // =========================
+        // Learn (alias upsert)
+        // =========================
+        String vendorAliasOutcome = learnVendorAlias(vendorId, vendorRaw, vendorNorm, mappingId);
+        String productAliasOutcome = (productId == null)
+                ? "(skipped)"
+                : learnProductAlias(vendorId, productId, productRaw, productNorm, mappingId);
+
+        // =========================
+        // Update unresolved queue state
+        // =========================
         um.setStatus(status);
         um.setLastSeenAt(LocalDateTime.now());
         unresolvedRepo.save(um);
 
-        return new ApplyResult(mappingId, vendorId, productId, affected, status);
+        return new ApplyResult(mappingId, vendorId, productId, affected, status, vendorAliasOutcome, productAliasOutcome);
     }
 
-    private String normalizeVendorFallback(UnresolvedMapping um) {
-        if (um.getNormalizedVendor() != null && !um.getNormalizedVendor().isBlank()) {
-            return um.getNormalizedVendor();
+    // ---------------------------------------------------------
+    // Learning: Vendor alias
+    // ---------------------------------------------------------
+    private String learnVendorAlias(Long vendorId, String vendorRaw, String vendorNorm, Long mappingId) {
+        String aliasNorm = firstNonBlank(vendorNorm, normalizeVendorFromRaw(vendorRaw));
+        if (isBlank(aliasNorm)) return "(skipped: vendor alias blank)";
+
+        var existing = vendorAliasRepo.findByAliasNorm(aliasNorm).orElse(null);
+        String note = buildNote("applied-from-unresolved", mappingId, vendorRaw, null);
+
+        if (existing == null) {
+            // entity has constructor (aliasNorm, cpeVendorId, note)
+            CpeVendorAlias created = new CpeVendorAlias(aliasNorm, vendorId, note);
+            // Apply action is MANUAL decision
+            created.setSource(AliasSource.MANUAL);
+            created.setReviewState(AliasReviewState.MANUAL);
+            created.setStatus(CpeVendorAlias.STATUS_ACTIVE);
+            vendorAliasRepo.save(created);
+            return "CREATED";
         }
+
+        // cannot change cpeVendorId / aliasNorm (no setters) -> only safe updates
+        if (!existing.getCpeVendorId().equals(vendorId)) {
+            // conflict: aliasNorm already points to different vendor
+            return "CONFLICT(existingVendorId=" + existing.getCpeVendorId() + ")";
+        }
+
+        boolean changed = false;
+
+        if (existing.getStatus() == null || !existing.getStatus().equalsIgnoreCase(CpeVendorAlias.STATUS_ACTIVE)) {
+            existing.setStatus(CpeVendorAlias.STATUS_ACTIVE);
+            changed = true;
+        }
+        if (isBlank(existing.getNote()) && !isBlank(note)) {
+            existing.setNote(note);
+            changed = true;
+        }
+
+        if (changed) {
+            vendorAliasRepo.save(existing);
+            return "UPDATED";
+        }
+        return "UNCHANGED";
+    }
+
+    // ---------------------------------------------------------
+    // Learning: Product alias (vendor-scoped)
+    // ---------------------------------------------------------
+
+    private String learnProductAlias(Long vendorId, Long productId, String productRaw, String productNorm, Long mappingId) {
+        String aliasNorm = firstNonBlank(productNorm, normalizeProductFromRaw(productRaw));
+        if (isBlank(aliasNorm)) return "(skipped: product alias blank)";
+
+        var existing = productAliasRepo.findByCpeVendorIdAndAliasNorm(vendorId, aliasNorm).orElse(null);
+        String note = buildNote("applied-from-unresolved", mappingId, null, productRaw);
+
+        if (existing == null) {
+            CpeProductAlias created = new CpeProductAlias(vendorId, productId, aliasNorm, note);
+            created.setSource(AliasSource.MANUAL);
+            created.setReviewState(AliasReviewState.MANUAL);
+            created.setStatus(CpeProductAlias.STATUS_ACTIVE);
+
+            // ★ DB側がNOT NULLなら必須
+            created.setConfidence(0);
+
+            productAliasRepo.save(created);
+            return "CREATED";
+        }
+
+        if (!existing.getCpeProductId().equals(productId)) {
+            return "CONFLICT(existingProductId=" + existing.getCpeProductId() + ")";
+        }
+
+        boolean changed = false;
+
+        if (existing.getStatus() == null || !existing.getStatus().equalsIgnoreCase(CpeProductAlias.STATUS_ACTIVE)) {
+            existing.setStatus(CpeProductAlias.STATUS_ACTIVE);
+            changed = true;
+        }
+        if (isBlank(existing.getNote()) && !isBlank(note)) {
+            existing.setNote(note);
+            changed = true;
+        }
+
+        // ★ 既存がnullになっているケース（DB定義とズレてる移行途中など）を救済
+        if (existing.getConfidence() == null) {
+            existing.setConfidence(0);
+            changed = true;
+        }
+
+        if (changed) {
+            productAliasRepo.save(existing);
+            return "UPDATED";
+        }
+        return "UNCHANGED";
+    }
+
+    // ---------------------------------------------------------
+    // UM normalization fallback (insurance)
+    // ---------------------------------------------------------
+    private String normalizeVendorFallback(UnresolvedMapping um) {
+        if (!isBlank(um.getNormalizedVendor())) return um.getNormalizedVendor();
         String v = um.getVendorRaw();
-        if (v == null || v.isBlank()) return null;
+        if (isBlank(v)) return null;
         String n = normalizer.normalizeVendor(v);
         um.setNormalizedVendor(n);
         return n;
     }
 
     private String normalizeProductFallback(UnresolvedMapping um) {
-        if (um.getNormalizedProduct() != null && !um.getNormalizedProduct().isBlank()) {
-            return um.getNormalizedProduct();
-        }
+        if (!isBlank(um.getNormalizedProduct())) return um.getNormalizedProduct();
         String p = um.getProductRaw();
-        if (p == null || p.isBlank()) return null;
+        if (isBlank(p)) return null;
         String n = normalizer.normalizeProduct(p);
         um.setNormalizedProduct(n);
         return n;
+    }
+
+    private String normalizeVendorFromRaw(String raw) {
+        if (isBlank(raw)) return null;
+        return normalizer.normalizeVendor(raw);
+    }
+
+    private String normalizeProductFromRaw(String raw) {
+        if (isBlank(raw)) return null;
+        return normalizer.normalizeProduct(raw);
+    }
+
+    private static String buildNote(String prefix, Long mappingId, String vendorRaw, String productRaw) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(prefix);
+        if (mappingId != null) sb.append(" mappingId=").append(mappingId);
+        if (!isBlank(vendorRaw)) sb.append(" vendorRaw=").append(vendorRaw.trim());
+        if (!isBlank(productRaw)) sb.append(" productRaw=").append(productRaw.trim());
+        return sb.toString();
+    }
+
+    // ---------------------------------------------------------
+    // helpers
+    // ---------------------------------------------------------
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private static String safeTrim(String s) {
+        return s == null ? null : s.trim();
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        if (!isBlank(a)) return a.trim();
+        if (!isBlank(b)) return b.trim();
+        return null;
     }
 }

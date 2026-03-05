@@ -67,7 +67,7 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
     );
 
     // =========================================================
-    // Bulk apply canonical IDs from Unresolved queue
+    // Bulk apply canonical IDs from Unresolved queue (normalized match)
     // =========================================================
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -98,6 +98,39 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             @Param("productNorm") String productNorm
     );
 
+    // =========================================================
+    // Bulk apply canonical IDs (raw/display coalesce match)
+    // - match logic aligns with UnresolvedMappingRepository.findAllActive()
+    // =========================================================
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update SoftwareInstall s
+               set s.cpeVendorId = :vendorId
+             where (s.cpeVendorId is null)
+               and lower(trim(coalesce(s.vendorRaw, s.vendor))) = lower(trim(:vendorRaw))
+            """)
+    int bulkSetCpeVendorIdByVendorRawCoalesce(
+            @Param("vendorId") Long vendorId,
+            @Param("vendorRaw") String vendorRaw
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update SoftwareInstall s
+               set s.cpeVendorId = :vendorId,
+                   s.cpeProductId = :productId
+             where (s.cpeProductId is null)
+               and lower(trim(coalesce(s.vendorRaw, s.vendor))) = lower(trim(:vendorRaw))
+               and lower(trim(coalesce(s.productRaw, s.product))) = lower(trim(:productRaw))
+            """)
+    int bulkSetCpeVendorProductIdByVendorProductRawCoalesce(
+            @Param("vendorId") Long vendorId,
+            @Param("productId") Long productId,
+            @Param("vendorRaw") String vendorRaw,
+            @Param("productRaw") String productRaw
+    );
+
     /**
      * canonical link (cpeVendorId/cpeProductId) が未設定で、
      * normalizedVendor/normalizedProduct がある程度揃っているものを拾う
@@ -117,8 +150,6 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             """)
     List<SoftwareInstall> findNeedsCanonicalLink();
 
-    @org.springframework.data.jpa.repository.Query("select s.id from SoftwareInstall s where s.importRunId = :runId")
-    java.util.List<Long> findIdsByImportRunId(@org.springframework.data.repository.query.Param("runId") Long runId);
-
-
+    @Query("select s.id from SoftwareInstall s where s.importRunId = :runId")
+    List<Long> findIdsByImportRunId(@Param("runId") Long runId);
 }

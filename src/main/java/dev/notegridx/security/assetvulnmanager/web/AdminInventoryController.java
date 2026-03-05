@@ -125,13 +125,15 @@ public class AdminInventoryController {
         }
 
         try {
-            var result = unresolvedResolutionService.apply(mappingId, vendorId, productId); // :contentReference[oaicite:1]{index=1}
+            var result = unresolvedResolutionService.apply(mappingId, vendorId, productId);
             ra.addFlashAttribute("success",
                     "Applied: mappingId=" + result.mappingId()
                             + " vendorId=" + result.vendorId()
                             + (result.productId() == null ? "" : (" productId=" + result.productId()))
                             + " → affectedSoftware=" + result.affectedSoftwareRows()
                             + " status=" + result.status()
+                            + " | vendorAlias=" + result.vendorAliasOutcome()
+                            + " productAlias=" + result.productAliasOutcome()
             );
         } catch (Exception e) {
             ra.addFlashAttribute("error", "Apply failed: " + safeMsg(e));
