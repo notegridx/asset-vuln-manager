@@ -35,7 +35,8 @@
 
             <form method="post" th:action="@{/admin/canonical/link}" style="margin:0;">
                 <div class="actions" style="margin:0; align-items:center; gap:12px; flex-wrap:wrap;">
-                    <label class="muted" style="font-size:12px; display:flex; align-items:center; gap:8px; user-select:none;">
+                    <label class="muted"
+                           style="font-size:12px; display:flex; align-items:center; gap:8px; user-select:none;">
                         <input type="checkbox" name="relink" value="true">
                         Re-link already linked products
                     </label>
@@ -61,31 +62,24 @@
 
         <form method="get" th:action="@{/admin/canonical}" style="margin-top:12px;">
             <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; align-items:end;">
+
                 <div class="field">
                     <label>filter</label>
                     <select name="filter">
                         <option value="all" th:selected="${filter == 'all'}">all</option>
 
-                        <optgroup label="SQL link (IDs)">
-                            <option value="fullyLinked" th:selected="${filter == 'fullyLinked'}">fullyLinked</option>
-                            <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">vendorOnlyLinked</option>
-                            <option value="notLinked" th:selected="${filter == 'notLinked'}">notLinked</option>
-                        </optgroup>
+                        <option value="fullyLinked" th:selected="${filter == 'fullyLinked'}">fullyLinked</option>
+                        <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">vendorOnlyLinked</option>
+                        <option value="notLinked" th:selected="${filter == 'notLinked'}">notLinked</option>
 
-                        <optgroup label="Fully linked quality">
-                            <option value="linkedValid" th:selected="${filter == 'linkedValid'}">linkedValid</option>
-                            <option value="linkedStale" th:selected="${filter == 'linkedStale'}">linkedStale</option>
-                        </optgroup>
+                        <option value="linkedValid" th:selected="${filter == 'linkedValid'}">linkedValid</option>
+                        <option value="linkedStale" th:selected="${filter == 'linkedStale'}">linkedStale</option>
 
-                        <optgroup label="Dictionary (not linked only)">
-                            <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">fullyResolvable</option>
-                            <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">vendorResolvableOnly</option>
-                            <option value="unresolvable" th:selected="${filter == 'unresolvable'}">unresolvable</option>
-                        </optgroup>
+                        <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">fullyResolvable</option>
+                        <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">vendorResolvableOnly</option>
+                        <option value="unresolvable" th:selected="${filter == 'unresolvable'}">unresolvable</option>
 
-                        <optgroup label="Other">
-                            <option value="needsNormalization" th:selected="${filter == 'needsNormalization'}">needsNormalization</option>
-                        </optgroup>
+                        <option value="needsNormalization" th:selected="${filter == 'needsNormalization'}">needsNormalization</option>
                     </select>
                 </div>
 
@@ -201,17 +195,21 @@
             </div>
         </div>
 
-        <div class="table-wrap" style="margin-top:12px;">
-            <table style="margin-top:0;">
+        <!-- NOTE:
+             - Add table-wrap--no-xscroll in HTML, actual behavior is controlled in styles.css
+             - Use canon-table (table-layout:fixed) in styles.css
+        -->
+        <div class="table-wrap table-wrap--no-xscroll" style="margin-top:12px;">
+            <table class="canon-table" style="margin-top:0;">
                 <thead>
                 <tr>
-                    <th style="width: 90px;">ID</th>
-                    <th style="width: 180px;">Asset</th>
-                    <th>Software</th>
+                    <th style="width: 70px;">ID</th>
+                    <th style="width: 120px;">Asset</th>
+                    <th style="width: 260px;">Raw</th>
                     <th style="width: 220px;">Normalized</th>
-                    <th style="width: 190px;">Result</th>
-                    <th>Reason</th>
-                    <th style="width: 90px;">Action</th>
+                    <th style="width: 180px;">Result</th>
+                    <th style="width: 320px;">Reason</th>
+                    <th style="width: 80px;">Action</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -228,11 +226,19 @@
                         <div th:text="${r.assetName}">Asset</div>
                     </td>
 
+                    <!-- Raw -->
                     <td style="overflow-wrap:anywhere;">
-                        <div><span th:text="${r.vendor}">vendor</span> / <b th:text="${r.product}">product</b></div>
-                        <div class="muted" style="font-size:12px;" th:text="${r.version}">1.0</div>
+                        <div class="truncate-1"
+                             th:attr="title=${(r.vendor != null ? r.vendor : '-') + ' / ' + (r.product != null ? r.product : '-')}"
+                        >
+                            <span th:text="${r.vendor}">vendor</span> / <b th:text="${r.product}">product</b>
+                        </div>
+                        <div class="muted truncate-1" style="font-size:12px;"
+                             th:attr="title=${r.version != null ? r.version : '-'}"
+                             th:text="${r.version}">1.0</div>
                     </td>
 
+                    <!-- Normalized -->
                     <td style="overflow-wrap:anywhere;">
                         <div class="muted" style="font-size:12px;">
                             v: <span th:text="${r.normalizedVendor != null ? r.normalizedVendor : '-'}">-</span>
@@ -242,7 +248,9 @@
                         </div>
                     </td>
 
-                    <td>
+                    <!-- Result -->
+                    <td class="canon-result" th:with="res=${r.analysis.resolve}">
+                        <!-- Stage badge -->
                         <span class="badge"
                               th:classappend="${
                                 r.analysis.result().name() == 'LINKED' ? ' badge--status-open' :
@@ -251,17 +259,67 @@
                               }"
                               th:text="${r.analysis.result().name()}">UNRESOLVED</span>
 
-                        <span class="badge" style="margin-left:6px;"
-                              th:classappend="${r.analysis.vendorLinkedSql() ? ' badge--status-open' : ' badge--unmapped'}"
-                              th:text="${r.analysis.vendorLinkedSql() ? 'V✓' : 'V-'}">V-</span>
+                        <!-- Vendor pill -->
+                        <span class="badge"
+                              th:classappend="${
+                                r.analysis.vendorLinkedSql()
+                                  ? ' badge--status-open'
+                                  : (res != null and res.vendorId() != null ? ' badge--warn' : ' badge--unmapped')
+                              }"
+                              th:text="${
+                                r.analysis.vendorLinkedSql()
+                                  ? ('V ' + (res != null and res.vendorId() != null ? res.vendorId() : '?')
+                                       + ':' + (res != null and res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                  : (res != null and res.vendorId() != null
+                                       ? ('V → ' + res.vendorId()
+                                            + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                       : 'V-')
+                              }"
+                              th:attr="title=${
+                                r.analysis.vendorLinkedSql()
+                                  ? ('Linked vendor: ' + (res != null && res.vendorId() != null ? res.vendorId() : '?')
+                                      + ':' + (res != null && res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                  : (res != null && res.vendorId() != null
+                                      ? ('Resolvable vendor: ' + res.vendorId()
+                                          + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                      : 'Vendor not linked / not resolvable')
+                              }">V-</span>
 
-                        <span class="badge" style="margin-left:6px;"
-                              th:classappend="${r.analysis.productLinkedSql() ? ' badge--status-open' : ' badge--unmapped'}"
-                              th:text="${r.analysis.productLinkedSql() ? 'P✓' : 'P-'}">P-</span>
+                        <!-- Product pill -->
+                        <span class="badge"
+                              th:classappend="${
+                                r.analysis.productLinkedSql()
+                                  ? ' badge--status-open'
+                                  : (res != null and res.productId() != null ? ' badge--warn' : ' badge--unmapped')
+                              }"
+                              th:text="${
+                                r.analysis.productLinkedSql()
+                                  ? ('P ' + (res != null and res.productId() != null ? res.productId() : '?')
+                                       + ':' + (res != null and res.productNorm() != null ? res.productNorm() : '-'))
+                                  : (res != null and res.productId() != null
+                                       ? ('P → ' + res.productId()
+                                            + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
+                                       : 'P-')
+                              }"
+                              th:attr="title=${
+                                r.analysis.productLinkedSql()
+                                  ? ('Linked product: ' + (res != null && res.productId() != null ? res.productId() : '?')
+                                      + ':' + (res != null && res.productNorm() != null ? res.productNorm() : '-'))
+                                  : (res != null && res.productId() != null
+                                      ? ('Resolvable product: ' + res.productId()
+                                          + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
+                                      : 'Product not linked / not resolvable')
+                              }">P-</span>
                     </td>
 
-                    <td class="muted" style="overflow-wrap:anywhere;"
-                        th:text="${r.analysis.reason != null ? r.analysis.reason : '-'}">reason</td>
+                    <!-- Reason -->
+                    <td class="muted canon-reason">
+                        <div class="line-clamp-2"
+                             th:text="${r.analysis.reason != null ? r.analysis.reason : '-'}"
+                             th:attr="title=${r.analysis.reason != null ? r.analysis.reason : ''}">
+                            reason
+                        </div>
+                    </td>
 
                     <td>
                         <a class="btn btn-ghost" style="padding:6px 10px; font-size:12px; border-radius:10px;"
@@ -273,6 +331,11 @@
 
                 </tbody>
             </table>
+        </div>
+
+        <!-- Optional hint -->
+        <div class="muted" style="font-size:12px; margin-top:10px;">
+            Tip: Hover truncated cells to see full text.
         </div>
     </div>
 
