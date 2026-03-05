@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -85,5 +87,133 @@ public class DashboardApiController {
                 .toList();
 
         return new TopProductsResponse(vendorId, vendorLabel, out);
+    }
+
+    public record TopCveCountResponse(
+            String range,
+            String rangeLabel,
+            List<TopCountRow> vendors,
+            List<TopCountRow> products
+    ) {}
+
+    @GetMapping("/api/dashboard/top-cve-count")
+    public TopCveCountResponse topCveCount(
+            @RequestParam(name = "range", defaultValue = "ALL") String range,
+            @RequestParam(name = "from", required = false) String from,
+            @RequestParam(name = "to", required = false) String to,
+            @RequestParam(name = "limit", defaultValue = "10") int limit
+    ) {
+        int lim = Math.max(1, Math.min(limit, 50));
+
+        LocalDateTime fromDt = null;
+        LocalDateTime toDt = null;
+
+        LocalDate today = LocalDate.now();
+
+        switch (range) {
+            case "D7" -> fromDt = today.minusDays(7).atStartOfDay();
+            case "D30" -> fromDt = today.minusDays(30).atStartOfDay();
+            case "D90" -> fromDt = today.minusDays(90).atStartOfDay();
+            case "D180" -> fromDt = today.minusDays(180).atStartOfDay();
+            case "D365" -> fromDt = today.minusDays(365).atStartOfDay();
+            case "YTD" -> fromDt = today.withDayOfYear(1).atStartOfDay();
+            case "CUSTOM" -> {
+                if (from != null && !from.isBlank()) {
+                    fromDt = LocalDate.parse(from).atStartOfDay();
+                }
+                if (to != null && !to.isBlank()) {
+                    // to は “その日を含む” が自然なので +1 day startOfDay にして < toDt 扱いにする
+                    toDt = LocalDate.parse(to).plusDays(1).atStartOfDay();
+                }
+            }
+            default -> {
+                // ALL: null,null のまま
+            }
+        }
+
+        List<Object[]> vRows = affectedCpeRepository
+                .countTopVendorsByDistinctCvesWithinLastModified(fromDt, toDt, PageRequest.of(0, lim));
+
+        List<Object[]> pRows = affectedCpeRepository
+                .countTopProductsByDistinctCvesWithinLastModified(fromDt, toDt, PageRequest.of(0, lim));
+
+        List<TopCountRow> vendors = resolveVendorRows(vRows);
+        List<TopCountRow> products = resolveProductRows(pRows);
+
+        return new TopCveCountResponse(range, toRangeLabel(range, from, to), vendors, products);
+    }
+
+    private List<TopCountRow> resolveVendorRows(List<Object[]> rows) {
+        if (rows == null || rows.isEmpty()) return List.of();
+
+        List<Long> ids = rows.stream()
+                .map(r -> (Long) r[0])
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<Long, CpeVendor> byId = new HashMap<>();
+        if (!ids.isEmpty()) {
+            for (CpeVendor v : cpeVendorRepository.findAllById(ids)) {
+                byId.put(v.getId(), v);
+            }
+        }
+
+        return rows.stream()
+                .map(r -> {
+                    Long id = (Long) r[0];
+                    long cnt = ((Number) r[1]).longValue();
+                    CpeVendor v = byId.get(id);
+                    String label = (v == null)
+                            ? ("vendor#" + id)
+                            : ((v.getDisplayName() == null || v.getDisplayName().isBlank())
+                            ? v.getNameNorm()
+                            : v.getDisplayName());
+                    return new TopCountRow(id, label, cnt);
+                })
+                .toList();
+    }
+
+    private List<TopCountRow> resolveProductRows(List<Object[]> rows) {
+        if (rows == null || rows.isEmpty()) return List.of();
+
+        List<Long> ids = rows.stream()
+                .map(r -> (Long) r[0])
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<Long, CpeProduct> byId = new HashMap<>();
+        if (!ids.isEmpty()) {
+            for (CpeProduct p : cpeProductRepository.findAllById(ids)) {
+                byId.put(p.getId(), p);
+            }
+        }
+
+        return rows.stream()
+                .map(r -> {
+                    Long id = (Long) r[0];
+                    long cnt = ((Number) r[1]).longValue();
+                    CpeProduct p = byId.get(id);
+                    String label = (p == null)
+                            ? ("product#" + id)
+                            : ((p.getDisplayName() == null || p.getDisplayName().isBlank())
+                            ? p.getNameNorm()
+                            : p.getDisplayName());
+                    return new TopCountRow(id, label, cnt);
+                })
+                .toList();
+    }
+
+    private String toRangeLabel(String range, String from, String to) {
+        return switch (range) {
+            case "D7" -> "Last 7 days";
+            case "D30" -> "Last 30 days";
+            case "D90" -> "Last 90 days";
+            case "D180" -> "Last 180 days";
+            case "D365" -> "Last 365 days";
+            case "YTD" -> "Year to date";
+            case "CUSTOM" -> "Custom" + ((from != null && !from.isBlank()) ? (" (" + from + "…") : "")
+                    + ((to != null && !to.isBlank()) ? (to + ")") : "");
+            default -> "All time";
+        };
     }
 }
