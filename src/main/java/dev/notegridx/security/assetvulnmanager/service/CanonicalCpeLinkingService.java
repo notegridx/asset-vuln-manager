@@ -42,10 +42,6 @@ public class CanonicalCpeLinkingService {
         this.tokenMatchingService = tokenMatchingService;
     }
 
-    // ------------------------------------------------------------
-    // Public: stats (linked vs resolvable separated)
-    // ------------------------------------------------------------
-
     @Transactional(readOnly = true)
     public MappingStats stats(Collection<SoftwareInstall> rows) {
         int checked = 0;
@@ -82,9 +78,6 @@ public class CanonicalCpeLinkingService {
         );
     }
 
-    /**
-     * Overall stats (first N rows, like the old dryLinkSummary).
-     */
     @Transactional(readOnly = true)
     public MappingStats statsOverall(int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 5000));
@@ -92,60 +85,44 @@ public class CanonicalCpeLinkingService {
         return stats(rows);
     }
 
-    // ------------------------------------------------------------
-    // Public: analysis (LINKED / RESOLVED / STALE / UNRESOLVED)
-    // ------------------------------------------------------------
-
     @Transactional(readOnly = true)
     public Analysis analyze(SoftwareInstall s) {
         boolean linked = (s.getCpeVendorId() != null && s.getCpeProductId() != null);
 
-        // Dictionary resolvability from strings (existing behavior)
         ResolveResult r = resolve(s);
 
-        // If linked, validate whether the referenced IDs still exist.
         if (linked) {
             boolean vendorOk = vendorRepo.existsById(s.getCpeVendorId());
             boolean prodOk = productRepo.existsById(s.getCpeProductId());
 
             if (vendorOk && prodOk) {
-                // LINKED (valid). Even if r.hit is false, the record is already linked in DB.
                 return Analysis.linkedOk(r, null);
             }
-            // STALE: linked columns exist but dictionary rows missing (or deleted)
             String reason = "linked IDs are stale: vendorOk=" + vendorOk + ", productOk=" + prodOk;
             return Analysis.stale(r, reason);
         }
 
-        // Not linked:
         if (r.hit()) {
-            // RESOLVED (resolvable but not yet linked in DB)
             return Analysis.resolved(r, null);
         }
 
-        // UNRESOLVED
         return Analysis.unresolved(r, r.reason());
     }
 
     public enum ItemResult {
-        LINKED,      // DB link exists and valid
-        RESOLVED,    // not linked, but dictionary resolvable from strings
-        STALE,       // DB link exists, but referenced dictionary rows missing
-        UNRESOLVED   // not linked and not resolvable
+        LINKED,
+        RESOLVED,
+        STALE,
+        UNRESOLVED
     }
 
     public record MappingStats(
             int checked,
-
-            // SQL-level link status
             int linked,
             int linkedValid,
             int linkedStale,
-
-            // dictionary resolvability
             int resolvable,
             int unresolvable,
-
             int needsNormalization
     ) {}
 
@@ -171,68 +148,68 @@ public class CanonicalCpeLinkingService {
         }
     }
 
-    // ------------------------------------------------------------
-    // resolve (string -> dictionary lookup)
-    //  - exact vendor/product (after synonym)
-    //  - fallback: product token matching within vendor
-    // ------------------------------------------------------------
-
     @Transactional(readOnly = true)
     public ResolveResult resolve(SoftwareInstall s) {
-        // 1) base normalize
         String v0 = normalizer.normalizeVendor(bestEffortVendor(s));
         String p0 = normalizer.normalizeProduct(s.getProduct());
 
-        if (p0 == null) {
-            return ResolveResult.miss("product is blank after normalize", true);
-        }
-
         boolean needsNorm = (s.getNormalizedProduct() == null || s.getNormalizedProduct().isBlank());
 
-        // 2) apply synonym (vendor then product)
+        if (p0 == null) {
+            return ResolveResult.miss("product is blank after normalize", needsNorm, null, null, null);
+        }
+
         String v1 = synonymService.canonicalVendorOrSame(v0);
         String p1 = synonymService.canonicalProductOrSame(v1, p0);
 
-        // 3) dictionary lookup (vendor)
         if (v1 == null || v1.isBlank()) {
-            return ResolveResult.miss("vendor missing (cannot lookup cpe_products)", needsNorm);
+            return ResolveResult.miss("vendor missing (cannot lookup cpe_products)", needsNorm, null, null, p1);
         }
 
         CpeVendor vendor = vendorRepo.findByNameNorm(v1).orElse(null);
         if (vendor == null) {
-            return ResolveResult.miss("vendor not found in cpe_vendors: " + v1, needsNorm);
+            return ResolveResult.miss("vendor not found in cpe_vendors: " + v1, needsNorm, null, v1, p1);
         }
 
-        // 4) exact product
-        CpeProduct prod = productRepo.findByVendorIdAndNameNorm(vendor.getId(), p1).orElse(null);
+        Long vendorId = vendor.getId();
+
+        CpeProduct prod = productRepo.findByVendorIdAndNameNorm(vendorId, p1).orElse(null);
         if (prod != null) {
-            return ResolveResult.hit(vendor.getId(), prod.getId(), v1, p1, needsNorm);
+            return ResolveResult.hit(vendorId, prod.getId(), v1, p1, needsNorm);
         }
 
-        // 5) fallback: token matching (within vendor only)
         if (shouldSkipTokenMatching(s.getProduct(), p1)) {
             if (log.isDebugEnabled()) {
                 log.debug("CPE token-match skipped: swId={}, vendorNorm={}, productNorm={}, productRaw='{}'",
                         safeId(s), v1, p1, safeStr(s.getProduct()));
             }
-            return ResolveResult.miss("product not found (token-matching skipped): " + v1 + ":" + p1, needsNorm);
+            return ResolveResult.vendorOnly(
+                    vendorId, v1, p1,
+                    "product not found (token-matching skipped): " + v1 + ":" + p1,
+                    needsNorm
+            );
         }
 
-        Optional<CpeProduct> best = tokenMatchingService.bestProduct(vendor.getId(), p1);
+        Optional<CpeProduct> best = tokenMatchingService.bestProduct(vendorId, p1);
         if (best.isPresent()) {
             CpeProduct bp = best.get();
             if (log.isDebugEnabled()) {
                 log.debug("CPE token-match HIT: swId={}, vendorId={}, vendorNorm={}, inputProductNorm={}, matchedProductId={}, matchedProductNorm={}",
-                        safeId(s), vendor.getId(), v1, p1, bp.getId(), bp.getNameNorm());
+                        safeId(s), vendorId, v1, p1, bp.getId(), bp.getNameNorm());
             }
-            return ResolveResult.hit(vendor.getId(), bp.getId(), v1, bp.getNameNorm(), needsNorm);
+            return ResolveResult.hit(vendorId, bp.getId(), v1, bp.getNameNorm(), needsNorm);
         }
 
         if (log.isDebugEnabled()) {
             log.debug("CPE token-match MISS: swId={}, vendorId={}, vendorNorm={}, productNorm={}, productRaw='{}'",
-                    safeId(s), vendor.getId(), v1, p1, safeStr(s.getProduct()));
+                    safeId(s), vendorId, v1, p1, safeStr(s.getProduct()));
         }
-        return ResolveResult.miss("product not found in cpe_products: " + v1 + ":" + p1, needsNorm);
+
+        return ResolveResult.vendorOnly(
+                vendorId, v1, p1,
+                "product not found in cpe_products: " + v1 + ":" + p1,
+                needsNorm
+        );
     }
 
     private static String bestEffortVendor(SoftwareInstall s) {
@@ -255,43 +232,39 @@ public class CanonicalCpeLinkingService {
             return new ResolveResult(true, vId, pId, vNorm, pNorm, null, needsNorm);
         }
 
-        public static ResolveResult miss(String reason, boolean needsNorm) {
-            return new ResolveResult(false, null, null, null, null, reason, needsNorm);
+        public static ResolveResult miss(String reason, boolean needsNorm, Long vendorId, String vNorm, String pNorm) {
+            return new ResolveResult(false, vendorId, null, vNorm, pNorm, reason, needsNorm);
+        }
+
+        public static ResolveResult vendorOnly(Long vId, String vNorm, String pNorm, String reason, boolean needsNorm) {
+            return new ResolveResult(false, vId, null, vNorm, pNorm, reason, needsNorm);
+        }
+
+        public boolean vendorOnly() {
+            return !hit && vendorId != null && productId == null;
         }
     }
 
-    // ============================================================
-    // Token matching skip heuristics
-    // ============================================================
-
     private static final Pattern GUID = Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
     private static final Pattern APPX_PREFIX = Pattern.compile("(?i)^(microsoft\\.|microsoftwindows\\.|windows\\.)");
-    private static final Pattern NAMESPACE_DOT = Pattern.compile("(?i)[a-z]\\.[a-z]"); // letter.dot.letter
+    private static final Pattern NAMESPACE_DOT = Pattern.compile("(?i)[a-z]\\.[a-z]");
 
-    /**
-     * WindowsのOS/Store/AppX系・GUID系は token matching の誤爆が多いので対象外にする。
-     */
     private boolean shouldSkipTokenMatching(String productRaw, String productNorm) {
         String pr = (productRaw == null) ? "" : productRaw.trim();
         if (pr.isEmpty()) return true;
 
-        // GUID product names
         if (GUID.matcher(pr).matches()) return true;
 
-        // AppX-ish (dot-separated namespace style) by normalized form
         String pn = (productNorm == null) ? "" : productNorm.trim();
         if (!pn.isEmpty() && APPX_PREFIX.matcher(pn).find()) return true;
 
-        // Namespace-ish dot chaining (avoid false positives caused by "14.42.34433" etc.)
-        // e.g. "Microsoft.Windows.CloudExperienceHost" => many occurrences of letter.dot.letter
         int hits = 0;
         var m = NAMESPACE_DOT.matcher(pr);
         while (m.find()) {
             hits++;
-            if (hits >= 2) return true; // 2回以上ならほぼ namespace
+            if (hits >= 2) return true;
         }
 
-        // Also skip AppX name style: contains dot but no spaces (e.g. Microsoft.AAD.BrokerPlugin / Clipchamp.Clipchamp)
         if (pr.contains(".") && !pr.contains(" ")) return true;
 
         return false;
@@ -299,7 +272,6 @@ public class CanonicalCpeLinkingService {
 
     private static Object safeId(SoftwareInstall s) {
         try {
-            // SoftwareInstall#getId() がある想定。無ければコンパイルが落ちるのでその場合は呼び出し箇所ごと削除。
             return s.getId();
         } catch (Exception e) {
             return null;

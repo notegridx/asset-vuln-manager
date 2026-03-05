@@ -119,4 +119,6 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
 
     @org.springframework.data.jpa.repository.Query("select s.id from SoftwareInstall s where s.importRunId = :runId")
     java.util.List<Long> findIdsByImportRunId(@org.springframework.data.repository.query.Param("runId") Long runId);
+
+
 }

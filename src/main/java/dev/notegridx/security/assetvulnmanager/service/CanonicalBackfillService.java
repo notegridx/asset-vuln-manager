@@ -91,8 +91,8 @@ public class CanonicalBackfillService {
                 for (SoftwareInstall s : chunk) {
                     if (processedInChunk >= remaining) break;
 
-                    boolean already = (s.getCpeVendorId() != null || s.getCpeProductId() != null);
-                    if (already && !forceRebuild) {
+                    boolean fullyLinked = (s.getCpeVendorId() != null && s.getCpeProductId() != null);
+                    if (fullyLinked && !forceRebuild) {
                         processedInChunk++;
                         continue;
                     }
@@ -101,6 +101,18 @@ public class CanonicalBackfillService {
                     if (res.hit()) {
                         s.linkCanonical(res.vendorId(), res.productId());
                         _linked++;
+                    } else if (res.vendorId() != null) {
+                        // ✅ vendor-only を先に埋める
+                        s.linkCanonical(res.vendorId(), null);
+                        _linked++;
+                        // product は unresolved なので unresolved_mappings も積む
+                        upsertUnresolvedMapping(
+                                safeString(s.getSource()),
+                                coalesceNullable(s.getVendorRaw(), s.getVendor()),
+                                coalesceNullable(s.getProductRaw(), s.getProduct()),
+                                coalesceNullable(s.getVersionRaw(), s.getVersion())
+                        );
+                        _missed++;
                     } else {
                         upsertUnresolvedMapping(
                                 safeString(s.getSource()),
@@ -142,16 +154,16 @@ public class CanonicalBackfillService {
     /**
      * import直後など、特定の SoftwareInstall だけを対象に canonical link を試す。
      * - hit: software_install に cpe_vendor_id / cpe_product_id をセット
+     * - vendor-only: cpe_vendor_id のみセット（product は unresolved）
      * - miss: unresolved_mappings に upsert（候補IDも埋める）
      *
-     * forceRebuild=false の場合、既にリンク済み（vendor/productいずれか埋まっている）はスキップ。
+     * forceRebuild=false の場合、完全リンク済み（vendor+product両方埋まっている）はスキップ。
      */
     public BackfillResult backfillForSoftwareIds(List<Long> softwareIds, boolean forceRebuild) {
         if (softwareIds == null || softwareIds.isEmpty()) {
             return new BackfillResult(0, 0, 0, forceRebuild);
         }
 
-        // null排除 + 重複排除（順序は維持）
         List<Long> ids = softwareIds.stream()
                 .filter(x -> x != null && x > 0)
                 .distinct()
@@ -179,8 +191,8 @@ public class CanonicalBackfillService {
                 for (SoftwareInstall s : chunk) {
                     if (s == null) continue;
 
-                    boolean already = (s.getCpeVendorId() != null || s.getCpeProductId() != null);
-                    if (already && !forceRebuild) {
+                    boolean fullyLinked = (s.getCpeVendorId() != null && s.getCpeProductId() != null);
+                    if (fullyLinked && !forceRebuild) {
                         processedInChunk++;
                         continue;
                     }
@@ -189,6 +201,17 @@ public class CanonicalBackfillService {
                     if (res.hit()) {
                         s.linkCanonical(res.vendorId(), res.productId());
                         _linked++;
+                    } else if (res.vendorId() != null) {
+                        s.linkCanonical(res.vendorId(), null);
+                        _linked++;
+
+                        upsertUnresolvedMapping(
+                                safeString(s.getSource()),
+                                coalesceNullable(s.getVendorRaw(), s.getVendor()),
+                                coalesceNullable(s.getProductRaw(), s.getProduct()),
+                                coalesceNullable(s.getVersionRaw(), s.getVersion())
+                        );
+                        _missed++;
                     } else {
                         upsertUnresolvedMapping(
                                 safeString(s.getSource()),
@@ -239,7 +262,7 @@ public class CanonicalBackfillService {
         String v = normalizeNullable(vendorRaw);
         String p = normalizeNullable(productRaw);
         String ver = normalizeNullable(versionRaw);
-        if (p == null) return; // product が空のものはキューに積まない
+        if (p == null) return;
 
         LocalDateTime now = LocalDateTime.now();
 

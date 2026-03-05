@@ -36,7 +36,6 @@ public class SoftwareInstallService {
 
     @Transactional
     public void deleteCascade(Long installId) {
-        // alerts -> software_install
         alertRepository.deleteBySoftwareInstallId(installId);
         softwareInstallRepository.deleteById(installId);
     }
@@ -81,8 +80,10 @@ public class SoftwareInstallService {
 
         if (r.hit()) {
             si.linkCanonical(r.vendorId(), r.productId());
+        } else if (r.vendorId() != null) {
+            // ✅ vendor は確定しているので vendor-only を保持
+            si.linkCanonical(r.vendorId(), null);
         } else {
-            // LENIENT時：辞書HITしないなら canonicalリンクは付けない（既存があっても新規はなし）
             si.unlinkCanonical();
         }
 
@@ -109,8 +110,11 @@ public class SoftwareInstallService {
 
         if (r.hit()) {
             si.linkCanonical(r.vendorId(), r.productId());
+        } else if (r.vendorId() != null) {
+            // ✅ 入力が変わって product が外れても vendor が確定していれば vendor-only に落とす
+            // （古い product link の残留は防ぎつつ vendor は保持）
+            si.linkCanonical(r.vendorId(), null);
         } else {
-            // LENIENT時：入力が変わって辞書に当たらない場合は canonical を外す（古いリンクが残るのを防ぐ）
             si.unlinkCanonical();
         }
 
