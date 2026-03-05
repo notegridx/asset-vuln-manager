@@ -5,483 +5,537 @@
 <body th:replace="~{layout/base :: layout('Synonyms - Vendors', 'admin', ~{::main})}">
 <main>
 
-  <!-- Inline CSS (self-contained for this page) -->
-  <style>
-    .alias-status {
-      border: none;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      line-height: 1.2;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      user-select: none;
-    }
-    .alias-status--active {
-      background: rgba(138, 180, 255, 0.18);
-      color: var(--accent);
-      border: 1px solid rgba(138, 180, 255, 0.35);
-    }
-    .alias-status--inactive {
-      background: rgba(166, 173, 187, 0.14);
-      color: var(--muted);
-      border: 1px solid rgba(166, 173, 187, 0.25);
-    }
-    .alias-status:hover { filter: brightness(1.06); }
-    .alias-status:active { transform: translateY(0.5px); }
-    .alias-status[disabled] { opacity: 0.65; cursor: wait; transform: none; }
-    .alias-status__dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: currentColor;
-      opacity: 0.9;
-    }
-    .alias-status-form { display:inline; }
-  </style>
+    <!-- Inline CSS (self-contained for this page) -->
+    <style>
+        .alias-status {
+            border: none;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1.2;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
 
-  <h1>Synonyms Workspace</h1>
-  <p class="muted">
-    Manage <strong>vendor</strong> and <strong>product</strong> alias dictionaries in the same vendor context.
-    Pick a canonical vendor first to avoid product mis-linking.
-  </p>
+        .alias-status--active {
+            background: rgba(138, 180, 255, 0.18);
+            color: var(--accent);
+            border: 1px solid rgba(138, 180, 255, 0.35);
+        }
 
-  <!-- Workspace Context (always visible when selected) -->
-  <div class="workspace-context" th:if="${vendorId != null}">
-    <span class="muted">Vendor context:</span>
-    <span class="pill pill--accent" th:text="${selectedVendorLabel != null ? selectedVendorLabel : 'vendorId=' + vendorId}">
+        .alias-status--inactive {
+            background: rgba(166, 173, 187, 0.14);
+            color: var(--muted);
+            border: 1px solid rgba(166, 173, 187, 0.25);
+        }
+
+        .alias-status:hover {
+            filter: brightness(1.06);
+        }
+
+        .alias-status:active {
+            transform: translateY(0.5px);
+        }
+
+        .alias-status[disabled] {
+            opacity: 0.65;
+            cursor: wait;
+            transform: none;
+        }
+
+        .alias-status__dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: currentColor;
+            opacity: 0.9;
+        }
+
+        .alias-status-form {
+            display: inline;
+        }
+    </style>
+
+    <h1>Synonyms Workspace</h1>
+    <p class="muted">
+        Manage <strong>vendor</strong> and <strong>product</strong> alias dictionaries in the same vendor context.
+        Pick a canonical vendor first to avoid product mis-linking.
+    </p>
+
+    <!-- Workspace Context (always visible when selected) -->
+    <div class="workspace-context" th:if="${vendorId != null}">
+        <span class="muted">Vendor context:</span>
+        <span class="pill pill--accent"
+              th:text="${selectedVendorLabel != null ? selectedVendorLabel : 'vendorId=' + vendorId}">
       adobe
     </span>
-    <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
-  </div>
+        <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
+    </div>
 
-  <!-- Workspace: canonical vendor selector -->
-  <div class="context-card">
-    <div class="context-card__left">
-      <div class="context-card__title">
-        <div class="name">Canonical vendor</div>
+    <!-- Workspace: canonical vendor selector -->
+    <div class="context-card">
+        <div class="context-card__left">
+            <div class="context-card__title">
+                <div class="name">Canonical vendor</div>
 
-        <!-- Selected state (make it obvious) -->
-        <div class="meta" th:if="${vendorId != null}">
-          <span class="muted">Selected:</span>
-          <span class="pill pill--accent" th:text="${selectedVendorLabel != null ? selectedVendorLabel : 'vendorId=' + vendorId}">
+                <!-- Selected state (make it obvious) -->
+                <div class="meta" th:if="${vendorId != null}">
+                    <span class="muted">Selected:</span>
+                    <span class="pill pill--accent"
+                          th:text="${selectedVendorLabel != null ? selectedVendorLabel : 'vendorId=' + vendorId}">
             adobe
           </span>
-          <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
-        </div>
+                    <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
+                </div>
 
-        <div class="meta" th:if="${vendorId == null}">
-          Not selected
-        </div>
-      </div>
-
-      <div style="margin-top:8px; position:relative; max-width: 560px;">
-        <input id="workspaceVendorInput" class="input" type="text"
-               placeholder="Type to search canonical vendor (e.g. microsoft)" autocomplete="off">
-        <div id="workspaceVendorSuggestBox" class="suggest-box" style="display:none;">
-          <div id="workspaceVendorSuggestList"></div>
-          <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-            Select one item to open vendor workspace.
-          </div>
-        </div>
-      </div>
-
-      <div class="muted text-12 mt-6">
-        Tip: Once a vendor is selected, use the <strong>Product Aliases</strong> tab to add scoped product aliases safely.
-      </div>
-    </div>
-
-    <div class="context-card__right">
-      <div class="tabs" role="tablist" aria-label="Synonyms tabs">
-        <a class="tab"
-           th:classappend="${tab == 'vendors'} ? ' is-active' : ''"
-           th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='vendors', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
-          Vendor Aliases
-        </a>
-        <a class="tab"
-           th:classappend="${tab == 'products'} ? ' is-active' : ''"
-           th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='products', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
-          Product Aliases (scoped)
-        </a>
-      </div>
-
-      <a class="btn btn-ghost"
-         th:href="@{/admin/synonyms/workspace(tab=${tab})}">
-        Clear vendor
-      </a>
-    </div>
-  </div>
-
-  <!-- =========================
-       Vendor tab
-       ========================= -->
-  <div th:if="${tab == 'vendors'}">
-
-    <!-- Search (vendor alias list) -->
-    <div class="card" style="padding:12px; margin:12px 0;">
-      <h2 style="margin:0 0 10px 0;">Search vendor aliases</h2>
-
-      <form method="get" th:action="@{/admin/synonyms/workspace}" class="actions" style="gap:10px; flex-wrap:wrap;">
-        <input type="hidden" name="vendorId" th:value="${vendorId}">
-        <input type="hidden" name="tab" value="vendors">
-
-        <input class="input" type="text" name="q" placeholder="aliasNorm contains..." th:value="${q}" style="min-width:260px;">
-        <select name="status">
-          <option value="" th:selected="${status == null}">All</option>
-          <option value="ACTIVE" th:selected="${status == 'ACTIVE'}">ACTIVE</option>
-          <option value="INACTIVE" th:selected="${status == 'INACTIVE'}">INACTIVE</option>
-        </select>
-
-        <button class="btn btn-primary" type="submit">Apply</button>
-        <a class="btn btn-ghost"
-           th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='vendors')}">Reset</a>
-      </form>
-
-      <div class="muted text-12 mt-8">
-        Showing up to <span th:text="${limit}">500</span> rows (latest first).
-      </div>
-    </div>
-
-    <!-- Add vendor alias -->
-    <div class="card" style="padding:12px; margin:12px 0;">
-      <h2 style="margin:0 0 10px 0;">Add vendor alias</h2>
-
-      <form id="vendorAliasForm" th:action="@{/admin/aliases/vendor}" method="post"
-            class="actions" style="gap:10px; flex-wrap:wrap;">
-
-        <!-- Keep workspace context after POST -->
-        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
-
-        <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;" required>
-
-        <!-- Canonical vendor selector (reuse existing suggest UX) -->
-        <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
-          <input id="vendorSearchInput" class="input" type="text"
-                 placeholder="Canonical vendor (type to search, e.g. microsoft)" autocomplete="off" required>
-          <input id="cpeVendorId" type="hidden" name="cpeVendorId" required>
-
-          <div id="vendorSuggestBox" class="suggest-box" style="display:none;">
-            <div id="vendorSuggestList"></div>
-            <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-              Tip: select one item to set vendorId.
+                <div class="meta" th:if="${vendorId == null}">
+                    Not selected
+                </div>
             </div>
-          </div>
 
-          <div id="vendorSelectedHint" class="muted" style="font-size:12px;"></div>
+            <div style="margin-top:8px; position:relative; max-width: 560px;">
+                <input id="workspaceVendorInput" class="input" type="text"
+                       placeholder="Type to search canonical vendor (e.g. microsoft)" autocomplete="off">
+                <div id="workspaceVendorSuggestBox" class="suggest-box" style="display:none;">
+                    <div id="workspaceVendorSuggestList"></div>
+                    <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
+                        Select one item to open vendor workspace.
+                    </div>
+                </div>
+            </div>
+
+            <div class="muted text-12 mt-6">
+                Tip: Once a vendor is selected, use the <strong>Product Aliases</strong> tab to add scoped product
+                aliases safely.
+            </div>
         </div>
 
-        <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
+        <div class="context-card__right">
+            <div class="tabs" role="tablist" aria-label="Synonyms tabs">
+                <a class="tab"
+                   th:classappend="${tab == 'vendors'} ? ' is-active' : ''"
+                   th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='vendors', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
+                    Vendor Aliases
+                </a>
+                <a class="tab"
+                   th:classappend="${tab == 'products'} ? ' is-active' : ''"
+                   th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='products', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
+                    Product Aliases (scoped)
+                </a>
+            </div>
 
-        <button class="btn btn-primary" type="submit">Save</button>
-        <a class="btn btn-ghost" th:href="@{/admin/unresolved(status='NEW')}">Open Unresolved</a>
-      </form>
-
-      <div class="muted text-12 mt-8" style="line-height:1.6;">
-        Save updates the dictionary and clears caches. Run Canonical Backfill when you want to relink SoftwareInstalls.
-      </div>
-
-      <!-- Batch seed -->
-      <form th:action="@{/admin/aliases/seed-top}" method="post"
-            class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
-        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
-        <button class="btn" type="submit">Seed Top Aliases</button>
-        <span class="muted" style="font-size:12px;">
-          Inserts/updates curated vendor+product aliases (idempotent).
-        </span>
-      </form>
-
-      <!-- Seed report (flash) -->
-      <div class="card" th:if="${seedReport != null}"
-           style="padding:12px; margin-top:10px; border:1px solid rgba(255,255,255,0.10);">
-        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-          <h3 style="margin:0;">Seed report</h3>
-          <span class="muted" style="font-size:12px;" th:text="${seedReport.batchName}">seedTopAliases</span>
+            <a class="btn btn-ghost"
+               th:href="@{/admin/synonyms/workspace(tab=${tab})}">
+                Clear vendor
+            </a>
         </div>
-
-        <div class="muted" style="margin-top:8px; line-height:1.8;">
-          <div>
-            Vendors:
-            ins=<span class="mono" th:text="${seedReport.vendorInserted}">0</span>,
-            upd=<span class="mono" th:text="${seedReport.vendorUpdated}">0</span>,
-            same=<span class="mono" th:text="${seedReport.vendorUnchanged}">0</span>,
-            skip=<span class="mono" th:text="${seedReport.vendorSkipped}">0</span>
-          </div>
-          <div>
-            Products:
-            ins=<span class="mono" th:text="${seedReport.productInserted}">0</span>,
-            upd=<span class="mono" th:text="${seedReport.productUpdated}">0</span>,
-            same=<span class="mono" th:text="${seedReport.productUnchanged}">0</span>,
-            skip=<span class="mono" th:text="${seedReport.productSkipped}">0</span>
-          </div>
-        </div>
-
-        <details style="margin-top:10px;" th:if="${seedReport.messages != null && !#lists.isEmpty(seedReport.messages)}">
-          <summary class="btn btn-ghost" style="display:inline-flex;">Show details</summary>
-          <div style="margin-top:8px;">
-            <div class="muted mono" th:each="m : ${seedReport.messages}" th:text="${m}"
-                 style="font-size:12px; line-height:1.6; padding:2px 0;"></div>
-          </div>
-        </details>
-      </div>
     </div>
 
-    <!-- Vendor alias list -->
-    <div class="card">
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-          <tr>
-            <th style="width:90px;">ID</th>
-            <th>aliasNorm</th>
-            <th style="width:120px;">vendorId</th>
-            <th>canonical vendor</th>
-            <th style="width:130px;">Status</th>
-            <th>note</th>
-          </tr>
-          </thead>
-          <tbody>
+    <!-- =========================
+         Vendor tab
+         ========================= -->
+    <div th:if="${tab == 'vendors'}">
 
-          <tr th:if="${rows == null || #lists.isEmpty(rows)}">
-            <td colspan="6" class="muted" style="padding:14px;">No rows.</td>
-          </tr>
+        <!-- Search (vendor alias list) -->
+        <div class="card" style="padding:12px; margin:12px 0;">
+            <h2 style="margin:0 0 10px 0;">Search vendor aliases</h2>
 
-          <tr th:each="r : ${rows}" th:attr="id=${'row-' + r.id}">
-            <td class="mono" th:text="${r.id}">1</td>
-            <td class="mono" th:text="${r.aliasNorm}">microsoft corp</td>
-            <td class="mono" th:text="${r.cpeVendorId}">123</td>
-            <td th:text="${vendorLabels[r.cpeVendorId]}">Microsoft</td>
+            <form method="get" th:action="@{/admin/synonyms/workspace}" class="actions"
+                  style="gap:10px; flex-wrap:wrap;">
+                <input type="hidden" name="vendorId" th:value="${vendorId}">
+                <input type="hidden" name="tab" value="vendors">
 
-            <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
-            <td>
-              <form class="alias-status-form js-toggle-ajax"
-                    th:action="@{/admin/synonyms/workspace/vendors/toggle}" method="post"
-                    data-scope="vendors">
-                <input type="hidden" name="id" th:value="${r.id}">
-                <!-- keep for non-JS fallback -->
+                <input class="input" type="text" name="q" placeholder="aliasNorm contains..." th:value="${q}"
+                       style="min-width:260px;">
+                <select name="status">
+                    <option value="" th:selected="${status == null}">All</option>
+                    <option value="ACTIVE" th:selected="${status == 'ACTIVE'}">ACTIVE</option>
+                    <option value="INACTIVE" th:selected="${status == 'INACTIVE'}">INACTIVE</option>
+                </select>
+
+                <button class="btn btn-primary" type="submit">Apply</button>
+                <a class="btn btn-ghost"
+                   th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='vendors')}">Reset</a>
+            </form>
+
+            <div class="muted text-12 mt-8">
+                Showing up to <span th:text="${limit}">500</span> rows (latest first).
+            </div>
+        </div>
+
+        <!-- Add vendor alias -->
+        <div class="card" style="padding:12px; margin:12px 0;">
+            <h2 style="margin:0 0 10px 0;">Add vendor alias</h2>
+
+            <form id="vendorAliasForm" th:action="@{/admin/aliases/vendor}" method="post"
+                  class="actions" style="gap:10px; flex-wrap:wrap;">
+
+                <!-- Keep workspace context after POST -->
                 <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
 
-                <button type="submit"
-                        class="alias-status"
-                        th:classappend="${r.status == 'ACTIVE'} ? ' alias-status--active' : ' alias-status--inactive'"
-                        th:attr="data-status=${r.status}"
-                        th:aria-label="${'Toggle status (current=' + r.status + ')'}">
-                  <span class="alias-status__dot" aria-hidden="true"></span>
-                  <span class="alias-status__text" th:text="${r.status}">ACTIVE</span>
-                </button>
-              </form>
-            </td>
+                <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;"
+                       required>
 
-            <td th:text="${r.note}">-</td>
-          </tr>
+                <!-- Canonical vendor selector (reuse existing suggest UX) -->
+                <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
+                    <input id="vendorSearchInput" class="input" type="text"
+                           placeholder="Canonical vendor (type to search, e.g. microsoft)" autocomplete="off" required>
+                    <input id="cpeVendorId" type="hidden" name="cpeVendorId" required>
 
-          </tbody>
-        </table>
-      </div>
-    </div>
+                    <div id="vendorSuggestBox" class="suggest-box" style="display:none;">
+                        <div id="vendorSuggestList"></div>
+                        <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
+                            Tip: select one item to set vendorId.
+                        </div>
+                    </div>
 
-  </div>
+                    <div id="vendorSelectedHint" class="muted" style="font-size:12px;"></div>
+                </div>
 
-  <!-- =========================
-       Product tab (scoped)
-       ========================= -->
-  <div th:if="${tab == 'products'}">
+                <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
 
-    <div th:if="${vendorId == null}" class="empty-state" style="margin-top:12px;">
-      Select a canonical vendor to manage product aliases in a safe vendor context.
-    </div>
+                <button class="btn btn-primary" type="submit">Save</button>
+                <a class="btn btn-ghost" th:href="@{/admin/unresolved(status='NEW')}">Open Unresolved</a>
+            </form>
 
-    <div th:if="${vendorId != null}">
-
-      <!-- Search product aliases -->
-      <div class="card" style="padding:12px; margin:12px 0;">
-        <h2 style="margin:0 0 10px 0;">Search product aliases (scoped)</h2>
-
-        <form method="get" th:action="@{/admin/synonyms/workspace}" class="actions" style="gap:10px; flex-wrap:wrap;">
-          <input type="hidden" name="vendorId" th:value="${vendorId}">
-          <input type="hidden" name="tab" value="products">
-
-          <input class="input" type="text" name="qP" placeholder="aliasNorm contains..." th:value="${qP}" style="min-width:260px;">
-          <select name="statusP">
-            <option value="" th:selected="${statusP == null}">All</option>
-            <option value="ACTIVE" th:selected="${statusP == 'ACTIVE'}">ACTIVE</option>
-            <option value="INACTIVE" th:selected="${statusP == 'INACTIVE'}">INACTIVE</option>
-          </select>
-
-          <button class="btn btn-primary" type="submit">Apply</button>
-          <a class="btn btn-ghost"
-             th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='products')}">Reset</a>
-        </form>
-
-        <div class="muted text-12 mt-8">
-          Showing up to <span th:text="${limit}">500</span> rows (latest first).
-        </div>
-      </div>
-
-      <!-- Add product alias (vendor scoped) -->
-      <div class="card" style="padding:12px; margin:12px 0;">
-        <h2 style="margin:0 0 10px 0;">Add product alias (scoped)</h2>
-
-        <form id="productAliasForm" th:action="@{/admin/aliases/product}" method="post"
-              class="actions" style="gap:10px; flex-wrap:wrap;">
-
-          <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
-          <input type="hidden" name="cpeVendorId" th:value="${vendorId}">
-
-          <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;" required>
-
-          <!-- Canonical product selector (scoped by vendorId) -->
-          <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
-            <input id="productSearchInput" class="input" type="text"
-                   placeholder="Canonical product (type to search)" autocomplete="off" required>
-            <input id="cpeProductId" type="hidden" name="cpeProductId" required>
-
-            <div id="productSuggestBox" class="suggest-box" style="display:none;">
-              <div id="productSuggestList"></div>
-              <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-                Tip: select one item to set productId.
-              </div>
+            <div class="muted text-12 mt-8" style="line-height:1.6;">
+                Save updates the dictionary and clears caches. Run Canonical Backfill when you want to relink
+                SoftwareInstalls.
             </div>
 
-            <div id="productSelectedHint" class="muted" style="font-size:12px;"></div>
-          </div>
+            <!-- Batch seed -->
+            <form th:action="@{/admin/aliases/seed-top}" method="post"
+                  class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
+                <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
+                <button class="btn" type="submit">Seed Top Aliases</button>
+                <span class="muted" style="font-size:12px;">
+          Inserts/updates curated vendor+product aliases (idempotent).
+        </span>
+            </form>
 
-          <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
+            <!-- Seed report (flash) -->
+            <div class="card" th:if="${seedReport != null}"
+                 style="padding:12px; margin-top:10px; border:1px solid rgba(255,255,255,0.10);">
+                <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                    <h3 style="margin:0;">Seed report</h3>
+                    <span class="muted" style="font-size:12px;" th:text="${seedReport.batchName}">seedTopAliases</span>
+                </div>
 
-          <button class="btn btn-primary" type="submit">Save</button>
-        </form>
+                <div class="muted" style="margin-top:8px; line-height:1.8;">
+                    <div>
+                        Vendors:
+                        ins=<span class="mono" th:text="${seedReport.vendorInserted}">0</span>,
+                        upd=<span class="mono" th:text="${seedReport.vendorUpdated}">0</span>,
+                        same=<span class="mono" th:text="${seedReport.vendorUnchanged}">0</span>,
+                        skip=<span class="mono" th:text="${seedReport.vendorSkipped}">0</span>
+                    </div>
+                    <div>
+                        Products:
+                        ins=<span class="mono" th:text="${seedReport.productInserted}">0</span>,
+                        upd=<span class="mono" th:text="${seedReport.productUpdated}">0</span>,
+                        same=<span class="mono" th:text="${seedReport.productUnchanged}">0</span>,
+                        skip=<span class="mono" th:text="${seedReport.productSkipped}">0</span>
+                    </div>
+                </div>
 
-        <div class="muted text-12 mt-8" style="line-height:1.6;">
-          This form pins <span class="mono">vendorId</span> to the selected workspace vendor to prevent cross-vendor mistakes.
+                <details style="margin-top:10px;"
+                         th:if="${seedReport.messages != null && !#lists.isEmpty(seedReport.messages)}">
+                    <summary class="btn btn-ghost" style="display:inline-flex;">Show details</summary>
+                    <div style="margin-top:8px;">
+                        <div class="muted mono" th:each="m : ${seedReport.messages}" th:text="${m}"
+                             style="font-size:12px; line-height:1.6; padding:2px 0;"></div>
+                    </div>
+                </details>
+            </div>
         </div>
-      </div>
 
-      <!-- Product alias list -->
-      <div class="card">
-        <div class="table-wrap">
-          <table class="table">
-            <thead>
-            <tr>
-              <th style="width:90px;">ID</th>
-              <th>aliasNorm</th>
-              <th style="width:120px;">vendorId</th>
-              <th style="width:160px;">productId</th>
-              <th>canonical product</th>
-              <th style="width:130px;">Status</th>
-              <th>note</th>
-            </tr>
-            </thead>
-            <tbody>
+        <!-- Vendor alias list -->
+        <div class="card">
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th style="width:90px;">ID</th>
+                        <th>aliasNorm</th>
+                        <th style="width:120px;">vendorId</th>
+                        <th>canonical vendor</th>
+                        <th style="width:130px;">Status</th>
+                        <th>note</th>
+                    </tr>
+                    </thead>
 
-            <tr th:if="${productRows == null || #lists.isEmpty(productRows)}">
-              <td colspan="7" class="muted" style="padding:14px;">No rows.</td>
-            </tr>
+                    <tbody>
 
-            <tr th:each="r : ${productRows}" th:attr="id=${'row-' + r.id}">
-              <td class="mono" th:text="${r.id}">1</td>
-              <td class="mono" th:text="${r.aliasNorm}">visual studio code</td>
-              <td class="mono" th:text="${r.cpeVendorId}">123</td>
-              <td class="mono" th:text="${r.cpeProductId}">456</td>
-              <td th:text="${productLabels[r.cpeProductId]}">Microsoft Visual Studio Code</td>
+                    <tr th:if="${rows == null || #lists.isEmpty(rows)}">
+                        <td colspan="6" class="muted" style="padding:14px;">No rows.</td>
+                    </tr>
 
-              <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
-              <td>
-                <form class="alias-status-form js-toggle-ajax"
-                      th:action="@{/admin/synonyms/workspace/products/toggle}" method="post"
-                      data-scope="products">
-                  <input type="hidden" name="id" th:value="${r.id}">
-                  <!-- keep for non-JS fallback -->
-                  <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
+                    <tr th:each="r : ${rows}" th:attr="id=${'row-' + r.id}">
+                        <td class="mono" th:text="${r.id}">1</td>
 
-                  <button type="submit"
-                          class="alias-status"
-                          th:classappend="${r.status == 'ACTIVE'} ? ' alias-status--active' : ' alias-status--inactive'"
-                          th:attr="data-status=${r.status}"
-                          th:aria-label="${'Toggle status (current=' + r.status + ')'}">
-                    <span class="alias-status__dot" aria-hidden="true"></span>
-                    <span class="alias-status__text" th:text="${r.status}">ACTIVE</span>
-                  </button>
-                </form>
-              </td>
+                        <!-- aliasNorm: plain text (NOT the navigation trigger) -->
+                        <td style="overflow-wrap:anywhere;" th:text="${r.aliasNorm}">alias</td>
 
-              <td th:text="${r.note}">-</td>
-            </tr>
+                        <td class="mono" th:text="${r.cpeVendorId}">123</td>
 
-            </tbody>
-          </table>
+                        <!-- canonical vendor: click -> switch vendor context + open Product Aliases tab -->
+                        <td style="overflow-wrap:anywhere;">
+                            <a class="link"
+                               th:if="${r.cpeVendorId != null}"
+                               th:href="@{/admin/synonyms/workspace(vendorId=${r.cpeVendorId}, tab='products')}"
+                               th:text="${vendorLabels[r.cpeVendorId]}"
+                               th:aria-label="${'Open vendor context: ' + vendorLabels[r.cpeVendorId]}">
+                                Microsoft
+                            </a>
+                            <span th:if="${r.cpeVendorId == null}" class="muted">-</span>
+                        </td>
+
+                        <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
+                        <td>
+                            <form class="alias-status-form js-toggle-ajax"
+                                  th:action="@{/admin/synonyms/workspace/vendors/toggle}" method="post"
+                                  data-scope="vendors">
+                                <input type="hidden" name="id" th:value="${r.id}">
+                                <!-- keep for non-JS fallback -->
+                                <input type="hidden" name="redirect"
+                                       th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
+
+                                <button type="submit"
+                                        class="alias-status"
+                                        th:classappend="${r.status == 'ACTIVE'} ? ' alias-status--active' : ' alias-status--inactive'"
+                                        th:attr="data-status=${r.status}"
+                                        th:aria-label="${'Toggle status (current=' + r.status + ')'}">
+                                    <span class="alias-status__dot" aria-hidden="true"></span>
+                                    <span class="alias-status__text" th:text="${r.status}">ACTIVE</span>
+                                </button>
+                            </form>
+                        </td>
+
+                        <td th:text="${r.note}">-</td>
+                    </tr>
+
+                    </tbody>
+
+                </table>
+            </div>
         </div>
-      </div>
 
     </div>
-  </div>
 
-  <!-- =========================
-       Suggest JS (vendor + product) + Toggle AJAX
-       ========================= -->
-  <script th:inline="javascript">
-    (function() {
-      function escapeHtml(s) {
-        return (s ?? '').replace(/[&<>"']/g, (c) => ({
-          '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-        }[c]));
-      }
-      function highlight(text, q){
-        const t = text || '';
-        if (!q) return escapeHtml(t);
-        const idx = t.toLowerCase().indexOf(q.toLowerCase());
-        if (idx < 0) return escapeHtml(t);
-        const a = escapeHtml(t.slice(0, idx));
-        const b = escapeHtml(t.slice(idx, idx + q.length));
-        const c = escapeHtml(t.slice(idx + q.length));
-        return `${a}<mark>${b}</mark>${c}`;
-      }
-      function rank(item, qLower){
-        const label = (item.label || '').toLowerCase();
-        const norm  = (item.nameNorm || '').toLowerCase();
-        if (label === qLower || norm === qLower) return 0;
-        if (label.startsWith(qLower) || norm.startsWith(qLower)) return 1;
-        if (label.includes(qLower) || norm.includes(qLower)) return 2;
-        return 9;
-      }
+    <!-- =========================
+         Product tab (scoped)
+         ========================= -->
+    <div th:if="${tab == 'products'}">
 
-      async function fetchGrouped(url) {
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        if (!res.ok) return [];
-        const json = await res.json();
-        const exact = Array.isArray(json.exact) ? json.exact : [];
-        const others = Array.isArray(json.others) ? json.others : [];
-        return exact.concat(others);
-      }
+        <div th:if="${vendorId == null}" class="empty-state" style="margin-top:12px;">
+            Select a canonical vendor to manage product aliases in a safe vendor context.
+        </div>
 
-      function bindSuggest(inputId, boxId, listId, onSelect, buildUrl) {
-        const input = document.getElementById(inputId);
-        const box = document.getElementById(boxId);
-        const list = document.getElementById(listId);
-        if (!input || !box || !list) return;
+        <div th:if="${vendorId != null}">
 
-        let timer = null;
-        let lastQuery = '';
+            <!-- Search product aliases -->
+            <div class="card" style="padding:12px; margin:12px 0;">
+                <h2 style="margin:0 0 10px 0;">Search product aliases (scoped)</h2>
 
-        function closeBox() { box.style.display = 'none'; }
-        function openBox() { box.style.display = 'block'; }
+                <form method="get" th:action="@{/admin/synonyms/workspace}" class="actions"
+                      style="gap:10px; flex-wrap:wrap;">
+                    <input type="hidden" name="vendorId" th:value="${vendorId}">
+                    <input type="hidden" name="tab" value="products">
 
-        function render(items) {
-          const q = input.value.trim();
-          const qLower = q.toLowerCase();
+                    <input class="input" type="text" name="qP" placeholder="aliasNorm contains..." th:value="${qP}"
+                           style="min-width:260px;">
+                    <select name="statusP">
+                        <option value="" th:selected="${statusP == null}">All</option>
+                        <option value="ACTIVE" th:selected="${statusP == 'ACTIVE'}">ACTIVE</option>
+                        <option value="INACTIVE" th:selected="${statusP == 'INACTIVE'}">INACTIVE</option>
+                    </select>
 
-          if (!items || items.length === 0) {
-            list.innerHTML = `<div class="muted" style="padding:8px;">No matches.</div>`;
-            openBox();
-            return;
-          }
+                    <button class="btn btn-primary" type="submit">Apply</button>
+                    <a class="btn btn-ghost"
+                       th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='products')}">Reset</a>
+                </form>
 
-          const sorted = items.slice().sort((a,b) => rank(a, qLower) - rank(b, qLower));
-          const rows = sorted.slice(0, 10).map(it => {
-            const label = it.label || '';
-            const norm = it.nameNorm || '';
-            return `
+                <div class="muted text-12 mt-8">
+                    Showing up to <span th:text="${limit}">500</span> rows (latest first).
+                </div>
+            </div>
+
+            <!-- Add product alias (vendor scoped) -->
+            <div class="card" style="padding:12px; margin:12px 0;">
+                <h2 style="margin:0 0 10px 0;">Add product alias (scoped)</h2>
+
+                <form id="productAliasForm" th:action="@{/admin/aliases/product}" method="post"
+                      class="actions" style="gap:10px; flex-wrap:wrap;">
+
+                    <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
+                    <input type="hidden" name="cpeVendorId" th:value="${vendorId}">
+
+                    <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;"
+                           required>
+
+                    <!-- Canonical product selector (scoped by vendorId) -->
+                    <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
+                        <input id="productSearchInput" class="input" type="text"
+                               placeholder="Canonical product (type to search)" autocomplete="off" required>
+                        <input id="cpeProductId" type="hidden" name="cpeProductId" required>
+
+                        <div id="productSuggestBox" class="suggest-box" style="display:none;">
+                            <div id="productSuggestList"></div>
+                            <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
+                                Tip: select one item to set productId.
+                            </div>
+                        </div>
+
+                        <div id="productSelectedHint" class="muted" style="font-size:12px;"></div>
+                    </div>
+
+                    <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
+
+                    <button class="btn btn-primary" type="submit">Save</button>
+                </form>
+
+                <div class="muted text-12 mt-8" style="line-height:1.6;">
+                    This form pins <span class="mono">vendorId</span> to the selected workspace vendor to prevent
+                    cross-vendor mistakes.
+                </div>
+            </div>
+
+            <!-- Product alias list -->
+            <div class="card">
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th style="width:90px;">ID</th>
+                            <th>aliasNorm</th>
+                            <th style="width:120px;">vendorId</th>
+                            <th style="width:160px;">productId</th>
+                            <th>canonical product</th>
+                            <th style="width:130px;">Status</th>
+                            <th>note</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+
+                        <tr th:if="${productRows == null || #lists.isEmpty(productRows)}">
+                            <td colspan="7" class="muted" style="padding:14px;">No rows.</td>
+                        </tr>
+
+                        <tr th:each="r : ${productRows}" th:attr="id=${'row-' + r.id}">
+                            <td class="mono" th:text="${r.id}">1</td>
+                            <td class="mono" th:text="${r.aliasNorm}">visual studio code</td>
+                            <td class="mono" th:text="${r.cpeVendorId}">123</td>
+                            <td class="mono" th:text="${r.cpeProductId}">456</td>
+                            <td th:text="${productLabels[r.cpeProductId]}">Microsoft Visual Studio Code</td>
+
+                            <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
+                            <td>
+                                <form class="alias-status-form js-toggle-ajax"
+                                      th:action="@{/admin/synonyms/workspace/products/toggle}" method="post"
+                                      data-scope="products">
+                                    <input type="hidden" name="id" th:value="${r.id}">
+                                    <!-- keep for non-JS fallback -->
+                                    <input type="hidden" name="redirect"
+                                           th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
+
+                                    <button type="submit"
+                                            class="alias-status"
+                                            th:classappend="${r.status == 'ACTIVE'} ? ' alias-status--active' : ' alias-status--inactive'"
+                                            th:attr="data-status=${r.status}"
+                                            th:aria-label="${'Toggle status (current=' + r.status + ')'}">
+                                        <span class="alias-status__dot" aria-hidden="true"></span>
+                                        <span class="alias-status__text" th:text="${r.status}">ACTIVE</span>
+                                    </button>
+                                </form>
+                            </td>
+
+                            <td th:text="${r.note}">-</td>
+                        </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- =========================
+         Suggest JS (vendor + product) + Toggle AJAX
+         ========================= -->
+    <script th:inline="javascript">
+        (function () {
+            function escapeHtml(s) {
+                return (s ?? '').replace(/[&<>"']/g, (c) => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                }[c]));
+            }
+
+            function highlight(text, q) {
+                const t = text || '';
+                if (!q) return escapeHtml(t);
+                const idx = t.toLowerCase().indexOf(q.toLowerCase());
+                if (idx < 0) return escapeHtml(t);
+                const a = escapeHtml(t.slice(0, idx));
+                const b = escapeHtml(t.slice(idx, idx + q.length));
+                const c = escapeHtml(t.slice(idx + q.length));
+                return `${a}<mark>${b}</mark>${c}`;
+            }
+
+            function rank(item, qLower) {
+                const label = (item.label || '').toLowerCase();
+                const norm = (item.nameNorm || '').toLowerCase();
+                if (label === qLower || norm === qLower) return 0;
+                if (label.startsWith(qLower) || norm.startsWith(qLower)) return 1;
+                if (label.includes(qLower) || norm.includes(qLower)) return 2;
+                return 9;
+            }
+
+            async function fetchGrouped(url) {
+                const res = await fetch(url, {headers: {'Accept': 'application/json'}});
+                if (!res.ok) return [];
+                const json = await res.json();
+                const exact = Array.isArray(json.exact) ? json.exact : [];
+                const others = Array.isArray(json.others) ? json.others : [];
+                return exact.concat(others);
+            }
+
+            function bindSuggest(inputId, boxId, listId, onSelect, buildUrl) {
+                const input = document.getElementById(inputId);
+                const box = document.getElementById(boxId);
+                const list = document.getElementById(listId);
+                if (!input || !box || !list) return;
+
+                let timer = null;
+                let lastQuery = '';
+
+                function closeBox() {
+                    box.style.display = 'none';
+                }
+
+                function openBox() {
+                    box.style.display = 'block';
+                }
+
+                function render(items) {
+                    const q = input.value.trim();
+                    const qLower = q.toLowerCase();
+
+                    if (!items || items.length === 0) {
+                        list.innerHTML = `<div class="muted" style="padding:8px;">No matches.</div>`;
+                        openBox();
+                        return;
+                    }
+
+                    const sorted = items.slice().sort((a, b) => rank(a, qLower) - rank(b, qLower));
+                    const rows = sorted.slice(0, 10).map(it => {
+                        const label = it.label || '';
+                        const norm = it.nameNorm || '';
+                        return `
               <div class="suggest-item"
                    data-id="${it.id}"
                    data-label="${escapeHtml(label)}"
@@ -493,247 +547,258 @@
                 <div class="suggest-sub">${highlight(norm, q)}</div>
               </div>
             `;
-          }).join('');
+                    }).join('');
 
-          list.innerHTML = rows;
+                    list.innerHTML = rows;
 
-          Array.from(list.querySelectorAll('[data-id]')).forEach(el => {
-            el.addEventListener('click', () => {
-              onSelect({
-                id: Number(el.getAttribute('data-id')),
-                label: el.getAttribute('data-label'),
-                nameNorm: el.getAttribute('data-norm')
-              });
-              closeBox();
-            });
-          });
+                    Array.from(list.querySelectorAll('[data-id]')).forEach(el => {
+                        el.addEventListener('click', () => {
+                            onSelect({
+                                id: Number(el.getAttribute('data-id')),
+                                label: el.getAttribute('data-label'),
+                                nameNorm: el.getAttribute('data-norm')
+                            });
+                            closeBox();
+                        });
+                    });
 
-          openBox();
-        }
+                    openBox();
+                }
 
-        input.addEventListener('input', () => {
-          const q = input.value.trim();
-          if (q.length < 2) { closeBox(); return; }
-          lastQuery = q;
-          if (timer) clearTimeout(timer);
-          timer = setTimeout(async () => {
-            if (lastQuery !== q) return;
-            const url = buildUrl(q);
-            const items = await fetchGrouped(url);
-            render(items);
-          }, 180);
-        });
+                input.addEventListener('input', () => {
+                    const q = input.value.trim();
+                    if (q.length < 2) {
+                        closeBox();
+                        return;
+                    }
+                    lastQuery = q;
+                    if (timer) clearTimeout(timer);
+                    timer = setTimeout(async () => {
+                        if (lastQuery !== q) return;
+                        const url = buildUrl(q);
+                        const items = await fetchGrouped(url);
+                        render(items);
+                    }, 180);
+                });
 
-        input.addEventListener('focus', async () => {
-          const q = input.value.trim();
-          if (q.length < 2) return;
-          const url = buildUrl(q);
-          const items = await fetchGrouped(url);
-          render(items);
-        });
+                input.addEventListener('focus', async () => {
+                    const q = input.value.trim();
+                    if (q.length < 2) return;
+                    const url = buildUrl(q);
+                    const items = await fetchGrouped(url);
+                    render(items);
+                });
 
-        document.addEventListener('click', (e) => {
-          if (!box.contains(e.target) && e.target !== input) closeBox();
-        });
-      }
+                document.addEventListener('click', (e) => {
+                    if (!box.contains(e.target) && e.target !== input) closeBox();
+                });
+            }
 
-      // Workspace vendor selector: navigate to vendorId
-      bindSuggest(
-              'workspaceVendorInput',
-              'workspaceVendorSuggestBox',
-              'workspaceVendorSuggestList',
-              function(item){
+            // Workspace vendor selector: navigate to vendorId
+            bindSuggest(
+                'workspaceVendorInput',
+                'workspaceVendorSuggestBox',
+                'workspaceVendorSuggestList',
+                function (item) {
+                    const params = new URLSearchParams(window.location.search);
+                    const tab = params.get('tab') || 'vendors';
+                    window.location.href = `/admin/synonyms/workspace?vendorId=${item.id}&tab=${encodeURIComponent(tab)}`;
+                },
+                function (q) {
+                    return `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`;
+                }
+            );
+
+            // Vendor alias add: set hidden vendorId
+            (function () {
+                const input = document.getElementById('vendorSearchInput');
+                const hiddenId = document.getElementById('cpeVendorId');
+                const hint = document.getElementById('vendorSelectedHint');
+                const form = document.getElementById('vendorAliasForm');
+                let selected = null;
+
+                bindSuggest(
+                    'vendorSearchInput',
+                    'vendorSuggestBox',
+                    'vendorSuggestList',
+                    function (item) {
+                        selected = item;
+                        hiddenId.value = String(item.id);
+                        input.value = item.label || item.nameNorm || '';
+                        hint.textContent = `Selected: id=${item.id} / ${item.nameNorm || ''}`;
+                    },
+                    function (q) {
+                        return `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`;
+                    }
+                );
+
+                function clearSelectionIfTextChanged() {
+                    if (selected && input.value !== (selected.label || selected.nameNorm || '')) {
+                        selected = null;
+                        hiddenId.value = '';
+                        hint.textContent = '';
+                    }
+                }
+
+                if (input) input.addEventListener('input', clearSelectionIfTextChanged);
+
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        if (!hiddenId.value) {
+                            e.preventDefault();
+                            alert('Please select a canonical vendor from suggestions (so vendorId is set).');
+                            input && input.focus();
+                        }
+                    });
+                }
+            })();
+
+            // Product alias add: vendor scoped
+            (function () {
+                const vendorId = /*[[${vendorId}]]*/ null; // thymeleaf inline
+                const input = document.getElementById('productSearchInput');
+                const hiddenId = document.getElementById('cpeProductId');
+                const hint = document.getElementById('productSelectedHint');
+                const form = document.getElementById('productAliasForm');
+                let selected = null;
+
+                if (!input || !hiddenId) return;
+                if (!vendorId) return;
+
+                bindSuggest(
+                    'productSearchInput',
+                    'productSuggestBox',
+                    'productSuggestList',
+                    function (item) {
+                        selected = item;
+                        hiddenId.value = String(item.id);
+                        input.value = item.label || item.nameNorm || '';
+                        hint.textContent = `Selected: id=${item.id} / ${item.nameNorm || ''}`;
+                    },
+                    function (q) {
+                        return `/api/dict/products/search2?vendorId=${vendorId}&q=${encodeURIComponent(q)}`;
+                    }
+                );
+
+                function clearSelectionIfTextChanged() {
+                    if (selected && input.value !== (selected.label || selected.nameNorm || '')) {
+                        selected = null;
+                        hiddenId.value = '';
+                        hint.textContent = '';
+                    }
+                }
+
+                input.addEventListener('input', clearSelectionIfTextChanged);
+
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        if (!hiddenId.value) {
+                            e.preventDefault();
+                            alert('Please select a canonical product from suggestions (so productId is set).');
+                            input.focus();
+                        }
+                    });
+                }
+            })();
+
+            // =========================
+            // Toggle AJAX (root fix: no redirect, no scroll jitter)
+            // =========================
+            function toggleStatusString(s) {
+                const x = (s || '').trim().toUpperCase();
+                return x === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+            }
+
+            function applyStatusToButton(btn, newStatus) {
+                const status = (newStatus || '').toUpperCase();
+                btn.setAttribute('data-status', status);
+                const textEl = btn.querySelector('.alias-status__text');
+                if (textEl) textEl.textContent = status;
+
+                btn.classList.remove('alias-status--active', 'alias-status--inactive');
+                if (status === 'ACTIVE') btn.classList.add('alias-status--active');
+                else btn.classList.add('alias-status--inactive');
+
+                const aria = btn.getAttribute('aria-label') || '';
+                // keep it simple; overwrite
+                btn.setAttribute('aria-label', `Toggle status (current=${status})`);
+            }
+
+            function maybeRemoveRowIfFiltered(form, newStatus) {
+                // If user filters by status, toggling may make row out-of-scope; remove to avoid lying UI.
+                const scope = form.getAttribute('data-scope'); // vendors | products
                 const params = new URLSearchParams(window.location.search);
-                const tab = params.get('tab') || 'vendors';
-                window.location.href = `/admin/synonyms/workspace?vendorId=${item.id}&tab=${encodeURIComponent(tab)}`;
-              },
-              function(q){ return `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`; }
-      );
 
-      // Vendor alias add: set hidden vendorId
-      (function(){
-        const input = document.getElementById('vendorSearchInput');
-        const hiddenId = document.getElementById('cpeVendorId');
-        const hint = document.getElementById('vendorSelectedHint');
-        const form = document.getElementById('vendorAliasForm');
-        let selected = null;
+                if (scope === 'vendors') {
+                    const filter = (params.get('status') || '').toUpperCase(); // ACTIVE/INACTIVE/''
+                    if (filter && filter !== (newStatus || '').toUpperCase()) {
+                        const tr = form.closest('tr');
+                        if (tr) tr.remove();
+                    }
+                    return;
+                }
 
-        bindSuggest(
-                'vendorSearchInput',
-                'vendorSuggestBox',
-                'vendorSuggestList',
-                function(item){
-                  selected = item;
-                  hiddenId.value = String(item.id);
-                  input.value = item.label || item.nameNorm || '';
-                  hint.textContent = `Selected: id=${item.id} / ${item.nameNorm || ''}`;
-                },
-                function(q){ return `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`; }
-        );
-
-        function clearSelectionIfTextChanged() {
-          if (selected && input.value !== (selected.label || selected.nameNorm || '')) {
-            selected = null;
-            hiddenId.value = '';
-            hint.textContent = '';
-          }
-        }
-        if (input) input.addEventListener('input', clearSelectionIfTextChanged);
-
-        if (form) {
-          form.addEventListener('submit', (e) => {
-            if (!hiddenId.value) {
-              e.preventDefault();
-              alert('Please select a canonical vendor from suggestions (so vendorId is set).');
-              input && input.focus();
+                if (scope === 'products') {
+                    const filter = (params.get('statusP') || '').toUpperCase();
+                    if (filter && filter !== (newStatus || '').toUpperCase()) {
+                        const tr = form.closest('tr');
+                        if (tr) tr.remove();
+                    }
+                }
             }
-          });
-        }
-      })();
 
-      // Product alias add: vendor scoped
-      (function(){
-        const vendorId = /*[[${vendorId}]]*/ null; // thymeleaf inline
-        const input = document.getElementById('productSearchInput');
-        const hiddenId = document.getElementById('cpeProductId');
-        const hint = document.getElementById('productSelectedHint');
-        const form = document.getElementById('productAliasForm');
-        let selected = null;
+            document.addEventListener('submit', async (e) => {
+                const form = e.target;
+                if (!form || !form.classList || !form.classList.contains('js-toggle-ajax')) return;
 
-        if (!input || !hiddenId) return;
-        if (!vendorId) return;
+                // Intercept
+                e.preventDefault();
 
-        bindSuggest(
-                'productSearchInput',
-                'productSuggestBox',
-                'productSuggestList',
-                function(item){
-                  selected = item;
-                  hiddenId.value = String(item.id);
-                  input.value = item.label || item.nameNorm || '';
-                  hint.textContent = `Selected: id=${item.id} / ${item.nameNorm || ''}`;
-                },
-                function(q){ return `/api/dict/products/search2?vendorId=${vendorId}&q=${encodeURIComponent(q)}`; }
-        );
+                const btn = form.querySelector('button.alias-status');
+                if (!btn || btn.disabled) return;
 
-        function clearSelectionIfTextChanged() {
-          if (selected && input.value !== (selected.label || selected.nameNorm || '')) {
-            selected = null;
-            hiddenId.value = '';
-            hint.textContent = '';
-          }
-        }
-        input.addEventListener('input', clearSelectionIfTextChanged);
+                const currentStatus = btn.getAttribute('data-status') || '';
+                const optimistic = toggleStatusString(currentStatus);
 
-        if (form) {
-          form.addEventListener('submit', (e) => {
-            if (!hiddenId.value) {
-              e.preventDefault();
-              alert('Please select a canonical product from suggestions (so productId is set).');
-              input.focus();
-            }
-          });
-        }
-      })();
+                // Optimistic UI update first (instant)
+                btn.disabled = true;
+                applyStatusToButton(btn, optimistic);
 
-      // =========================
-      // Toggle AJAX (root fix: no redirect, no scroll jitter)
-      // =========================
-      function toggleStatusString(s){
-        const x = (s || '').trim().toUpperCase();
-        return x === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-      }
+                try {
+                    const fd = new FormData(form);
+                    // Controller expects id (and redirect for non-JS), but redirect is harmless here.
+                    const body = new URLSearchParams();
+                    for (const [k, v] of fd.entries()) body.append(k, String(v));
 
-      function applyStatusToButton(btn, newStatus){
-        const status = (newStatus || '').toUpperCase();
-        btn.setAttribute('data-status', status);
-        const textEl = btn.querySelector('.alias-status__text');
-        if (textEl) textEl.textContent = status;
+                    const res = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {'X-Requested-With': 'fetch'},
+                        body,
+                        credentials: 'same-origin'
+                    });
 
-        btn.classList.remove('alias-status--active', 'alias-status--inactive');
-        if (status === 'ACTIVE') btn.classList.add('alias-status--active');
-        else btn.classList.add('alias-status--inactive');
+                    if (!res.ok) {
+                        // revert and fallback to normal navigation
+                        applyStatusToButton(btn, currentStatus);
+                        btn.disabled = false;
+                        form.submit();
+                        return;
+                    }
 
-        const aria = btn.getAttribute('aria-label') || '';
-        // keep it simple; overwrite
-        btn.setAttribute('aria-label', `Toggle status (current=${status})`);
-      }
+                    // Success: keep optimistic UI and optionally remove row if filtered out
+                    btn.disabled = false;
+                    maybeRemoveRowIfFiltered(form, optimistic);
 
-      function maybeRemoveRowIfFiltered(form, newStatus){
-        // If user filters by status, toggling may make row out-of-scope; remove to avoid lying UI.
-        const scope = form.getAttribute('data-scope'); // vendors | products
-        const params = new URLSearchParams(window.location.search);
+                } catch (err) {
+                    // Network error: revert and fallback to normal navigation
+                    applyStatusToButton(btn, currentStatus);
+                    btn.disabled = false;
+                    form.submit();
+                }
+            }, true);
 
-        if (scope === 'vendors') {
-          const filter = (params.get('status') || '').toUpperCase(); // ACTIVE/INACTIVE/''
-          if (filter && filter !== (newStatus || '').toUpperCase()) {
-            const tr = form.closest('tr');
-            if (tr) tr.remove();
-          }
-          return;
-        }
-
-        if (scope === 'products') {
-          const filter = (params.get('statusP') || '').toUpperCase();
-          if (filter && filter !== (newStatus || '').toUpperCase()) {
-            const tr = form.closest('tr');
-            if (tr) tr.remove();
-          }
-        }
-      }
-
-      document.addEventListener('submit', async (e) => {
-        const form = e.target;
-        if (!form || !form.classList || !form.classList.contains('js-toggle-ajax')) return;
-
-        // Intercept
-        e.preventDefault();
-
-        const btn = form.querySelector('button.alias-status');
-        if (!btn || btn.disabled) return;
-
-        const currentStatus = btn.getAttribute('data-status') || '';
-        const optimistic = toggleStatusString(currentStatus);
-
-        // Optimistic UI update first (instant)
-        btn.disabled = true;
-        applyStatusToButton(btn, optimistic);
-
-        try {
-          const fd = new FormData(form);
-          // Controller expects id (and redirect for non-JS), but redirect is harmless here.
-          const body = new URLSearchParams();
-          for (const [k, v] of fd.entries()) body.append(k, String(v));
-
-          const res = await fetch(form.action, {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'fetch' },
-            body,
-            credentials: 'same-origin'
-          });
-
-          if (!res.ok) {
-            // revert and fallback to normal navigation
-            applyStatusToButton(btn, currentStatus);
-            btn.disabled = false;
-            form.submit();
-            return;
-          }
-
-          // Success: keep optimistic UI and optionally remove row if filtered out
-          btn.disabled = false;
-          maybeRemoveRowIfFiltered(form, optimistic);
-
-        } catch (err) {
-          // Network error: revert and fallback to normal navigation
-          applyStatusToButton(btn, currentStatus);
-          btn.disabled = false;
-          form.submit();
-        }
-      }, true);
-
-    })();
-  </script>
+        })();
+    </script>
 
 </main>
 </body>
