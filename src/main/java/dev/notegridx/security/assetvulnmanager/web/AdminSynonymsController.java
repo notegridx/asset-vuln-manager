@@ -128,15 +128,6 @@ public class AdminSynonymsController {
         return "admin/synonyms_vendors";
     }
 
-    // Optional: backward compatible endpoint -> redirect to workspace
-    @GetMapping("/admin/synonyms/products")
-    public String productsCompat(@RequestParam(name = "vendorId", required = false) Long vendorId) {
-        if (vendorId != null) {
-            return "redirect:/admin/synonyms/vendors?vendorId=" + vendorId + "&tab=products";
-        }
-        return "redirect:/admin/synonyms/vendors?tab=products";
-    }
-
     // =========================================================
     // Toggle endpoints (keep)
     // =========================================================
