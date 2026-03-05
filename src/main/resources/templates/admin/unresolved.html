@@ -27,12 +27,29 @@
         color: var(--muted);
     }
 
+    .um-viewing {
+        margin-top: 2px;
+        opacity: .9;
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    @media (min-width: 981px) {
+        .um-viewing { text-align: right; }
+    }
+    @media (max-width: 980px) {
+        .um-filterbar__right { justify-content: flex-start; }
+    }
+
     /* grid: vendor/product side-by-side (inputs only) */
     .um-select {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 12px;
         align-items: start;
+    }
+    @media (max-width: 980px) {
+        .um-select { grid-template-columns: 1fr; }
     }
 
     .um-block {
@@ -60,17 +77,18 @@
         width: 100%;
     }
 
-    .um-row button {
-        flex: 0 0 auto;
-    }
+    .um-row button { flex: 0 0 auto; }
 
     /* selectors: vendor/product side-by-side */
     .um-pick {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 12px;
         align-items: start;
         margin-top: 10px;
+    }
+    @media (max-width: 980px) {
+        .um-pick { grid-template-columns: 1fr; }
     }
 
     .um-pick select {
@@ -129,13 +147,108 @@
     tr.row-resolved .badge {
         filter: grayscale(0.6);
     }
+
+    /* do not leak table td styling globally */
+    .um-table td {
+        overflow: hidden;
+        vertical-align: top;
+    }
+
+    /* Resolveセル内は常に1カラムで縦に積む（崩れにくい） */
+    .um-table td:nth-child(3) .um-select,
+    .um-table td:nth-child(3) .um-pick {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* =========================================================
+   Fix column sizing (Raw too wide / Resolve too narrow)
+   ========================================================= */
+
+    /* 1) 列幅を安定化 */
+    .um-table{
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    /* 2) 固定列（Status / Raw / Meta）を明示し、Resolveに残りを渡す */
+    .um-table th:nth-child(1),
+    .um-table td:nth-child(1){
+        width: 120px !important;
+    }
+
+    .um-table th:nth-child(2),
+    .um-table td:nth-child(2){
+        width: 300px !important;      /* Rawはここで上限を決める（お好みで 280〜340） */
+    }
+
+    .um-table th:nth-child(4),
+    .um-table td:nth-child(4){
+        width: 240px !important;      /* Metaも少し広め（お好みで 220〜260） */
+    }
+
+    /* 3) Resolve列には最低幅を保証（潰れ防止） */
+    .um-table th:nth-child(3),
+    .um-table td:nth-child(3){
+        min-width: 520px;             /* お好みで 520〜680 */
+    }
+
+    /* 4) Raw の長文が原因で列が膨らむのを防ぐ */
+    .um-table td:nth-child(2) .pill{
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: inline-block;
+    }
+
+    /* 5) 入力/セレクトはセル幅に追従 */
+    .um-table td:nth-child(3) input,
+    .um-table td:nth-child(3) select,
+    .um-table td:nth-child(3) textarea{
+        width: 100%;
+    }
+
+    /* =========================
+   Resolve cell compact UI
+   ========================= */
+    .um-resolve { display:flex; flex-direction:column; gap:10px; }
+
+    .um-resolve .um-label { font-size: 11px; letter-spacing: .02em; }
+
+    .um-resolve .um-row { gap: 8px; }
+    .um-resolve .um-row input { height: 34px; }
+    .um-resolve .um-row button { height: 34px; padding: 0 10px; }
+
+    .um-resolve select { height: 34px; }
+
+    .um-note textarea { min-height: 44px; }
+
+    .um-actions { margin-top: 6px; }
+    .um-actions .btn { height: 34px; }
+
+    /* “Pick vendor/product” を2列に戻す（Resolve列内だけ） */
+    @media (min-width: 981px) {
+        .um-table td:nth-child(3) .um-pick {
+            grid-template-columns: 1fr 1fr !important;
+        }
+    }
+
+    /* Note を折りたたみ風に */
+    .um-note details summary {
+        cursor:pointer;
+        color: var(--muted);
+        font-size: 12px;
+        user-select:none;
+    }
+    .um-note details[open] summary { color: var(--text); }
 </style>
 
 <body th:replace="~{layout/base :: layout('Unresolved Mappings', 'admin', ~{::main})}">
 <main>
 
     <!-- Page header -->
-    <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
         <div class="page-header__left">
             <h1>Unresolved Mappings</h1>
             <div class="muted" style="margin-top:6px;">
@@ -148,56 +261,98 @@
         </div>
     </div>
 
+    <!-- flash messages -->
+    <div th:if="${success}" class="card" style="padding:10px; margin:12px 0; border:1px solid var(--line);">
+        <span class="badge badge--status-open">OK</span>
+        <span class="mono" th:text="${success}">success</span>
+    </div>
+    <div th:if="${error}" class="card" style="padding:10px; margin:12px 0; border:1px solid var(--line);">
+        <span class="badge badge--warn">Error</span>
+        <span class="mono" th:text="${error}">error</span>
+    </div>
+
     <!-- Filter bar -->
-    <form class="card" style="padding:12px; margin-top:12px;" method="get" th:action="@{/admin/unresolved}">
-        <div class="um-filterbar">
+    <div class="card" style="padding:12px; margin-top:12px;">
+        <form class="um-filterbar" method="get" th:action="@{/admin/unresolved}">
+            <!-- unchecked 判定用: Controller の effectiveActiveOnly() と整合 -->
+            <input type="hidden" name="activeOnlyPresent" value="1"/>
+
             <div class="um-filterbar__left">
                 <div style="display:flex; flex-direction:column; gap:6px;">
                     <label for="status">Status</label>
                     <select id="status" name="status">
                         <option value="ALL" th:selected="${status == 'ALL'}">ALL</option>
-                        <option value="OPEN" th:selected="${status == 'OPEN'}">OPEN</option>
+                        <option value="NEW" th:selected="${status == 'NEW'}">NEW</option>
                         <option value="RESOLVED" th:selected="${status == 'RESOLVED'}">RESOLVED</option>
                     </select>
                 </div>
 
+                <div style="display:flex; flex-direction:column; gap:6px; margin-top:20px;">
+                    <label style="display:flex; align-items:center; gap:8px; margin:0;">
+                        <input type="checkbox" name="activeOnly" value="true" th:checked="${activeOnly}"/>
+                        <span>Active only</span>
+                    </label>
+                </div>
+
                 <div style="display:flex; flex-direction:column; gap:6px;">
-                    <label for="q">Search</label>
-                    <input id="q" name="q" type="text" placeholder="vendor / product / note..."
-                           th:value="${q}">
+                    <label for="runId">Run ID (state only)</label>
+                    <input id="runId" name="runId" type="text" placeholder="(optional)"
+                           th:value="${runId != null ? runId : ''}">
                 </div>
 
                 <button class="btn btn-primary" type="submit" style="align-self:flex-end;">Apply</button>
             </div>
 
-            <div class="um-filterbar__right">
-                <span class="pill" th:text="'Total: ' + ${total}">Total: 0</span>
-                <span class="pill" th:text="'Open: ' + ${openCount}">Open: 0</span>
-                <span class="pill" th:text="'Resolved: ' + ${resolvedCount}">Resolved: 0</span>
+            <div class="um-filterbar__right" style="align-items:flex-end;">
+                <span class="pill" th:text="'Total: ' + ${#lists.size(mappings)}">Total: 0</span>
+                <div class="um-viewing"
+                     th:text="'Viewing: status=' + ${status} + ' / activeOnly=' + ${activeOnly}">
+                    Viewing: status=NEW / activeOnly=true
+                </div>
             </div>
-        </div>
-    </form>
+        </form>
+    </div>
+
+    <div class="card" style="padding:10px; margin-top:12px;">
+        <details class="um-hint">
+            <summary>How to resolve mappings</summary>
+
+            <div class="muted">
+                <ul style="margin:6px 0 0 16px;">
+                    <li><strong>Vendor is required.</strong> Product is optional. You can resolve a mapping with vendor only.</li>
+                    <li><strong>Search</strong> shows exact matches and other candidates from the CPE dictionary.</li>
+                    <li><strong>Quick candidates</strong> are suggestions derived from the dictionary using candidate IDs.</li>
+                    <li>If a correct mapping does not exist, use <strong>"Mark resolved (no link)"</strong>.</li>
+                </ul>
+            </div>
+
+        </details>
+    </div>
 
     <!-- Table -->
     <div class="card" style="padding:12px; margin-top:12px;">
         <div class="table-wrap">
-            <table class="table">
+            <table class="table um-table">
                 <thead>
                 <tr>
                     <th style="width:120px;">Status</th>
-                    <th style="width:220px;">Raw</th>
+                    <th style="width:240px;">Raw</th>
                     <th>Resolve</th>
-                    <th style="width:180px;">Meta</th>
+                    <th style="width:200px;">Meta</th>
                 </tr>
                 </thead>
+
                 <tbody>
-                <tr th:each="r : ${rows}"
+                <tr th:each="r : ${mappings}"
                     th:attr="data-row-id=${r.id}"
-                    th:classappend="${r.status.name() == 'RESOLVED'} ? ' row-resolved' : ''">
+                    th:classappend="${r.status != null and r.status.toString() == 'RESOLVED'} ? ' row-resolved' : ''">
+
                     <td>
                         <span class="badge"
-                              th:classappend="${r.status.name() == 'OPEN'} ? ' badge--status-open' : ' badge--neutral'"
-                              th:text="${r.status.name()}">OPEN</span>
+                              th:classappend="${r.status != null and r.status.toString() == 'NEW'} ? ' badge--status-open' : ' badge--neutral'"
+                              th:text="${r.status}">
+                            NEW
+                        </span>
                     </td>
 
                     <td>
@@ -208,7 +363,8 @@
                             <div>
                                 <span class="pill pill--dim" th:text="${r.productRaw}">product</span>
                             </div>
-                            <div th:if="${r.versionRaw != null and !#strings.isEmpty(r.versionRaw)}" class="muted" style="font-size:12px;">
+                            <div th:if="${r.versionRaw != null and !#strings.isEmpty(r.versionRaw)}"
+                                 class="muted" style="font-size:12px;">
                                 <span th:text="${r.versionRaw}">version</span>
                             </div>
                         </div>
@@ -216,13 +372,18 @@
 
                     <td>
                         <form class="js-apply-form" method="post" th:action="@{/admin/unresolved/apply}">
-                            <input type="hidden" name="id" th:value="${r.id}"/>
+                            <!-- Controller expects mappingId/cpeVendorId/cpeProductId -->
+                            <input type="hidden" name="mappingId" th:value="${r.id}"/>
+
+                            <!-- UI state passthrough -->
                             <input type="hidden" name="status" th:value="${status}"/>
-                            <input type="hidden" name="q" th:value="${q}"/>
+                            <input type="hidden" name="runId" th:value="${runId}"/>
+                            <input type="hidden" name="activeOnlyPresent" value="1"/>
+                            <input type="hidden" name="activeOnly" th:value="${activeOnly}"/>
 
                             <!-- hidden submit values (synced from selects) -->
-                            <input type="hidden" class="js-submit-vendor-id" name="vendorId" value=""/>
-                            <input type="hidden" class="js-submit-product-id" name="productId" value=""/>
+                            <input type="hidden" class="js-submit-vendor-id" name="cpeVendorId" value=""/>
+                            <input type="hidden" class="js-submit-product-id" name="cpeProductId" value=""/>
 
                             <div class="um-select">
                                 <div class="um-block">
@@ -231,7 +392,6 @@
                                         <input class="js-vendor-q" type="text"
                                                placeholder="type vendor..."
                                                th:attr="data-default-q=${r.normalizedVendor}"/>
-                                        <button type="button" class="btn btn-ghost js-vendor-search">Search</button>
                                     </div>
                                 </div>
 
@@ -241,7 +401,6 @@
                                         <input class="js-product-q" type="text"
                                                placeholder="type product..."
                                                th:attr="data-default-q=${r.normalizedProduct}"/>
-                                        <button type="button" class="btn btn-ghost js-product-search">Search</button>
                                     </div>
                                 </div>
                             </div>
@@ -273,23 +432,15 @@
                             <div class="um-actions">
                                 <button class="btn btn-primary" type="submit">Apply</button>
 
+                                <!-- mark-resolved を使っている場合は Controller 側が存在する前提。
+                                     無いならこのボタンは削除してください。 -->
                                 <button class="btn btn-ghost" type="submit"
                                         th:formaction="@{/admin/unresolved/mark-resolved}"
-                                        th:disabled="${r.status.name() == 'RESOLVED'}">
+                                        th:disabled="${r.status != null and r.status.toString() == 'RESOLVED'}">
                                     Mark resolved (no link)
                                 </button>
                             </div>
 
-                            <details class="um-hint">
-                                <summary>Tips</summary>
-                                <div class="muted">
-                                    <ul style="margin:6px 0 0 16px;">
-                                        <li>Vendorは必須。Productは任意（vendorのみ解決も可）。</li>
-                                        <li>Searchは Exact/Prefix/Contains を候補として提示します。</li>
-                                        <li>Quick candidates はバックフィル/スキャンが推測した候補です（ID保存 → 表示名は辞書から解決）。</li>
-                                    </ul>
-                                </div>
-                            </details>
                         </form>
                     </td>
 
@@ -313,7 +464,7 @@
                     </td>
                 </tr>
 
-                <tr th:if="${#lists.isEmpty(rows)}">
+                <tr th:if="${#lists.isEmpty(mappings)}">
                     <td colspan="4" class="muted" style="padding:14px;">
                         No unresolved mappings.
                     </td>
@@ -337,7 +488,7 @@
         }
 
         async function fetchJson(url) {
-            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const res = await fetch(url, {headers: {'Accept': 'application/json'}});
             if (!res.ok) throw new Error('HTTP ' + res.status);
             return await res.json();
         }
@@ -378,7 +529,7 @@
                 const url = `/api/dict/${kind}/by-ids?ids=` + encodeURIComponent(ids.join(','));
                 items = await fetchJson(url); // [{id,label,nameNorm},...]
             } catch (e) {
-                items = ids.map(id => ({ id, label: `#${id}` }));
+                items = ids.map(id => ({id, label: `#${id}`}));
             }
 
             const og = document.createElement('optgroup');
@@ -414,6 +565,26 @@
             return out;
         }
 
+        function onEnter(el, fn) {
+            el?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    fn();
+                }
+            });
+        }
+
+        function debounce(fn, ms) {
+            let t = null;
+            return (...args) => {
+                clearTimeout(t);
+                t = setTimeout(() => fn(...args), ms);
+            };
+        }
+
+        // =========================================================
+        // Row initialization
+        // =========================================================
         document.querySelectorAll('tr[data-row-id]').forEach(row => {
             const form = row.querySelector('.js-apply-form');
             const vSel = row.querySelector('.js-vendor-select');
@@ -421,27 +592,16 @@
             const vQ = row.querySelector('.js-vendor-q');
             const pQ = row.querySelector('.js-product-q');
 
+            if (!form || !vSel || !pSel) return;
+
+            // default queries from server (normalizedVendor/Product)
             if (vQ && vQ.dataset.defaultQ) vQ.value = vQ.dataset.defaultQ;
             if (pQ && pQ.dataset.defaultQ) pQ.value = pQ.dataset.defaultQ;
 
-            // Quick candidates (resolve labels by IDs)
-            (async () => {
-                await fillSelectWithQuick(vSel, splitIds(vSel.dataset.candidateIds), '-- Select vendor --', 'vendors');
-                await fillSelectWithQuick(pSel, splitIds(pSel.dataset.candidateIds), '-- Select product --', 'products');
-            })();
-
-            vSel.addEventListener('change', () => {
-                clearSelect(pSel, '-- Select product --');
-                syncSubmitHidden(form, vSel.value || null, null);
-            });
-
-            pSel.addEventListener('change', () => {
-                syncSubmitHidden(form, vSel.value || null, pSel.value || null);
-            });
-
-            row.querySelector('.js-vendor-search')?.addEventListener('click', async () => {
+            async function runVendorSearch() {
                 const q = (vQ?.value || '').trim();
                 if (q.length < 2) return;
+
                 const grouped = await fetchJson('/api/dict/vendors/search2?q=' + encodeURIComponent(q));
                 fillSelectWithGrouped(vSel, grouped, '-- Select vendor --');
 
@@ -451,16 +611,19 @@
                     const quick = await fetchJson('/api/dict/vendors/by-ids?ids=' + encodeURIComponent(quickIds.join(',')));
                     appendOptGroup(vSel, 'Quick candidates', uniqById(quick), (it) => `${it.label} (#${it.id})`);
                 }
-            });
+            }
 
-            row.querySelector('.js-product-search')?.addEventListener('click', async () => {
+            async function runProductSearch() {
                 const vendorId = vSel.value;
                 if (!vendorId) return;
 
                 const q = (pQ?.value || '').trim();
                 if (q.length < 2) return;
 
-                const grouped = await fetchJson('/api/dict/products/search2?vendorId=' + encodeURIComponent(vendorId) + '&q=' + encodeURIComponent(q));
+                const grouped = await fetchJson(
+                    '/api/dict/products/search2?vendorId=' + encodeURIComponent(vendorId) +
+                    '&q=' + encodeURIComponent(q)
+                );
                 fillSelectWithGrouped(pSel, grouped, '-- Select product --');
 
                 // keep quick candidates at bottom (optional)
@@ -471,9 +634,57 @@
                 }
 
                 syncSubmitHidden(form, vSel.value || null, pSel.value || null);
+            }
+
+            // Quick candidates (resolve labels by IDs) on load
+            (async () => {
+                await fillSelectWithQuick(vSel, splitIds(vSel.dataset.candidateIds), '-- Select vendor --', 'vendors');
+                await fillSelectWithQuick(pSel, splitIds(pSel.dataset.candidateIds), '-- Select product --', 'products');
+
+                // auto vendor search if normalizedVendor exists
+                const vDefault = (vQ?.value || '').trim();
+                if (vDefault.length >= 2) {
+                    try { await runVendorSearch(); } catch (_) {}
+                }
+
+                // auto product search only if vendor already selected (user picked) and normalizedProduct exists
+                const pDefault = (pQ?.value || '').trim();
+                if ((vSel.value || '').trim() && pDefault.length >= 2) {
+                    try { await runProductSearch(); } catch (_) {}
+                }
+            })();
+
+            // keep selects in sync
+            vSel.addEventListener('change', () => {
+                clearSelect(pSel, '-- Select product --');
+                syncSubmitHidden(form, vSel.value || null, null);
+
+                // if product query exists, auto-search after vendor selection
+                const pDefault = (pQ?.value || '').trim();
+                if (pDefault.length >= 2) {
+                    runProductSearch().catch(() => {});
+                }
             });
 
-            // Apply button: enforce vendor selection
+            pSel.addEventListener('change', () => {
+                syncSubmitHidden(form, vSel.value || null, pSel.value || null);
+            });
+
+            // buttons
+            row.querySelector('.js-vendor-search')?.addEventListener('click', () => runVendorSearch().catch(() => {}));
+            row.querySelector('.js-product-search')?.addEventListener('click', () => runProductSearch().catch(() => {}));
+
+            // Enter key support
+            onEnter(vQ, () => runVendorSearch().catch(() => {}));
+            onEnter(pQ, () => runProductSearch().catch(() => {}));
+
+            // debounce auto-search while typing
+            const vendorDebounced = debounce(() => runVendorSearch().catch(() => {}), 350);
+            const productDebounced = debounce(() => runProductSearch().catch(() => {}), 350);
+            vQ?.addEventListener('input', vendorDebounced);
+            pQ?.addEventListener('input', productDebounced);
+
+            // Apply: enforce vendor selection + jump to next row after redirect
             form.addEventListener('submit', (e) => {
                 const vendorId = vSel.value || '';
                 if (!vendorId) {
@@ -481,9 +692,28 @@
                     alert('Vendor is required.');
                     return false;
                 }
+
+                // remember next row id to jump after redirect
+                const next = row.nextElementSibling;
+                const nextId = next?.getAttribute('data-row-id');
+                if (nextId) sessionStorage.setItem('um-next-row', nextId);
+
                 syncSubmitHidden(form, vSel.value || null, pSel.value || null);
             });
         });
+
+        // =========================================================
+        // After redirect: jump to next row (best-effort)
+        // (Requires <tr id="row-<id>"> in HTML)
+        // =========================================================
+        (function jumpToNextRow() {
+            const jumpId = sessionStorage.getItem('um-next-row');
+            if (!jumpId) return;
+
+            sessionStorage.removeItem('um-next-row');
+            const el = document.getElementById('row-' + jumpId);
+            if (el) el.scrollIntoView({block: 'start', behavior: 'smooth'});
+        })();
     </script>
 
 </main>
