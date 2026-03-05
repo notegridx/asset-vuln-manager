@@ -12,7 +12,9 @@ import dev.notegridx.security.assetvulnmanager.service.SynonymService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +25,9 @@ import java.util.stream.Collectors;
 public class AdminSynonymsController {
 
     private static final int LIMIT = 500;
+
+    private static final String PATH_WORKSPACE = "/admin/synonyms/workspace";
+    private static final String VIEW_WORKSPACE = "admin/synonyms_workspace";
 
     private final CpeVendorAliasRepository vendorAliasRepo;
     private final CpeProductAliasRepository productAliasRepo;
@@ -45,19 +50,22 @@ public class AdminSynonymsController {
     }
 
     // =========================================================
-    // Workspace (single page)
+    // Workspace (single canonical URL)
     // =========================================================
 
-    @GetMapping("/admin/synonyms/vendors")
+    @GetMapping(PATH_WORKSPACE)
     public String workspace(
             @RequestParam(name = "vendorId", required = false) Long vendorId,
             @RequestParam(name = "tab", required = false) String tab,
-            // vendor alias search
+
+            // vendor alias search (global)
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "status", required = false) String status,
+
             // product alias search (scoped)
             @RequestParam(name = "qP", required = false) String qP,
             @RequestParam(name = "statusP", required = false) String statusP,
+
             Model model
     ) {
         String safeTab = normalizeTab(tab);
@@ -125,37 +133,39 @@ public class AdminSynonymsController {
         model.addAttribute("limit", LIMIT);
         model.addAttribute("currentQuery", currentQuery);
 
-        return "admin/synonyms_vendors";
+        return VIEW_WORKSPACE;
     }
 
     // =========================================================
-    // Toggle endpoints (keep)
+    // Toggle endpoints (workspace-scoped)
     // =========================================================
 
-    @PostMapping("/admin/synonyms/vendors/toggle")
-    public String toggleVendor(@RequestParam("id") Long id,
-                               @RequestParam(name = "redirect", required = false) String redirect) {
-
+    @PostMapping("/admin/synonyms/workspace/vendors/toggle")
+    public String toggleVendor(
+            @RequestParam("id") Long id,
+            @RequestParam(name = "redirect", required = false) String redirect
+    ) {
         vendorAliasRepo.findById(id).ifPresent(a -> {
             a.setStatus(toggle(a.getStatus()));
             vendorAliasRepo.save(a);
             synonymService.clearCaches();
         });
 
-        return safeRedirectOrDefault(redirect, "/admin/synonyms/vendors");
+        return safeRedirectOrDefault(redirect, PATH_WORKSPACE);
     }
 
-    @PostMapping("/admin/synonyms/products/toggle")
-    public String toggleProduct(@RequestParam("id") Long id,
-                                @RequestParam(name = "redirect", required = false) String redirect) {
-
+    @PostMapping("/admin/synonyms/workspace/products/toggle")
+    public String toggleProduct(
+            @RequestParam("id") Long id,
+            @RequestParam(name = "redirect", required = false) String redirect
+    ) {
         productAliasRepo.findById(id).ifPresent(a -> {
             a.setStatus(toggle(a.getStatus()));
             productAliasRepo.save(a);
             synonymService.clearCaches();
         });
 
-        return safeRedirectOrDefault(redirect, "/admin/synonyms/vendors?tab=products");
+        return safeRedirectOrDefault(redirect, PATH_WORKSPACE + "?tab=products");
     }
 
     // =========================================================

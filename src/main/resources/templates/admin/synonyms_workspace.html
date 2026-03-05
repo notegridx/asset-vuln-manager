@@ -98,18 +98,18 @@
       <div class="tabs" role="tablist" aria-label="Synonyms tabs">
         <a class="tab"
            th:classappend="${tab == 'vendors'} ? ' is-active' : ''"
-           th:href="@{/admin/synonyms/vendors(vendorId=${vendorId}, tab='vendors', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
+           th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='vendors', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
           Vendor Aliases
         </a>
         <a class="tab"
            th:classappend="${tab == 'products'} ? ' is-active' : ''"
-           th:href="@{/admin/synonyms/vendors(vendorId=${vendorId}, tab='products', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
+           th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='products', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
           Product Aliases (scoped)
         </a>
       </div>
 
       <a class="btn btn-ghost"
-         th:href="@{/admin/synonyms/vendors(tab=${tab})}">
+         th:href="@{/admin/synonyms/workspace(tab=${tab})}">
         Clear vendor
       </a>
     </div>
@@ -124,7 +124,7 @@
     <div class="card" style="padding:12px; margin:12px 0;">
       <h2 style="margin:0 0 10px 0;">Search vendor aliases</h2>
 
-      <form method="get" th:action="@{/admin/synonyms/vendors}" class="actions" style="gap:10px; flex-wrap:wrap;">
+      <form method="get" th:action="@{/admin/synonyms/workspace}" class="actions" style="gap:10px; flex-wrap:wrap;">
         <input type="hidden" name="vendorId" th:value="${vendorId}">
         <input type="hidden" name="tab" value="vendors">
 
@@ -137,7 +137,7 @@
 
         <button class="btn btn-primary" type="submit">Apply</button>
         <a class="btn btn-ghost"
-           th:href="@{/admin/synonyms/vendors(vendorId=${vendorId}, tab='vendors')}">Reset</a>
+           th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='vendors')}">Reset</a>
       </form>
 
       <div class="muted text-12 mt-8">
@@ -153,7 +153,7 @@
             class="actions" style="gap:10px; flex-wrap:wrap;">
 
         <!-- Keep workspace context after POST -->
-        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
 
         <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;" required>
 
@@ -186,7 +186,7 @@
       <!-- Batch seed -->
       <form th:action="@{/admin/aliases/seed-top}" method="post"
             class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
-        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+        <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
         <button class="btn" type="submit">Seed Top Aliases</button>
         <span class="muted" style="font-size:12px;">
           Inserts/updates curated vendor+product aliases (idempotent).
@@ -257,11 +257,11 @@
             <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
             <td>
               <form class="alias-status-form js-toggle-ajax"
-                    th:action="@{/admin/synonyms/vendors/toggle}" method="post"
+                    th:action="@{/admin/synonyms/workspace/vendors/toggle}" method="post"
                     data-scope="vendors">
                 <input type="hidden" name="id" th:value="${r.id}">
                 <!-- keep for non-JS fallback -->
-                <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+                <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
 
                 <button type="submit"
                         class="alias-status"
@@ -299,7 +299,7 @@
       <div class="card" style="padding:12px; margin:12px 0;">
         <h2 style="margin:0 0 10px 0;">Search product aliases (scoped)</h2>
 
-        <form method="get" th:action="@{/admin/synonyms/vendors}" class="actions" style="gap:10px; flex-wrap:wrap;">
+        <form method="get" th:action="@{/admin/synonyms/workspace}" class="actions" style="gap:10px; flex-wrap:wrap;">
           <input type="hidden" name="vendorId" th:value="${vendorId}">
           <input type="hidden" name="tab" value="products">
 
@@ -312,7 +312,7 @@
 
           <button class="btn btn-primary" type="submit">Apply</button>
           <a class="btn btn-ghost"
-             th:href="@{/admin/synonyms/vendors(vendorId=${vendorId}, tab='products')}">Reset</a>
+             th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='products')}">Reset</a>
         </form>
 
         <div class="muted text-12 mt-8">
@@ -327,7 +327,7 @@
         <form id="productAliasForm" th:action="@{/admin/aliases/product}" method="post"
               class="actions" style="gap:10px; flex-wrap:wrap;">
 
-          <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+          <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
           <input type="hidden" name="cpeVendorId" th:value="${vendorId}">
 
           <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;" required>
@@ -389,11 +389,11 @@
               <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
               <td>
                 <form class="alias-status-form js-toggle-ajax"
-                      th:action="@{/admin/synonyms/products/toggle}" method="post"
+                      th:action="@{/admin/synonyms/workspace/products/toggle}" method="post"
                       data-scope="products">
                   <input type="hidden" name="id" th:value="${r.id}">
                   <!-- keep for non-JS fallback -->
-                  <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/vendors' + ${currentQuery}}">
+                  <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
 
                   <button type="submit"
                           class="alias-status"
@@ -545,7 +545,7 @@
               function(item){
                 const params = new URLSearchParams(window.location.search);
                 const tab = params.get('tab') || 'vendors';
-                window.location.href = `/admin/synonyms/vendors?vendorId=${item.id}&tab=${encodeURIComponent(tab)}`;
+                window.location.href = `/admin/synonyms/workspace?vendorId=${item.id}&tab=${encodeURIComponent(tab)}`;
               },
               function(q){ return `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`; }
       );
