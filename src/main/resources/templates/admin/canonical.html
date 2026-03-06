@@ -6,39 +6,174 @@
 <body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
 <main>
 
+    <style>
+        /* ===== admin/canonical: visual cleanup only ===== */
+
+        .canon-card {
+            padding: 12px;
+            margin: 12px 0;
+        }
+
+        .canon-card--flash {
+            padding: 10px;
+            margin: 12px 0;
+            border: 1px solid var(--line);
+        }
+
+        .canon-page-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .canon-header-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .canon-actions-between {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .canon-inline-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .canon-inline-actions--tight {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .canon-help {
+            font-size: 12px;
+        }
+
+        .canon-help.mt-6 {
+            margin-top: 6px;
+        }
+
+        .canon-section-top {
+            margin-top: 12px;
+        }
+
+        .canon-table-top {
+            margin-top: 12px;
+        }
+
+        .canon-table-no-top {
+            margin-top: 0;
+        }
+
+        .canon-filter-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .canon-limit {
+            width: 90px;
+        }
+
+        .canon-asset-cell,
+        .canon-raw-cell,
+        .canon-normalized-cell {
+            overflow-wrap: anywhere;
+        }
+
+        /* Result cell itself must stay as a normal table cell */
+        td.canon-result {
+            display: table-cell;
+            white-space: normal;
+            vertical-align: top;
+        }
+
+        /* only inner wrappers should be flex */
+        td.canon-result .canon-result-main,
+        td.canon-result .canon-result-sub {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        td.canon-result .canon-result-sub {
+            margin-top: 6px;
+        }
+
+        .canon-result-main,
+        .canon-result-sub {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .canon-result-sub {
+            margin-top: 6px;
+        }
+
+        .canon-action-col {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        .canon-btn-sm {
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 10px;
+        }
+
+        @media (max-width: 980px) {
+            .canon-filter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
     <!-- Page Header (unified) -->
-    <div class="page-header"
-         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header canon-page-header">
         <div class="page-header__left">
             <h1>Review Product Mapping</h1>
-            <div class="muted" style="margin-top:6px;">
+            <div class="muted mt-6">
                 Inspect SQL link completeness (vendor/product IDs), mapping quality, and dictionary resolution.
                 <b>Dictionary resolution stats are counted only for “Not linked” rows.</b>
             </div>
         </div>
 
-        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <span class="pill">Admin</span>
-            <span class="pill">Canonical</span>
-        </div>
     </div>
 
     <!-- flash messages -->
-    <div th:if="${success}" class="card" style="padding:10px; margin:12px 0; border:1px solid var(--line);">
+    <div th:if="${success}" class="card canon-card--flash">
         <span class="badge badge--status-open">OK</span>
         <span class="mono" th:text="${success}">success</span>
     </div>
-    <div th:if="${error}" class="card" style="padding:10px; margin:12px 0; border:1px solid var(--line);">
+    <div th:if="${error}" class="card canon-card--flash">
         <span class="badge badge--warn">Error</span>
         <span class="mono" th:text="${error}">error</span>
     </div>
 
     <!-- Linking -->
-    <div class="card" style="padding:12px; margin:12px 0;">
-        <div class="actions" style="margin:0; align-items:flex-end; justify-content:space-between; gap:12px;">
+    <div class="card canon-card">
+        <div class="actions canon-actions-between" style="margin:0;">
             <div>
                 <h2 style="margin:0;">Run Linking</h2>
-                <div class="muted" style="font-size:12px; margin-top:6px;">
+                <div class="muted canon-help mt-6">
                     Link installed software to CPE vendors and products.
                 </div>
             </div>
@@ -46,9 +181,9 @@
             <form method="post" th:action="@{/admin/canonical/link}" style="margin:0;">
                 <input type="hidden" name="redirect"
                        th:value="@{'/admin/canonical?filter=' + ${filter} + '&q=' + ${q} + '&limit=' + ${limit}}">
-                <div class="actions" style="margin:0; align-items:center; gap:12px; flex-wrap:wrap;">
-                    <label class="muted"
-                           style="font-size:12px; display:flex; align-items:center; gap:8px; user-select:none;">
+                <div class="actions canon-inline-actions" style="margin:0;">
+                    <label class="muted canon-help"
+                           style="display:flex; align-items:center; gap:8px; user-select:none;">
                         <input type="checkbox" name="relink" value="true">
                         Re-link already linked products
                     </label>
@@ -62,18 +197,18 @@
     </div>
 
     <!-- Filters -->
-    <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="card canon-card">
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Filters</h2>
-            <div class="muted" style="font-size:12px;">
+            <div class="muted canon-help">
                 Review by SQL link: <b>fullyLinked</b> / <b>vendorOnlyLinked</b> / <b>notLinked</b>,
                 by quality: <b>linkedValid</b> / <b>linkedStale</b>,
                 or (not linked only) by dictionary: <b>fullyResolvable</b> / <b>vendorResolvableOnly</b> / <b>unresolvable</b>.
             </div>
         </div>
 
-        <form method="get" th:action="@{/admin/canonical}" style="margin-top:12px;">
-            <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; align-items:end;">
+        <form method="get" th:action="@{/admin/canonical}" class="canon-section-top">
+            <div class="grid canon-filter-grid">
 
                 <div class="field">
                     <label>filter</label>
@@ -106,9 +241,9 @@
                 </div>
             </div>
 
-            <div class="actions" style="margin-top:12px; justify-content:space-between; align-items:center;">
-                <div class="muted" style="font-size:12px;">
-                    limit=<input type="number" name="limit" style="width:90px;" th:value="${limit}">
+            <div class="actions canon-section-top" style="justify-content:space-between; align-items:center;">
+                <div class="muted canon-help">
+                    limit=<input type="number" name="limit" class="canon-limit" th:value="${limit}">
                 </div>
                 <div class="actions" style="margin:0;">
                     <button class="btn btn-primary" type="submit">Apply</button>
@@ -119,105 +254,109 @@
     </div>
 
     <!-- Stats -->
-    <div th:if="${stats != null}" class="card" style="padding:12px; margin:12px 0;">
-        <div class="actions" style="margin:0; align-items:flex-end;">
-            <h2 style="margin:0;">Stats (on current result set)</h2>
-            <div class="muted" style="font-size:12px;">
-                Dictionary stats are counted <b>only</b> for <b>notLinked</b> rows.
+    <div th:if="${stats != null}" class="card canon-card">
+        <details class="canon-collapse" open>
+            <summary class="canon-collapse__summary">
+                <div>
+                    <h2 style="margin:0;">Stats (on current result set)</h2>
+                    <div class="muted canon-help">
+                        Dictionary stats are counted <b>only</b> for <b>notLinked</b> rows.
+                    </div>
+                </div>
+            </summary>
+
+            <div class="table-wrap canon-table-top">
+                <table class="canon-table-no-top">
+                    <thead>
+                    <tr>
+                        <th style="width: 240px;">Metric</th>
+                        <th style="width: 120px;">Value</th>
+                        <th>Description</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+
+                    <tr>
+                        <td>total</td>
+                        <td th:text="${stats.total}">0</td>
+                        <td class="muted">Rows currently loaded (after asset/keyword filter, before “filter” selection).</td>
+                    </tr>
+
+                    <tr>
+                        <td>fullyLinkedSql</td>
+                        <td th:text="${stats.fullyLinkedSql}">0</td>
+                        <td class="muted">Both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are set.</td>
+                    </tr>
+                    <tr>
+                        <td>vendorOnlyLinkedSql</td>
+                        <td th:text="${stats.vendorOnlyLinkedSql}">0</td>
+                        <td class="muted"><code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.</td>
+                    </tr>
+                    <tr>
+                        <td>notLinkedSql</td>
+                        <td th:text="${stats.notLinkedSql}">0</td>
+                        <td class="muted">Neither <code>cpe_vendor_id</code> nor <code>cpe_product_id</code> is set.</td>
+                    </tr>
+
+                    <tr>
+                        <td>linkedValid</td>
+                        <td th:text="${stats.linkedValid}">0</td>
+                        <td class="muted">Fully linked and IDs are valid (dictionary rows exist).</td>
+                    </tr>
+                    <tr>
+                        <td>linkedStale</td>
+                        <td th:text="${stats.linkedStale}">0</td>
+                        <td class="muted">Fully linked but referenced dictionary rows are missing (stale IDs).</td>
+                    </tr>
+
+                    <tr>
+                        <td>fullyResolvable</td>
+                        <td th:text="${stats.fullyResolvable}">0</td>
+                        <td class="muted"><b>(not linked only)</b> Dictionary can resolve both vendor and product.</td>
+                    </tr>
+                    <tr>
+                        <td>vendorResolvableOnly</td>
+                        <td th:text="${stats.vendorResolvableOnly}">0</td>
+                        <td class="muted"><b>(not linked only)</b> Vendor is resolvable, but product is not.</td>
+                    </tr>
+                    <tr>
+                        <td>unresolvable</td>
+                        <td th:text="${stats.unresolvable}">0</td>
+                        <td class="muted"><b>(not linked only)</b> Neither vendor nor product can be resolved from normalized strings.</td>
+                    </tr>
+
+                    <tr>
+                        <td>needsNormalization</td>
+                        <td th:text="${stats.needsNormalization}">0</td>
+                        <td class="muted">Row has not been normalized (or normalized fields are blank).</td>
+                    </tr>
+
+                    </tbody>
+                </table>
             </div>
-        </div>
-
-        <div class="table-wrap" style="margin-top:12px;">
-            <table style="margin-top:0;">
-                <thead>
-                <tr>
-                    <th style="width: 240px;">Metric</th>
-                    <th style="width: 120px;">Value</th>
-                    <th>Description</th>
-                </tr>
-                </thead>
-                <tbody>
-
-                <tr>
-                    <td>total</td>
-                    <td th:text="${stats.total}">0</td>
-                    <td class="muted">Rows currently loaded (after asset/keyword filter, before “filter” selection).</td>
-                </tr>
-
-                <tr>
-                    <td>fullyLinkedSql</td>
-                    <td th:text="${stats.fullyLinkedSql}">0</td>
-                    <td class="muted">Both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are set.</td>
-                </tr>
-                <tr>
-                    <td>vendorOnlyLinkedSql</td>
-                    <td th:text="${stats.vendorOnlyLinkedSql}">0</td>
-                    <td class="muted"><code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.</td>
-                </tr>
-                <tr>
-                    <td>notLinkedSql</td>
-                    <td th:text="${stats.notLinkedSql}">0</td>
-                    <td class="muted">Neither <code>cpe_vendor_id</code> nor <code>cpe_product_id</code> is set.</td>
-                </tr>
-
-                <tr>
-                    <td>linkedValid</td>
-                    <td th:text="${stats.linkedValid}">0</td>
-                    <td class="muted">Fully linked and IDs are valid (dictionary rows exist).</td>
-                </tr>
-                <tr>
-                    <td>linkedStale</td>
-                    <td th:text="${stats.linkedStale}">0</td>
-                    <td class="muted">Fully linked but referenced dictionary rows are missing (stale IDs).</td>
-                </tr>
-
-                <tr>
-                    <td>fullyResolvable</td>
-                    <td th:text="${stats.fullyResolvable}">0</td>
-                    <td class="muted"><b>(not linked only)</b> Dictionary can resolve both vendor and product.</td>
-                </tr>
-                <tr>
-                    <td>vendorResolvableOnly</td>
-                    <td th:text="${stats.vendorResolvableOnly}">0</td>
-                    <td class="muted"><b>(not linked only)</b> Vendor is resolvable, but product is not.</td>
-                </tr>
-                <tr>
-                    <td>unresolvable</td>
-                    <td th:text="${stats.unresolvable}">0</td>
-                    <td class="muted"><b>(not linked only)</b> Neither vendor nor product can be resolved from normalized strings.</td>
-                </tr>
-
-                <tr>
-                    <td>needsNormalization</td>
-                    <td th:text="${stats.needsNormalization}">0</td>
-                    <td class="muted">Row has not been normalized (or normalized fields are blank).</td>
-                </tr>
-
-                </tbody>
-            </table>
-        </div>
+        </details>
     </div>
 
     <!-- Table -->
-    <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="card canon-card">
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Entries</h2>
-            <div class="muted" style="font-size:12px;">
+            <div class="muted canon-help">
                 Result badge = mapping stage/quality, and V/P shows SQL link completeness.
             </div>
         </div>
 
-        <div class="table-wrap" style="margin-top:12px;">
-            <table class="canon-table" style="margin-top:0;">
+        <div class="table-wrap canon-table-top">
+            <table class="canon-table canon-table-no-top">
                 <thead>
                 <tr>
-                    <th style="width: 70px;">ID</th>
-                    <th style="width: 110px;">Asset</th>
+                    <th style="width: 60px;">ID</th>
+                    <th style="width: 80px;">Asset</th>
                     <th style="width: 220px;">Raw</th>
                     <th style="width: 200px;">Normalized</th>
-                    <th style="width: 230px;">Result</th>
-                    <th style="width: 260px;">Reason</th>
+                    <th style="width: 200px;">Result</th>
                     <th style="width: 150px;">Action</th>
+                    <th style="width: 260px;">Reason</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -229,35 +368,35 @@
                 <tr th:each="r : ${rows}">
                     <td class="mono" th:text="${r.softwareId}">1</td>
 
-                    <td class="muted" style="font-size:12px; overflow-wrap:anywhere;">
+                    <td class="muted canon-help canon-asset-cell">
                         <div class="mono" th:text="${r.assetId != null ? r.assetId : '-'}">-</div>
                         <div th:text="${r.assetName}">Asset</div>
                     </td>
 
                     <!-- Raw -->
-                    <td style="overflow-wrap:anywhere;">
+                    <td class="canon-raw-cell">
                         <div class="truncate-1"
                              th:attr="title=${(r.vendor != null ? r.vendor : '-') + ' / ' + (r.product != null ? r.product : '-')}">
                             <span th:text="${r.vendor}">vendor</span> / <b th:text="${r.product}">product</b>
                         </div>
-                        <div class="muted truncate-1" style="font-size:12px;"
+                        <div class="muted truncate-1 canon-help"
                              th:attr="title=${r.version != null ? r.version : '-'}"
                              th:text="${r.version}">1.0</div>
                     </td>
 
                     <!-- Normalized -->
-                    <td style="overflow-wrap:anywhere;">
-                        <div class="muted" style="font-size:12px;">
+                    <td class="canon-normalized-cell">
+                        <div class="muted canon-help">
                             v: <span th:text="${r.normalizedVendor != null ? r.normalizedVendor : '-'}">-</span>
                         </div>
-                        <div class="muted" style="font-size:12px;">
+                        <div class="muted canon-help">
                             p: <span th:text="${r.normalizedProduct != null ? r.normalizedProduct : '-'}">-</span>
                         </div>
                     </td>
 
                     <!-- Result -->
                     <td class="canon-result" th:with="res=${r.analysis.resolve}">
-                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                        <div class="canon-result-main">
                             <span class="badge"
                                   th:classappend="${
                                     r.analysis.result().name() == 'LINKED' ? ' badge--status-open' :
@@ -273,7 +412,7 @@
                             </span>
                         </div>
 
-                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+                        <div class="canon-result-sub">
                             <span class="badge"
                                   th:classappend="${
                                     r.analysis.vendorLinkedSql()
@@ -337,9 +476,8 @@
 
                     <!-- Action -->
                     <td>
-                        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
-                            <a class="btn btn-ghost"
-                               style="padding:6px 10px; font-size:12px; border-radius:10px;"
+                        <div class="canon-action-col">
+                            <a class="btn btn-ghost canon-btn-sm"
                                th:href="@{/software/{id}/edit(id=${r.softwareId})}">
                                 Edit
                             </a>
@@ -349,9 +487,8 @@
                                 <input type="hidden" name="disabled" th:value="${!r.canonicalLinkDisabled}">
                                 <input type="hidden" name="redirect"
                                        th:value="@{'/admin/canonical?filter=' + ${filter} + '&q=' + ${q} + '&limit=' + ${limit}}">
-                                <button class="btn"
+                                <button class="btn canon-btn-sm"
                                         type="submit"
-                                        style="padding:6px 10px; font-size:12px; border-radius:10px;"
                                         th:classappend="${r.canonicalLinkDisabled} ? ' btn-primary' : ' btn-ghost'"
                                         th:text="${r.canonicalLinkDisabled} ? 'Enable Link' : 'Disable Link'">
                                     Disable Link
@@ -365,7 +502,7 @@
             </table>
         </div>
 
-        <div class="muted" style="font-size:12px; margin-top:10px;">
+        <div class="muted canon-help" style="margin-top:10px;">
             Tip: If the rightmost columns are cut off, scroll horizontally inside the table area.
         </div>
     </div>
