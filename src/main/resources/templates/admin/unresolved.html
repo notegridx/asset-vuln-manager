@@ -228,7 +228,7 @@
     }
 
     .um-note textarea {
-        min-height: 44px;
+        min-height: 32px;
         resize: vertical;
     }
 
@@ -239,6 +239,39 @@
         justify-content: flex-end;
         flex-wrap: wrap;
         margin-top: 6px;
+    }
+
+    .um-note-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: end;
+    }
+
+    .um-note {
+        min-width: 0;
+    }
+
+    .um-note textarea {
+        min-height: 32px;
+        resize: vertical;
+    }
+
+    .um-actions--inline {
+        margin-top: 0;
+        justify-content: flex-end;
+        align-self: end;
+        flex-wrap: nowrap;
+    }
+
+    @media (max-width: 980px) {
+        .um-note-row {
+            grid-template-columns: 1fr;
+        }
+
+        .um-actions--inline {
+            justify-content: flex-end;
+        }
     }
 
     /* =========================================================
@@ -448,14 +481,16 @@
 
                                 </div>
 
-                                <div class="um-note">
-                                    <div class="um-label">Note (optional)</div>
-                                    <textarea name="note" placeholder="why / decision / hints..."
-                                              th:text="${r.note}"></textarea>
-                                </div>
+                                <div class="um-note-row">
+                                    <div class="um-note">
+                                        <div class="um-label">Note (optional)</div>
+                                        <textarea name="note" placeholder="why / decision / hints..."
+                                                  th:text="${r.note}"></textarea>
+                                    </div>
 
-                                <div class="um-actions">
-                                    <button class="btn btn-primary" type="submit">Link to Product Dictionary</button>
+                                    <div class="um-actions um-actions--inline">
+                                        <button class="btn btn-primary" type="submit">Link to Product Dictionary</button>
+                                    </div>
                                 </div>
 
                             </div>
