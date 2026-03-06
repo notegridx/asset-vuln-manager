@@ -3,9 +3,7 @@ package dev.notegridx.security.assetvulnmanager.service;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import dev.notegridx.security.assetvulnmanager.domain.CveSyncState;
-import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
-import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityAffectedCpe;
+import dev.notegridx.security.assetvulnmanager.domain.*;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.CpeNameParser;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.CveFeedMetaParser;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient;
@@ -834,7 +832,24 @@ public class CveFeedSyncService {
         Long cached = vendorIdCache.get(vendorNorm);
         if (cached != null) return cached;
 
-        Long id = cpeVendorRepository.findByNameNorm(vendorNorm).map(x -> x.getId()).orElse(null);
+        Long id = cpeVendorRepository.findByNameNorm(vendorNorm)
+                .map(CpeVendor::getId)
+                .orElse(null);
+
+        if (id == null) {
+            try {
+                // displayName はとりあえず null でOK（後で整備）
+                CpeVendor created = cpeVendorRepository.save(new CpeVendor(vendorNorm, null));
+                id = created.getId();
+                log.debug("CPE vendor created from CVE feed sync: nameNorm={}", vendorNorm);
+            } catch (DataIntegrityViolationException dup) {
+                // race/duplicate: 先に別TXが作った
+                id = cpeVendorRepository.findByNameNorm(vendorNorm)
+                        .map(CpeVendor::getId)
+                        .orElse(null);
+            }
+        }
+
         if (id != null) vendorIdCache.put(vendorNorm, id);
         return id;
     }
@@ -846,10 +861,29 @@ public class CveFeedSyncService {
         Long cached = productIdCache.get(key);
         if (cached != null) return cached;
 
-        Long id = cpeProductRepository.findByVendorIdAndNameNorm(vendorId, productNorm).map(x -> x.getId()).orElse(null);
+        Long id = cpeProductRepository.findByVendorIdAndNameNorm(vendorId, productNorm)
+                .map(CpeProduct::getId)
+                .orElse(null);
+
+        if (id == null) {
+            try {
+                // vendor は参照だけでOK
+                CpeVendor vendorRef = cpeVendorRepository.getReferenceById(vendorId);
+                CpeProduct created = cpeProductRepository.save(new CpeProduct(vendorRef, productNorm, null));
+                id = created.getId();
+                log.debug("CPE product created from CVE feed sync: vendorId={}, nameNorm={}", vendorId, productNorm);
+            } catch (DataIntegrityViolationException dup) {
+                // race/duplicate: 先に別TXが作った
+                id = cpeProductRepository.findByVendorIdAndNameNorm(vendorId, productNorm)
+                        .map(CpeProduct::getId)
+                        .orElse(null);
+            }
+        }
+
         if (id != null) productIdCache.put(key, id);
         return id;
     }
+
 
     private String feedName(NvdCveFeedClient.FeedKind kind, Integer year) {
         return switch (kind) {
