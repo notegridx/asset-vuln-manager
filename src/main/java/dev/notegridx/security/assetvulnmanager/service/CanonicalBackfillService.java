@@ -74,7 +74,8 @@ public class CanonicalBackfillService {
         int linked = 0;
         int missed = 0;
 
-        List<SoftwareInstall> all = forceRebuild ? softwareRepo.findAll()
+        List<SoftwareInstall> all = forceRebuild
+                ? softwareRepo.findAll()
                 : softwareRepo.findNeedsCanonicalLink();
 
         for (int offset = 0; offset < all.size() && scanned < safeMax; offset += TX_CHUNK) {
@@ -98,7 +99,8 @@ public class CanonicalBackfillService {
                     }
 
                     var res = linker.resolve(s);
-                    if (res.hit()) {
+
+                    if (res.hit() && !s.isCanonicalLinkDisabled()) {
                         s.linkCanonical(res.vendorId(), res.productId());
                         _linked++;
                     } else if (res.vendorId() != null) {
@@ -199,7 +201,8 @@ public class CanonicalBackfillService {
                     }
 
                     var res = linker.resolve(s);
-                    if (res.hit()) {
+
+                    if (res.hit() && !s.isCanonicalLinkDisabled()) {
                         s.linkCanonical(res.vendorId(), res.productId());
                         _linked++;
                     } else if (res.vendorId() != null) {
@@ -307,13 +310,13 @@ public class CanonicalBackfillService {
         if (vn != null) {
             vCands = cpeVendorRepository.findTop20ByNameNormStartingWithOrderByNameNormAsc(vn);
         }
-        um.setCandidateVendorIds(encodeVendors(vCands)); // ID CSV only
+        um.setCandidateVendorIds(encodeVendors(vCands));
 
         if (pn != null && vCands.size() == 1) {
             Long vendorId = vCands.get(0).getId();
             List<CpeProduct> pCands =
                     cpeProductRepository.findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendorId, pn);
-            um.setCandidateProductIds(encodeProducts(pCands)); // ID CSV only
+            um.setCandidateProductIds(encodeProducts(pCands));
         } else {
             if (isBlank(um.getCandidateProductIds())) {
                 um.setCandidateProductIds(null);

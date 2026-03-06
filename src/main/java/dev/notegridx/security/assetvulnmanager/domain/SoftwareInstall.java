@@ -133,7 +133,22 @@ public class SoftwareInstall {
     @Column(name = "cpe_product_id")
     private Long cpeProductId;
 
+    @Column(name = "canonical_link_disabled", nullable = false)
+    private boolean canonicalLinkDisabled = false;
+
     protected SoftwareInstall() {
+    }
+
+    public void setCanonicalLinkDisabled(boolean canonicalLinkDisabled) {
+        this.canonicalLinkDisabled = canonicalLinkDisabled;
+    }
+
+    public void disableCanonicalLink() {
+        this.canonicalLinkDisabled = true;
+    }
+
+    public void enableCanonicalLink() {
+        this.canonicalLinkDisabled = false;
     }
 
     public SoftwareInstall(Asset asset, String product) {

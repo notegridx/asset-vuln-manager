@@ -126,7 +126,6 @@ public class AdminCanonicalController {
             @RequestParam(name = "redirect", required = false) String redirect,
             RedirectAttributes ra
     ) {
-        // alias辞書/候補キャッシュがあるなら、安全側でクリアしてから実行
         synonymService.clearCaches();
 
         var result = backfillService.backfill(maxRows, relink);
@@ -135,11 +134,36 @@ public class AdminCanonicalController {
         return safeRedirectOrDefault(redirect, "/admin/canonical");
     }
 
+    @PostMapping("/admin/canonical/link-disabled")
+    public String setLinkDisabled(
+            @RequestParam("softwareId") Long softwareId,
+            @RequestParam("disabled") boolean disabled,
+            @RequestParam(name = "redirect", required = false) String redirect,
+            RedirectAttributes ra
+    ) {
+        SoftwareInstall s = softwareRepo.findById(softwareId).orElse(null);
+        if (s == null) {
+            ra.addFlashAttribute("error", "SoftwareInstall not found: id=" + softwareId);
+            return safeRedirectOrDefault(redirect, "/admin/canonical");
+        }
+
+        s.setCanonicalLinkDisabled(disabled);
+        softwareRepo.save(s);
+
+        ra.addFlashAttribute(
+                "success",
+                disabled
+                        ? "Auto product link disabled for softwareId=" + softwareId
+                        : "Auto product link enabled for softwareId=" + softwareId
+        );
+
+        return safeRedirectOrDefault(redirect, "/admin/canonical");
+    }
+
     private static String safeRedirectOrDefault(String redirect, String fallback) {
         if (redirect == null || redirect.isBlank()) return "redirect:" + fallback;
         String t = redirect.trim();
 
-        // open redirect対策：相対パス/絶対URLは禁止、アプリ内のパスのみ許可
         if (!t.startsWith("/")) return "redirect:" + fallback;
         if (t.startsWith("//")) return "redirect:" + fallback;
         if (t.contains("://")) return "redirect:" + fallback;
@@ -152,21 +176,17 @@ public class AdminCanonicalController {
         return switch (f) {
             case all -> true;
 
-            // SQL link (IDs)
             case fullyLinked -> a.fullyLinkedSql();
             case vendorOnlyLinked -> a.vendorOnlyLinkedSql();
             case notLinked -> a.notLinkedSql();
 
-            // Fully linked quality
             case linkedValid -> a.result() == CanonicalCpeLinkingService.ItemResult.LINKED;
             case linkedStale -> a.result() == CanonicalCpeLinkingService.ItemResult.STALE;
 
-            // Dictionary (ONLY for notLinked)
             case fullyResolvable -> a.dictFullyResolvable();
             case vendorResolvableOnly -> a.dictVendorResolvableOnly();
             case unresolvable -> a.dictUnresolvable();
 
-            // Other
             case needsNormalization -> a.needsNormalization();
         };
     }
@@ -180,6 +200,7 @@ public class AdminCanonicalController {
             String version,
             String normalizedVendor,
             String normalizedProduct,
+            boolean canonicalLinkDisabled,
             CanonicalCpeLinkingService.Analysis analysis
     ) {
         static Row from(SoftwareInstall s, CanonicalCpeLinkingService.Analysis a) {
@@ -192,6 +213,7 @@ public class AdminCanonicalController {
                     s.getVersionRaw(),
                     s.getNormalizedVendor(),
                     s.getNormalizedProduct(),
+                    s.isCanonicalLinkDisabled(),
                     a
             );
         }

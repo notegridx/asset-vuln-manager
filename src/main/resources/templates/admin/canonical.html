@@ -23,6 +23,16 @@
         </div>
     </div>
 
+    <!-- flash messages -->
+    <div th:if="${success}" class="card" style="padding:10px; margin:12px 0; border:1px solid var(--line);">
+        <span class="badge badge--status-open">OK</span>
+        <span class="mono" th:text="${success}">success</span>
+    </div>
+    <div th:if="${error}" class="card" style="padding:10px; margin:12px 0; border:1px solid var(--line);">
+        <span class="badge badge--warn">Error</span>
+        <span class="mono" th:text="${error}">error</span>
+    </div>
+
     <!-- Linking -->
     <div class="card" style="padding:12px; margin:12px 0;">
         <div class="actions" style="margin:0; align-items:flex-end; justify-content:space-between; gap:12px;">
@@ -34,6 +44,8 @@
             </div>
 
             <form method="post" th:action="@{/admin/canonical/link}" style="margin:0;">
+                <input type="hidden" name="redirect"
+                       th:value="@{'/admin/canonical?filter=' + ${filter} + '&q=' + ${q} + '&limit=' + ${limit}}">
                 <div class="actions" style="margin:0; align-items:center; gap:12px; flex-wrap:wrap;">
                     <label class="muted"
                            style="font-size:12px; display:flex; align-items:center; gap:8px; user-select:none;">
@@ -195,21 +207,17 @@
             </div>
         </div>
 
-        <!-- NOTE:
-             - Add table-wrap--no-xscroll in HTML, actual behavior is controlled in styles.css
-             - Use canon-table (table-layout:fixed) in styles.css
-        -->
-        <div class="table-wrap table-wrap--no-xscroll" style="margin-top:12px;">
+        <div class="table-wrap" style="margin-top:12px;">
             <table class="canon-table" style="margin-top:0;">
                 <thead>
                 <tr>
                     <th style="width: 70px;">ID</th>
-                    <th style="width: 120px;">Asset</th>
-                    <th style="width: 260px;">Raw</th>
-                    <th style="width: 220px;">Normalized</th>
-                    <th style="width: 180px;">Result</th>
-                    <th style="width: 320px;">Reason</th>
-                    <th style="width: 80px;">Action</th>
+                    <th style="width: 110px;">Asset</th>
+                    <th style="width: 220px;">Raw</th>
+                    <th style="width: 200px;">Normalized</th>
+                    <th style="width: 230px;">Result</th>
+                    <th style="width: 260px;">Reason</th>
+                    <th style="width: 150px;">Action</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -229,8 +237,7 @@
                     <!-- Raw -->
                     <td style="overflow-wrap:anywhere;">
                         <div class="truncate-1"
-                             th:attr="title=${(r.vendor != null ? r.vendor : '-') + ' / ' + (r.product != null ? r.product : '-')}"
-                        >
+                             th:attr="title=${(r.vendor != null ? r.vendor : '-') + ' / ' + (r.product != null ? r.product : '-')}">
                             <span th:text="${r.vendor}">vendor</span> / <b th:text="${r.product}">product</b>
                         </div>
                         <div class="muted truncate-1" style="font-size:12px;"
@@ -250,66 +257,73 @@
 
                     <!-- Result -->
                     <td class="canon-result" th:with="res=${r.analysis.resolve}">
-                        <!-- Stage badge -->
-                        <span class="badge"
-                              th:classappend="${
-                                r.analysis.result().name() == 'LINKED' ? ' badge--status-open' :
-                                (r.analysis.result().name() == 'RESOLVED' ? ' badge--status-open' :
-                                (r.analysis.result().name() == 'STALE' ? ' badge--warn' : ' badge--unmapped'))
-                              }"
-                              th:text="${r.analysis.result().name()}">UNRESOLVED</span>
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                            <span class="badge"
+                                  th:classappend="${
+                                    r.analysis.result().name() == 'LINKED' ? ' badge--status-open' :
+                                    (r.analysis.result().name() == 'RESOLVED' ? ' badge--status-open' :
+                                    (r.analysis.result().name() == 'STALE' ? ' badge--warn' : ' badge--unmapped'))
+                                  }"
+                                  th:text="${r.analysis.result().name()}">UNRESOLVED</span>
 
-                        <!-- Vendor pill -->
-                        <span class="badge"
-                              th:classappend="${
-                                r.analysis.vendorLinkedSql()
-                                  ? ' badge--status-open'
-                                  : (res != null and res.vendorId() != null ? ' badge--warn' : ' badge--unmapped')
-                              }"
-                              th:text="${
-                                r.analysis.vendorLinkedSql()
-                                  ? ('V ' + (res != null and res.vendorId() != null ? res.vendorId() : '?')
-                                       + ':' + (res != null and res.vendorNorm() != null ? res.vendorNorm() : '-'))
-                                  : (res != null and res.vendorId() != null
-                                       ? ('V → ' + res.vendorId()
-                                            + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
-                                       : 'V-')
-                              }"
-                              th:attr="title=${
-                                r.analysis.vendorLinkedSql()
-                                  ? ('Linked vendor: ' + (res != null && res.vendorId() != null ? res.vendorId() : '?')
-                                      + ':' + (res != null && res.vendorNorm() != null ? res.vendorNorm() : '-'))
-                                  : (res != null && res.vendorId() != null
-                                      ? ('Resolvable vendor: ' + res.vendorId()
-                                          + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
-                                      : 'Vendor not linked / not resolvable')
-                              }">V-</span>
+                            <span th:if="${r.canonicalLinkDisabled}"
+                                  class="badge badge--warn"
+                                  title="Run Linking will not create auto product link for this software row">
+                                LINK DISABLED
+                            </span>
+                        </div>
 
-                        <!-- Product pill -->
-                        <span class="badge"
-                              th:classappend="${
-                                r.analysis.productLinkedSql()
-                                  ? ' badge--status-open'
-                                  : (res != null and res.productId() != null ? ' badge--warn' : ' badge--unmapped')
-                              }"
-                              th:text="${
-                                r.analysis.productLinkedSql()
-                                  ? ('P ' + (res != null and res.productId() != null ? res.productId() : '?')
-                                       + ':' + (res != null and res.productNorm() != null ? res.productNorm() : '-'))
-                                  : (res != null and res.productId() != null
-                                       ? ('P → ' + res.productId()
-                                            + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
-                                       : 'P-')
-                              }"
-                              th:attr="title=${
-                                r.analysis.productLinkedSql()
-                                  ? ('Linked product: ' + (res != null && res.productId() != null ? res.productId() : '?')
-                                      + ':' + (res != null && res.productNorm() != null ? res.productNorm() : '-'))
-                                  : (res != null && res.productId() != null
-                                      ? ('Resolvable product: ' + res.productId()
-                                          + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
-                                      : 'Product not linked / not resolvable')
-                              }">P-</span>
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+                            <span class="badge"
+                                  th:classappend="${
+                                    r.analysis.vendorLinkedSql()
+                                      ? ' badge--status-open'
+                                      : (res != null and res.vendorId() != null ? ' badge--warn' : ' badge--unmapped')
+                                  }"
+                                  th:text="${
+                                    r.analysis.vendorLinkedSql()
+                                      ? ('V ' + (res != null and res.vendorId() != null ? res.vendorId() : '?')
+                                           + ':' + (res != null and res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                      : (res != null and res.vendorId() != null
+                                           ? ('V → ' + res.vendorId()
+                                                + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                           : 'V-')
+                                  }"
+                                  th:attr="title=${
+                                    r.analysis.vendorLinkedSql()
+                                      ? ('Linked vendor: ' + (res != null && res.vendorId() != null ? res.vendorId() : '?')
+                                          + ':' + (res != null && res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                      : (res != null && res.vendorId() != null
+                                          ? ('Resolvable vendor: ' + res.vendorId()
+                                              + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                          : 'Vendor not linked / not resolvable')
+                                  }">V-</span>
+
+                            <span class="badge"
+                                  th:classappend="${
+                                    r.analysis.productLinkedSql()
+                                      ? ' badge--status-open'
+                                      : (res != null and res.productId() != null ? ' badge--warn' : ' badge--unmapped')
+                                  }"
+                                  th:text="${
+                                    r.analysis.productLinkedSql()
+                                      ? ('P ' + (res != null and res.productId() != null ? res.productId() : '?')
+                                           + ':' + (res != null and res.productNorm() != null ? res.productNorm() : '-'))
+                                      : (res != null and res.productId() != null
+                                           ? ('P → ' + res.productId()
+                                                + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
+                                           : 'P-')
+                                  }"
+                                  th:attr="title=${
+                                    r.analysis.productLinkedSql()
+                                      ? ('Linked product: ' + (res != null && res.productId() != null ? res.productId() : '?')
+                                          + ':' + (res != null && res.productNorm() != null ? res.productNorm() : '-'))
+                                      : (res != null && res.productId() != null
+                                          ? ('Resolvable product: ' + res.productId()
+                                              + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
+                                          : 'Product not linked / not resolvable')
+                                  }">P-</span>
+                        </div>
                     </td>
 
                     <!-- Reason -->
@@ -321,11 +335,29 @@
                         </div>
                     </td>
 
+                    <!-- Action -->
                     <td>
-                        <a class="btn btn-ghost" style="padding:6px 10px; font-size:12px; border-radius:10px;"
-                           th:href="@{/software/{id}/edit(id=${r.softwareId})}">
-                            Edit
-                        </a>
+                        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <a class="btn btn-ghost"
+                               style="padding:6px 10px; font-size:12px; border-radius:10px;"
+                               th:href="@{/software/{id}/edit(id=${r.softwareId})}">
+                                Edit
+                            </a>
+
+                            <form method="post" th:action="@{/admin/canonical/link-disabled}" style="margin:0;">
+                                <input type="hidden" name="softwareId" th:value="${r.softwareId}">
+                                <input type="hidden" name="disabled" th:value="${!r.canonicalLinkDisabled}">
+                                <input type="hidden" name="redirect"
+                                       th:value="@{'/admin/canonical?filter=' + ${filter} + '&q=' + ${q} + '&limit=' + ${limit}}">
+                                <button class="btn"
+                                        type="submit"
+                                        style="padding:6px 10px; font-size:12px; border-radius:10px;"
+                                        th:classappend="${r.canonicalLinkDisabled} ? ' btn-primary' : ' btn-ghost'"
+                                        th:text="${r.canonicalLinkDisabled} ? 'Enable Link' : 'Disable Link'">
+                                    Disable Link
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
 
@@ -333,9 +365,8 @@
             </table>
         </div>
 
-        <!-- Optional hint -->
         <div class="muted" style="font-size:12px; margin-top:10px;">
-            Tip: Hover truncated cells to see full text.
+            Tip: If the rightmost columns are cut off, scroll horizontally inside the table area.
         </div>
     </div>
 
