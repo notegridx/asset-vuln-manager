@@ -565,7 +565,7 @@ CREATE TABLE IF NOT EXISTS unresolved_mappings
 
     source VARCHAR(32) NOT NULL,
 
-    vendor_raw VARCHAR(255),
+    vendor_raw VARCHAR(255) NOT NULL,
     product_raw VARCHAR(255) NOT NULL,
     version_raw VARCHAR(128),
 
@@ -582,12 +582,14 @@ CREATE TABLE IF NOT EXISTS unresolved_mappings
     last_seen_at TIMESTAMP NOT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+    CONSTRAINT uk_um_vendor_product UNIQUE (vendor_raw, product_raw)
     );
 
 CREATE INDEX IF NOT EXISTS idx_um_status ON unresolved_mappings(status);
 CREATE INDEX IF NOT EXISTS idx_um_norm ON unresolved_mappings(normalized_vendor, normalized_product);
-CREATE INDEX IF NOT EXISTS idx_um_source ON unresolved_mappings(source);
+CREATE INDEX IF NOT EXISTS idx_um_vendor_product ON unresolved_mappings(vendor_raw, product_raw);
 
 -- =========================================================
 -- Synonyms / Aliases (dictionary learning)  [ID-based]

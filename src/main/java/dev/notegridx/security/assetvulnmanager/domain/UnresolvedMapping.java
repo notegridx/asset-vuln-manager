@@ -17,6 +17,7 @@ public class UnresolvedMapping {
     @Column(nullable = false)
     private String source;
 
+    @Column(nullable = false)
     private String vendorRaw;
 
     @Column(nullable = false)

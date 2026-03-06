@@ -266,16 +266,21 @@ public class CanonicalBackfillService {
         String v = normalizeNullable(vendorRaw);
         String p = normalizeNullable(productRaw);
         String ver = normalizeNullable(versionRaw);
-        if (p == null) return;
+        String src = safeString(source);
+
+        if (v == null || p == null) return;
 
         LocalDateTime now = LocalDateTime.now();
 
         Optional<UnresolvedMapping> existing =
-                unresolvedMappingRepository.findTopBySourceAndVendorRawAndProductRawAndVersionRaw(source, v, p, ver);
+                unresolvedMappingRepository.findTopByVendorRawAndProductRaw(v, p);
 
         if (existing.isPresent()) {
             UnresolvedMapping um = existing.get();
             um.setLastSeenAt(now);
+
+            um.setSource(src);
+            um.setVersionRaw(ver);
 
             if (isBlank(um.getNormalizedVendor())) {
                 um.setNormalizedVendor(normalizeVendorForAlias(v));
@@ -292,7 +297,7 @@ public class CanonicalBackfillService {
             return;
         }
 
-        UnresolvedMapping um = UnresolvedMapping.create(source, v, p, ver);
+        UnresolvedMapping um = UnresolvedMapping.create(src, v, p, ver);
 
         um.setNormalizedVendor(normalizeVendorForAlias(v));
         um.setNormalizedProduct(normalizeProductForAlias(p));

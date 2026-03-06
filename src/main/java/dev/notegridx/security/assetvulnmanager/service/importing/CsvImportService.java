@@ -391,23 +391,27 @@ public class CsvImportService {
         String v = normalizeNullable(vendorRaw);
         String p = normalizeNullable(productRaw);
         String ver = normalizeNullable(versionRaw);
-        if (p == null) return;
+        String src = normalizeNullable(source);
+        if (src == null) src = SOURCE_CSV;
+
+        // 新仕様: unresolved の論理キーは vendor_raw + product_raw
+        if (v == null || p == null) return;
 
         LocalDateTime now = LocalDateTime.now();
 
         Optional<UnresolvedMapping> existing =
-                unresolvedMappingRepository.findTopBySourceAndVendorRawAndProductRawAndVersionRaw(source, v, p, ver);
+                unresolvedMappingRepository.findTopByVendorRawAndProductRaw(v, p);
 
         if (existing.isPresent()) {
             UnresolvedMapping um = existing.get();
             um.setLastSeenAt(now);
+            um.setSource(src);       // reference only
+            um.setVersionRaw(ver);   // reference only
             unresolvedMappingRepository.save(um);
             return;
         }
 
-        UnresolvedMapping um =
-                UnresolvedMapping.create(source, v, p, ver);
-
+        UnresolvedMapping um = UnresolvedMapping.create(src, v, p, ver);
         unresolvedMappingRepository.save(um);
     }
 
