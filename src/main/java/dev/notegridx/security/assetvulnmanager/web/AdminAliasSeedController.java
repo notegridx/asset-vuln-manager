@@ -2,15 +2,11 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.service.SynonymService;
 import dev.notegridx.security.assetvulnmanager.service.seed.AliasSeedImportService;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-
-import java.nio.charset.StandardCharsets;
 
 @Controller
 public class AdminAliasSeedController {
@@ -27,16 +23,8 @@ public class AdminAliasSeedController {
     }
 
     @GetMapping("/admin/aliases/seed/import")
-    public String form(
-            @RequestParam(value = "preset", required = false) String preset,
-            Model model
-    ) {
-        String json = "";
-        if (preset != null && !preset.isBlank()) {
-            json = loadPreset(preset);
-        }
-        model.addAttribute("json", json);
-        model.addAttribute("preset", preset);
+    public String form(Model model) {
+        model.addAttribute("json", "");
         return "admin/aliases_seed_import";
     }
 
@@ -53,17 +41,5 @@ public class AdminAliasSeedController {
         model.addAttribute("json", json);
         model.addAttribute("result", report);
         return "admin/aliases_seed_import";
-    }
-
-    private String loadPreset(String preset) {
-        try {
-            String path = "seed/aliases/" + preset + ".json";
-            var r = new ClassPathResource(path);
-            if (!r.exists()) return "";
-            byte[] bytes = StreamUtils.copyToByteArray(r.getInputStream());
-            return new String(bytes, StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            return "";
-        }
     }
 }

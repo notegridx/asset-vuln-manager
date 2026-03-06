@@ -10,12 +10,10 @@
         <div>
             <h1>Seed Alias Dictionary (JSON)</h1>
             <p class="muted" style="margin:6px 0 0 0;">
+                Prepare seed JSON separately and paste it here.
                 Canonicals are resolved by <code>name_norm</code>. Aliases are normalized before insert.
                 Conflicts are skipped (no overwrite). Confidence is integer (0-100).
             </p>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <a class="btn btn-ghost" th:href="@{/admin/aliases/seed/import(preset='tierA')}">Load preset: tierA</a>
         </div>
     </div>
 
@@ -27,7 +25,8 @@
                           th:text="${json}"></textarea>
                 <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.6;">
                     - <b>canonicalVendor</b>/<b>canonicalProduct</b> must match CPE dictionary <code>name_norm</code>.<br>
-                    - Aliases are normalized. ACTIVE only. Conflicts are skipped.
+                    - Aliases are normalized. ACTIVE only. Conflicts are skipped.<br>
+                    - Preset JSON is expected to be prepared and distributed separately.
                 </div>
             </div>
 
@@ -61,6 +60,89 @@
                 <li th:each="n : ${result.notes}" th:text="${n}">note</li>
             </ul>
         </details>
+    </div>
+    <div class="card" style="padding:12px; margin:12px 0;">
+
+        <details>
+            <summary style="cursor:pointer; font-weight:600;">
+                How to prepare Seed JSON
+            </summary>
+
+            <div style="margin-top:10px; line-height:1.6;">
+
+                <p>
+                    Import alias seeds for the CPE dictionary.
+                    Paste a JSON document that maps common vendor/product names
+                    to canonical CPE entries.
+                </p>
+
+                <p>
+                    Canonical names must match the CPE dictionary <code>name_norm</code> values.
+                </p>
+
+                <p><b>Example canonical names</b></p>
+
+                <pre style="margin:6px 0;">
+Vendor:
+microsoft
+
+Product:
+windows_server
+      </pre>
+
+                <p><b>Example JSON</b></p>
+
+                <pre style="margin:6px 0; overflow:auto;">
+{
+  "vendors": [
+    {
+      "canonicalVendor": "microsoft",
+      "aliases": [
+        "microsoft corporation",
+        "microsoft corp",
+        "ms"
+      ]
+    }
+  ],
+  "products": [
+    {
+      "canonicalVendor": "microsoft",
+      "canonicalProduct": "windows_server",
+      "aliases": [
+        "windows server",
+        "microsoft windows server"
+      ]
+    }
+  ]
+}
+      </pre>
+
+                <p><b>Import rules</b></p>
+
+                <ul>
+                    <li>Aliases are normalized automatically</li>
+                    <li>Existing aliases are skipped</li>
+                    <li>Canonical entries must exist in the CPE dictionary</li>
+                    <li>Conflicting aliases are ignored</li>
+                    <li>Existing records are not overwritten</li>
+                </ul>
+
+                <p><b>Typical workflow</b></p>
+
+                <ol>
+                    <li>Identify unresolved vendor/product names</li>
+                    <li>Prepare alias seed JSON</li>
+                    <li>Import here</li>
+                    <li>Run linking again</li>
+                </ol>
+
+                <p class="muted">
+                    Seed JSON files may be distributed separately.
+                </p>
+
+            </div>
+        </details>
+
     </div>
 
 </main>
