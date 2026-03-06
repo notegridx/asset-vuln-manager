@@ -3,221 +3,278 @@
 
 <head th:replace="~{layout/base :: head('Installed Software')}"></head>
 
+<style>
+    /* =========================================================
+   Alerts highlight (row)
+   ========================================================= */
+
+    tr.software-row--has-alerts {
+        background: rgba(255, 204, 102, 0.06);
+    }
+
+    tr.software-row--has-alerts:hover {
+        background: rgba(255, 204, 102, 0.12);
+    }
+
+    tr.software-row--has-alerts td:first-child {
+        box-shadow: inset 4px 0 0 #ffcc66;
+    }
+
+    tr.software-row--has-alerts:hover td:first-child {
+        box-shadow: inset 4px 0 0 #ffd37a;
+    }
+
+
+    /* =========================================================
+       Alerts badge (amber semantic color)
+       ========================================================= */
+
+    .badge-alert {
+        background: rgba(255, 204, 102, 0.14);
+        color: #ffd37a;
+        border: 1px solid rgba(255, 204, 102, 0.35);
+    }
+
+    .badge-alert:hover {
+        background: rgba(255, 204, 102, 0.22);
+        border-color: rgba(255, 204, 102, 0.55);
+    }
+</style>
+
 <body th:replace="~{layout/base :: layout('Installed Software', 'assets', ~{::main})}">
 <main>
 
-  <div class="actions">
-    <h1 style="margin:0;">Installed Software</h1>
-    <a class="btn" th:href="@{/software}">Clear</a>
-  </div>
+    <div class="actions">
+        <h1 style="margin:0;">Installed Software</h1>
+        <a class="btn" th:href="@{/software}">Clear</a>
+    </div>
 
-  <!-- Controls -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <form method="get" th:action="@{/software}"
-          style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+    <!-- Controls -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <form method="get" th:action="@{/software}"
+              style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
 
-      <div class="field" style="min-width:320px; margin:0;">
-        <label>Search (vendor / product / version)</label>
-        <input type="text" name="q" th:value="${q}" placeholder="e.g. openssl, apache, 2.4.58"/>
-      </div>
+            <div class="field" style="min-width:320px; margin:0;">
+                <label>Search (vendor / product / version)</label>
+                <input type="text" name="q" th:value="${q}" placeholder="e.g. openssl, apache, 2.4.58"/>
+            </div>
 
-      <div class="field" style="min-width:240px; margin:0;">
-        <label>Asset</label>
-        <select name="assetId">
-          <option value="" th:selected="${assetId == null}">All assets</option>
-          <option th:each="a : ${assets}"
-                  th:value="${a.id}"
-                  th:selected="${assetId != null and a.id == assetId}"
-                  th:text="${a.name}">AssetName</option>
-        </select>
-      </div>
+            <div class="field" style="min-width:240px; margin:0;">
+                <label>Asset</label>
+                <select name="assetId">
+                    <option value="" th:selected="${assetId == null}">All assets</option>
+                    <option th:each="a : ${assets}"
+                            th:value="${a.id}"
+                            th:selected="${assetId != null and a.id == assetId}"
+                            th:text="${a.name}">AssetName
+                    </option>
+                </select>
+            </div>
 
-      <div class="field" style="min-width:220px; margin:0;">
-        <label>CPE name (legacy)</label>
-        <select name="unmappedCpe">
-          <option value="" th:selected="${unmappedCpe == null}">All</option>
-          <option value="true" th:selected="${unmappedCpe != null and unmappedCpe == true}">Empty only</option>
-          <option value="false" th:selected="${unmappedCpe != null and unmappedCpe == false}">Has value only</option>
-        </select>
-      </div>
+            <div class="field" style="min-width:220px; margin:0;">
+                <label>Link status</label>
+                <select name="linkStatus">
+                    <option value="ALL" th:selected="${linkStatus == null or linkStatus == 'ALL'}">All</option>
+                    <option value="LINKED" th:selected="${linkStatus == 'LINKED'}">Linked only</option>
+                    <option value="NOT_LINKED" th:selected="${linkStatus == 'NOT_LINKED'}">Not linked only</option>
+                </select>
+            </div>
 
-      <div class="actions" style="margin:0 0 0 auto;">
-        <button class="btn" type="submit">Apply</button>
-      </div>
+            <div class="actions" style="margin:0 0 0 auto;">
+                <button class="btn" type="submit">Apply</button>
+            </div>
 
-      <input type="hidden" name="size" th:value="${page.size}"/>
-    </form>
+            <input type="hidden" name="size" th:value="${page.size}"/>
+        </form>
 
-    <p class="muted" style="margin:10px 0 0;">
-      Total installs: <b th:text="${totalInstalls}">0</b>
-      <span style="opacity:.7;">/</span>
+        <p class="muted" style="margin:10px 0 0;">
+            Total installs: <b th:text="${totalInstalls}">0</b>
+            <span style="opacity:.7;">/</span>
 
-      This page: checked <b th:text="${pageLinkStats != null ? pageLinkStats.total : 0}">0</b>,
-      linked <b th:text="${pageLinkStats != null ? (pageLinkStats.linkedValid + pageLinkStats.linkedStale) : 0}">0</b>
-      (valid <b th:text="${pageLinkStats != null ? pageLinkStats.linkedValid : 0}">0</b>,
-      stale <b th:text="${pageLinkStats != null ? pageLinkStats.linkedStale : 0}">0</b>),
+            This page: checked <b th:text="${pageLinkStats != null ? pageLinkStats.total : 0}">0</b>,
+            linked <b
+                th:text="${pageLinkStats != null ? (pageLinkStats.linkedValid + pageLinkStats.linkedStale) : 0}">0</b>
+            (valid <b th:text="${pageLinkStats != null ? pageLinkStats.linkedValid : 0}">0</b>,
+            stale <b th:text="${pageLinkStats != null ? pageLinkStats.linkedStale : 0}">0</b>),
 
-      resolvable <b th:text="${pageLinkStats != null ? pageLinkStats.fullyResolvable : 0}">0</b>,
-      unresolvable <b th:text="${pageLinkStats != null ? pageLinkStats.unresolvable : 0}">0</b>,
-      needsNorm <b th:text="${pageLinkStats != null ? pageLinkStats.needsNormalization : 0}">0</b>
-    </p>
-  </div>
+            resolvable <b th:text="${pageLinkStats != null ? pageLinkStats.fullyResolvable : 0}">0</b>,
+            unresolvable <b th:text="${pageLinkStats != null ? pageLinkStats.unresolvable : 0}">0</b>,
+            needsNorm <b th:text="${pageLinkStats != null ? pageLinkStats.needsNormalization : 0}">0</b>
+        </p>
+    </div>
 
-  <!-- Table -->
-  <div class="card p-0 overflow-auto">
-    <div class="table-wrap table--fixed">
-      <table class="table m-0">
-        <thead>
-        <tr>
-          <th style="width:72px;">ID</th>
-          <th style="width:100px;">Vendor</th>
-          <th>Product</th>
-          <th>Version</th>
-          <th style="width:180px;">Link status</th>
-          <th>Asset</th>
-          <th style="width:160px;">Actions</th>
-        </tr>
-        </thead>
+    <!-- Table -->
+    <div class="card p-0 overflow-auto">
+        <div class="table-wrap table--fixed">
+            <table class="table m-0">
+                <thead>
+                <tr>
+                    <th style="width:72px;">ID</th>
+                    <th style="width:100px;">Vendor</th>
+                    <th>Product</th>
+                    <th>Version</th>
+                    <th style="width:180px;">Link status</th>
+                    <th>Asset</th>
+                    <th style="width:160px;">Actions</th>
+                </tr>
+                </thead>
 
-        <tbody>
-        <tr th:each="s : ${page.content}"
-            th:with="a=${(linkAnalysisMap != null) ? linkAnalysisMap[s.id] : null}">
+                <tbody>
+                <tr th:each="s : ${page.content}"
+                    th:with="a=${(linkAnalysisMap != null) ? linkAnalysisMap[s.id] : null}"
+                    th:classappend="${alertCountMap[s.id] != null and alertCountMap[s.id] > 0} ? ' software-row--has-alerts' : ''">
 
-          <td th:text="${s.id}">1</td>
+                    <td th:text="${s.id}">1</td>
 
-          <!-- Vendor -->
-          <td class="cell-break">
+                    <!-- Vendor -->
+                    <td class="cell-break">
             <span th:if="${s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null}"
                   th:text="${vendorNameMap[s.cpeVendorId]}"
                   th:title="${s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)) ? s.vendorRaw : s.vendor}">
               Canonical Vendor
             </span>
 
-            <span th:unless="${s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null}"
-                  th:text="${(s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw))) ? s.vendorRaw : (s.vendor != null and !#strings.isEmpty(#strings.trim(s.vendor)) ? s.vendor : '-')}"
-                  th:title="${s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)) ? s.vendorRaw : s.vendor}">
+                        <span th:unless="${s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null}"
+                              th:text="${(s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw))) ? s.vendorRaw : (s.vendor != null and !#strings.isEmpty(#strings.trim(s.vendor)) ? s.vendor : '-')}"
+                              th:title="${s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)) ? s.vendorRaw : s.vendor}">
               Raw Vendor
             </span>
-          </td>
+                    </td>
 
-          <!-- Product -->
-          <td class="cell-break">
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <a th:href="@{/software/{id}(id=${s.id})}"
-                 th:title="${s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)) ? s.productRaw : s.product}">
-                <b th:text="${(s.cpeProductId != null and productNameMap != null and productNameMap[s.cpeProductId] != null)
-                              ? productNameMap[s.cpeProductId]
-                              : ((s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)))
-                                  ? s.productRaw
-                                  : (s.product != null and !#strings.isEmpty(#strings.trim(s.product)) ? s.product : '-'))}">
-                  product
-                </b>
-              </a>
+                    <!-- Product -->
+                    <td class="cell-break">
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <a th:href="@{/software/{id}(id=${s.id})}"
+                               th:title="${s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)) ? s.productRaw : s.product}">
+                                <b th:text="${(s.cpeProductId != null and productNameMap != null and productNameMap[s.cpeProductId] != null)
+                  ? productNameMap[s.cpeProductId]
+                  : ((s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)))
+                      ? s.productRaw
+                      : (s.product != null and !#strings.isEmpty(#strings.trim(s.product)) ? s.product : '-'))}">
+                                    product
+                                </b>
+                            </a>
 
-              <a th:if="${alertCountMap[s.id] != null and alertCountMap[s.id] > 0}"
-                 class="badge"
-                 th:href="@{/alerts(view='FLAT', status='OPEN', softwareId=${s.id})}">
-                <span th:text="${alertCountMap[s.id]}">0</span> alerts
-              </a>
-            </div>
-          </td>
+                            <a th:if="${alertCountMap[s.id] != null and alertCountMap[s.id] > 0}"
+                               class="badge badge-alert ml-auto"
+                               th:href="@{/alerts(view='FLAT', status='OPEN', softwareId=${s.id})}"
+                               th:title="${alertCountMap[s.id] + ' open alerts'}">
+                                <span th:text="${alertCountMap[s.id]}">0</span> alerts
+                            </a>
+                        </div>
+                    </td>
 
-          <td th:text="${s.version}">version</td>
+                    <td th:text="${s.version}">version</td>
 
-          <!-- Link status -->
-          <td class="cell-break">
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <!-- Link status -->
+                    <td class="cell-break">
+                        <div style="display:flex; flex-direction:column; gap:6px;">
 
-                <span th:if="${a != null and a.result != null and a.result.name() == 'LINKED'}"
-                      class="badge">LINKED</span>
+                            <!-- LINKED / STALE: show vendor + product as separate badges on two lines -->
+                            <div th:if="${a != null and a.result != null and (a.result.name() == 'LINKED' or a.result.name() == 'STALE') and a.resolve != null and a.resolve.hit}"
+                                 style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
 
-                <span th:if="${a != null and a.result != null and a.result.name() == 'STALE'}"
-                      class="badge badge--warn"
-                      th:title="${a.reason}">STALE</span>
+            <span class="badge"
+                  th:classappend="${a.result.name() == 'STALE'} ? ' badge--warn' : ' badge--ok'"
+                  th:title="${a.resolve.vendorId}"
+                  th:text="${a.resolve.vendorNorm}">
+                microsoft
+            </span>
 
-                <span th:if="${a != null and a.result != null and a.result.name() == 'RESOLVED'}"
-                      class="badge"
-                      th:title="${a.reason}">RESOLVABLE</span>
+                                <span class="badge"
+                                      th:classappend="${a.result.name() == 'STALE'} ? ' badge--warn' : ' badge--ok'"
+                                      th:title="${a.resolve.productId}"
+                                      th:text="${a.resolve.productNorm}">
+                teams
+            </span>
+                            </div>
 
-                <span th:if="${a != null and a.result != null and a.result.name() == 'UNRESOLVED'}"
-                      class="badge badge--danger"
-                      th:title="${a.reason}">UNRESOLVABLE</span>
+                            <!-- RESOLVABLE -->
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"
+                                 th:if="${a != null and a.result != null and a.result.name() == 'RESOLVED'}">
+                                <span class="badge" th:title="${a.reason}">RESOLVABLE</span>
+                            </div>
 
-                <span th:if="${a != null and a.needsNormalization}"
-                      class="badge badge--warn"
-                      title="normalizedVendor / normalizedProduct missing or blank">NEEDS NORM</span>
+                            <!-- UNRESOLVABLE -->
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"
+                                 th:if="${a != null and a.result != null and a.result.name() == 'UNRESOLVED'}">
+                                <span class="badge badge--danger" th:title="${a.reason}">UNRESOLVABLE</span>
+                            </div>
 
-                <span th:if="${a == null}" class="badge badge--warn"
-                      title="analysis not provided by controller">UNKNOWN</span>
-              </div>
+                            <!-- NEEDS NORM -->
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"
+                                 th:if="${a != null and a.needsNormalization}">
+            <span class="badge badge--warn"
+                  title="normalizedVendor / normalizedProduct missing or blank">
+                NEEDS NORM
+            </span>
+                            </div>
 
-              <div class="muted mono" style="font-size:12px;"
-                   th:if="${a != null and a.resolve != null and a.resolve.hit}">
-                dict:
-                <span th:text="${a.resolve.vendorId}">0</span>
-                /
-                <span th:text="${a.resolve.productId}">0</span>
-                ·
-                <span th:text="${a.resolve.vendorNorm}">vendor_norm</span>
-                :
-                <span th:text="${a.resolve.productNorm}">product_norm</span>
-              </div>
+                            <!-- UNKNOWN -->
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"
+                                 th:if="${a == null}">
+            <span class="badge badge--warn"
+                  title="analysis not provided by controller">
+                UNKNOWN
+            </span>
+                            </div>
 
-              <div class="mono" style="font-size:12px;"
-                   th:if="${s.cpeName != null and #strings.trim(s.cpeName) != ''}"
-                   th:text="${s.cpeName}">cpe:2.3:...</div>
-            </div>
-          </td>
+                            <div class="mono" style="font-size:12px;"
+                                 th:if="${s.cpeName != null and #strings.trim(s.cpeName) != ''}"
+                                 th:text="${s.cpeName}">
+                                cpe:2.3:...
+                            </div>
+                        </div>
+                    </td>
 
-          <td>
-            <a th:href="@{/assets/{id}(id=${s.asset.id})}" th:text="${s.asset.name}">AssetName</a>
-          </td>
+                    <td>
+                        <a th:href="@{/assets/{id}(id=${s.asset.id})}" th:text="${s.asset.name}">AssetName</a>
+                    </td>
 
-          <td>
-            <div class="actions" style="margin:0; justify-content:flex-start; gap:6px; flex-wrap:wrap;">
-              <a class="btn btn--small" th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
+                    <td>
+                        <div class="actions" style="margin:0; justify-content:flex-start; gap:6px; flex-wrap:wrap;">
+                            <a class="btn btn--small" th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
 
-              <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
-                    style="display:inline;"
-                    onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
-                <input type="hidden" name="assetId" th:value="${s.asset.id}">
-                <input type="hidden" name="returnTo" value="software">
-                <button class="btn btn--small btn--danger" type="submit">Delete</button>
-              </form>
-            </div>
-          </td>
-        </tr>
+                            <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
+                                  style="display:inline;"
+                                  onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
+                                <input type="hidden" name="assetId" th:value="${s.asset.id}">
+                                <input type="hidden" name="returnTo" value="software">
+                                <button class="btn btn--small btn--danger" type="submit">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
 
-        <tr th:if="${page.totalElements == 0}">
-          <td colspan="7" class="muted" style="padding:14px;">No software installs found.</td>
-        </tr>
-        </tbody>
-      </table>
+                <tr th:if="${page.totalElements == 0}">
+                    <td colspan="7" class="muted" style="padding:14px;">No software installs found.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
-  </div>
 
-  <!-- pager -->
-  <div class="actions" style="justify-content:space-between;">
-    <div class="muted">
-      Page <b th:text="${page.number + 1}">1</b> / <b th:text="${page.totalPages}">1</b>
-      (rows: <b th:text="${page.totalElements}">0</b>)
+    <!-- pager -->
+    <div class="actions" style="justify-content:space-between;">
+        <div class="muted">
+            Page <b th:text="${page.number + 1}">1</b> / <b th:text="${page.totalPages}">1</b>
+            (rows: <b th:text="${page.totalElements}">0</b>)
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center;">
+            <a class="btn btn--small"
+               th:classappend="${page.first} ? ' btn--disabled' : ''"
+               th:href="@{/software(page=${page.number - 1}, size=${page.size}, assetId=${assetId}, q=${q}, linkStatus=${linkStatus})}">
+                Prev
+            </a>
+
+            <a class="btn btn--small"
+               th:classappend="${page.last} ? ' btn--disabled' : ''"
+               th:href="@{/software(page=${page.number + 1}, size=${page.size}, assetId=${assetId}, q=${q}, linkStatus=${linkStatus})}">
+                Next
+            </a>
+        </div>
     </div>
-
-    <div style="display:flex; gap:8px; align-items:center;">
-      <a class="btn btn--small"
-         th:classappend="${page.first} ? ' btn--disabled' : ''"
-         th:href="@{/software(page=${page.number - 1}, size=${page.size}, assetId=${assetId}, q=${q}, unmappedCpe=${unmappedCpe})}">
-        Prev
-      </a>
-
-      <a class="btn btn--small"
-         th:classappend="${page.last} ? ' btn--disabled' : ''"
-         th:href="@{/software(page=${page.number + 1}, size=${page.size}, assetId=${assetId}, q=${q}, unmappedCpe=${unmappedCpe})}">
-        Next
-      </a>
-    </div>
-  </div>
 
 </main>
 </body>

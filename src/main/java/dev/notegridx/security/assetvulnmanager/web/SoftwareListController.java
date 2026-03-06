@@ -11,8 +11,10 @@ import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallReposit
 import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Controller
@@ -55,20 +58,42 @@ public class SoftwareListController {
             @RequestParam(name = "size", defaultValue = "100") int size,
             @RequestParam(name = "assetId", required = false) Long assetId,
             @RequestParam(name = "q", required = false) String q,
-            @RequestParam(name = "unmappedCpe", required = false) Boolean unmappedCpe,
+            @RequestParam(name = "linkStatus", required = false) String linkStatus,
             Model model
     ) {
         int safePage = Math.max(0, page);
         int safeSize = clamp(size, 10, 500);
 
-        // UI から来る q は空文字になりがちなので、Repository 検索用には trim して空なら null
         String keyword = normalizeKeyword(q);
+        String effectiveLinkStatus = normalizeLinkStatus(linkStatus);
+
+        // Exact filter for LINKED / NOT_LINKED:
+        // base filter -> analyze -> linkStatus filter -> manual paging
+        List<SoftwareInstall> baseRows = softwareInstallRepository.findAll(Sort.by(Sort.Direction.DESC, "id"))
+                .stream()
+                .filter(s -> assetId == null || (s.getAsset() != null && Objects.equals(s.getAsset().getId(), assetId)))
+                .filter(s -> keyword == null || containsKeyword(s, keyword))
+                .toList();
+
+        Map<Long, CanonicalCpeLinkingService.Analysis> allAnalysisMap = new HashMap<>();
+        for (SoftwareInstall si : baseRows) {
+            try {
+                allAnalysisMap.put(si.getId(), canonicalCpeLinkingService.analyze(si));
+            } catch (Exception e) {
+                // 画面表示を壊さない（分析だけ落として残りは表示）
+                log.warn("Canonical analyze failed: softwareInstallId={} msg={}", si.getId(), e.getMessage());
+            }
+        }
+
+        List<SoftwareInstall> filteredRows = baseRows.stream()
+                .filter(si -> matchesLinkStatus(allAnalysisMap.get(si.getId()), effectiveLinkStatus))
+                .toList();
 
         Pageable pageable = PageRequest.of(safePage, safeSize);
-        Page<SoftwareInstall> result =
-                softwareInstallRepository.searchPaged(assetId, keyword, unmappedCpe, pageable);
-
-        List<SoftwareInstall> rows = result.getContent();
+        int fromIndex = Math.min((int) pageable.getOffset(), filteredRows.size());
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredRows.size());
+        List<SoftwareInstall> rows = filteredRows.subList(fromIndex, toIndex);
+        Page<SoftwareInstall> result = new PageImpl<>(rows, pageable, filteredRows.size());
 
         List<Long> ids = rows.stream()
                 .map(SoftwareInstall::getId)
@@ -85,14 +110,12 @@ public class SoftwareListController {
         }
         model.addAttribute("alertCountMap", alertCountMap);
 
-        // --- mapping analysis (per row) ---
+        // --- mapping analysis (page rows only) ---
         Map<Long, CanonicalCpeLinkingService.Analysis> cpeAnalysisMap = new HashMap<>();
         for (SoftwareInstall si : rows) {
-            try {
-                cpeAnalysisMap.put(si.getId(), canonicalCpeLinkingService.analyze(si));
-            } catch (Exception e) {
-                // 画面表示を壊さない（分析だけ落として残りは表示）
-                log.warn("Canonical analyze failed: softwareInstallId={} msg={}", si.getId(), e.getMessage());
+            CanonicalCpeLinkingService.Analysis a = allAnalysisMap.get(si.getId());
+            if (a != null) {
+                cpeAnalysisMap.put(si.getId(), a);
             }
         }
         model.addAttribute("cpeAnalysisMap", cpeAnalysisMap);
@@ -112,13 +135,13 @@ public class SoftwareListController {
         // --- canonical vendor/product label maps ---
         List<Long> vendorIds = rows.stream()
                 .map(SoftwareInstall::getCpeVendorId)
-                .filter(id -> id != null)
+                .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 
         List<Long> productIds = rows.stream()
                 .map(SoftwareInstall::getCpeProductId)
-                .filter(id -> id != null)
+                .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 
@@ -142,22 +165,69 @@ public class SoftwareListController {
         // filter state（画面にエコーするのは元のq）
         model.addAttribute("assetId", assetId);
         model.addAttribute("q", q == null ? "" : q);
-        model.addAttribute("unmappedCpe", unmappedCpe);
+        model.addAttribute("linkStatus", effectiveLinkStatus);
 
         // asset dropdown
         model.addAttribute("assets", assetRepository.findAll());
 
-        // counts (optional but useful)
+        // counts
         model.addAttribute("totalInstalls", softwareInstallRepository.count());
-        model.addAttribute("unmappedCount", softwareInstallRepository.countUnmappedCpe());
 
         return "software/list";
+    }
+
+    private static boolean matchesLinkStatus(CanonicalCpeLinkingService.Analysis a, String linkStatus) {
+        if ("ALL".equals(linkStatus)) {
+            return true;
+        }
+        if (a == null) {
+            return false;
+        }
+
+        boolean linked =
+                a.result() != null
+                        && (a.result() == CanonicalCpeLinkingService.ItemResult.LINKED
+                        || a.result() == CanonicalCpeLinkingService.ItemResult.STALE)
+                        && a.resolve() != null
+                        && a.resolve().hit();
+
+        return switch (linkStatus) {
+            case "LINKED" -> linked;
+            case "NOT_LINKED" -> !linked;
+            default -> true;
+        };
+    }
+
+    private static String normalizeLinkStatus(String linkStatus) {
+        if (linkStatus == null) return "ALL";
+        String t = linkStatus.trim().toUpperCase();
+        if (t.isEmpty()) return "ALL";
+        if ("LINKED".equals(t)) return "LINKED";
+        if ("NOT_LINKED".equals(t)) return "NOT_LINKED";
+        return "ALL";
     }
 
     private static String normalizeKeyword(String q) {
         if (q == null) return null;
         String t = q.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private static boolean containsKeyword(SoftwareInstall s, String keyword) {
+        String q = keyword.toLowerCase();
+
+        return contains(s.getVendorRaw(), q)
+                || contains(s.getVendor(), q)
+                || contains(s.getNormalizedVendor(), q)
+                || contains(s.getProductRaw(), q)
+                || contains(s.getProduct(), q)
+                || contains(s.getNormalizedProduct(), q)
+                || contains(s.getVersionRaw(), q)
+                || contains(s.getVersion(), q);
+    }
+
+    private static boolean contains(String value, String keywordLower) {
+        return value != null && value.toLowerCase().contains(keywordLower);
     }
 
     private static int clamp(int v, int min, int max) {
