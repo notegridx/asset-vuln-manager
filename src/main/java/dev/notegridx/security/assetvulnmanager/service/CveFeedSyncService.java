@@ -839,9 +839,12 @@ public class CveFeedSyncService {
         if (id == null) {
             try {
                 // displayName はとりあえず null でOK（後で整備）
-                CpeVendor created = cpeVendorRepository.save(new CpeVendor(vendorNorm, null));
+                CpeVendor created = new CpeVendor(vendorNorm, null);
+                created.markAsNvdCve();
+                created = cpeVendorRepository.save(created);
+
                 id = created.getId();
-                log.debug("CPE vendor created from CVE feed sync: nameNorm={}", vendorNorm);
+                log.debug("CPE vendor created from CVE feed sync: nameNorm={}, source={}", vendorNorm, created.getSource());
             } catch (DataIntegrityViolationException dup) {
                 // race/duplicate: 先に別TXが作った
                 id = cpeVendorRepository.findByNameNorm(vendorNorm)
@@ -869,9 +872,14 @@ public class CveFeedSyncService {
             try {
                 // vendor は参照だけでOK
                 CpeVendor vendorRef = cpeVendorRepository.getReferenceById(vendorId);
-                CpeProduct created = cpeProductRepository.save(new CpeProduct(vendorRef, productNorm, null));
+
+                CpeProduct created = new CpeProduct(vendorRef, productNorm, null);
+                created.markAsNvdCve();
+                created = cpeProductRepository.save(created);
+
                 id = created.getId();
-                log.debug("CPE product created from CVE feed sync: vendorId={}, nameNorm={}", vendorId, productNorm);
+                log.debug("CPE product created from CVE feed sync: vendorId={}, nameNorm={}, source={}",
+                        vendorId, productNorm, created.getSource());
             } catch (DataIntegrityViolationException dup) {
                 // race/duplicate: 先に別TXが作った
                 id = cpeProductRepository.findByVendorIdAndNameNorm(vendorId, productNorm)

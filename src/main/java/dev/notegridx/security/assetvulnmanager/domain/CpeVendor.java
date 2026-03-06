@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 @Table(
         name = "cpe_vendors",
         uniqueConstraints = @UniqueConstraint(name = "uq_cpe_vendors_name", columnNames = {"name_norm"})
-
 )
 @Getter
 public class CpeVendor {
@@ -30,15 +29,23 @@ public class CpeVendor {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(nullable = false, length = 20)
+    private String source = "CPE_DICT";
+
     protected CpeVendor() {}
 
     public CpeVendor(String nameNorm, String displayName) {
         this.nameNorm = requireNotBlank(nameNorm, "nameNorm");
         this.displayName = normalizeNullable(displayName);
+        this.source = "CPE_DICT";
     }
 
     public void updateDisplayName(String displayName) {
         this.displayName = normalizeNullable(displayName);
+    }
+
+    public void markAsNvdCve() {
+        this.source = "NVD_CVE";
     }
 
     private static String normalizeNullable(String s) {
@@ -63,5 +70,4 @@ public class CpeVendor {
     void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
 }

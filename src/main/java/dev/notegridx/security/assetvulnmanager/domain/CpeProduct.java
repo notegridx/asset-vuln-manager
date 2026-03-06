@@ -32,6 +32,9 @@ public class CpeProduct {
     @Column(name = "display_name", length = 255)
     private String displayName;
 
+    @Column(nullable = false, length = 20)
+    private String source = "CPE_DICT";
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -44,10 +47,15 @@ public class CpeProduct {
         this.vendor = requireNotNull(vendor, "vendor");
         this.nameNorm = requireNotBlank(nameNorm, "nameNorm");
         this.displayName = normalizeNullable(displayName);
+        this.source = "CPE_DICT";
     }
 
     public void updateDisplayName(String displayName) {
         this.displayName = normalizeNullable(displayName);
+    }
+
+    public void markAsNvdCve() {
+        this.source = "NVD_CVE";
     }
 
     private static <T> T requireNotNull(T v, String field) {
