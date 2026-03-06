@@ -145,10 +145,12 @@
 
         <div>
             <div>
-                <a th:href="@{'https://nvd.nist.gov/vuln/detail/' + ${alert.vulnerability.externalId}}"
-                   th:text="${alert.vulnerability.externalId}" target="_blank" rel="noopener noreferrer">
+                <a th:if="${alert.vulnerability != null}"
+                   th:href="@{/vulnerabilities/{id}(id=${alert.vulnerability.id})}"
+                   th:text="${alert.vulnerability.externalId}">
                     CVE-2025-xxxx
                 </a>
+                <span th:if="${alert.vulnerability == null}">-</span>
             </div>
 
             <div class="muted" style="margin-top:8px;"
