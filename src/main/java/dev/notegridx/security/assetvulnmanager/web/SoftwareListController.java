@@ -1,8 +1,12 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
+import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
 import lombok.extern.slf4j.Slf4j;
@@ -26,17 +30,23 @@ public class SoftwareListController {
     private final AssetRepository assetRepository;
     private final AlertRepository alertRepository;
     private final CanonicalCpeLinkingService canonicalCpeLinkingService;
+    private final CpeVendorRepository cpeVendorRepository;
+    private final CpeProductRepository cpeProductRepository;
 
     public SoftwareListController(
             SoftwareInstallRepository softwareInstallRepository,
             AssetRepository assetRepository,
             AlertRepository alertRepository,
-            CanonicalCpeLinkingService canonicalCpeLinkingService
+            CanonicalCpeLinkingService canonicalCpeLinkingService,
+            CpeVendorRepository cpeVendorRepository,
+            CpeProductRepository cpeProductRepository
     ) {
         this.softwareInstallRepository = softwareInstallRepository;
         this.assetRepository = assetRepository;
         this.alertRepository = alertRepository;
         this.canonicalCpeLinkingService = canonicalCpeLinkingService;
+        this.cpeVendorRepository = cpeVendorRepository;
+        this.cpeProductRepository = cpeProductRepository;
     }
 
     @GetMapping("/software")
@@ -91,14 +101,41 @@ public class SoftwareListController {
         model.addAttribute("linkAnalysisMap", cpeAnalysisMap);
 
         // --- page summary stats (based on analyze()) ---
-        // stats() は analyze() を呼ぶので、例外が気になるなら try/catch して null でもOK
         CanonicalCpeLinkingService.MappingStats pageLinkStats = null;
         try {
-            pageLinkStats = canonicalCpeLinkingService.stats(rows); // checked/linked/resolvable/needsNorm...
+            pageLinkStats = canonicalCpeLinkingService.stats(rows);
         } catch (Exception e) {
             log.warn("Canonical stats failed: msg={}", e.getMessage());
         }
         model.addAttribute("pageLinkStats", pageLinkStats);
+
+        // --- canonical vendor/product label maps ---
+        List<Long> vendorIds = rows.stream()
+                .map(SoftwareInstall::getCpeVendorId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+
+        List<Long> productIds = rows.stream()
+                .map(SoftwareInstall::getCpeProductId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+
+        Map<Long, String> vendorNameMap = new HashMap<>();
+        for (CpeVendor v : cpeVendorRepository.findAllById(vendorIds)) {
+            String label = firstNonBlank(v.getDisplayName(), v.getNameNorm(), "#" + v.getId());
+            vendorNameMap.put(v.getId(), label);
+        }
+
+        Map<Long, String> productNameMap = new HashMap<>();
+        for (CpeProduct p : cpeProductRepository.findAllById(productIds)) {
+            String label = firstNonBlank(p.getDisplayName(), p.getNameNorm(), "#" + p.getId());
+            productNameMap.put(p.getId(), label);
+        }
+
+        model.addAttribute("vendorNameMap", vendorNameMap);
+        model.addAttribute("productNameMap", productNameMap);
 
         model.addAttribute("page", result);
 
@@ -127,5 +164,11 @@ public class SoftwareListController {
         if (v < min) return min;
         if (v > max) return max;
         return v;
+    }
+
+    private static String firstNonBlank(String a, String b, String fallback) {
+        if (a != null && !a.isBlank()) return a;
+        if (b != null && !b.isBlank()) return b;
+        return fallback;
     }
 }

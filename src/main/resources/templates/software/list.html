@@ -32,7 +32,6 @@
         </select>
       </div>
 
-      <!-- keep: existing filter (cpeName presence), but label more explicitly -->
       <div class="field" style="min-width:220px; margin:0;">
         <label>CPE name (legacy)</label>
         <select name="unmappedCpe">
@@ -49,7 +48,6 @@
       <input type="hidden" name="size" th:value="${page.size}"/>
     </form>
 
-    <!-- New: show link/resolve summary for the current page (based on CanonicalCpeLinkingService.stats(rows)) -->
     <p class="muted" style="margin:10px 0 0;">
       Total installs: <b th:text="${totalInstalls}">0</b>
       <span style="opacity:.7;">/</span>
@@ -59,7 +57,6 @@
       (valid <b th:text="${pageLinkStats != null ? pageLinkStats.linkedValid : 0}">0</b>,
       stale <b th:text="${pageLinkStats != null ? pageLinkStats.linkedStale : 0}">0</b>),
 
-      <!-- "resolvable" は dictionary fullyResolvable を指す -->
       resolvable <b th:text="${pageLinkStats != null ? pageLinkStats.fullyResolvable : 0}">0</b>,
       unresolvable <b th:text="${pageLinkStats != null ? pageLinkStats.unresolvable : 0}">0</b>,
       needsNorm <b th:text="${pageLinkStats != null ? pageLinkStats.needsNormalization : 0}">0</b>
@@ -73,12 +70,12 @@
         <thead>
         <tr>
           <th style="width:72px;">ID</th>
-          <th>Vendor</th>
+          <th style="width:100px;">Vendor</th>
           <th>Product</th>
           <th>Version</th>
-          <th style="width:260px;">Link status</th>
+          <th style="width:180px;">Link status</th>
           <th>Asset</th>
-          <th style="width: 160px;">Actions</th>
+          <th style="width:160px;">Actions</th>
         </tr>
         </thead>
 
@@ -88,12 +85,33 @@
 
           <td th:text="${s.id}">1</td>
 
-          <td th:text="${s.vendor}">vendor</td>
+          <!-- Vendor -->
+          <td class="cell-break">
+            <span th:if="${s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null}"
+                  th:text="${vendorNameMap[s.cpeVendorId]}"
+                  th:title="${s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)) ? s.vendorRaw : s.vendor}">
+              Canonical Vendor
+            </span>
 
+            <span th:unless="${s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null}"
+                  th:text="${(s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw))) ? s.vendorRaw : (s.vendor != null and !#strings.isEmpty(#strings.trim(s.vendor)) ? s.vendor : '-')}"
+                  th:title="${s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)) ? s.vendorRaw : s.vendor}">
+              Raw Vendor
+            </span>
+          </td>
+
+          <!-- Product -->
           <td class="cell-break">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <a th:href="@{/software/{id}(id=${s.id})}">
-                <b th:text="${s.product}">product</b>
+              <a th:href="@{/software/{id}(id=${s.id})}"
+                 th:title="${s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)) ? s.productRaw : s.product}">
+                <b th:text="${(s.cpeProductId != null and productNameMap != null and productNameMap[s.cpeProductId] != null)
+                              ? productNameMap[s.cpeProductId]
+                              : ((s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)))
+                                  ? s.productRaw
+                                  : (s.product != null and !#strings.isEmpty(#strings.trim(s.product)) ? s.product : '-'))}">
+                  product
+                </b>
               </a>
 
               <a th:if="${alertCountMap[s.id] != null and alertCountMap[s.id] > 0}"
@@ -106,41 +124,34 @@
 
           <td th:text="${s.version}">version</td>
 
-          <!-- Link status (CanonicalCpeLinkingService.ItemResult) -->
+          <!-- Link status -->
           <td class="cell-break">
             <div style="display:flex; flex-direction:column; gap:6px;">
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 
-                <!-- LINKED -->
                 <span th:if="${a != null and a.result != null and a.result.name() == 'LINKED'}"
                       class="badge">LINKED</span>
 
-                <!-- STALE -->
                 <span th:if="${a != null and a.result != null and a.result.name() == 'STALE'}"
                       class="badge badge--warn"
                       th:title="${a.reason}">STALE</span>
 
-                <!-- RESOLVED (resolvable but not linked) -->
                 <span th:if="${a != null and a.result != null and a.result.name() == 'RESOLVED'}"
                       class="badge"
                       th:title="${a.reason}">RESOLVABLE</span>
 
-                <!-- UNRESOLVED -->
                 <span th:if="${a != null and a.result != null and a.result.name() == 'UNRESOLVED'}"
                       class="badge badge--danger"
                       th:title="${a.reason}">UNRESOLVABLE</span>
 
-                <!-- needs normalization -->
                 <span th:if="${a != null and a.needsNormalization}"
                       class="badge badge--warn"
                       title="normalizedVendor / normalizedProduct missing or blank">NEEDS NORM</span>
 
-                <!-- Fallback if analysis missing -->
                 <span th:if="${a == null}" class="badge badge--warn"
                       title="analysis not provided by controller">UNKNOWN</span>
               </div>
 
-              <!-- Optional: show canonical IDs when available (from resolve result) -->
               <div class="muted mono" style="font-size:12px;"
                    th:if="${a != null and a.resolve != null and a.resolve.hit}">
                 dict:
@@ -153,7 +164,6 @@
                 <span th:text="${a.resolve.productNorm}">product_norm</span>
               </div>
 
-              <!-- Keep showing cpeName if present (legacy) -->
               <div class="mono" style="font-size:12px;"
                    th:if="${s.cpeName != null and #strings.trim(s.cpeName) != ''}"
                    th:text="${s.cpeName}">cpe:2.3:...</div>
