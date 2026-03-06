@@ -3,148 +3,157 @@
 
 <head th:replace="~{layout/base :: head('Review Product Mapping')}"></head>
 
-<body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
-<main>
 
-    <style>
-        /* ===== admin/canonical: visual cleanup only ===== */
+<style>
+    /* ===== admin/canonical: visual cleanup only ===== */
 
-        .canon-card {
-            padding: 12px;
-            margin: 12px 0;
-        }
+    .canon-card {
+        padding: 12px;
+        margin: 12px 0;
+    }
 
-        .canon-card--flash {
-            padding: 10px;
-            margin: 12px 0;
-            border: 1px solid var(--line);
-        }
+    .canon-card--flash {
+        padding: 10px;
+        margin: 12px 0;
+        border: 1px solid var(--line);
+    }
 
-        .canon-page-header {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
+    .canon-page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
 
-        .canon-header-right {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+    .canon-header-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
 
-        .canon-actions-between {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
+    .canon-actions-between {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
 
-        .canon-inline-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+    .canon-inline-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
 
-        .canon-inline-actions--tight {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+    .canon-inline-actions--tight {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
 
-        .canon-help {
-            font-size: 12px;
-        }
+    .canon-help {
+        font-size: 12px;
+    }
 
-        .canon-help.mt-6 {
-            margin-top: 6px;
-        }
+    .canon-help.mt-6 {
+        margin-top: 6px;
+    }
 
-        .canon-section-top {
-            margin-top: 12px;
-        }
+    .canon-section-top {
+        margin-top: 12px;
+    }
 
-        .canon-table-top {
-            margin-top: 12px;
-        }
+    .canon-table-top {
+        margin-top: 12px;
+    }
 
-        .canon-table-no-top {
-            margin-top: 0;
-        }
+    .canon-table-no-top {
+        margin-top: 0;
+    }
 
+    .canon-filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        align-items: end;
+    }
+
+    .canon-limit {
+        width: 90px;
+    }
+
+    .canon-asset-cell,
+    .canon-raw-cell,
+    .canon-normalized-cell {
+        overflow-wrap: anywhere;
+    }
+
+    /* Result cell itself must stay as a normal table cell */
+    td.canon-result {
+        display: table-cell;
+        white-space: normal;
+        vertical-align: top;
+    }
+
+    /* only inner wrappers should be flex */
+    td.canon-result .canon-result-main,
+    td.canon-result .canon-result-sub {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    td.canon-result .canon-result-sub {
+        margin-top: 6px;
+    }
+
+    .canon-result-main,
+    .canon-result-sub {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .canon-result-sub {
+        margin-top: 6px;
+    }
+
+    .canon-action-col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .canon-btn-sm {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 10px;
+    }
+
+    @media (max-width: 980px) {
         .canon-filter-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 12px;
-            align-items: end;
+            grid-template-columns: 1fr;
         }
+    }
 
-        .canon-limit {
-            width: 90px;
-        }
+    .badge--disabled {
+        background: #6b1f1f;
+        color: #fff;
+        border: 1px solid #c34a4a;
+        font-weight: 600;
+    }
+</style>
 
-        .canon-asset-cell,
-        .canon-raw-cell,
-        .canon-normalized-cell {
-            overflow-wrap: anywhere;
-        }
+<body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
 
-        /* Result cell itself must stay as a normal table cell */
-        td.canon-result {
-            display: table-cell;
-            white-space: normal;
-            vertical-align: top;
-        }
-
-        /* only inner wrappers should be flex */
-        td.canon-result .canon-result-main,
-        td.canon-result .canon-result-sub {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        td.canon-result .canon-result-sub {
-            margin-top: 6px;
-        }
-
-        .canon-result-main,
-        .canon-result-sub {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .canon-result-sub {
-            margin-top: 6px;
-        }
-
-        .canon-action-col {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: flex-start;
-        }
-
-        .canon-btn-sm {
-            padding: 6px 10px;
-            font-size: 12px;
-            border-radius: 10px;
-        }
-
-        @media (max-width: 980px) {
-            .canon-filter-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+<main>
 
     <!-- Page Header (unified) -->
     <div class="page-header canon-page-header">
@@ -180,7 +189,7 @@
 
             <form method="post" th:action="@{/admin/canonical/link}" style="margin:0;">
                 <input type="hidden" name="redirect"
-                       th:value="@{'/admin/canonical?filter=' + ${filter} + '&q=' + ${q} + '&limit=' + ${limit}}">
+                       th:value="@{'/admin/canonical' + ${currentQuery}}">
                 <div class="actions canon-inline-actions" style="margin:0;">
                     <label class="muted canon-help"
                            style="display:flex; align-items:center; gap:8px; user-select:none;">
@@ -216,17 +225,24 @@
                         <option value="all" th:selected="${filter == 'all'}">all</option>
 
                         <option value="fullyLinked" th:selected="${filter == 'fullyLinked'}">fullyLinked</option>
-                        <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">vendorOnlyLinked</option>
+                        <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">
+                            vendorOnlyLinked
+                        </option>
                         <option value="notLinked" th:selected="${filter == 'notLinked'}">notLinked</option>
 
                         <option value="linkedValid" th:selected="${filter == 'linkedValid'}">linkedValid</option>
                         <option value="linkedStale" th:selected="${filter == 'linkedStale'}">linkedStale</option>
 
-                        <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">fullyResolvable</option>
-                        <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">vendorResolvableOnly</option>
+                        <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">fullyResolvable
+                        </option>
+                        <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">
+                            vendorResolvableOnly
+                        </option>
                         <option value="unresolvable" th:selected="${filter == 'unresolvable'}">unresolvable</option>
 
-                        <option value="needsNormalization" th:selected="${filter == 'needsNormalization'}">needsNormalization</option>
+                        <option value="needsNormalization" th:selected="${filter == 'needsNormalization'}">
+                            needsNormalization
+                        </option>
                     </select>
                 </div>
 
@@ -279,7 +295,9 @@
                     <tr>
                         <td>total</td>
                         <td th:text="${stats.total}">0</td>
-                        <td class="muted">Rows currently loaded (after asset/keyword filter, before “filter” selection).</td>
+                        <td class="muted">Rows currently loaded (after asset/keyword filter, before “filter”
+                            selection).
+                        </td>
                     </tr>
 
                     <tr>
@@ -290,12 +308,14 @@
                     <tr>
                         <td>vendorOnlyLinkedSql</td>
                         <td th:text="${stats.vendorOnlyLinkedSql}">0</td>
-                        <td class="muted"><code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.</td>
+                        <td class="muted"><code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.
+                        </td>
                     </tr>
                     <tr>
                         <td>notLinkedSql</td>
                         <td th:text="${stats.notLinkedSql}">0</td>
-                        <td class="muted">Neither <code>cpe_vendor_id</code> nor <code>cpe_product_id</code> is set.</td>
+                        <td class="muted">Neither <code>cpe_vendor_id</code> nor <code>cpe_product_id</code> is set.
+                        </td>
                     </tr>
 
                     <tr>
@@ -322,7 +342,9 @@
                     <tr>
                         <td>unresolvable</td>
                         <td th:text="${stats.unresolvable}">0</td>
-                        <td class="muted"><b>(not linked only)</b> Neither vendor nor product can be resolved from normalized strings.</td>
+                        <td class="muted"><b>(not linked only)</b> Neither vendor nor product can be resolved from
+                            normalized strings.
+                        </td>
                     </tr>
 
                     <tr>
@@ -356,13 +378,12 @@
                     <th style="width: 200px;">Normalized</th>
                     <th style="width: 200px;">Result</th>
                     <th style="width: 150px;">Action</th>
-                    <th style="width: 260px;">Reason</th>
                 </tr>
                 </thead>
                 <tbody>
 
                 <tr th:if="${#lists.isEmpty(rows)}">
-                    <td colspan="7" class="muted">No entries</td>
+                    <td colspan="6" class="muted">No entries</td>
                 </tr>
 
                 <tr th:each="r : ${rows}">
@@ -374,14 +395,24 @@
                     </td>
 
                     <!-- Raw -->
-                    <td class="canon-raw-cell">
+                    <td class="muted" style="font-size:12px; overflow-wrap:anywhere;">
                         <div class="truncate-1"
-                             th:attr="title=${(r.vendor != null ? r.vendor : '-') + ' / ' + (r.product != null ? r.product : '-')}">
-                            <span th:text="${r.vendor}">vendor</span> / <b th:text="${r.product}">product</b>
+                             th:attr="title=${r.vendor != null ? r.vendor : '-'}"
+                             th:text="${'v: ' + (r.vendor != null ? r.vendor : '-')}">
+                            v: vendor
                         </div>
-                        <div class="muted truncate-1 canon-help"
+
+                        <div class="truncate-1"
+                             th:attr="title=${r.product != null ? r.product : '-'}"
+                             th:text="${'p: ' + (r.product != null ? r.product : '-')}">
+                            p: product
+                        </div>
+
+                        <div class="truncate-1"
                              th:attr="title=${r.version != null ? r.version : '-'}"
-                             th:text="${r.version}">1.0</div>
+                             th:text="${r.version != null ? r.version : '-'}">
+                            1.0
+                        </div>
                     </td>
 
                     <!-- Normalized -->
@@ -397,19 +428,11 @@
                     <!-- Result -->
                     <td class="canon-result" th:with="res=${r.analysis.resolve}">
                         <div class="canon-result-main">
-                            <span class="badge"
-                                  th:classappend="${
-                                    r.analysis.result().name() == 'LINKED' ? ' badge--status-open' :
-                                    (r.analysis.result().name() == 'RESOLVED' ? ' badge--status-open' :
-                                    (r.analysis.result().name() == 'STALE' ? ' badge--warn' : ' badge--unmapped'))
-                                  }"
-                                  th:text="${r.analysis.result().name()}">UNRESOLVED</span>
-
-                            <span th:if="${r.canonicalLinkDisabled}"
-                                  class="badge badge--warn"
-                                  title="Run Linking will not create auto product link for this software row">
-                                LINK DISABLED
-                            </span>
+<span th:if="${r.canonicalLinkDisabled}"
+      class="badge badge--disabled"
+      title="Run Linking will not create auto product link for this software row">
+    LINK DISABLED
+</span>
                         </div>
 
                         <div class="canon-result-sub">
@@ -465,15 +488,6 @@
                         </div>
                     </td>
 
-                    <!-- Reason -->
-                    <td class="muted canon-reason">
-                        <div class="line-clamp-2"
-                             th:text="${r.analysis.reason != null ? r.analysis.reason : '-'}"
-                             th:attr="title=${r.analysis.reason != null ? r.analysis.reason : ''}">
-                            reason
-                        </div>
-                    </td>
-
                     <!-- Action -->
                     <td>
                         <div class="canon-action-col">
@@ -486,7 +500,7 @@
                                 <input type="hidden" name="softwareId" th:value="${r.softwareId}">
                                 <input type="hidden" name="disabled" th:value="${!r.canonicalLinkDisabled}">
                                 <input type="hidden" name="redirect"
-                                       th:value="@{'/admin/canonical?filter=' + ${filter} + '&q=' + ${q} + '&limit=' + ${limit}}">
+                                       th:value="@{'/admin/canonical' + ${currentQuery}}">
                                 <button class="btn canon-btn-sm"
                                         type="submit"
                                         th:classappend="${r.canonicalLinkDisabled} ? ' btn-primary' : ' btn-ghost'"

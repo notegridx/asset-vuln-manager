@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 
@@ -110,6 +112,9 @@ public class AdminCanonicalController {
         model.addAttribute("filter", filter.name());
         model.addAttribute("q", q);
         model.addAttribute("limit", safeLimit);
+
+        String currentQuery = buildCurrentQuery(assetId, filter.name(), q, safeLimit);
+        model.addAttribute("currentQuery", currentQuery);
 
         return "admin/canonical";
     }
@@ -244,5 +249,34 @@ public class AdminCanonicalController {
         if (v < min) return min;
         if (v > max) return max;
         return v;
+    }
+
+    private static String buildCurrentQuery(Long assetId, String filter, String q, Integer limit) {
+        StringBuilder sb = new StringBuilder();
+
+        appendQueryParam(sb, "asset", assetId);
+        appendQueryParam(sb, "filter", safeParam(filter));
+        appendQueryParam(sb, "q", safeParam(q));
+        appendQueryParam(sb, "limit", limit);
+
+        return sb.isEmpty() ? "" : "?" + sb;
+    }
+
+    private static void appendQueryParam(StringBuilder sb, String key, Object value) {
+        if (value == null) return;
+
+        String s = String.valueOf(value).trim();
+        if (s.isEmpty()) return;
+
+        if (!sb.isEmpty()) sb.append("&");
+        sb.append(URLEncoder.encode(key, StandardCharsets.UTF_8));
+        sb.append("=");
+        sb.append(URLEncoder.encode(s, StandardCharsets.UTF_8));
+    }
+
+    private static String safeParam(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
     }
 }
