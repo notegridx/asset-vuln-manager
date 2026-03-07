@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:assetvulnmanager-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:mem:assetvulndb-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driverClassName: org.h2.Driver
     username: sa
     password:
@@ -10,26 +10,61 @@ spring:
       mode: always
 
   jpa:
-    open-in-view: false
     hibernate:
       ddl-auto: none
     properties:
       hibernate:
         format_sql: true
 
-  thymeleaf:
-    cache: false
-
   h2:
     console:
       enabled: false
 
-app:
-  software:
-    dict-mode: LENIENT
+  thymeleaf:
+    cache: false
+
+  http:
+    codecs:
+      max-in-memory-size: 2MB
 
 logging:
   level:
-    root: warn
-    org.hibernate.SQL: warn
-    dev.notegridx.security.assetvulnmanager: warn
+    org.hibernate.SQL: info
+    dev.notegridx.security.assetvulnmanager: info
+    dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService: DEBUG
+    dev.notegridx.security.assetvulnmanager.service.TokenMatchingService: DEBUG
+
+app:
+  software:
+    dict-mode: STRICT
+
+  import:
+    session-ttl-minutes: 30
+    session-dir:
+
+  nvd:
+    base-url: https://services.nvd.nist.gov
+    api-key: ${NVD_API_KEY:}
+
+    cpe:
+      base-url: https://nvd.nist.gov
+      meta-path: /feeds/json/cpe/2.0/nvdcpe-2.0.meta
+      gz-path: /feeds/json/cpe/2.0/nvdcpe-2.0.tar.gz
+
+    cve:
+      base-url: https://nvd.nist.gov
+
+      modified:
+        meta-path: /feeds/json/cve/2.0/nvdcve-2.0-modified.meta
+        gz-path: /feeds/json/cve/2.0/nvdcve-2.0-modified.json.gz
+
+      recent:
+        meta-path: /feeds/json/cve/2.0/nvdcve-2.0-recent.meta
+        gz-path: /feeds/json/cve/2.0/nvdcve-2.0-recent.json.gz
+
+      year:
+        meta-path-pattern: /feeds/json/cve/2.0/nvdcve-2.0-{year}.meta
+        gz-path-pattern: /feeds/json/cve/2.0/nvdcve-2.0-{year}.json.gz
+
+    software:
+      dict-mode: STRICT
