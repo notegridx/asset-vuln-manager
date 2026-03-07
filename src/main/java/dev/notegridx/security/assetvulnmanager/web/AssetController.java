@@ -201,6 +201,6 @@ public class AssetController {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public String notFound(EntityNotFoundException ex, Model model) {
         model.addAttribute("message", ex.getMessage());
-        return "errors/404";
+        return "error/404";
     }
 }

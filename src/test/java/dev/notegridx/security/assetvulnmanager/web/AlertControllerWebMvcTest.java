@@ -1,5 +1,8 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.domain.Alert;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
+import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import dev.notegridx.security.assetvulnmanager.service.AlertService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
@@ -14,7 +17,8 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.mockito.Mockito.mock;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = AlertController.class)
@@ -26,6 +30,10 @@ class AlertControllerWebMvcTest {
 
     @MockitoBean
     private AlertService alertService;
+
+    // =========================
+    // LIST
+    // =========================
 
     @Test
     @DisplayName("GET /alerts returns flat list by default")
@@ -81,6 +89,24 @@ class AlertControllerWebMvcTest {
                 .andExpect(model().attributeExists("rows"));
     }
 
+    // =========================
+    // DETAIL
+    // =========================
+
+    @Test
+    @DisplayName("GET /alerts/{id} returns detail page")
+    void detail_ok() throws Exception {
+        Alert alert = mock(Alert.class);
+        when(alertService.getRequired(1L)).thenReturn(alert);
+
+        mockMvc.perform(get("/alerts/1"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("alerts/detail"))
+                .andExpect(model().attributeExists("alert"))
+                .andExpect(model().attributeExists("closeForm"))
+                .andExpect(model().attributeExists("closeReasons"));
+    }
+
     @Test
     @DisplayName("GET /alerts/{id} returns 404 when alert does not exist")
     void detail_notFound_returns404() throws Exception {
@@ -90,4 +116,82 @@ class AlertControllerWebMvcTest {
         mockMvc.perform(get("/alerts/999"))
                 .andExpect(status().isNotFound());
     }
+
+    // =========================
+    // CERTAINTY FILTER
+    // =========================
+
+    @Test
+    @DisplayName("GET /alerts?certainty=CONFIRMED")
+    void list_certaintyConfirmed() throws Exception {
+
+        when(alertService.list(anyString(), nullable(Long.class), nullable(Long.class)))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/alerts")
+                        .param("certainty", "CONFIRMED"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("certainty", "CONFIRMED"));
+    }
+
+    @Test
+    @DisplayName("GET /alerts?certainty=UNCONFIRMED")
+    void list_certaintyUnconfirmed() throws Exception {
+
+        when(alertService.list(anyString(), nullable(Long.class), nullable(Long.class)))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/alerts")
+                        .param("certainty", "UNCONFIRMED"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("certainty", "UNCONFIRMED"));
+    }
+
+    @Test
+    @DisplayName("invalid certainty becomes ALL")
+    void list_invalidCertainty_becomesAll() throws Exception {
+
+        when(alertService.list(anyString(), nullable(Long.class), nullable(Long.class)))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/alerts")
+                        .param("certainty", "INVALID"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("certainty", "ALL"));
+    }
+
+    // =========================
+    // CLOSE
+    // =========================
+
+    @Test
+    @DisplayName("POST /alerts/{id}/close closes alert")
+    void close_ok() throws Exception {
+        Alert alert = mock(Alert.class);
+        when(alert.getStatus()).thenReturn(AlertStatus.OPEN);
+
+        when(alertService.getRequired(1L)).thenReturn(alert);
+        when(alertService.close(eq(1L), eq(CloseReason.FALSE_POSITIVE)))
+                .thenReturn(alert);
+
+        mockMvc.perform(post("/alerts/1/close")
+                        .param("closeReason", "FALSE_POSITIVE"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/alerts/1"));
+    }
+
+    @Test
+    @DisplayName("POST /alerts/{id}/close validation error")
+    void close_validationError() throws Exception {
+        Alert alert = mock(Alert.class);
+        when(alertService.getRequired(1L)).thenReturn(alert);
+
+        mockMvc.perform(post("/alerts/1/close"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("alerts/detail"))
+                .andExpect(model().hasErrors())
+                .andExpect(model().attributeExists("alert"))
+                .andExpect(model().attributeExists("closeReasons"));
+    }
+
 }

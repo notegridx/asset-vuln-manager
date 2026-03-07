@@ -206,4 +206,171 @@ class MatchingServiceIntegrationTest {
         assertThat(alert.getUncertainReason()).isEqualTo(AlertUncertainReason.NO_VERSION_CONSTRAINT);
         assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
     }
+
+    @Test
+    @DisplayName("matchAndUpsertAlerts does not create alert when canonical IDs match but version is out of range")
+    void matchAndUpsertAlerts_doesNotCreateAlert_whenVersionIsOutOfRange() {
+        CpeVendor vendor = cpeVendorRepository.save(new CpeVendor("microsoft", "Microsoft"));
+        CpeProduct product = cpeProductRepository.save(new CpeProduct(vendor, "edge", "Microsoft Edge"));
+
+        Asset asset = assetRepository.save(new Asset("Host-04"));
+
+        SoftwareInstall sw = new SoftwareInstall(asset, "Microsoft Edge");
+        sw.updateDetails("Microsoft", "Microsoft Edge", "140.0.0", null);
+        sw.linkCanonical(vendor.getId(), product.getId());
+        sw = softwareInstallRepository.save(sw);
+
+        Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0004");
+        vuln.applyNvdDetails(
+                "Test vulnerability 4",
+                "Test description 4",
+                "3.1",
+                new BigDecimal("8.1"),
+                null,
+                null
+        );
+        vuln = vulnerabilityRepository.save(vuln);
+
+        affectedCpeRepository.save(new VulnerabilityAffectedCpe(
+                vuln,
+                "cpe:2.3:a:microsoft:edge:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                product.getId(),
+                "microsoft",
+                "edge",
+                "100.0.0",
+                "",
+                "130.0.0",
+                ""
+        ));
+
+        Object result = matchingService.matchAndUpsertAlerts();
+        assertThat(result).isNotNull();
+
+        Alert alert = alertRepository
+                .findBySoftwareInstallIdAndVulnerabilityId(sw.getId(), vuln.getId())
+                .orElse(null);
+
+        assertThat(alert).isNull();
+        assertThat(alertRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("matchAndUpsertAlerts is idempotent for the same software and vulnerability")
+    void matchAndUpsertAlerts_isIdempotent_forSameMatch() {
+        CpeVendor vendor = cpeVendorRepository.save(new CpeVendor("google", "Google"));
+        CpeProduct product = cpeProductRepository.save(new CpeProduct(vendor, "chrome", "Google Chrome"));
+
+        Asset asset = assetRepository.save(new Asset("Host-05"));
+
+        SoftwareInstall sw = new SoftwareInstall(asset, "Google Chrome");
+        sw.updateDetails("Google", "Google Chrome", "122.0.0", null);
+        sw.linkCanonical(vendor.getId(), product.getId());
+        sw = softwareInstallRepository.save(sw);
+
+        Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0005");
+        vuln.applyNvdDetails(
+                "Test vulnerability 5",
+                "Test description 5",
+                "3.1",
+                new BigDecimal("6.5"),
+                null,
+                null
+        );
+        vuln = vulnerabilityRepository.save(vuln);
+
+        affectedCpeRepository.save(new VulnerabilityAffectedCpe(
+                vuln,
+                "cpe:2.3:a:google:chrome:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                product.getId(),
+                "google",
+                "chrome",
+                "120.0.0",
+                "",
+                "130.0.0",
+                ""
+        ));
+
+        Object result1 = matchingService.matchAndUpsertAlerts();
+        Object result2 = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result1).isNotNull();
+        assertThat(result2).isNotNull();
+
+        Alert alert = alertRepository
+                .findBySoftwareInstallIdAndVulnerabilityId(sw.getId(), vuln.getId())
+                .orElse(null);
+
+        assertThat(alert).isNotNull();
+        assertThat(alertRepository.findAll()).hasSize(1);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+    }
+
+    @Test
+    @DisplayName("matchAndUpsertAlerts chooses best verdict when multiple affected CPE rows exist")
+    void matchAndUpsertAlerts_choosesBestVerdict_whenMultipleAffectedCpesExist() {
+        CpeVendor vendor = cpeVendorRepository.save(new CpeVendor("microsoft", "Microsoft"));
+        CpeProduct product = cpeProductRepository.save(new CpeProduct(vendor, "edge", "Microsoft Edge"));
+
+        Asset asset = assetRepository.save(new Asset("Host-06"));
+
+        SoftwareInstall sw = new SoftwareInstall(asset, "Microsoft Edge");
+        sw.updateDetails("Microsoft", "Microsoft Edge", "120.0.0", null);
+        sw.linkCanonical(vendor.getId(), product.getId());
+        sw = softwareInstallRepository.save(sw);
+
+        Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0006");
+        vuln.applyNvdDetails(
+                "Test vulnerability 6",
+                "Test description 6",
+                "3.1",
+                new BigDecimal("9.0"),
+                null,
+                null
+        );
+        vuln = vulnerabilityRepository.save(vuln);
+
+        // weaker candidate: no version constraint -> UNCONFIRMED
+        affectedCpeRepository.save(new VulnerabilityAffectedCpe(
+                vuln,
+                "cpe:2.3:a:microsoft:edge:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                product.getId(),
+                "microsoft",
+                "edge",
+                "",
+                "",
+                "",
+                ""
+        ));
+
+        // better candidate: in-range -> CONFIRMED
+        affectedCpeRepository.save(new VulnerabilityAffectedCpe(
+                vuln,
+                "cpe:2.3:a:microsoft:edge:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                product.getId(),
+                "microsoft",
+                "edge",
+                "100.0.0",
+                "",
+                "130.0.0",
+                ""
+        ));
+
+        Object result = matchingService.matchAndUpsertAlerts();
+        assertThat(result).isNotNull();
+
+        Alert alert = alertRepository
+                .findBySoftwareInstallIdAndVulnerabilityId(sw.getId(), vuln.getId())
+                .orElse(null);
+
+        assertThat(alert).isNotNull();
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getUncertainReason()).isNull();
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
 }
