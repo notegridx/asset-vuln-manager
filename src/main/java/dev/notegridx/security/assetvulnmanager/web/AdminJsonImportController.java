@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingAsset;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingSoftware;
+import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareImportMode;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportStagingAssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportStagingSoftwareRepository;
@@ -42,7 +43,6 @@ public class AdminJsonImportController {
         return "admin/json_import";
     }
 
-    // ===== Assets =====
     @PostMapping("/admin/import/json/assets/upload")
     public String uploadAssets(@RequestParam("file") MultipartFile file) throws IOException {
         byte[] bytes = file.getBytes();
@@ -68,7 +68,6 @@ public class AdminJsonImportController {
         return "redirect:/admin/import/json/result/" + runId;
     }
 
-    // ===== Software =====
     @PostMapping("/admin/import/json/software/upload")
     public String uploadSoftware(@RequestParam("file") MultipartFile file) throws IOException {
         byte[] bytes = file.getBytes();
@@ -85,16 +84,19 @@ public class AdminJsonImportController {
 
         model.addAttribute("run", run);
         model.addAttribute("rows", rows);
+        model.addAttribute("defaultMode", SoftwareImportMode.REPLACE_ASSET_SOFTWARE.name());
         return "admin/json_import_software_preview";
     }
 
     @PostMapping("/admin/import/json/software/{runId}/import")
-    public String importSoftware(@PathVariable("runId") Long runId) {
-        jsonStagedImportService.importSoftware(runId);
+    public String importSoftware(
+            @PathVariable("runId") Long runId,
+            @RequestParam(name = "mode", defaultValue = "REPLACE_ASSET_SOFTWARE") String mode
+    ) {
+        jsonStagedImportService.importSoftware(runId, parseMode(mode));
         return "redirect:/admin/import/json/result/" + runId;
     }
 
-    // ===== Result =====
     @GetMapping("/admin/import/json/result/{runId}")
     public String result(@PathVariable("runId") Long runId, Model model) {
         ImportRun run = importRunRepository.findById(runId)
@@ -102,5 +104,13 @@ public class AdminJsonImportController {
 
         model.addAttribute("run", run);
         return "admin/json_import_result";
+    }
+
+    private SoftwareImportMode parseMode(String mode) {
+        try {
+            return SoftwareImportMode.valueOf(mode == null ? "REPLACE_ASSET_SOFTWARE" : mode.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return SoftwareImportMode.REPLACE_ASSET_SOFTWARE;
+        }
     }
 }

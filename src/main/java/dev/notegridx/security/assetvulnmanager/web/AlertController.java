@@ -47,10 +47,8 @@ public class AlertController {
 		String c = normalizeCertainty(certainty);
 		String sev = normalizeSeverity(severity);
 
-		// 取得（ALL/OPEN/CLOSED + drilldown）
 		List<Alert> alerts = alertService.list(effective, assetId, softwareId);
 
-		// Phase 1: DB変更なしでin-memory filter（null certainty は CONFIRMED 扱い）
 		alerts = applyCertaintyFilter(alerts, c);
 		alerts = applySeverityFilter(alerts, sev);
 
@@ -96,18 +94,11 @@ public class AlertController {
 		return "alerts/by_software";
 	}
 
-	// -------------------------
-	// Certainty filter (Phase 1: in-memory)
-	// -------------------------
-
 	private static String normalizeCertainty(String certainty) {
 		String c = (certainty == null) ? "ALL" : certainty.trim().toUpperCase(Locale.ROOT);
 		return ALLOWED_CERTAINTY.contains(c) ? c : "ALL";
 	}
 
-	/**
-	 * certainty=CONFIRMED: DB上 null も CONFIRMED 扱い（既存UIの表示と整合）
-	 */
 	private static List<Alert> applyCertaintyFilter(List<Alert> alerts, String certaintyKey) {
 		if (alerts == null || alerts.isEmpty()) return alerts;
 		if (certaintyKey == null || "ALL".equals(certaintyKey)) return alerts;
@@ -125,13 +116,14 @@ public class AlertController {
 		return alerts;
 	}
 
-	// -------------------------
-	// Aggregation
-	// -------------------------
-
 	private static List<AssetAggRow> buildAssetRows(List<Alert> alerts) {
+		List<Alert> liveAlerts = alerts.stream()
+				.filter(a -> a.getSoftwareInstall() != null)
+				.filter(a -> a.getSoftwareInstall().getAsset() != null)
+				.toList();
+
 		Map<Long, List<Alert>> byAsset = new LinkedHashMap<>();
-		for (Alert a : alerts) {
+		for (Alert a : liveAlerts) {
 			Long assetId = a.getSoftwareInstall().getAsset().getId();
 			byAsset.computeIfAbsent(assetId, k -> new ArrayList<>()).add(a);
 		}
@@ -188,8 +180,13 @@ public class AlertController {
 	}
 
 	private static List<SoftwareAggRow> buildSoftwareRows(List<Alert> alerts) {
+		List<Alert> liveAlerts = alerts.stream()
+				.filter(a -> a.getSoftwareInstall() != null)
+				.filter(a -> a.getSoftwareInstall().getAsset() != null)
+				.toList();
+
 		Map<Long, List<Alert>> bySoftware = new LinkedHashMap<>();
-		for (Alert a : alerts) {
+		for (Alert a : liveAlerts) {
 			Long swId = a.getSoftwareInstall().getId();
 			bySoftware.computeIfAbsent(swId, k -> new ArrayList<>()).add(a);
 		}
@@ -263,6 +260,13 @@ public class AlertController {
 		return (s == null) ? "" : s;
 	}
 
+	private static List<CloseReason> manualCloseReasons() {
+		return Arrays.stream(CloseReason.values())
+				.filter(r -> r != CloseReason.INVENTORY_REPLACED)
+				.filter(r -> r != CloseReason.NO_LONGER_OBSERVED)
+				.toList();
+	}
+
 	public record AssetAggRow(
 			Long assetId,
 			String assetName,
@@ -294,8 +298,6 @@ public class AlertController {
 			LocalDateTime lastSeenAt
 	) {}
 
-	// --- detail/close（既存）---
-
 	@GetMapping("/alerts/{id}")
 	public String detail(@PathVariable Long id, Model model) {
 		Alert alert;
@@ -307,7 +309,7 @@ public class AlertController {
 
 		model.addAttribute("alert", alert);
 		model.addAttribute("closeForm", new AlertCloseForm());
-		model.addAttribute("closeReasons", CloseReason.values());
+		model.addAttribute("closeReasons", manualCloseReasons());
 		return "alerts/detail";
 	}
 
@@ -322,17 +324,13 @@ public class AlertController {
 
 		if (bindingResult.hasErrors()) {
 			model.addAttribute("alert", alert);
-			model.addAttribute("closeReasons", CloseReason.values());
+			model.addAttribute("closeReasons", manualCloseReasons());
 			return "alerts/detail";
 		}
 
 		alertService.close(id, closeForm.getCloseReason());
 		return "redirect:/alerts/" + id;
 	}
-
-	// -------------------------
-	// Severity Normalization
-	// -------------------------
 
 	private static String normalizeSeverity(String severity) {
 		if (severity == null) return null;

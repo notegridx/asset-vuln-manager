@@ -20,6 +20,7 @@ import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingAsset;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingSoftware;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareImportMode;
 import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareType;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
@@ -39,8 +40,8 @@ public class JsonStagedImportService {
     private final AssetRepository assetRepository;
     private final SoftwareInstallRepository softwareInstallRepository;
     private final SoftwareDictionaryValidator softwareDictionaryValidator;
-
     private final CanonicalBackfillService canonicalBackfillService;
+    private final AssetSoftwareReplaceService assetSoftwareReplaceService;
 
     public JsonStagedImportService(
             ObjectMapper objectMapper,
@@ -50,7 +51,8 @@ public class JsonStagedImportService {
             AssetRepository assetRepository,
             SoftwareInstallRepository softwareInstallRepository,
             SoftwareDictionaryValidator softwareDictionaryValidator,
-            CanonicalBackfillService canonicalBackfillService
+            CanonicalBackfillService canonicalBackfillService,
+            AssetSoftwareReplaceService assetSoftwareReplaceService
     ) {
         this.objectMapper = objectMapper;
         this.importRunRepository = importRunRepository;
@@ -60,9 +62,9 @@ public class JsonStagedImportService {
         this.softwareInstallRepository = softwareInstallRepository;
         this.softwareDictionaryValidator = softwareDictionaryValidator;
         this.canonicalBackfillService = canonicalBackfillService;
+        this.assetSoftwareReplaceService = assetSoftwareReplaceService;
     }
 
-    // ===== DTOs (JSON input) =====
     public static class AssetJsonRow {
         public String externalKey;
         public String name;
@@ -129,9 +131,6 @@ public class JsonStagedImportService {
         public String lastSeenAt;
     }
 
-    // =========================
-    // Stage Assets
-    // =========================
     @Transactional
     public ImportRun stageAssets(String originalFilename, byte[] bytes) {
         String sha256 = sha256Hex(bytes);
@@ -139,8 +138,7 @@ public class JsonStagedImportService {
         ImportRun run = ImportRun.newStaged("JSON_UPLOAD", "JSON_ASSETS", originalFilename, sha256);
         run = importRunRepository.save(run);
 
-        List<AssetJsonRow> rows = parseJsonArray(bytes, new TypeReference<List<AssetJsonRow>>() {
-        });
+        List<AssetJsonRow> rows = parseJsonArray(bytes, new TypeReference<List<AssetJsonRow>>() {});
         int total = rows.size();
         int valid = 0;
         int invalid = 0;
@@ -198,9 +196,6 @@ public class JsonStagedImportService {
         return importRunRepository.save(run);
     }
 
-    // =========================
-    // Stage Software
-    // =========================
     @Transactional
     public ImportRun stageSoftware(String originalFilename, byte[] bytes) {
         String sha256 = sha256Hex(bytes);
@@ -208,8 +203,7 @@ public class JsonStagedImportService {
         ImportRun run = ImportRun.newStaged("JSON_UPLOAD", "JSON_SOFTWARE", originalFilename, sha256);
         run = importRunRepository.save(run);
 
-        List<SoftwareJsonRow> rows = parseJsonArray(bytes, new TypeReference<List<SoftwareJsonRow>>() {
-        });
+        List<SoftwareJsonRow> rows = parseJsonArray(bytes, new TypeReference<List<SoftwareJsonRow>>() {});
         int total = rows.size();
         int valid = 0;
         int invalid = 0;
@@ -222,14 +216,10 @@ public class JsonStagedImportService {
             ImportStagingSoftware s = ImportStagingSoftware.of(run.getId(), rowNo);
 
             String externalKey = normNullable(r.externalKey);
-
-            // DISPLAY inputs (current schema fields)
             String vendor = normNullable(r.vendor);
             String product = normNullable(r.product);
             String version = normNullableAllowEmpty(r.version);
 
-            // RAW inputs: prefer explicit vendorRaw/productRaw/versionRaw from JSON.
-            // Fallback to vendor/product/version if raw fields are not present.
             String vendorRaw = normNullable(r.vendorRaw);
             if (vendorRaw == null) vendorRaw = vendor;
 
@@ -270,7 +260,6 @@ public class JsonStagedImportService {
             if (externalKey == null) {
                 s.markInvalid("externalKey is required");
             } else if (product == null && productRaw == null) {
-                // product is required; accept either product (display) or productRaw (raw)
                 s.markInvalid("product is required");
             } else {
                 if (!assetRepository.existsByExternalKey(externalKey)) {
@@ -288,9 +277,6 @@ public class JsonStagedImportService {
         return importRunRepository.save(run);
     }
 
-    // =========================
-    // Import Assets (upsert)
-    // =========================
     @Transactional
     public ImportRun importAssets(Long runId) {
         ImportRun run = importRunRepository.findById(runId)
@@ -351,9 +337,17 @@ public class JsonStagedImportService {
         return importRunRepository.save(run);
     }
 
-    // =========================
-    // Import Software (upsert)
-    // =========================
+    @Transactional
+    public ImportRun importSoftware(Long runId, SoftwareImportMode mode) {
+        SoftwareImportMode effective = (mode == null) ? SoftwareImportMode.REPLACE_ASSET_SOFTWARE : mode;
+
+        if (effective == SoftwareImportMode.REPLACE_ASSET_SOFTWARE) {
+            assetSoftwareReplaceService.prepareReplaceForRun(runId);
+        }
+
+        return importSoftware(runId);
+    }
+
     @Transactional
     public ImportRun importSoftware(Long runId) {
         ImportRun run = importRunRepository.findById(runId)
@@ -373,26 +367,20 @@ public class JsonStagedImportService {
             Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
             if (asset == null) continue;
 
-            // ===== RAW is the source of truth for import-time mapping =====
-            // Stage step guarantees raw fields are filled (fallback to display).
             String vendorRaw = normEmpty(r.getVendorRaw());
             String productRaw = normEmpty(r.getProductRaw());
             String versionRaw = normEmpty(r.getVersionRaw());
 
-            // If somehow raw is empty, fallback to display columns in staging.
             if (vendorRaw.isEmpty()) vendorRaw = normEmpty(r.getVendor());
             if (productRaw.isEmpty()) productRaw = normEmpty(r.getProduct());
             if (versionRaw.isEmpty()) versionRaw = normEmpty(r.getVersion());
 
-            // ===== DISPLAY initial value: same as RAW (per design decision) =====
             String vendorDisplay = vendorRaw;
             String productDisplay = productRaw;
             String versionDisplay = versionRaw;
 
-            // Require at least product (raw or display). By here productRaw should be set.
             if (productDisplay.isEmpty()) continue;
 
-            // upsert: by DISPLAY (which equals RAW on import)
             SoftwareInstall sw = softwareInstallRepository
                     .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendorDisplay, productDisplay, versionDisplay)
                     .orElse(null);
@@ -404,7 +392,6 @@ public class JsonStagedImportService {
                 sw.updateDetails(vendorDisplay, productDisplay, versionDisplay, sw.getCpeName());
             }
 
-            // ★ import_run_id を必ず付与（importRunId方式の要）
             sw.attachImportRun(runId);
 
             String st = normNullable(r.getSourceType());
@@ -416,7 +403,6 @@ public class JsonStagedImportService {
 
             trySetSoftwareType(sw, r.getType());
 
-            // RAW capture: this also sets version_norm (trimmed)
             sw.captureRaw(vendorRaw, productRaw, versionRaw);
 
             sw.setSource(src);
@@ -438,11 +424,9 @@ public class JsonStagedImportService {
                     r.getPurl()
             );
 
-            // resolve at import-time (existing behavior) — use RAW explicitly
             String vIn = normNullable(vendorRaw);
             String pIn = normNullable(productRaw);
 
-            // Windows OS/AppX/GUID系はリンク対象外（誤リンク防止）
             if (looksLikeWindowsComponent(pIn)) {
                 sw.unlinkCanonical();
             } else {
@@ -455,7 +439,6 @@ public class JsonStagedImportService {
             upserted++;
         }
 
-        // ★ DBに確実に入ったIDを runId で取得して targeted backfill
         List<Long> ids = softwareInstallRepository.findIdsByImportRunId(runId);
         var bf = canonicalBackfillService.backfillForSoftwareIds(ids, false);
 
@@ -471,9 +454,6 @@ public class JsonStagedImportService {
         return importRunRepository.save(run);
     }
 
-    // =========================
-    // Helpers
-    // =========================
     private static void trySetSoftwareType(SoftwareInstall sw, String type) {
         String t = normNullable(type);
         if (t == null) return;
@@ -535,7 +515,6 @@ public class JsonStagedImportService {
         }
     }
 
-    // ===== DN / noise helpers (Import-time display cleanup) =====
     private static final java.util.regex.Pattern DN_O =
             java.util.regex.Pattern.compile("(?i)(?:^|,)\\s*O\\s*=\\s*([^,]+)");
     private static final java.util.regex.Pattern DN_CN =
@@ -544,13 +523,11 @@ public class JsonStagedImportService {
     private static final java.util.regex.Pattern GUID =
             java.util.regex.Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
-    // (Kept for future use; currently not used by importSoftware per RAW==DISPLAY decision)
     @SuppressWarnings("unused")
     private static String cleanVendorDisplay(String vendorInput) {
         String t = normNullable(vendorInput);
         if (t == null) return "";
 
-        // DN -> prefer O=, fallback CN=
         if (t.contains("=")) {
             var mo = DN_O.matcher(t);
             if (mo.find()) t = mo.group(1).trim();
@@ -560,7 +537,6 @@ public class JsonStagedImportService {
             }
         }
 
-        // light legal-suffix cleanup (display用なので小さく)
         t = t.replaceAll("(?i)\\band/or its affiliates\\b", " ");
         t = t.replaceAll("(?i)\\b(inc\\.?|llc|ltd\\.?|corp\\.?|corporation|company|co\\.?|gmbh|ag|s\\.a\\.?|technologies|technology|foundation)\\b", " ");
         t = t.replaceAll("\\s+", " ").trim();

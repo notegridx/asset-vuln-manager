@@ -21,9 +21,36 @@
       </div>
     </div>
 
-    <form th:action="@{|/admin/import/csv/software/${run.id}/import|}" method="post">
-      <button class="btn btn-primary" type="submit" th:disabled="${run.validRows == 0}">Import (Upsert)</button>
+    <form th:action="@{|/admin/import/csv/software/${run.id}/import|}"
+          method="post"
+          onsubmit="return confirm('Import valid rows? Replace mode will close related alerts, keep alert history, delete current software rows for target assets, and rebuild current state from this snapshot.');">
+      <label class="muted" style="display:block; font-size:12px; margin-bottom:6px;">Import mode</label>
+      <select name="mode" style="min-width:320px;">
+        <option value="REPLACE_ASSET_SOFTWARE" selected>
+          Replace asset software (recommended for full snapshots)
+        </option>
+        <option value="APPEND">Append rows</option>
+      </select>
+      <div class="muted mt-6" style="max-width:420px; font-size:12px;">
+        Replace is intended for full asset snapshots. If the snapshot is incomplete,
+        software not included in the file will be removed from current state for the target assets.
+      </div>
+      <div class="mt-6">
+        <button class="btn btn-primary" type="submit" th:disabled="${run.validRows == 0}">
+          Import Software
+        </button>
+      </div>
     </form>
+  </div>
+
+  <div class="card p-16" style="margin-top:12px;">
+    <div class="muted" style="font-size:12px; line-height:1.6;">
+      Mode summary:
+      <ul style="margin:6px 0 0 18px;">
+        <li><b>Replace asset software</b>: recommended for full osquery snapshots; replaces current software state for the target assets</li>
+        <li><b>Append rows</b>: preserves current behavior; inserts new observations and upserts exact matches by asset + vendor + product + version</li>
+      </ul>
+    </div>
   </div>
 
   <div class="card p-16">

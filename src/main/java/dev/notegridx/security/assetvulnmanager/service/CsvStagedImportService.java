@@ -22,6 +22,7 @@ import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingAsset;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingSoftware;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareImportMode;
 import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareType;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
@@ -38,8 +39,8 @@ public class CsvStagedImportService {
     private final AssetRepository assetRepository;
     private final SoftwareInstallRepository softwareInstallRepository;
     private final SoftwareDictionaryValidator softwareDictionaryValidator;
-
     private final CanonicalBackfillService canonicalBackfillService;
+    private final AssetSoftwareReplaceService assetSoftwareReplaceService;
 
     public CsvStagedImportService(
             ImportRunRepository importRunRepository,
@@ -48,7 +49,8 @@ public class CsvStagedImportService {
             AssetRepository assetRepository,
             SoftwareInstallRepository softwareInstallRepository,
             SoftwareDictionaryValidator softwareDictionaryValidator,
-            CanonicalBackfillService canonicalBackfillService
+            CanonicalBackfillService canonicalBackfillService,
+            AssetSoftwareReplaceService assetSoftwareReplaceService
     ) {
         this.importRunRepository = importRunRepository;
         this.stagingAssetRepository = stagingAssetRepository;
@@ -57,11 +59,9 @@ public class CsvStagedImportService {
         this.softwareInstallRepository = softwareInstallRepository;
         this.softwareDictionaryValidator = softwareDictionaryValidator;
         this.canonicalBackfillService = canonicalBackfillService;
+        this.assetSoftwareReplaceService = assetSoftwareReplaceService;
     }
 
-    // =========================
-    // Stage Assets CSV
-    // =========================
     @Transactional
     public ImportRun stageAssets(String originalFilename, byte[] bytes) {
         String sha256 = sha256Hex(bytes);
@@ -128,9 +128,6 @@ public class CsvStagedImportService {
         return importRunRepository.save(run);
     }
 
-    // =========================
-    // Stage Software CSV
-    // =========================
     @Transactional
     public ImportRun stageSoftware(String originalFilename, byte[] bytes) {
         String sha256 = sha256Hex(bytes);
@@ -204,9 +201,6 @@ public class CsvStagedImportService {
         return importRunRepository.save(run);
     }
 
-    // =========================
-    // Import Assets (upsert)
-    // =========================
     @Transactional
     public ImportRun importAssets(Long runId) {
         ImportRun run = importRunRepository.findById(runId)
@@ -267,9 +261,17 @@ public class CsvStagedImportService {
         return importRunRepository.save(run);
     }
 
-    // =========================
-    // Import Software (upsert)
-    // =========================
+    @Transactional
+    public ImportRun importSoftware(Long runId, SoftwareImportMode mode) {
+        SoftwareImportMode effective = (mode == null) ? SoftwareImportMode.REPLACE_ASSET_SOFTWARE : mode;
+
+        if (effective == SoftwareImportMode.REPLACE_ASSET_SOFTWARE) {
+            assetSoftwareReplaceService.prepareReplaceForRun(runId);
+        }
+
+        return importSoftware(runId);
+    }
+
     @Transactional
     public ImportRun importSoftware(Long runId) {
         ImportRun run = importRunRepository.findById(runId)
@@ -304,7 +306,6 @@ public class CsvStagedImportService {
                 sw.updateDetails(vendor, product, version, sw.getCpeName());
             }
 
-            // ★ import_run_id を必ず付与（importRunId方式の要）
             sw.attachImportRun(runId);
 
             trySetSoftwareType(sw, r.getType());
@@ -353,7 +354,6 @@ public class CsvStagedImportService {
             upserted++;
         }
 
-        // ★ DBに確実に入ったIDを runId で取得して targeted backfill
         List<Long> ids = softwareInstallRepository.findIdsByImportRunId(runId);
         var bf = canonicalBackfillService.backfillForSoftwareIds(ids, false);
 
@@ -369,9 +369,6 @@ public class CsvStagedImportService {
         return importRunRepository.save(run);
     }
 
-    // =========================
-    // CSV parsing (header -> value)
-    // =========================
     private static List<Map<String, String>> parseCsv(byte[] bytes) {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(
                 new ByteArrayInputStream(bytes), java.nio.charset.StandardCharsets.UTF_8))) {
@@ -433,9 +430,6 @@ public class CsvStagedImportService {
         return out;
     }
 
-    // =========================
-    // Helpers
-    // =========================
     private static void trySetSoftwareType(SoftwareInstall sw, String type) {
         String t = normNullable(type);
         if (t == null) return;

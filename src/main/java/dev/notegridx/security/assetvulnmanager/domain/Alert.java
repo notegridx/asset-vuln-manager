@@ -48,8 +48,8 @@ public class Alert {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "software_install_id", nullable = false)
+	@ManyToOne(fetch = FetchType.LAZY, optional = true)
+	@JoinColumn(name = "software_install_id", nullable = true)
 	private SoftwareInstall softwareInstall;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -85,6 +85,27 @@ public class Alert {
 	@Column(name = "closed_at")
 	private LocalDateTime closedAt;
 
+	@Column(name = "snapshot_asset_id")
+	private Long snapshotAssetId;
+
+	@Column(name = "snapshot_asset_name", length = 255)
+	private String snapshotAssetName;
+
+	@Column(name = "snapshot_external_key", length = 128)
+	private String snapshotExternalKey;
+
+	@Column(name = "snapshot_software_install_id")
+	private Long snapshotSoftwareInstallId;
+
+	@Column(name = "snapshot_vendor", length = 255)
+	private String snapshotVendor;
+
+	@Column(name = "snapshot_product", length = 255)
+	private String snapshotProduct;
+
+	@Column(name = "snapshot_version", length = 64)
+	private String snapshotVersion;
+
 	@Column(name = "created_at", nullable = false)
 	private LocalDateTime createdAt;
 
@@ -119,9 +140,7 @@ public class Alert {
 	public void touchDetected(LocalDateTime detectedAt) {
 		this.lastSeenAt = DbTime.normalize(detectedAt);
 	}
-	/**
-	 * 最新判定で確度が更新できるようにする（例: UNCONFIRMED → CONFIRMED への自動昇格）
-	 */
+
 	public void updateMatchContext(AlertCertainty certainty, AlertUncertainReason reason, AlertMatchMethod matchedBy) {
 		AlertCertainty safe = (certainty == null ? AlertCertainty.CONFIRMED : certainty);
 		this.certainty = safe;
@@ -133,6 +152,32 @@ public class Alert {
 		this.status = AlertStatus.CLOSED;
 		this.closeReason = reason;
 		this.closedAt = DbTime.normalize(closedAt);
+	}
+
+	public void captureSoftwareSnapshot() {
+		if (this.softwareInstall == null) return;
+
+		SoftwareInstall sw = this.softwareInstall;
+		this.snapshotSoftwareInstallId = sw.getId();
+		this.snapshotVendor = sw.getVendor();
+		this.snapshotProduct = sw.getProduct();
+		this.snapshotVersion = sw.getVersion();
+
+		if (sw.getAsset() != null) {
+			this.snapshotAssetId = sw.getAsset().getId();
+			this.snapshotAssetName = sw.getAsset().getName();
+			this.snapshotExternalKey = sw.getAsset().getExternalKey();
+		}
+	}
+
+	public void detachSoftwareInstall() {
+		this.softwareInstall = null;
+	}
+
+	public void closeForInventoryReplacement(LocalDateTime closedAt) {
+		captureSoftwareSnapshot();
+		close(CloseReason.INVENTORY_REPLACED, closedAt);
+		detachSoftwareInstall();
 	}
 
 	@PrePersist

@@ -23,16 +23,10 @@ public class AlertService {
         this.alertRepository = alertRepository;
     }
 
-    /**
-     * statusKey: "OPEN" / "CLOSED" / "ALL" / null
-     * - null は "OPEN" 扱い（互換）
-     * - "ALL" は OPEN + CLOSED
-     */
     @Transactional(readOnly = true)
     public List<Alert> list(String statusKey, Long assetId, Long softwareId) {
         String effective = (statusKey == null) ? "OPEN" : statusKey.trim().toUpperCase(Locale.ROOT);
 
-        // drilldown は assetId / softwareId のどちらか片方想定（両方来たら software優先）
         if ("ALL".equals(effective)) {
             List<AlertStatus> statuses = List.of(AlertStatus.OPEN, AlertStatus.CLOSED);
 
@@ -71,5 +65,24 @@ public class AlertService {
 
         alert.close(reason, LocalDateTime.now());
         return alertRepository.save(alert);
+    }
+
+    @Transactional
+    public void detachForDeletedSoftware(List<Alert> alerts) {
+        if (alerts == null || alerts.isEmpty()) return;
+
+        LocalDateTime now = LocalDateTime.now();
+
+        for (Alert alert : alerts) {
+            alert.captureSoftwareSnapshot();
+
+            if (alert.getStatus() == AlertStatus.OPEN) {
+                alert.close(CloseReason.INVENTORY_REPLACED, now);
+            }
+
+            alert.detachSoftwareInstall();
+        }
+
+        alertRepository.saveAll(alerts);
     }
 }

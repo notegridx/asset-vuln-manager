@@ -36,11 +36,13 @@
 
             <div style="margin-top:6px;"
                  th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'MISSING_SOFTWARE_VERSION'}">
-                Software version is not specified, so version range evaluation cannot be performed. Manual review is required.            </div>
+                Software version is not specified, so version range evaluation cannot be performed. Manual review is required.
+            </div>
 
             <div style="margin-top:6px;"
                  th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'UNPARSABLE_SOFTWARE_VERSION'}">
-                The software version format cannot be interpreted by the comparison logic. Manual review is required.            </div>
+                The software version format cannot be interpreted by the comparison logic. Manual review is required.
+            </div>
 
             <div style="margin-top:6px;"
                  th:if="${alert.uncertainReason != null && alert.uncertainReason.toString() == 'NO_VERSION_CONSTRAINT'}">
@@ -55,7 +57,6 @@
             <div th:if="${alert.closeReason != null}" th:text="'closeReason: ' + ${alert.closeReason}">closeReason</div>
         </div>
 
-        <!-- CLOSE action -->
         <div style="margin-top:14px;" th:if="${alert.status != null && alert.status.toString() == 'OPEN'}">
             <h3 style="margin:0 0 8px 0; font-size:16px;">Close this alert</h3>
 
@@ -101,7 +102,7 @@
     <div class="card" style="padding:16px; margin-top:12px;">
         <h2 style="margin:0 0 10px 0;">Asset / Software</h2>
 
-        <div>
+        <div th:if="${alert.softwareInstall != null && alert.softwareInstall.asset != null}">
             <div>
                 Asset:
                 <b th:text="${alert.softwareInstall.asset.name}">AssetName</b>
@@ -138,6 +139,41 @@
                 </div>
             </div>
         </div>
+
+        <div th:if="${alert.softwareInstall == null}">
+            <div>
+                Asset:
+                <b th:text="${alert.snapshotAssetName != null ? alert.snapshotAssetName : '-'}">AssetName</b>
+                <span class="muted"
+                      th:text="'(ID: ' + ${alert.snapshotAssetId != null ? alert.snapshotAssetId : '-'} + ')'">(ID: 1)</span>
+            </div>
+
+            <div class="muted" style="margin-top:8px;"
+                 th:text="'externalKey: ' + ${alert.snapshotExternalKey != null ? alert.snapshotExternalKey : '-'}">
+                externalKey
+            </div>
+
+            <div style="margin-top:10px;">
+                Software:
+                <span th:text="${alert.snapshotVendor != null ? alert.snapshotVendor : '-'}">vendor</span>
+                <span> / </span>
+                <b th:text="${alert.snapshotProduct != null ? alert.snapshotProduct : '-'}">product</b>
+                <span class="muted"
+                      th:text="${alert.snapshotVersion != null && !#strings.isEmpty(alert.snapshotVersion) ? ' ' + alert.snapshotVersion : ' (no version)'}">
+            1.0
+          </span>
+            </div>
+
+            <div style="margin-top:10px;">
+                <div class="muted"
+                     th:text="'snapshotSoftwareInstallId: ' + ${alert.snapshotSoftwareInstallId != null ? alert.snapshotSoftwareInstallId : '-'}">
+                    snapshotSoftwareInstallId
+                </div>
+                <div class="muted">
+                    Current software row is no longer present. This alert is being shown from the historical snapshot kept at close time.
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="card" style="padding:16px; margin-top:12px;">
@@ -154,13 +190,13 @@
             </div>
 
             <div class="muted" style="margin-top:8px;"
-                 th:text="${alert.vulnerability.title != null ? alert.vulnerability.title : '-'}">
+                 th:text="${alert.vulnerability != null && alert.vulnerability.title != null ? alert.vulnerability.title : '-'}">
                 title
             </div>
 
             <div style="margin-top:10px;">
           <span class="badge"
-                th:classappend="${alert.vulnerability.severity != null
+                th:classappend="${alert.vulnerability != null && alert.vulnerability.severity != null
   ? (alert.vulnerability.severity.toString() == 'CRITICAL'
       ? ' badge--sev-critical'
       : (alert.vulnerability.severity.toString() == 'HIGH'
@@ -171,12 +207,12 @@
                   ? ' badge--sev-low'
                   : ' badge--sev-none'))))
   : ' badge--sev-none'}"
-                th:text="${alert.vulnerability.severity != null ? alert.vulnerability.severity : 'NONE'}">
+                th:text="${alert.vulnerability != null && alert.vulnerability.severity != null ? alert.vulnerability.severity : 'NONE'}">
             HIGH
           </span>
 
                 <span class="muted" style="margin-left:10px;"
-                      th:text="${(alert.vulnerability.cvssVersion != null ? alert.vulnerability.cvssVersion : '-') + ' / ' + (alert.vulnerability.cvssScore != null ? alert.vulnerability.cvssScore : '-')}">
+                      th:text="${(alert.vulnerability != null && alert.vulnerability.cvssVersion != null ? alert.vulnerability.cvssVersion : '-') + ' / ' + (alert.vulnerability != null && alert.vulnerability.cvssScore != null ? alert.vulnerability.cvssScore : '-')}">
             3.1 / 7.5
           </span>
             </div>

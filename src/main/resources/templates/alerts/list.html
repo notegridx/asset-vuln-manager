@@ -6,7 +6,6 @@
 <body th:replace="~{layout/base :: layout('Alerts', 'alerts', ~{::main})}">
 <main>
 
-  <!-- Page Header -->
   <div class="page-header page-header--bottom">
     <div class="page-header__left">
       <h1>Alerts</h1>
@@ -30,10 +29,8 @@
     </div>
   </div>
 
-  <!-- Controls -->
   <div th:replace="~{fragments/alerts_filters :: filters(${status}, ${certainty}, ${severity}, ${view}, ${assetId}, ${softwareId})}"></div>
 
-  <!-- Table -->
   <div class="card p-0 overflow-auto">
     <div class="table-wrap">
       <table class="table m-0">
@@ -60,24 +57,36 @@
             <a th:href="@{/alerts/{id}(id=${a.id})}" th:text="${a.id}">1</a>
           </td>
 
-          <!-- Asset -->
           <td>
-            <div th:text="${a.softwareInstall != null && a.softwareInstall.asset != null ? a.softwareInstall.asset.name : '-'}">asset</div>
+            <div th:text="${a.softwareInstall != null && a.softwareInstall.asset != null
+              ? a.softwareInstall.asset.name
+              : (a.snapshotAssetName != null ? a.snapshotAssetName : '-')}">asset</div>
             <div class="muted text-12"
-                 th:text="'assetId: ' + ${a.softwareInstall != null && a.softwareInstall.asset != null ? a.softwareInstall.asset.id : '-'}">assetId</div>
+                 th:text="'assetId: ' + ${a.softwareInstall != null && a.softwareInstall.asset != null
+                 ? a.softwareInstall.asset.id
+                 : (a.snapshotAssetId != null ? a.snapshotAssetId : '-')}">assetId</div>
           </td>
 
-          <!-- Software -->
           <td>
             <div>
-              <b th:text="${a.softwareInstall != null ? a.softwareInstall.product : '-'}">product</b>
+              <b th:text="${a.softwareInstall != null
+                ? a.softwareInstall.product
+                : (a.snapshotProduct != null ? a.snapshotProduct : '-')}">product</b>
               <span class="muted"
-                    th:text="${a.softwareInstall != null && a.softwareInstall.version != null && !a.softwareInstall.version.isBlank() ? ' ' + a.softwareInstall.version : ''}"></span>
+                    th:text="${a.softwareInstall != null && a.softwareInstall.version != null && !a.softwareInstall.version.isBlank()
+                      ? ' ' + a.softwareInstall.version
+                      : (a.softwareInstall == null && a.snapshotVersion != null && !a.snapshotVersion.isBlank()
+                        ? ' ' + a.snapshotVersion
+                        : '')}"></span>
             </div>
             <div class="muted text-12"
-                 th:text="${a.softwareInstall != null ? (a.softwareInstall.vendor + ' / installId: ' + a.softwareInstall.id) : '-'}">vendor/installId</div>
+                 th:text="${a.softwareInstall != null
+                   ? ((a.softwareInstall.vendor != null ? a.softwareInstall.vendor : '') + ' / installId: ' + a.softwareInstall.id)
+                   : ((a.snapshotVendor != null ? a.snapshotVendor : '') + ' / snapshotInstallId: ' + (a.snapshotSoftwareInstallId != null ? a.snapshotSoftwareInstallId : '-'))}">
+              vendor/installId
+            </div>
 
-            <div class="mt-6">
+            <div class="mt-6" th:if="${a.softwareInstall != null}">
               <a class="btn btn-ghost btn-sm"
                  th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity}, softwareId=${a.softwareInstall.id})}">
                 Drilldown
@@ -85,7 +94,6 @@
             </div>
           </td>
 
-          <!-- Vulnerability -->
           <td>
             <div>
               <a th:if="${a.vulnerability != null}"
@@ -110,14 +118,12 @@
             </div>
           </td>
 
-          <!-- Status -->
           <td>
             <div class="actions m-0 justify-start gap-6 flex-wrap">
               <span class="badge"
                     th:classappend="${a.status != null && a.status.toString() == 'OPEN' ? ' badge--status-open' : ' badge--status-closed'}"
                     th:text="${a.status != null ? a.status : '-'}">OPEN</span>
 
-              <!-- ✅ Certainty badge: separate palette (no longer reusing severity colors) -->
               <span class="badge"
                     th:classappend="${a.certainty != null && a.certainty.toString() == 'UNCONFIRMED'
                         ? ' badge--certainty-unconfirmed'
@@ -132,7 +138,6 @@
             </div>
           </td>
 
-          <!-- Last Seen -->
           <td th:text="${a.lastSeenAt}">2026-02-20T10:00</td>
         </tr>
         </tbody>

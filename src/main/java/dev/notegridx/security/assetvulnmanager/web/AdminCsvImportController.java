@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
+import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareImportMode;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportStagingAssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportStagingSoftwareRepository;
@@ -37,7 +38,6 @@ public class AdminCsvImportController {
         return "admin/csv_import";
     }
 
-    // ---------- Assets ----------
     @PostMapping("/assets/stage")
     public String stageAssets(@RequestParam("file") MultipartFile file) throws Exception {
         ImportRun run = csvStagedImportService.stageAssets(file.getOriginalFilename(), file.getBytes());
@@ -58,7 +58,6 @@ public class AdminCsvImportController {
         return "redirect:/admin/import-runs";
     }
 
-    // ---------- Software ----------
     @PostMapping("/software/stage")
     public String stageSoftware(@RequestParam("file") MultipartFile file) throws Exception {
         ImportRun run = csvStagedImportService.stageSoftware(file.getOriginalFilename(), file.getBytes());
@@ -70,12 +69,24 @@ public class AdminCsvImportController {
         ImportRun run = importRunRepository.findById(runId).orElseThrow();
         model.addAttribute("run", run);
         model.addAttribute("rows", stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(runId));
+        model.addAttribute("defaultMode", SoftwareImportMode.REPLACE_ASSET_SOFTWARE.name());
         return "admin/csv_import_software_preview";
     }
 
     @PostMapping("/software/{runId}/import")
-    public String importSoftware(@PathVariable Long runId) {
-        csvStagedImportService.importSoftware(runId);
+    public String importSoftware(
+            @PathVariable Long runId,
+            @RequestParam(name = "mode", defaultValue = "REPLACE_ASSET_SOFTWARE") String mode
+    ) {
+        csvStagedImportService.importSoftware(runId, parseMode(mode));
         return "redirect:/admin/import-runs";
+    }
+
+    private SoftwareImportMode parseMode(String mode) {
+        try {
+            return SoftwareImportMode.valueOf(mode == null ? "REPLACE_ASSET_SOFTWARE" : mode.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return SoftwareImportMode.REPLACE_ASSET_SOFTWARE;
+        }
     }
 }

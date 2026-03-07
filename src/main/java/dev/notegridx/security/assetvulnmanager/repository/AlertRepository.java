@@ -27,39 +27,32 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
     long countByStatus(AlertStatus status);
 
-    // Dashboard: OPEN alerts by severity
     long countByStatusAndVulnerability_Severity(AlertStatus status, Severity severity);
 
-    // Dashboard: OPEN alerts by certainty (CONFIRMED / UNCONFIRMED)
     long countByStatusAndCertainty(AlertStatus status, AlertCertainty certainty);
 
-    // Dashboard: OPEN alerts by severity + certainty
     long countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus status, Severity severity, AlertCertainty certainty);
 
     List<Alert> findBySoftwareInstallIdOrderByLastSeenAtDesc(Long softwareInstallId);
 
-    // ---- drilldown: by asset ----
     List<Alert> findBySoftwareInstall_Asset_IdOrderByLastSeenAtDesc(Long assetId);
 
     List<Alert> findByStatusAndSoftwareInstall_Asset_IdOrderByLastSeenAtDesc(AlertStatus status, Long assetId);
 
-    // ---- drilldown: by softwareInstall ----
     List<Alert> findBySoftwareInstall_IdOrderByLastSeenAtDesc(Long softwareInstallId);
 
     List<Alert> findByStatusAndSoftwareInstall_IdOrderByLastSeenAtDesc(AlertStatus status, Long softwareInstallId);
 
-    // ---- ALL: OPEN+CLOSED ----
     List<Alert> findByStatusInOrderByLastSeenAtDesc(List<AlertStatus> statuses);
 
     List<Alert> findByStatusInAndSoftwareInstall_Asset_IdOrderByLastSeenAtDesc(List<AlertStatus> statuses, Long assetId);
 
     List<Alert> findByStatusInAndSoftwareInstall_IdOrderByLastSeenAtDesc(List<AlertStatus> statuses, Long softwareInstallId);
 
-    /**
-     * Generate Alerts 実行中に touchDetected() されなかった（= lastSeenAt が runStartedAt より古い）OPEN Alert を自動で CLOSE する。
-     *
-     * NOTE: JPQL bulk update は @PreUpdate を通らないため、updatedAt も明示的に更新する。
-     */
+    List<Alert> findByStatusAndSoftwareInstallIdIn(AlertStatus status, Collection<Long> ids);
+
+    List<Alert> findBySoftwareInstallIdIn(Collection<Long> ids);
+
     @Modifying
     @Query("""
         update Alert a
