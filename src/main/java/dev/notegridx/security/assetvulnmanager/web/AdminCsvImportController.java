@@ -38,6 +38,7 @@ public class AdminCsvImportController {
         return "admin/csv_import";
     }
 
+    // ---------- Assets ----------
     @PostMapping("/assets/stage")
     public String stageAssets(@RequestParam("file") MultipartFile file) throws Exception {
         ImportRun run = csvStagedImportService.stageAssets(file.getOriginalFilename(), file.getBytes());
@@ -58,6 +59,7 @@ public class AdminCsvImportController {
         return "redirect:/admin/import-runs";
     }
 
+    // ---------- Software ----------
     @PostMapping("/software/stage")
     public String stageSoftware(@RequestParam("file") MultipartFile file) throws Exception {
         ImportRun run = csvStagedImportService.stageSoftware(file.getOriginalFilename(), file.getBytes());
@@ -83,8 +85,11 @@ public class AdminCsvImportController {
     }
 
     private SoftwareImportMode parseMode(String mode) {
+        if (mode == null || mode.isBlank()) {
+            return SoftwareImportMode.REPLACE_ASSET_SOFTWARE;
+        }
         try {
-            return SoftwareImportMode.valueOf(mode == null ? "REPLACE_ASSET_SOFTWARE" : mode.trim().toUpperCase());
+            return SoftwareImportMode.valueOf(mode);
         } catch (IllegalArgumentException ex) {
             return SoftwareImportMode.REPLACE_ASSET_SOFTWARE;
         }

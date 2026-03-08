@@ -21,14 +21,18 @@
     </div>
   </div>
 
-  <!-- Tips / Policy card (same rhythm as JSON Import) -->
+  <!-- Import policy -->
   <div class="card card--section">
     <div class="muted help-text--tight">
-      <b>Tips</b>
+      <b>Import policy</b>
       <ul class="list-indent">
-        <li>Import order: <b>Assets</b> → <b>Software</b></li>
-        <li><b>Upload &amp; Preview</b> uploads the file and runs validation in staging (no direct DB writes here).</li>
-        <li>Required headers are shown under each uploader.</li>
+        <li>Assets are upserted by <code>external_key</code>.</li>
+        <li>Software preview validates that the target asset already exists for <code>external_key</code>.</li>
+        <li><code>source</code> is the import channel and defaults to <b>CSV_UPLOAD</b> when omitted.</li>
+        <li><code>source_type</code> is taken from the CSV row when provided; otherwise it defaults to <b>CSV_UPLOAD</b>.</li>
+        <li>CSV import uses header names directly. Column names must match the expected headers.</li>
+        <li>Software key for append/upsert is <code>asset + vendor + product + version</code> (DB UNIQUE).</li>
+        <li>For full host snapshots, use <b>Replace asset software</b> in the Software CSV Preview page.</li>
       </ul>
     </div>
   </div>
@@ -43,6 +47,16 @@
         <input type="file" name="file" accept=".csv,text/csv" required>
         <div class="muted text-12" style="margin-top:4px;">
           Required headers: <b>external_key</b>, <b>name</b>
+        </div>
+        <div class="muted text-12" style="margin-top:4px;">
+          Common supported headers include
+          <code>asset_type</code>, <code>owner</code>, <code>note</code>, <code>platform</code>,
+          <code>os_version</code>, <code>system_uuid</code>, <code>serial_number</code>,
+          <code>hardware_vendor</code>, <code>hardware_model</code>, <code>computer_name</code>,
+          <code>local_hostname</code>, <code>cpu_brand</code>, <code>cpu_physical_cores</code>,
+          <code>cpu_logical_cores</code>, <code>arch</code>, <code>os_name</code>,
+          <code>os_build</code>, <code>os_major</code>, <code>os_minor</code>,
+          <code>os_patch</code>, and <code>last_seen_at</code>.
         </div>
       </div>
 
@@ -64,7 +78,20 @@
           Required headers: <b>external_key</b>, <b>product</b> (version is optional)
         </div>
         <div class="muted text-12" style="margin-top:4px;">
-          Note: assets must already exist (import assets first).
+          Common supported headers include
+          <code>vendor</code>, <code>version</code>, <code>install_location</code>,
+          <code>installed_at</code>, <code>package_identifier</code>, <code>arch</code>,
+          <code>source_type</code>, <code>last_seen_at</code>, <code>type</code>,
+          <code>source</code>, <code>vendor_raw</code>, <code>product_raw</code>,
+          <code>version_raw</code>, <code>publisher</code>, <code>bundle_id</code>,
+          <code>package_manager</code>, <code>install_source</code>, <code>edition</code>,
+          <code>channel</code>, <code>release</code>, and <code>purl</code>.
+        </div>
+        <div class="muted text-12" style="margin-top:4px;">
+          Note: assets must already exist (import assets first). CSV import uses exact header names rather than JSON-style alias mapping.
+        </div>
+        <div class="muted text-12" style="margin-top:4px;">
+          For full inventory snapshots, choose <b>Replace asset software</b> in the preview step. Use append/upsert only when you are intentionally adding incremental rows.
         </div>
       </div>
 
