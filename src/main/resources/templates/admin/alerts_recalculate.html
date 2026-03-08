@@ -6,29 +6,6 @@
 <body th:replace="~{layout/base :: layout('Generate Alerts', 'admin', ~{::main})}">
 <main>
 
-  <!-- Backfill Result -->
-  <div th:if="${backfillResult != null}" class="card" style="padding:12px; margin:12px 0;">
-    <div class="actions" style="margin:0; align-items:flex-end;">
-      <h2 style="margin:0;">Canonical Backfill Result</h2>
-      <div class="muted" style="font-size:12px;">
-        Linked CPE vendor/product IDs into software_installs before generating alerts.
-      </div>
-    </div>
-
-    <div class="table-wrap" style="margin-top:12px;">
-      <table style="margin-top:0;">
-        <thead>
-        <tr><th>Metric</th><th>Value</th></tr>
-        </thead>
-        <tbody>
-        <tr><td>scanned</td><td th:text="${backfillResult.scanned}">0</td></tr>
-        <tr><td>linked</td><td th:text="${backfillResult.linked}">0</td></tr>
-        <tr><td>missed</td><td th:text="${backfillResult.missed}">0</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
   <!-- Page Header (unified) -->
   <div class="page-header"
        style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
@@ -37,7 +14,7 @@
       <p class="muted" style="margin:6px 0 0 0;">
         Analyze installed software against stored vulnerability data and create or update security alerts.
         This operation only performs matching and alert upsert.
-        It does <b>not</b> import vulnerability data or update the product dictionary.
+        It does <b>not</b> import vulnerability data, update the product dictionary, or run canonical backfill.
       </p>
     </div>
     <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -46,12 +23,60 @@
     </div>
   </div>
 
+  <!-- Canonical completeness -->
+  <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">Canonical Link Status</h2>
+      <div class="muted" style="font-size:12px;">
+        Current completeness of canonical vendor/product IDs in software_installs.
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:12px;">
+      <table style="margin-top:0;">
+        <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>fully linked</td>
+          <td th:text="${fullyLinkedCount}">0</td>
+        </tr>
+        <tr>
+          <td>vendor-only linked</td>
+          <td th:text="${vendorOnlyLinkedCount}">0</td>
+        </tr>
+        <tr>
+          <td>not linked</td>
+          <td th:text="${notLinkedCount}">0</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div th:if="${hasIncompleteCanonicalLinks}" class="card"
+         style="padding:12px; margin:12px 0 0 0">
+      <div style="font-weight:600; margin-bottom:6px;">Incomplete canonical links detected</div>
+      <div class="muted" style="font-size:12px; line-height:1.6;">
+        Some software rows are not fully linked to canonical vendor/product IDs.
+        Alert generation will still run, but match quality may be lower for vendor-only or not-linked rows.
+        Review product mapping and run linking first for better results.
+      </div>
+      <div class="actions" style="margin-top:10px;">
+        <a th:href="@{/admin/canonical}" class="btn">Review Product Mapping</a>
+      </div>
+    </div>
+  </div>
+
   <!-- When to use (card rhythm) -->
   <div class="card" style="padding:12px; margin:12px 0;">
     <div class="muted" style="font-size:12px;">
       When to use this:
       <ul style="margin:6px 0 0 18px;">
-        <li>After importing software via CSV</li>
+        <li>After importing software via CSV or JSON</li>
         <li>After updating product mappings</li>
         <li>After updating vulnerability or product dictionary data (if full sync was not used)</li>
       </ul>
@@ -63,13 +88,13 @@
     <h2 style="margin:0 0 10px 0;">Execute</h2>
 
     <form th:action="@{/admin/alerts/recalculate}" method="post">
-      <div class="actions" style="margin-top: 14px;">
+      <div class="actions" style="margin-top:14px;">
         <button type="submit" class="btn btn-primary">Generate Alerts</button>
       </div>
     </form>
   </div>
 
-  <!-- Result (bindings unchanged; just wrap with card + table-wrap) -->
+  <!-- Result -->
   <div th:if="${matchResult != null}" class="card" style="padding:12px; margin:12px 0;">
     <div class="actions" style="margin:0; align-items:flex-end;">
       <h2 style="margin:0;">Alert Generation Result</h2>
