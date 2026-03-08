@@ -7,16 +7,15 @@
 <main>
 
     <!-- Page Header (unified) -->
-    <div class="page-header"
-         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header page-header--split">
         <div class="page-header__left">
             <h1>Dashboard</h1>
-            <div class="muted" style="margin-top:6px;">
+            <div class="muted mt-6">
                 Quick overview of inventory, vulnerabilities, and alerts.
             </div>
         </div>
 
-        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="page-header__right page-header__right--pills">
             <span class="pill" th:text="'Assets: ' + ${assets}">Assets: 0</span>
             <span class="pill" th:text="'Vulns: ' + ${vulns}">Vulns: 0</span>
             <span class="pill"

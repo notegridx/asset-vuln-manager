@@ -7,32 +7,31 @@
 <main>
 
   <!-- Page Header (unified) -->
-  <div class="page-header"
-       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  <div class="page-header page-header--split">
     <div class="page-header__left">
-      <h1 style="margin:0;">500 Internal Server Error</h1>
-      <div class="muted" style="margin-top:6px;">
+      <h1 class="m-0">500 Internal Server Error</h1>
+      <div class="muted mt-6">
         An unexpected error occurred while processing your request.
       </div>
     </div>
 
-    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <div class="page-header__right page-header__right--pills">
       <span class="pill">Error</span>
       <span class="pill">500</span>
     </div>
   </div>
 
   <!-- Body -->
-  <div class="card" style="padding:14px; margin:12px 0;">
-    <div class="actions" style="margin:0; align-items:flex-end;">
-      <h2 style="margin:0;">What you can do</h2>
-      <div class="muted" style="font-size:12px;">
+  <div class="card card--section-lg">
+    <div class="actions actions--compact">
+      <h2 class="m-0">What you can do</h2>
+      <div class="muted text-12">
         Try again, go back, or navigate from the Dashboard.
       </div>
     </div>
 
     <!-- Minimal safe context (Spring Boot ErrorAttributes) -->
-    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.7;">
+    <div class="muted help-text--relaxed mt-10">
       <div><b>Context</b></div>
       <div>
         status: <code th:text="${status != null ? status : 500}">500</code>
@@ -48,13 +47,13 @@
     </div>
 
     <!-- Optional detail (keep short; avoid leaking stack traces) -->
-    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;"
+    <div class="muted help-text--tight mt-10"
          th:if="${message != null and !#strings.isEmpty(#strings.trim(message))}">
-      <div style="margin-bottom:6px;"><b>Details</b></div>
+      <div class="mb-6"><b>Details</b></div>
       <code th:text="${message}">Unexpected error</code>
     </div>
 
-    <div class="actions" style="margin-top:14px; gap:10px; flex-wrap:wrap;">
+    <div class="actions actions--mt-14 gap-10 flex-wrap">
       <a class="btn btn-primary" th:href="@{/dashboard}">
         Back to Dashboard
       </a>
@@ -72,14 +71,13 @@
 
     <hr/>
 
-    <div class="muted" style="font-size:12px; line-height:1.7;">
-      ヒント:
-      <ul style="margin:6px 0 0 18px;">
-        <li>If this happened during a data update/import, check the server logs for the root cause.</li>
-        <li>If it keeps happening, it may indicate a DB schema mismatch or an unexpected input format.</li>
-        <li>In development, you can re-run the same action after fixing the cause (then Retry).</li>
-      </ul>
-    </div>
+    <details class="mt-14">
+      <summary class="text-12">Notes</summary>
+      <div class="muted help-text--tight mt-10">
+        This page intentionally shows only minimal request context.
+        Stack traces and internal details should be checked in server logs.
+      </div>
+    </details>
   </div>
 
 </main>

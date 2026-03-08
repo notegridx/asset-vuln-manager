@@ -6,10 +6,10 @@
 <body th:replace="~{layout/base :: layout('Seed Alias Dictionary (JSON)', 'admin', ~{::main})}">
 <main>
 
-    <div class="page-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="page-header page-header--split">
         <div>
             <h1>Seed Alias Dictionary (JSON)</h1>
-            <p class="muted" style="margin:6px 0 0 0;">
+            <p class="muted mt-6">
                 Prepare seed JSON separately and paste it here.
                 Canonicals are resolved by <code>name_norm</code>. Aliases are normalized before insert.
                 Conflicts are skipped (no overwrite). Confidence is integer (0-100).
@@ -17,30 +17,32 @@
         </div>
     </div>
 
-    <div class="card" style="padding:12px; margin:12px 0;">
+    <div class="card card--section">
         <form th:action="@{/admin/aliases/seed/import}" method="post">
             <div class="field">
                 <label>Seed JSON</label>
-                <textarea name="json" rows="18" style="width:100%; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
+                <textarea name="json"
+                          rows="18"
+                          class="w-full font-mono-ui"
                           th:text="${json}"></textarea>
-                <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.6;">
+                <div class="muted help-text--tight mt-6">
                     - <b>canonicalVendor</b>/<b>canonicalProduct</b> must match CPE dictionary <code>name_norm</code>.<br>
                     - Aliases are normalized. ACTIVE only. Conflicts are skipped.<br>
                     - Preset JSON is expected to be prepared and distributed separately.
                 </div>
             </div>
 
-            <div class="actions" style="margin-top:12px;">
+            <div class="actions mt-12">
                 <button type="submit" class="btn btn-primary">Import Seed</button>
                 <a class="btn btn-ghost" th:href="@{/admin/aliases/seed/import}">Reset</a>
             </div>
         </form>
     </div>
 
-    <div th:if="${result != null}" class="card" style="padding:12px; margin:12px 0;">
-        <h2 style="margin:0;">Result</h2>
+    <div th:if="${result != null}" class="card card--section">
+        <h2 class="m-0">Result</h2>
 
-        <div class="kv" style="margin-top:12px; grid-template-columns: 240px 1fr;">
+        <div class="kv mt-12 kv--240">
             <b>vendorInserted</b> <span th:text="${result.vendorInserted}">0</span>
             <b>vendorSkippedExisting</b> <span th:text="${result.vendorSkippedExisting}">0</span>
             <b>vendorConflicted</b> <span th:text="${result.vendorConflicted}">0</span>
@@ -54,21 +56,21 @@
             <b>dedupedAliases</b> <span th:text="${result.dedupedAliases}">0</span>
         </div>
 
-        <details style="margin-top:12px;" th:if="${result.notes != null and !result.notes.isEmpty()}">
-            <summary style="cursor:pointer; font-weight:600;">Notes</summary>
-            <ul style="margin:10px 0 0 18px;">
+        <details class="mt-12" th:if="${result.notes != null and !result.notes.isEmpty()}">
+            <summary class="summary-linklike">Notes</summary>
+            <ul class="list-indent-md">
                 <li th:each="n : ${result.notes}" th:text="${n}">note</li>
             </ul>
         </details>
     </div>
-    <div class="card" style="padding:12px; margin:12px 0;">
 
+    <div class="card card--section">
         <details>
-            <summary style="cursor:pointer; font-weight:600;">
+            <summary class="summary-linklike">
                 How to prepare Seed JSON
             </summary>
 
-            <div style="margin-top:10px; line-height:1.6;">
+            <div class="details-body">
 
                 <p>
                     Import alias seeds for the CPE dictionary.
@@ -82,18 +84,15 @@
 
                 <p><b>Example canonical names</b></p>
 
-                <pre style="margin:6px 0;">
-Vendor:
+                <pre class="m-0 mt-6">Vendor:
 microsoft
 
 Product:
-windows_server
-      </pre>
+windows_server</pre>
 
                 <p><b>Example JSON</b></p>
 
-                <pre style="margin:6px 0; overflow:auto;">
-{
+                <pre class="mt-6 overflow-auto">{
   "vendors": [
     {
       "canonicalVendor": "microsoft",
@@ -114,8 +113,7 @@ windows_server
       ]
     }
   ]
-}
-      </pre>
+}</pre>
 
                 <p><b>Import rules</b></p>
 
@@ -142,7 +140,6 @@ windows_server
 
             </div>
         </details>
-
     </div>
 
 </main>

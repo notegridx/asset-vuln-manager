@@ -7,33 +7,32 @@
 <main>
 
   <!-- Page Header (unified) -->
-  <div class="page-header"
-       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  <div class="page-header page-header--split">
     <div class="page-header__left">
-      <h1 style="margin:0;">Generate Alerts</h1>
-      <p class="muted" style="margin:6px 0 0 0;">
+      <h1 class="m-0">Generate Alerts</h1>
+      <p class="muted mt-6">
         Analyze installed software against stored vulnerability data and create or update security alerts.
         This operation only performs matching and alert upsert.
         It does <b>not</b> import vulnerability data, update the product dictionary, or run canonical backfill.
       </p>
     </div>
-    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <div class="page-header__right page-header__right--pills">
       <span class="pill">Matching</span>
       <span class="pill">Admin Tool</span>
     </div>
   </div>
 
   <!-- Canonical completeness -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <div class="actions" style="margin:0; align-items:flex-end;">
-      <h2 style="margin:0;">Canonical Link Status</h2>
-      <div class="muted" style="font-size:12px;">
+  <div class="card card--section">
+    <div class="actions actions--compact">
+      <h2 class="m-0">Canonical Link Status</h2>
+      <div class="muted text-12">
         Current completeness of canonical vendor/product IDs in software_installs.
       </div>
     </div>
 
-    <div class="table-wrap" style="margin-top:12px;">
-      <table style="margin-top:0;">
+    <div class="table-wrap mt-12">
+      <table class="m-0">
         <thead>
         <tr>
           <th>Metric</th>
@@ -57,25 +56,24 @@
       </table>
     </div>
 
-    <div th:if="${hasIncompleteCanonicalLinks}" class="card"
-         style="padding:12px; margin:12px 0 0 0">
-      <div style="font-weight:600; margin-bottom:6px;">Incomplete canonical links detected</div>
-      <div class="muted" style="font-size:12px; line-height:1.6;">
+    <div th:if="${hasIncompleteCanonicalLinks}" class="card p-12 mt-12">
+      <div class="fw-600 mb-6">Incomplete canonical links detected</div>
+      <div class="muted help-text--tight">
         Some software rows are not fully linked to canonical vendor/product IDs.
         Alert generation will still run, but match quality may be lower for vendor-only or not-linked rows.
         Review product mapping and run linking first for better results.
       </div>
-      <div class="actions" style="margin-top:10px;">
+      <div class="actions mt-10">
         <a th:href="@{/admin/canonical}" class="btn">Review Product Mapping</a>
       </div>
     </div>
   </div>
 
   <!-- When to use (card rhythm) -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <div class="muted" style="font-size:12px;">
+  <div class="card card--section">
+    <div class="muted text-12">
       When to use this:
-      <ul style="margin:6px 0 0 18px;">
+      <ul class="list-indent">
         <li>After importing software via CSV or JSON</li>
         <li>After updating product mappings</li>
         <li>After updating vulnerability or product dictionary data (if full sync was not used)</li>
@@ -84,27 +82,27 @@
   </div>
 
   <!-- Execute (card rhythm + unified button style) -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <h2 style="margin:0 0 10px 0;">Execute</h2>
+  <div class="card card--section">
+    <h2 class="m-0 mt-0" style="margin:0 0 10px 0;">Execute</h2>
 
     <form th:action="@{/admin/alerts/recalculate}" method="post">
-      <div class="actions" style="margin-top:14px;">
+      <div class="actions actions--mt-14">
         <button type="submit" class="btn btn-primary">Generate Alerts</button>
       </div>
     </form>
   </div>
 
   <!-- Result -->
-  <div th:if="${matchResult != null}" class="card" style="padding:12px; margin:12px 0;">
-    <div class="actions" style="margin:0; align-items:flex-end;">
-      <h2 style="margin:0;">Alert Generation Result</h2>
-      <div class="muted" style="font-size:12px;">
+  <div th:if="${matchResult != null}" class="card card--section">
+    <div class="actions actions--compact">
+      <h2 class="m-0">Alert Generation Result</h2>
+      <div class="muted text-12">
         Summary of matching pass and alert upsert.
       </div>
     </div>
 
-    <div class="table-wrap" style="margin-top:12px;">
-      <table style="margin-top:0;">
+    <div class="table-wrap mt-12">
+      <table class="m-0">
         <thead>
         <tr>
           <th>Metric</th>

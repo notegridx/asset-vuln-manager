@@ -3,6 +3,7 @@
 <head th:replace="~{layout/base :: head('CSV Assets Preview')}"></head>
 <body th:replace="~{layout/base :: layout('CSV Assets Preview', 'admin', ~{::main})}">
 <main>
+
     <div class="page-header flex items-end justify-between gap-16 flex-wrap">
         <div>
             <h1>Assets CSV Preview</h1>
@@ -16,32 +17,54 @@
         </div>
 
         <form th:action="@{|/admin/import/csv/assets/${run.id}/import|}" method="post">
-            <button class="btn btn-primary" type="submit" th:disabled="${run.validRows == 0}">Import (Upsert)</button>
+            <button class="btn btn-primary" type="submit" th:disabled="${run.validRows == 0}">
+                Import (Upsert)
+            </button>
         </form>
     </div>
 
-    <div class="card p-16">
-        <table class="table">
-            <thead>
-            <tr>
-                <th>Row</th>
-                <th>external_key</th>
-                <th>name</th>
-                <th>valid</th>
-                <th>error</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="r : ${rows}">
-                <td th:text="${r.rowNo}">1</td>
-                <td th:text="${r.externalKey}">EK</td>
-                <td th:text="${r.name}">Name</td>
-                <td th:text="${r.valid}">true</td>
-                <td th:text="${r.validationError}">-</td>
-            </tr>
-            </tbody>
-        </table>
+    <div class="card card--section">
+        <div class="muted help-text--tight">
+            Validation rules:
+            <ul class="list-indent">
+                <li><b>external_key</b> required</li>
+                <li><b>name</b> required</li>
+            </ul>
+        </div>
     </div>
+
+    <div class="card p-0 overflow-auto mt-12">
+        <div class="table-wrap table--fixed">
+            <table class="table m-0">
+                <thead>
+                <tr>
+                    <th style="width:60px;">#</th>
+                    <th style="width:120px;">Valid</th>
+                    <th style="width:220px;">externalKey</th>
+                    <th style="width:220px;">name</th>
+                    <th style="width:140px;">assetType</th>
+                    <th style="width:160px;">owner</th>
+                    <th>error</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${rows}">
+                    <td th:text="${r.rowNo}">1</td>
+                    <td>
+                        <span th:if="${r.valid}" class="badge badge--ok">OK</span>
+                        <span th:unless="${r.valid}" class="badge badge--danger">INVALID</span>
+                    </td>
+                    <td class="cell-break" th:text="${r.externalKey}">k</td>
+                    <td class="cell-break" th:text="${r.name}">name</td>
+                    <td th:text="${r.assetType}">type</td>
+                    <td class="cell-break" th:text="${r.owner}">owner</td>
+                    <td class="muted cell-break" th:text="${r.validationError}">-</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </main>
 </body>
 </html>

@@ -15,71 +15,87 @@
         valid=<span th:text="${run.validRows}">0</span>,
         invalid=<span th:text="${run.invalidRows}">0</span>
       </div>
-      <div class="muted mt-6">
-        file=<span th:text="${run.originalFilename}">-</span>,
-        sha256=<span th:text="${run.sha256}">-</span>
-      </div>
     </div>
 
-    <form th:action="@{|/admin/import/csv/software/${run.id}/import|}"
-          method="post"
-          onsubmit="return confirm('Import valid rows? Replace mode will close related alerts, keep alert history, delete current software rows for target assets, and rebuild current state from this snapshot.');">
-      <label class="muted" style="display:block; font-size:12px; margin-bottom:6px;">Import mode</label>
-      <select name="mode" style="min-width:320px;">
-        <option value="REPLACE_ASSET_SOFTWARE" selected>
-          Replace asset software (recommended for full snapshots)
-        </option>
-        <option value="APPEND">Append rows</option>
-      </select>
-      <div class="muted mt-6" style="max-width:420px; font-size:12px;">
-        Replace is intended for full asset snapshots. If the snapshot is incomplete,
-        software not included in the file will be removed from current state for the target assets.
-      </div>
-      <div class="mt-6">
-        <button class="btn btn-primary" type="submit" th:disabled="${run.validRows == 0}">
-          Import Software
-        </button>
-      </div>
-    </form>
+    <div class="actions m-0">
+      <a class="btn" th:href="@{/admin/import/csv}">Back</a>
+
+      <form th:if="${run.validRows > 0}"
+            th:action="@{|/admin/import/csv/software/${run.id}/import|}"
+            method="post"
+            onsubmit="return confirm('Import valid rows? Replace mode will close related alerts, keep alert history, delete current software rows for target assets, and rebuild current state from this snapshot.');">
+        <label class="muted text-12" style="display:block; margin-bottom:6px;">Import mode</label>
+        <select name="mode" style="min-width:320px;">
+          <option value="REPLACE_ASSET_SOFTWARE"
+                  th:selected="${defaultMode == 'REPLACE_ASSET_SOFTWARE'}">
+            Replace asset software (recommended for full snapshots)
+          </option>
+          <option value="APPEND"
+                  th:selected="${defaultMode == 'APPEND'}">
+            Append rows
+          </option>
+        </select>
+        <div class="muted text-12" style="margin-top:8px; max-width:420px;">
+          Replace is intended for full asset snapshots. If the snapshot is incomplete,
+          software not included in the file will be removed from current state for the target assets.
+        </div>
+        <div class="mt-10">
+          <button class="btn btn-primary" type="submit">Import Software</button>
+        </div>
+      </form>
+    </div>
   </div>
 
-  <div class="card p-16" style="margin-top:12px;">
-    <div class="muted" style="font-size:12px; line-height:1.6;">
-      Mode summary:
-      <ul style="margin:6px 0 0 18px;">
-        <li><b>Replace asset software</b>: recommended for full osquery snapshots; replaces current software state for the target assets</li>
-        <li><b>Append rows</b>: preserves current behavior; inserts new observations and upserts exact matches by asset + vendor + product + version</li>
+  <div class="card card--section">
+    <div class="muted help-text--tight">
+      Validation rules:
+      <ul class="list-indent">
+        <li><b>external_key</b> required</li>
+        <li><b>product</b> required</li>
+        <li>asset must exist for external_key (import assets first)</li>
+        <li>version is optional</li>
       </ul>
     </div>
   </div>
 
-  <div class="card p-16">
-    <table class="table">
-      <thead>
-      <tr>
-        <th>Row</th>
-        <th>external_key</th>
-        <th>vendor</th>
-        <th>product</th>
-        <th>version</th>
-        <th>source_type</th>
-        <th>valid</th>
-        <th>error</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr th:each="r : ${rows}">
-        <td th:text="${r.rowNo}">1</td>
-        <td th:text="${r.externalKey}">EK</td>
-        <td th:text="${r.vendor}">Vendor</td>
-        <td th:text="${r.product}">Product</td>
-        <td th:text="${r.version}">Version</td>
-        <td th:text="${r.sourceType}">CSV_UPLOAD</td>
-        <td th:text="${r.valid}">true</td>
-        <td th:text="${r.validationError}">-</td>
-      </tr>
-      </tbody>
-    </table>
+  <div class="card p-0 overflow-auto mt-12">
+    <div class="table-wrap table--fixed">
+      <table class="table m-0">
+        <thead>
+        <tr>
+          <th style="width:60px;">#</th>
+          <th style="width:120px;">Valid</th>
+          <th style="width:220px;">externalKey</th>
+          <th style="width:160px;">vendor</th>
+          <th style="width:220px;">product</th>
+          <th style="width:140px;">version</th>
+          <th style="width:240px;">installLocation</th>
+          <th style="width:180px;">installedAt</th>
+          <th style="width:180px;">packageIdentifier</th>
+          <th style="width:120px;">arch</th>
+          <th>error</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${rows}">
+          <td th:text="${r.rowNo}">1</td>
+          <td>
+            <span th:if="${r.valid}" class="badge badge--ok">OK</span>
+            <span th:unless="${r.valid}" class="badge badge--danger">INVALID</span>
+          </td>
+          <td class="cell-break" th:text="${r.externalKey}">k</td>
+          <td class="cell-break" th:text="${r.vendor}">v</td>
+          <td th:text="${r.product}">p</td>
+          <td th:text="${r.version}">ver</td>
+          <td class="cell-break" th:text="${r.installLocation}">loc</td>
+          <td th:text="${r.installedAt}">at</td>
+          <td class="cell-break" th:text="${r.packageIdentifier}">pkg</td>
+          <td th:text="${r.arch}">arch</td>
+          <td class="muted cell-break" th:text="${r.validationError}">-</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </main>

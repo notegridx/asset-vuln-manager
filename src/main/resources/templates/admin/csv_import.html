@@ -7,26 +7,25 @@
 <main>
 
   <!-- Page Header (match JSON Import style) -->
-  <div class="page-header"
-       style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  <div class="page-header page-header--split">
     <div class="page-header__left">
-      <h1 style="margin:0;">CSV Import</h1>
-      <p class="muted" style="margin:6px 0 0 0;">
+      <h1 class="m-0">CSV Import</h1>
+      <p class="muted mt-6">
         Upload CSV files and import inventory in 3 steps: <b>Upload → Preview → Import</b>.
         (This page stages CSV for preview.)
       </p>
     </div>
-    <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <div class="page-header__right page-header__right--pills">
       <span class="pill">CSV Upload</span>
       <span class="pill">Admin Tool</span>
     </div>
   </div>
 
   <!-- Tips / Policy card (same rhythm as JSON Import) -->
-  <div class="card" style="padding:12px; margin:12px 0;">
-    <div class="muted" style="font-size:12px; line-height:1.6;">
+  <div class="card card--section">
+    <div class="muted help-text--tight">
       <b>Tips</b>
-      <ul style="margin:6px 0 0 18px;">
+      <ul class="list-indent">
         <li>Import order: <b>Assets</b> → <b>Software</b></li>
         <li><b>Upload &amp; Preview</b> uploads the file and runs validation in staging (no direct DB writes here).</li>
         <li>Required headers are shown under each uploader.</li>
@@ -35,41 +34,41 @@
   </div>
 
   <!-- Upload Assets CSV -->
-  <div class="card" style="padding:12px; margin:12px 0;">
+  <div class="card card--section">
     <h2 style="margin:0 0 10px 0;">Upload Assets CSV</h2>
 
     <form th:action="@{/admin/import/csv/assets/stage}" method="post" enctype="multipart/form-data">
       <div class="field">
         <label>assets.csv</label>
         <input type="file" name="file" accept=".csv,text/csv" required>
-        <div class="muted" style="font-size:12px; margin-top:4px;">
+        <div class="muted text-12" style="margin-top:4px;">
           Required headers: <b>external_key</b>, <b>name</b>
         </div>
       </div>
 
-      <div class="actions" style="margin-top:14px;">
+      <div class="actions actions--mt-14">
         <button type="submit" class="btn btn-primary">Upload → Preview Assets</button>
       </div>
     </form>
   </div>
 
   <!-- Upload Software CSV -->
-  <div class="card" style="padding:12px; margin:12px 0;">
+  <div class="card card--section">
     <h2 style="margin:0 0 10px 0;">Upload Software CSV</h2>
 
     <form th:action="@{/admin/import/csv/software/stage}" method="post" enctype="multipart/form-data">
       <div class="field">
         <label>software.csv</label>
         <input type="file" name="file" accept=".csv,text/csv" required>
-        <div class="muted" style="font-size:12px; margin-top:4px;">
+        <div class="muted text-12" style="margin-top:4px;">
           Required headers: <b>external_key</b>, <b>product</b> (version is optional)
         </div>
-        <div class="muted" style="font-size:12px; margin-top:4px;">
+        <div class="muted text-12" style="margin-top:4px;">
           Note: assets must already exist (import assets first).
         </div>
       </div>
 
-      <div class="actions" style="margin-top:14px;">
+      <div class="actions actions--mt-14">
         <button type="submit" class="btn btn-primary">Upload → Preview Software</button>
       </div>
     </form>
