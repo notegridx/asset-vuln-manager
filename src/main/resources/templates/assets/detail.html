@@ -1,120 +1,248 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('Asset Details')}"></head>
+<head th:replace="~{layout/base :: head('Asset Detail')}"></head>
 
-<body th:replace="~{layout/base :: layout('Asset Details', 'assets', ~{::main})}">
+<style>
+    tr.software-row--has-alerts {
+        background: rgba(255, 204, 102, 0.06);
+    }
+
+    tr.software-row--has-alerts:hover {
+        background: rgba(255, 204, 102, 0.12);
+    }
+
+    tr.software-row--has-alerts td:first-child {
+        box-shadow: inset 4px 0 0 #ffcc66;
+    }
+
+    tr.software-row--has-alerts:hover td:first-child {
+        box-shadow: inset 4px 0 0 #ffd37a;
+    }
+
+    .badge-alert {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(255, 204, 102, 0.14);
+        color: #ffd37a;
+        border: 1px solid rgba(255, 204, 102, 0.35);
+        font-size: 12px;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+
+    .badge-alert:hover {
+        background: rgba(255, 204, 102, 0.22);
+        border-color: rgba(255, 204, 102, 0.55);
+        text-decoration: none;
+    }
+
+    .detail-top-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(280px, 1fr));
+        gap: 12px 20px;
+    }
+
+    .asset-sw-table {
+        table-layout: fixed;
+    }
+
+    .asset-sw-table th,
+    .asset-sw-table td {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .asset-sw-vendor {
+        white-space: normal;
+    }
+
+    .asset-sw-product-main {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .asset-sw-product-main a:first-child {
+        min-width: 0;
+    }
+
+    .asset-sw-link {
+        white-space: normal;
+    }
+
+    .asset-sw-link-sub {
+        margin-top: 6px;
+    }
+
+    .asset-sw-lastseen {
+        line-height: 1.35;
+    }
+
+    .asset-sw-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    .asset-sw-actions .btn,
+    .asset-sw-actions form,
+    .asset-sw-actions button {
+        width: 100%;
+    }
+
+    .asset-sw-actions form {
+        margin: 0;
+    }
+
+    @media (max-width: 900px) {
+        .detail-top-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<body th:replace="~{layout/base :: layout('Asset Detail', 'assets', ~{::main})}">
 <main>
 
-    <div class="actions">
-        <h1 style="margin:0;">Asset Details</h1>
-        <div style="display:flex; gap:10px; align-items:center;">
-            <a th:href="@{/assets}"><- Back to inventory</a>
-            <a class="btn" th:href="@{/assets/{id}/edit(id=${asset.id})}">Edit</a>
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div>
+            <h1 th:text="${asset.name}">Asset Name</h1>
+            <div class="muted" style="margin-top:6px;"
+                 th:text="'Asset ID: ' + ${asset.id}">
+                Asset ID
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a class="btn btn-ghost" th:href="@{/assets}">Back to Assets</a>
+            <a class="btn" th:href="@{/assets/{id}/edit(id=${asset.id})}">Edit Asset</a>
         </div>
     </div>
 
-
-    <div class="card" style="padding:12px; margin-top:12px;">
-        <div class="kv" style="grid-template-columns: 140px 1fr 140px 1fr; gap:8px 12px;">
-
-            <!-- ===== Existing fields ===== -->
-            <div class="k">ID</div>
-            <div class="v" th:text="${asset.id}">1</div>
-
-            <div class="k">External Key</div>
-            <div class="v" style="overflow-wrap:anywhere;"
-                 th:text="${asset.externalKey != null ? asset.externalKey : '-'}">ASSET-001</div>
-
-            <div class="k">Name</div>
-            <div class="v" th:text="${asset.name}">Example</div>
-
-            <div class="k">Asset Type</div>
-            <div class="v" th:text="${asset.assetType != null ? asset.assetType : '-'}">Server</div>
-
-            <div class="k">Owner</div>
-            <div class="v" th:text="${asset.owner != null ? asset.owner : '-'}">Admin</div>
-
-            <div class="k">Source</div>
-            <div class="v" th:text="${asset.source != null ? asset.source : '-'}">MANUAL</div>
-
-            <div class="k">Platform</div>
-            <div class="v" th:text="${asset.platform != null ? asset.platform : '-'}">Windows</div>
-
-            <div class="k">OS Version</div>
-            <div class="v" th:text="${asset.osVersion != null ? asset.osVersion : '-'}">11.0.22631</div>
-
-            <div class="k">Last Seen</div>
-            <div class="v"
-                 th:text="${asset.lastSeenAt != null ? #temporals.format(asset.lastSeenAt, 'yyyy-MM-dd HH:mm') : '-'}">
-                2026-02-24 09:32
+    <div class="card card--section">
+        <div class="actions" style="margin:0 0 12px 0;">
+            <h2 style="margin:0;">Asset Information</h2>
+            <div class="muted text-12">
+                Full asset metadata currently stored in the inventory record.
             </div>
+        </div>
 
-            <div class="k">Created</div>
-            <div class="v" th:text="${#temporals.format(asset.createdAt, 'yyyy-MM-dd HH:mm')}">2026-02-20 10:00</div>
-
-            <div class="k">Updated</div>
-            <div class="v" th:text="${#temporals.format(asset.updatedAt, 'yyyy-MM-dd HH:mm')}">2026-02-24 09:30</div>
-
-            <div class="k">Note</div>
-            <div class="v" th:text="${asset.note != null ? asset.note : '-'}">Note</div>
-
-            <!-- ===== Added fields (Priority B included) ===== -->
+        <div class="kv" style="grid-template-columns: 180px 1fr 180px 1fr; gap:10px 14px;">
 
             <!-- Identity -->
-            <div class="k">System UUID</div>
-            <div class="v" style="overflow-wrap:anywhere;"
-                 th:text="${asset.systemUuid != null ? asset.systemUuid : '-'}">-</div>
+            <b>ID</b>
+            <span th:text="${asset.id}">1</span>
 
-            <div class="k">Serial Number</div>
-            <div class="v" style="overflow-wrap:anywhere;"
-                 th:text="${asset.serialNumber != null ? asset.serialNumber : '-'}">-</div>
+            <b>Name</b>
+            <span th:text="${asset.name != null && !#strings.isEmpty(asset.name) ? asset.name : '-'}">WIN11</span>
 
-            <div class="k">Computer Name</div>
-            <div class="v" style="overflow-wrap:anywhere;"
-                 th:text="${asset.computerName != null ? asset.computerName : '-'}">-</div>
+            <b>External Key</b>
+            <span style="overflow-wrap:anywhere;"
+                  th:text="${asset.externalKey != null && !#strings.isEmpty(asset.externalKey) ? asset.externalKey : '-'}">
+            EEE03154-0166-4159-ACCA-00F55F875C24
+        </span>
 
-            <div class="k">Local Hostname</div>
-            <div class="v" style="overflow-wrap:anywhere;"
-                 th:text="${asset.localHostname != null ? asset.localHostname : '-'}">-</div>
+            <b>Type</b>
+            <span th:text="${asset.assetType != null && !#strings.isEmpty(asset.assetType) ? asset.assetType : '-'}">endpoint</span>
 
-            <!-- Hardware -->
-            <div class="k">Hardware Vendor</div>
-            <div class="v" th:text="${asset.hardwareVendor != null ? asset.hardwareVendor : '-'}">-</div>
+            <b>Owner</b>
+            <span th:text="${asset.owner != null && !#strings.isEmpty(asset.owner) ? asset.owner : '-'}">vboxuser</span>
 
-            <div class="k">Hardware Model</div>
-            <div class="v" th:text="${asset.hardwareModel != null ? asset.hardwareModel : '-'}">-</div>
+            <b>Source</b>
+            <span th:text="${asset.source != null && !#strings.isEmpty(asset.source) ? asset.source : '-'}">JSON_UPLOAD</span>
 
-            <!-- CPU -->
-            <div class="k">CPU Brand</div>
-            <div class="v" style="overflow-wrap:anywhere;"
-                 th:text="${asset.cpuBrand != null ? asset.cpuBrand : '-'}">-</div>
+            <b>Note</b>
+            <span th:text="${asset.note != null && !#strings.isEmpty(asset.note) ? asset.note : '-'}">-</span>
 
-            <div class="k">CPU Physical Cores</div>
-            <div class="v" th:text="${asset.cpuPhysicalCores != null ? asset.cpuPhysicalCores : '-'}">-</div>
+            <!-- System / Hardware -->
+            <b>Platform</b>
+            <span th:text="${asset.platform != null && !#strings.isEmpty(asset.platform) ? asset.platform : '-'}">windows</span>
 
-            <div class="k">CPU Logical Cores</div>
-            <div class="v" th:text="${asset.cpuLogicalCores != null ? asset.cpuLogicalCores : '-'}">-</div>
+            <b>Architecture</b>
+            <span th:text="${asset.arch != null && !#strings.isEmpty(asset.arch) ? asset.arch : '-'}">x64</span>
 
-            <div class="k">Arch</div>
-            <div class="v" th:text="${asset.arch != null ? asset.arch : '-'}">-</div>
+            <b>System UUID</b>
+            <span style="overflow-wrap:anywhere;"
+                  th:text="${asset.systemUuid != null && !#strings.isEmpty(asset.systemUuid) ? asset.systemUuid : '-'}">
+            uuid
+        </span>
 
-            <!-- OS details -->
-            <div class="k">OS Name</div>
-            <div class="v" th:text="${asset.osName != null ? asset.osName : '-'}">-</div>
+            <b>Serial Number</b>
+            <span style="overflow-wrap:anywhere;"
+                  th:text="${asset.serialNumber != null && !#strings.isEmpty(asset.serialNumber) ? asset.serialNumber : '-'}">
+            serial
+        </span>
 
-            <div class="k">OS Build</div>
-            <div class="v" th:text="${asset.osBuild != null ? asset.osBuild : '-'}">-</div>
+            <b>Hardware Vendor</b>
+            <span th:text="${asset.hardwareVendor != null && !#strings.isEmpty(asset.hardwareVendor) ? asset.hardwareVendor : '-'}">
+            vendor
+        </span>
 
-            <div class="k">OS Major</div>
-            <div class="v" th:text="${asset.osMajor != null ? asset.osMajor : '-'}">-</div>
+            <b>Hardware Model</b>
+            <span th:text="${asset.hardwareModel != null && !#strings.isEmpty(asset.hardwareModel) ? asset.hardwareModel : '-'}">
+            model
+        </span>
 
-            <div class="k">OS Minor</div>
-            <div class="v" th:text="${asset.osMinor != null ? asset.osMinor : '-'}">-</div>
+            <b>Computer Name</b>
+            <span th:text="${asset.computerName != null && !#strings.isEmpty(asset.computerName) ? asset.computerName : '-'}">
+            computer-name
+        </span>
 
-            <div class="k">OS Patch</div>
-            <div class="v" th:text="${asset.osPatch != null ? asset.osPatch : '-'}">-</div>
+            <b>Local Hostname</b>
+            <span th:text="${asset.localHostname != null && !#strings.isEmpty(asset.localHostname) ? asset.localHostname : '-'}">
+            hostname
+        </span>
 
+            <!-- OS -->
+            <b>OS Name</b>
+            <span th:text="${asset.osName != null && !#strings.isEmpty(asset.osName) ? asset.osName : '-'}">
+            Microsoft Windows
+        </span>
+
+            <b>OS Version</b>
+            <span th:text="${asset.osVersion != null && !#strings.isEmpty(asset.osVersion) ? asset.osVersion : '-'}">
+            Microsoft Windows 11 Pro 10.0.26200
+        </span>
+
+            <b>OS Build</b>
+            <span th:text="${asset.osBuild != null && !#strings.isEmpty(asset.osBuild) ? asset.osBuild : '-'}">
+            26200
+        </span>
+
+            <b>OS Version Parts</b>
+            <span th:text="${(asset.osMajor != null || asset.osMinor != null || asset.osPatch != null)
+            ? ((asset.osMajor != null ? asset.osMajor : '-') + '.' +
+               (asset.osMinor != null ? asset.osMinor : '-') + '.' +
+               (asset.osPatch != null ? asset.osPatch : '-'))
+            : '-'}">
+            11.0.0
+        </span>
+
+            <!-- CPU / Observation -->
+            <b>CPU Brand</b>
+            <span th:text="${asset.cpuBrand != null && !#strings.isEmpty(asset.cpuBrand) ? asset.cpuBrand : '-'}">
+            Intel
+        </span>
+
+            <b>CPU Cores</b>
+            <span th:text="${(asset.cpuPhysicalCores != null || asset.cpuLogicalCores != null)
+            ? ('physical=' + (asset.cpuPhysicalCores != null ? asset.cpuPhysicalCores : '-') +
+               ', logical=' + (asset.cpuLogicalCores != null ? asset.cpuLogicalCores : '-'))
+            : '-'}">
+            physical=4, logical=8
+        </span>
+
+            <b>Last Seen</b>
+            <span th:text="${asset.lastSeenAt != null ? #temporals.format(asset.lastSeenAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
+            2026-03-08 16:44:02
+        </span>
         </div>
     </div>
 
@@ -122,73 +250,136 @@
 
     <div class="actions">
         <h2 style="margin:0;">Installed Software</h2>
-        <a th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <a class="btn btn-ghost" th:href="@{/software}">Open Software Inventory</a>
+            <a class="btn" th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
+        </div>
     </div>
 
-    <table>
-        <thead>
-        <tr>
-            <th style="width: 80px;">ID</th>
-            <th style="width: 180px;">Vendor</th>
-            <th style="width: 260px;">Product</th>
-            <th style="width: 140px;">Installed Version</th>
-            <th>CPE 2.3 Name</th>
-            <th style="width: 90px;">Action</th>
-        </tr>
-        </thead>
+    <div class="table-wrap">
+        <table class="table m-0 asset-sw-table">
+            <thead>
+            <tr>
+                <th style="width: 10%;">Vendor</th>
+                <th style="width: 34%;">Product</th>
+                <th style="width: 16%;">Version</th>
+                <th style="width: 15%;">Link status</th>
+                <th style="width: 14%;">Last Seen</th>
+                <th style="width: 11%;">Actions</th>
+            </tr>
+            </thead>
 
-        <tbody>
-        <tr th:if="${#lists.isEmpty(installs)}">
-            <td colspan="6" class="muted">
-                No software registered for this asset yet. Add installed software to enable vulnerability matching.
-            </td>
-        </tr>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(installs)}">
+                <td colspan="6" class="muted">
+                    No software registered for this asset yet. Add installed software to enable vulnerability matching.
+                </td>
+            </tr>
 
-        <tr th:each="s : ${installs}">
-            <td th:text="${s.id}">1</td>
+            <tr th:each="s : ${installs}"
+                th:classappend="${alertCountBySoftwareId[s.id] != null and alertCountBySoftwareId[s.id] > 0} ? ' software-row--has-alerts' : ''">
 
-            <td th:text="${s.vendor != null && !#strings.isEmpty(s.vendor) ? s.vendor : '-'}">vendor</td>
+                <!-- Vendor -->
+                <td class="asset-sw-vendor">
+                    <div th:text="${(s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null)
+                        ? vendorNameMap[s.cpeVendorId]
+                        : ((s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)))
+                            ? s.vendorRaw
+                            : (s.vendor != null and !#strings.isEmpty(#strings.trim(s.vendor)) ? s.vendor : '-'))}"
+                         th:title="${s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)) ? s.vendorRaw : ''}">
+                        vendor
+                    </div>
+                </td>
 
-            <td>
-                <a th:href="@{/software/{id}(id=${s.id})}">
-                    <b th:text="${s.product}">product</b>
-                </a>
-            </td>
+                <!-- Product -->
+                <td>
+                    <div class="asset-sw-product-main">
+                        <a th:href="@{/software/{id}(id=${s.id})}"
+                           th:title="${s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)) ? s.productRaw : s.product}">
+                            <b th:text="${(s.cpeProductId != null and productNameMap != null and productNameMap[s.cpeProductId] != null)
+                                ? productNameMap[s.cpeProductId]
+                                : ((s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)))
+                                    ? s.productRaw
+                                    : (s.product != null and !#strings.isEmpty(#strings.trim(s.product)) ? s.product : '-'))}">
+                                product
+                            </b>
+                        </a>
 
-            <td th:text="${s.version != null && !#strings.isEmpty(s.version) ? s.version : '(not set)'}">1.0</td>
+                        <a th:if="${alertCountBySoftwareId[s.id] != null and alertCountBySoftwareId[s.id] > 0}"
+                           class="badge badge-alert"
+                           th:href="@{/alerts(view='FLAT', softwareId=${s.id})}"
+                           th:text="${alertCountBySoftwareId[s.id] + ' alerts'}">
+                            1 alerts
+                        </a>
+                    </div>
+                </td>
 
-            <td>
-                <span th:if="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
-                      class="muted"
-                      th:text="${s.cpeName}">cpe:2.3:...</span>
+                <!-- Version -->
+                <td>
+                    <div th:text="${s.version != null && !#strings.isEmpty(s.version) ? s.version : '(not set)'}">1.0</div>
 
-                <span th:unless="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
-                      class="badge badge--unmapped">UNMAPPED (CPE)</span>
-            </td>
+                    <div class="muted text-12"
+                         th:if="${s.versionRaw != null && !#strings.isEmpty(s.versionRaw) && s.versionRaw != s.version}"
+                         th:text="${'raw: ' + s.versionRaw}">
+                        raw: version
+                    </div>
+                </td>
 
-            <td>
-                <div style="display:flex; gap:8px; align-items:center;">
+                <!-- Link status -->
+                <td class="asset-sw-link">
+                    <div th:if="${s.cpeVendorId != null and s.cpeProductId != null and !s.canonicalLinkDisabled}">
+                        <span class="pill"
+                              style="border-color: rgba(138,180,255,0.55); background: rgba(138,180,255,0.12); color: var(--text);">
+                            LINKED
+                        </span>
 
-                    <!-- Edit button -->
-                    <a th:href="@{/software/{id}/edit(id=${s.id})}"
-                       class="btn">
-                        Edit
-                    </a>
+                        <div class="muted text-12 asset-sw-link-sub"
+                             th:if="${s.cpeName != null && !#strings.isEmpty(s.cpeName)}"
+                             th:text="${s.cpeName}">
+                            cpe:2.3:...
+                        </div>
+                    </div>
 
-                    <!-- Delete button -->
-                    <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
-                          onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
-                        <input type="hidden" name="assetId" th:value="${asset.id}">
-                        <button class="btn btn--danger" type="submit">Delete</button>
-                    </form>
+                    <div th:if="${s.canonicalLinkDisabled}">
+                        <span class="pill"
+                              style="border-color: rgba(255, 211, 122, 0.45); color: var(--warn);">
+                            DISABLED
+                        </span>
 
-                </div>
-            </td>
-        </tr>
-        </tbody>
-    </table>
+                        <div class="muted text-12 asset-sw-link-sub">
+                            canonical linking disabled
+                        </div>
+                    </div>
+
+                    <div th:if="${(s.cpeVendorId == null or s.cpeProductId == null) and !s.canonicalLinkDisabled}">
+                        <span class="pill">UNRESOLVABLE</span>
+                    </div>
+                </td>
+
+                <!-- Last Seen -->
+                <td class="asset-sw-lastseen"
+                    th:text="${s.lastSeenAt != null ? #temporals.format(s.lastSeenAt, 'yyyy-MM-dd HH:mm') : '-'}">
+                    -
+                </td>
+
+                <!-- Actions -->
+                <td>
+                    <div class="asset-sw-actions">
+                        <a th:href="@{/software/{id}/edit(id=${s.id})}" class="btn btn-sm">Edit</a>
+
+                        <form th:action="@{/software/{id}/delete(id=${s.id})}"
+                              method="post"
+                              onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
+                            <input type="hidden" name="assetId" th:value="${asset.id}">
+                            <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
 
 </main>
 </body>
-
 </html>

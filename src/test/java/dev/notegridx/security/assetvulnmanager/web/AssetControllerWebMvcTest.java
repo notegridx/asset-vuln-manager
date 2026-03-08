@@ -1,8 +1,11 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.Asset;
+import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.service.AssetService;
 import dev.notegridx.security.assetvulnmanager.service.SoftwareInstallService;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,9 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -38,6 +39,15 @@ class AssetControllerWebMvcTest {
 
     @MockitoBean
     private SoftwareInstallService softwareInstallService;
+
+    @MockitoBean
+    private AlertRepository alertRepository;
+
+    @MockitoBean
+    private CpeVendorRepository cpeVendorRepository;
+
+    @MockitoBean
+    private CpeProductRepository cpeProductRepository;
 
     @Test
     @DisplayName("GET /assets returns asset list page")
@@ -123,12 +133,18 @@ class AssetControllerWebMvcTest {
         Asset asset = mock(Asset.class);
         when(assetService.getRequired(1L)).thenReturn(asset);
         when(softwareInstallService.findByAssetId(1L)).thenReturn(List.of());
+        when(alertRepository.countBySoftwareInstallIds(List.of())).thenReturn(List.of());
+        when(cpeVendorRepository.findAllById(anyIterable())).thenReturn(List.of());
+        when(cpeProductRepository.findAllById(anyIterable())).thenReturn(List.of());
 
         mockMvc.perform(get("/assets/1"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("assets/detail"))
                 .andExpect(model().attributeExists("asset"))
-                .andExpect(model().attributeExists("installs"));
+                .andExpect(model().attributeExists("installs"))
+                .andExpect(model().attributeExists("alertCountBySoftwareId"))
+                .andExpect(model().attributeExists("vendorNameMap"))
+                .andExpect(model().attributeExists("productNameMap"));
     }
 
     @Test

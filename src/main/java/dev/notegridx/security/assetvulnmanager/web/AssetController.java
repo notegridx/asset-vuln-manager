@@ -1,6 +1,10 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -13,7 +17,12 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import dev.notegridx.security.assetvulnmanager.domain.Asset;
+import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
+import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.service.AssetService;
 import dev.notegridx.security.assetvulnmanager.service.DictionaryValidationException;
 import dev.notegridx.security.assetvulnmanager.service.SoftwareInstallService;
@@ -25,13 +34,22 @@ public class AssetController {
 
     private final AssetService assetService;
     private final SoftwareInstallService softwareInstallService;
+    private final AlertRepository alertRepository;
+    private final CpeVendorRepository cpeVendorRepository;
+    private final CpeProductRepository cpeProductRepository;
 
     public AssetController(
             AssetService assetService,
-            SoftwareInstallService softwareInstallService
+            SoftwareInstallService softwareInstallService,
+            AlertRepository alertRepository,
+            CpeVendorRepository cpeVendorRepository,
+            CpeProductRepository cpeProductRepository
     ) {
         this.assetService = assetService;
         this.softwareInstallService = softwareInstallService;
+        this.alertRepository = alertRepository;
+        this.cpeVendorRepository = cpeVendorRepository;
+        this.cpeProductRepository = cpeProductRepository;
     }
 
     @PostMapping("/assets/{id}/delete")
@@ -83,8 +101,45 @@ public class AssetController {
         Asset asset = assetService.getRequired(assetId);
         List<SoftwareInstall> installs = softwareInstallService.findByAssetId(assetId);
 
+        Map<Long, Long> alertCountBySoftwareId = new HashMap<>();
+        if (!installs.isEmpty()) {
+            List<Long> softwareIds = installs.stream()
+                    .map(SoftwareInstall::getId)
+                    .toList();
+
+            for (Object[] row : alertRepository.countBySoftwareInstallIds(softwareIds)) {
+                Long softwareId = ((Number) row[0]).longValue();
+                Long count = ((Number) row[1]).longValue();
+                alertCountBySoftwareId.put(softwareId, count);
+            }
+        }
+
+        Set<Long> vendorIds = new HashSet<>();
+        Set<Long> productIds = new HashSet<>();
+        for (SoftwareInstall s : installs) {
+            if (s.getCpeVendorId() != null) {
+                vendorIds.add(s.getCpeVendorId());
+            }
+            if (s.getCpeProductId() != null) {
+                productIds.add(s.getCpeProductId());
+            }
+        }
+
+        Map<Long, String> vendorNameMap = new HashMap<>();
+        for (CpeVendor v : cpeVendorRepository.findAllById(vendorIds)) {
+            vendorNameMap.put(v.getId(), firstNonBlank(v.getDisplayName(), v.getNameNorm(), "#" + v.getId()));
+        }
+
+        Map<Long, String> productNameMap = new HashMap<>();
+        for (CpeProduct p : cpeProductRepository.findAllById(productIds)) {
+            productNameMap.put(p.getId(), firstNonBlank(p.getDisplayName(), p.getNameNorm(), "#" + p.getId()));
+        }
+
         model.addAttribute("asset", asset);
         model.addAttribute("installs", installs);
+        model.addAttribute("alertCountBySoftwareId", alertCountBySoftwareId);
+        model.addAttribute("vendorNameMap", vendorNameMap);
+        model.addAttribute("productNameMap", productNameMap);
         return "assets/detail";
     }
 
@@ -121,8 +176,6 @@ public class AssetController {
             );
 
         } catch (DictionaryValidationException e) {
-            // vendor/product どちらで落ちてもフォームに表示できる
-            // e.getField() は "vendor" or "product" を想定
             bindingResult.rejectValue(
                     e.getField(),
                     e.getCode().name(),
@@ -183,12 +236,10 @@ public class AssetController {
                     form.getOsVersion()
             );
         } catch (DataIntegrityViolationException e) {
-            // external_key UNIQUE など想定
             binding.rejectValue("externalKey", "duplicate", "External Key is already used.");
             model.addAttribute("asset", assetService.getRequired(id));
             return "assets/edit";
         } catch (IllegalArgumentException e) {
-            // updateName/updateDetails のバリデーションなど
             binding.reject("invalid", e.getMessage());
             model.addAttribute("asset", assetService.getRequired(id));
             return "assets/edit";
@@ -202,5 +253,11 @@ public class AssetController {
     public String notFound(EntityNotFoundException ex, Model model) {
         model.addAttribute("message", ex.getMessage());
         return "error/404";
+    }
+
+    private static String firstNonBlank(String a, String b, String fallback) {
+        if (a != null && !a.isBlank()) return a;
+        if (b != null && !b.isBlank()) return b;
+        return fallback;
     }
 }
