@@ -485,4 +485,71 @@ class JsonStagedImportServiceTest {
 
         verify(canonicalBackfillService).backfillForSoftwareIds(List.of(501L, 502L), false);
     }
+
+    @Test
+    void stageAssets_acceptsSnakeCaseFields() {
+        String json = """
+            [
+              {
+                "externalKey":"asset-001",
+                "name":"Host 001",
+                "asset_type":"WORKSTATION",
+                "platform":"windows",
+                "os_version":"11",
+                "system_uuid":"uuid-001",
+                "serial_number":"sn-001",
+                "hardware_vendor":"Dell",
+                "hardware_model":"OptiPlex",
+                "computer_name":"PC-001",
+                "local_hostname":"pc001.local",
+                "cpu_brand":"Intel",
+                "cpu_physical_cores":4,
+                "cpu_logical_cores":8,
+                "arch":"x64",
+                "os_name":"Windows",
+                "os_build":"22631",
+                "os_major":11,
+                "os_minor":0,
+                "os_patch":1,
+                "last_seen_at":"2026-03-08T06:00:00"
+              }
+            ]
+            """;
+
+        ImportRun run = service.stageAssets(
+                "assets.json",
+                json.getBytes(StandardCharsets.UTF_8)
+        );
+
+        ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
+        verify(stagingAssetRepository).saveAll(captor.capture());
+
+        List<?> rows = captor.getValue();
+        assertThat(rows).hasSize(1);
+
+        ImportStagingAsset saved = (ImportStagingAsset) rows.get(0);
+        assertThat(saved.getExternalKey()).isEqualTo("asset-001");
+        assertThat(saved.getName()).isEqualTo("Host 001");
+        assertThat(saved.getAssetType()).isEqualTo("WORKSTATION");
+        assertThat(saved.getOsVersion()).isEqualTo("11");
+        assertThat(saved.getSystemUuid()).isEqualTo("uuid-001");
+        assertThat(saved.getSerialNumber()).isEqualTo("sn-001");
+        assertThat(saved.getHardwareVendor()).isEqualTo("Dell");
+        assertThat(saved.getHardwareModel()).isEqualTo("OptiPlex");
+        assertThat(saved.getComputerName()).isEqualTo("PC-001");
+        assertThat(saved.getLocalHostname()).isEqualTo("pc001.local");
+        assertThat(saved.getCpuBrand()).isEqualTo("Intel");
+        assertThat(saved.getCpuPhysicalCores()).isEqualTo(4);
+        assertThat(saved.getCpuLogicalCores()).isEqualTo(8);
+        assertThat(saved.getArch()).isEqualTo("x64");
+        assertThat(saved.getOsName()).isEqualTo("Windows");
+        assertThat(saved.getOsBuild()).isEqualTo("22631");
+        assertThat(saved.getOsMajor()).isEqualTo(11);
+        assertThat(saved.getOsMinor()).isEqualTo(0);
+        assertThat(saved.getOsPatch()).isEqualTo(1);
+        assertThat(saved.getLastSeenAt()).isEqualTo(LocalDateTime.of(2026, 3, 8, 6, 0));
+
+        assertThat(run.getValidRows()).isEqualTo(1);
+        assertThat(run.getInvalidRows()).isEqualTo(0);
+    }
 }

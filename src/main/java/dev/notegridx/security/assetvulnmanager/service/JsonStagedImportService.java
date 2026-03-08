@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,32 +69,63 @@ public class JsonStagedImportService {
     public static class AssetJsonRow {
         public String externalKey;
         public String name;
+
+        @JsonAlias("asset_type")
         public String assetType;
+
         public String owner;
         public String note;
-
         public String source;
         public String platform;
+
+        @JsonAlias("os_version")
         public String osVersion;
 
+        @JsonAlias("system_uuid")
         public String systemUuid;
+
+        @JsonAlias("serial_number")
         public String serialNumber;
+
+        @JsonAlias("hardware_vendor")
         public String hardwareVendor;
+
+        @JsonAlias("hardware_model")
         public String hardwareModel;
+
+        @JsonAlias("computer_name")
         public String computerName;
+
+        @JsonAlias("local_hostname")
         public String localHostname;
 
+        @JsonAlias("cpu_brand")
         public String cpuBrand;
+
+        @JsonAlias("cpu_physical_cores")
         public Integer cpuPhysicalCores;
+
+        @JsonAlias("cpu_logical_cores")
         public Integer cpuLogicalCores;
+
         public String arch;
 
+        @JsonAlias("os_name")
         public String osName;
+
+        @JsonAlias("os_build")
         public String osBuild;
+
+        @JsonAlias("os_major")
         public Integer osMajor;
+
+        @JsonAlias("os_minor")
         public Integer osMinor;
+
+        @JsonAlias("os_patch")
         public Integer osPatch;
 
+        @JsonAlias("last_seen_at")
         public String lastSeenAt;
     }
 
@@ -104,30 +136,49 @@ public class JsonStagedImportService {
         public String product;
         public String version;
 
+        @JsonAlias("install_location")
         public String installLocation;
+
+        @JsonAlias("installed_at")
         public String installedAt;
+
+        @JsonAlias("package_identifier")
         public String packageIdentifier;
+
         public String arch;
 
         public String type;
         public String source;
+
+        @JsonAlias("source_type")
         public String sourceType;
 
+        @JsonAlias("vendor_raw")
         public String vendorRaw;
+
+        @JsonAlias("product_raw")
         public String productRaw;
+
+        @JsonAlias("version_raw")
         public String versionRaw;
 
         public String publisher;
+
+        @JsonAlias("bundle_id")
         public String bundleId;
+
+        @JsonAlias("package_manager")
         public String packageManager;
+
+        @JsonAlias("install_source")
         public String installSource;
 
         public String edition;
         public String channel;
         public String release;
-
         public String purl;
 
+        @JsonAlias("last_seen_at")
         public String lastSeenAt;
     }
 
