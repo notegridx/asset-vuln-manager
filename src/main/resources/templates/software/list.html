@@ -61,7 +61,7 @@
 
             <div class="field" style="min-width:240px; margin:0;">
                 <label>Asset</label>
-                <select name="assetId">
+                <select name="assetId" onchange="this.form.submit()">
                     <option value="" th:selected="${assetId == null}">All assets</option>
                     <option th:each="a : ${assets}"
                             th:value="${a.id}"
@@ -73,15 +73,11 @@
 
             <div class="field" style="min-width:220px; margin:0;">
                 <label>Link status</label>
-                <select name="linkStatus">
+                <select name="linkStatus" onchange="this.form.submit()">
                     <option value="ALL" th:selected="${linkStatus == null or linkStatus == 'ALL'}">All</option>
                     <option value="LINKED" th:selected="${linkStatus == 'LINKED'}">Linked only</option>
                     <option value="NOT_LINKED" th:selected="${linkStatus == 'NOT_LINKED'}">Not linked only</option>
                 </select>
-            </div>
-
-            <div class="actions" style="margin:0 0 0 auto;">
-                <button class="btn" type="submit">Apply</button>
             </div>
 
             <input type="hidden" name="size" th:value="${page.size}"/>
