@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 
-<head th:replace="~{layout/base :: head('Import Runs')}"></head>
+<head th:replace="~{layout/base :: head('Import History')}"></head>
 
-<body th:replace="~{layout/base :: layout('Import Runs', 'admin', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Import History', 'admin', ~{::main})}">
 <main>
 
-  <h1>Import Runs</h1>
+  <h1>Import History</h1>
   <p class="muted">
     History of inventory imports (CSV / osquery / etc.). Use this to verify idempotency, throughput, and unresolved queue growth.
   </p>
