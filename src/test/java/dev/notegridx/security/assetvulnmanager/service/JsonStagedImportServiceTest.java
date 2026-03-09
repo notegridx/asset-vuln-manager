@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -389,6 +390,7 @@ class JsonStagedImportServiceTest {
         Asset asset = mock(Asset.class);
         SoftwareInstall existing = new SoftwareInstall(new Asset("Host 001"), "Microsoft.WindowsNotepad");
 
+        existing.updateDetails("Microsoft", "Microsoft.WindowsNotepad", "11.0", null);
         existing.linkCanonical(100L, 200L);
 
         when(row.isValid()).thenReturn(true);
@@ -419,9 +421,10 @@ class JsonStagedImportServiceTest {
         when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(6L)).thenReturn(List.of(row));
         when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.of(asset));
         when(asset.getId()).thenReturn(10L);
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
-                10L, "Microsoft", "Microsoft.WindowsNotepad", "11.0"
-        )).thenReturn(Optional.of(existing));
+
+        // Phase 4: asset 単位 preload に合わせる
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(10L))
+                .thenReturn(List.of(existing));
 
         service.importSoftware(6L);
 
@@ -910,6 +913,117 @@ class JsonStagedImportServiceTest {
         verify(assetRepository).findByExternalKey("missing-asset");
         verify(softwareInstallRepository, never()).save(any());
     }
+
+    @Test
+    void importSoftware_preloadsExistingSoftwareOncePerAsset() {
+        ImportStagingSoftware row1 = mock(ImportStagingSoftware.class);
+        ImportStagingSoftware row2 = mock(ImportStagingSoftware.class);
+        Asset asset = mock(Asset.class);
+
+        when(row1.isValid()).thenReturn(true);
+        when(row1.getExternalKey()).thenReturn("asset-001");
+        when(row1.getVendor()).thenReturn("VendorA");
+        when(row1.getProduct()).thenReturn("ProductA");
+        when(row1.getVersion()).thenReturn("1.0");
+        when(row1.getVendorRaw()).thenReturn("VendorA");
+        when(row1.getProductRaw()).thenReturn("ProductA");
+        when(row1.getVersionRaw()).thenReturn("1.0");
+        when(row1.getSource()).thenReturn("OSQUERY");
+        when(row1.getSourceType()).thenReturn("OSQUERY");
+        when(row1.getType()).thenReturn("APPLICATION");
+
+        when(row2.isValid()).thenReturn(true);
+        when(row2.getExternalKey()).thenReturn("asset-001");
+        when(row2.getVendor()).thenReturn("VendorB");
+        when(row2.getProduct()).thenReturn("ProductB");
+        when(row2.getVersion()).thenReturn("2.0");
+        when(row2.getVendorRaw()).thenReturn("VendorB");
+        when(row2.getProductRaw()).thenReturn("ProductB");
+        when(row2.getVersionRaw()).thenReturn("2.0");
+        when(row2.getSource()).thenReturn("OSQUERY");
+        when(row2.getSourceType()).thenReturn("OSQUERY");
+        when(row2.getType()).thenReturn("APPLICATION");
+
+        when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(40L))
+                .thenReturn(List.of(row1, row2));
+
+        when(assetRepository.findByExternalKey("asset-001"))
+                .thenReturn(Optional.of(asset));
+        when(asset.getId()).thenReturn(400L);
+
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(400L))
+                .thenReturn(List.of());
+
+        when(validator.resolve("VendorA", "ProductA"))
+                .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
+                        DictionaryValidationException.DictionaryErrorCode.DICT_PRODUCT_NOT_FOUND,
+                        "product", "not found", "vendora", "producta"
+                ));
+
+        when(validator.resolve("VendorB", "ProductB"))
+                .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
+                        DictionaryValidationException.DictionaryErrorCode.DICT_PRODUCT_NOT_FOUND,
+                        "product", "not found", "vendorb", "productb"
+                ));
+
+        service.importSoftware(40L);
+
+        verify(softwareInstallRepository, times(1)).findByAssetIdOrderByIdAsc(400L);
+        verify(softwareInstallRepository, never())
+                .findByAssetIdAndVendorAndProductAndVersion(anyLong(), anyString(), anyString(), anyString());
+        verify(softwareInstallRepository, times(2)).save(any(SoftwareInstall.class));
+    }
+
+    @Test
+    void importSoftware_usesPreloadedExistingSoftwareForSameAssetAndKey() {
+        ImportStagingSoftware row = mock(ImportStagingSoftware.class);
+        Asset asset = mock(Asset.class);
+        SoftwareInstall existing = mock(SoftwareInstall.class);
+        SoftwareInstall saved = mock(SoftwareInstall.class);
+
+        when(row.isValid()).thenReturn(true);
+        when(row.getExternalKey()).thenReturn("asset-002");
+        when(row.getVendor()).thenReturn("VendorX");
+        when(row.getProduct()).thenReturn("ProductX");
+        when(row.getVersion()).thenReturn("3.0");
+        when(row.getVendorRaw()).thenReturn("VendorX");
+        when(row.getProductRaw()).thenReturn("ProductX");
+        when(row.getVersionRaw()).thenReturn("3.0");
+        when(row.getSource()).thenReturn("OSQUERY");
+        when(row.getSourceType()).thenReturn("OSQUERY");
+        when(row.getType()).thenReturn("APPLICATION");
+
+        when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(41L))
+                .thenReturn(List.of(row));
+
+        when(assetRepository.findByExternalKey("asset-002"))
+                .thenReturn(Optional.of(asset));
+        when(asset.getId()).thenReturn(410L);
+
+        when(existing.getVendor()).thenReturn("VendorX");
+        when(existing.getProduct()).thenReturn("ProductX");
+        when(existing.getVersion()).thenReturn("3.0");
+        when(existing.getCpeName()).thenReturn("cpe:2.3:a:vendorx:productx:3.0:*:*:*:*:*:*:*");
+
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(410L))
+                .thenReturn(List.of(existing));
+
+        when(validator.resolve("VendorX", "ProductX"))
+                .thenReturn(SoftwareDictionaryValidator.Resolve.hit(91L, 92L, "vendorx", "productx"));
+
+        when(softwareInstallRepository.save(existing)).thenReturn(saved);
+        when(saved.getCpeVendorId()).thenReturn(91L);
+        when(saved.getCpeProductId()).thenReturn(92L);
+
+        service.importSoftware(41L);
+
+        verify(softwareInstallRepository, times(1)).findByAssetIdOrderByIdAsc(410L);
+        verify(softwareInstallRepository, never())
+                .findByAssetIdAndVendorAndProductAndVersion(anyLong(), anyString(), anyString(), anyString());
+        verify(softwareInstallRepository).save(existing);
+    }
+
+
 
 
 }

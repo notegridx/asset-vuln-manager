@@ -410,6 +410,7 @@ public class JsonStagedImportService {
         List<Long> backfillCandidateIds = new ArrayList<>();
         Map<String, Optional<Asset>> assetCache = new HashMap<>();
         Map<String, SoftwareDictionaryValidator.Resolve> resolveCache = new HashMap<>();
+        Map<Long, Map<String, SoftwareInstall>> existingByAssetCache = new HashMap<>();
 
         for (ImportStagingSoftware r : rows) {
             if (!r.isValid()) continue;
@@ -438,11 +439,26 @@ public class JsonStagedImportService {
 
             if (productDisplay.isEmpty()) continue;
 
-            SoftwareInstall sw = softwareInstallRepository
-                    .findByAssetIdAndVendorAndProductAndVersion(
-                            asset.getId(), vendorDisplay, productDisplay, versionDisplay
-                    )
-                    .orElse(null);
+            Long assetId = asset.getId();
+
+            Map<String, SoftwareInstall> existingForAsset = existingByAssetCache.computeIfAbsent(
+                    assetId,
+                    id -> {
+                        Map<String, SoftwareInstall> m = new HashMap<>();
+                        for (SoftwareInstall s : softwareInstallRepository.findByAssetIdOrderByIdAsc(id)) {
+                            String key = softwareIdentityKey(
+                                    normEmpty(s.getVendor()),
+                                    normEmpty(s.getProduct()),
+                                    normEmpty(s.getVersion())
+                            );
+                            m.put(key, s);
+                        }
+                        return m;
+                    }
+            );
+
+            String softwareKey = softwareIdentityKey(vendorDisplay, productDisplay, versionDisplay);
+            SoftwareInstall sw = existingForAsset.get(softwareKey);
 
             if (sw == null) {
                 sw = new SoftwareInstall(asset, productDisplay);
@@ -506,6 +522,8 @@ public class JsonStagedImportService {
             SoftwareInstall saved = softwareInstallRepository.save(sw);
             upserted++;
 
+            existingForAsset.put(softwareKey, saved);
+
             boolean fullyLinked = saved.getCpeVendorId() != null && saved.getCpeProductId() != null;
             if (!windowsComponent && !fullyLinked && saved.getId() != null) {
                 backfillCandidateIds.add(saved.getId());
@@ -516,6 +534,10 @@ public class JsonStagedImportService {
 
         run.markImported(0, upserted, null);
         return importRunRepository.save(run);
+    }
+
+    private String softwareIdentityKey(String vendor, String product, String version) {
+        return normEmpty(vendor) + "\u0000" + normEmpty(product) + "\u0000" + normEmpty(version);
     }
 
     private static void trySetSoftwareType(SoftwareInstall sw, String type) {
