@@ -409,6 +409,7 @@ public class JsonStagedImportService {
 
         List<Long> backfillCandidateIds = new ArrayList<>();
         Map<String, Optional<Asset>> assetCache = new HashMap<>();
+        Map<String, SoftwareDictionaryValidator.Resolve> resolveCache = new HashMap<>();
 
         for (ImportStagingSoftware r : rows) {
             if (!r.isValid()) continue;
@@ -489,9 +490,17 @@ public class JsonStagedImportService {
             if (windowsComponent) {
                 sw.unlinkCanonical();
             } else {
-                var res = softwareDictionaryValidator.resolve(vIn, pIn);
-                if (res.hit()) sw.linkCanonical(res.vendorId(), res.productId());
-                else sw.unlinkCanonical();
+                String resolveKey = (vIn == null ? "" : vIn) + "\u0000" + (pIn == null ? "" : pIn);
+                SoftwareDictionaryValidator.Resolve res = resolveCache.computeIfAbsent(
+                        resolveKey,
+                        k -> softwareDictionaryValidator.resolve(vIn, pIn)
+                );
+
+                if (res.hit()) {
+                    sw.linkCanonical(res.vendorId(), res.productId());
+                } else {
+                    sw.unlinkCanonical();
+                }
             }
 
             SoftwareInstall saved = softwareInstallRepository.save(sw);

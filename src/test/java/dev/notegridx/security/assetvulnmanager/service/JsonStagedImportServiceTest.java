@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -591,6 +592,182 @@ class JsonStagedImportServiceTest {
 
         verify(validator, never()).resolve(any(), any());
         verify(canonicalBackfillService).backfillForSoftwareIds(List.of(), false);
+    }
+
+    @Test
+    void importSoftware_cachesDictionaryResolveHit_withinSingleRun() {
+        ImportStagingSoftware row1 = mock(ImportStagingSoftware.class);
+        ImportStagingSoftware row2 = mock(ImportStagingSoftware.class);
+        Asset asset1 = mock(Asset.class);
+        Asset asset2 = mock(Asset.class);
+
+        // row1
+        when(row1.isValid()).thenReturn(true);
+        when(row1.getExternalKey()).thenReturn("asset-001");
+        when(row1.getVendor()).thenReturn("Google");
+        when(row1.getProduct()).thenReturn("Chrome");
+        when(row1.getVersion()).thenReturn("145.0");
+        when(row1.getVendorRaw()).thenReturn("Google LLC");
+        when(row1.getProductRaw()).thenReturn("Google Chrome");
+        when(row1.getVersionRaw()).thenReturn("145.0.7632.159");
+        when(row1.getSource()).thenReturn("OSQUERY");
+        when(row1.getSourceType()).thenReturn("OSQUERY");
+        when(row1.getType()).thenReturn("APPLICATION");
+        when(row1.getInstallLocation()).thenReturn("C:\\Chrome");
+        when(row1.getInstalledAt()).thenReturn(LocalDateTime.of(2026, 3, 2, 0, 0));
+        when(row1.getPackageIdentifier()).thenReturn("{PKG-1}");
+        when(row1.getArch()).thenReturn("x64");
+        when(row1.getLastSeenAt()).thenReturn(LocalDateTime.of(2026, 3, 8, 10, 0));
+        when(row1.getPublisher()).thenReturn("Google LLC");
+        when(row1.getBundleId()).thenReturn(null);
+        when(row1.getPackageManager()).thenReturn(null);
+        when(row1.getInstallSource()).thenReturn(null);
+        when(row1.getEdition()).thenReturn(null);
+        when(row1.getChannel()).thenReturn(null);
+        when(row1.getRelease()).thenReturn(null);
+        when(row1.getPurl()).thenReturn(null);
+
+        // row2: vendor/product は row1 と同じ、asset/version だけ変える
+        when(row2.isValid()).thenReturn(true);
+        when(row2.getExternalKey()).thenReturn("asset-002");
+        when(row2.getVendor()).thenReturn("Google");
+        when(row2.getProduct()).thenReturn("Chrome");
+        when(row2.getVersion()).thenReturn("145.1");
+        when(row2.getVendorRaw()).thenReturn("Google LLC");
+        when(row2.getProductRaw()).thenReturn("Google Chrome");
+        when(row2.getVersionRaw()).thenReturn("145.1.7632.200");
+        when(row2.getSource()).thenReturn("OSQUERY");
+        when(row2.getSourceType()).thenReturn("OSQUERY");
+        when(row2.getType()).thenReturn("APPLICATION");
+        when(row2.getInstallLocation()).thenReturn("D:\\Chrome");
+        when(row2.getInstalledAt()).thenReturn(LocalDateTime.of(2026, 3, 3, 0, 0));
+        when(row2.getPackageIdentifier()).thenReturn("{PKG-2}");
+        when(row2.getArch()).thenReturn("x64");
+        when(row2.getLastSeenAt()).thenReturn(LocalDateTime.of(2026, 3, 8, 10, 5));
+        when(row2.getPublisher()).thenReturn("Google LLC");
+        when(row2.getBundleId()).thenReturn(null);
+        when(row2.getPackageManager()).thenReturn(null);
+        when(row2.getInstallSource()).thenReturn(null);
+        when(row2.getEdition()).thenReturn(null);
+        when(row2.getChannel()).thenReturn(null);
+        when(row2.getRelease()).thenReturn(null);
+        when(row2.getPurl()).thenReturn(null);
+
+        when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(30L))
+                .thenReturn(List.of(row1, row2));
+
+        when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.of(asset1));
+        when(assetRepository.findByExternalKey("asset-002")).thenReturn(Optional.of(asset2));
+        when(asset1.getId()).thenReturn(301L);
+        when(asset2.getId()).thenReturn(302L);
+
+        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
+                301L, "Google LLC", "Google Chrome", "145.0.7632.159"
+        )).thenReturn(Optional.empty());
+
+        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
+                302L, "Google LLC", "Google Chrome", "145.1.7632.200"
+        )).thenReturn(Optional.empty());
+
+        when(validator.resolve("Google LLC", "Google Chrome"))
+                .thenReturn(SoftwareDictionaryValidator.Resolve.hit(11L, 22L, "google", "chrome"));
+
+        service.importSoftware(30L);
+
+        verify(validator, times(1)).resolve("Google LLC", "Google Chrome");
+        verify(softwareInstallRepository, times(2)).save(any(SoftwareInstall.class));
+        verify(canonicalBackfillService).backfillForSoftwareIds(List.of(), false);
+    }
+
+    @Test
+    void importSoftware_cachesDictionaryResolveMiss_withinSingleRun() {
+        ImportStagingSoftware row1 = mock(ImportStagingSoftware.class);
+        ImportStagingSoftware row2 = mock(ImportStagingSoftware.class);
+        Asset asset1 = mock(Asset.class);
+        Asset asset2 = mock(Asset.class);
+
+        // row1
+        when(row1.isValid()).thenReturn(true);
+        when(row1.getExternalKey()).thenReturn("asset-010");
+        when(row1.getVendor()).thenReturn("Unknown Vendor");
+        when(row1.getProduct()).thenReturn("Unknown Product");
+        when(row1.getVersion()).thenReturn("1.0");
+        when(row1.getVendorRaw()).thenReturn("Unknown Vendor");
+        when(row1.getProductRaw()).thenReturn("Unknown Product");
+        when(row1.getVersionRaw()).thenReturn("1.0");
+        when(row1.getSource()).thenReturn("OSQUERY");
+        when(row1.getSourceType()).thenReturn("OSQUERY");
+        when(row1.getType()).thenReturn("APPLICATION");
+        when(row1.getInstallLocation()).thenReturn(null);
+        when(row1.getInstalledAt()).thenReturn(null);
+        when(row1.getPackageIdentifier()).thenReturn(null);
+        when(row1.getArch()).thenReturn(null);
+        when(row1.getLastSeenAt()).thenReturn(LocalDateTime.of(2026, 3, 8, 11, 0));
+        when(row1.getPublisher()).thenReturn(null);
+        when(row1.getBundleId()).thenReturn(null);
+        when(row1.getPackageManager()).thenReturn(null);
+        when(row1.getInstallSource()).thenReturn(null);
+        when(row1.getEdition()).thenReturn(null);
+        when(row1.getChannel()).thenReturn(null);
+        when(row1.getRelease()).thenReturn(null);
+        when(row1.getPurl()).thenReturn(null);
+
+        // row2: vendor/product は row1 と同じ
+        when(row2.isValid()).thenReturn(true);
+        when(row2.getExternalKey()).thenReturn("asset-011");
+        when(row2.getVendor()).thenReturn("Unknown Vendor");
+        when(row2.getProduct()).thenReturn("Unknown Product");
+        when(row2.getVersion()).thenReturn("2.0");
+        when(row2.getVendorRaw()).thenReturn("Unknown Vendor");
+        when(row2.getProductRaw()).thenReturn("Unknown Product");
+        when(row2.getVersionRaw()).thenReturn("2.0");
+        when(row2.getSource()).thenReturn("OSQUERY");
+        when(row2.getSourceType()).thenReturn("OSQUERY");
+        when(row2.getType()).thenReturn("APPLICATION");
+        when(row2.getInstallLocation()).thenReturn(null);
+        when(row2.getInstalledAt()).thenReturn(null);
+        when(row2.getPackageIdentifier()).thenReturn(null);
+        when(row2.getArch()).thenReturn(null);
+        when(row2.getLastSeenAt()).thenReturn(LocalDateTime.of(2026, 3, 8, 11, 5));
+        when(row2.getPublisher()).thenReturn(null);
+        when(row2.getBundleId()).thenReturn(null);
+        when(row2.getPackageManager()).thenReturn(null);
+        when(row2.getInstallSource()).thenReturn(null);
+        when(row2.getEdition()).thenReturn(null);
+        when(row2.getChannel()).thenReturn(null);
+        when(row2.getRelease()).thenReturn(null);
+        when(row2.getPurl()).thenReturn(null);
+
+        when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(31L))
+                .thenReturn(List.of(row1, row2));
+
+        when(assetRepository.findByExternalKey("asset-010")).thenReturn(Optional.of(asset1));
+        when(assetRepository.findByExternalKey("asset-011")).thenReturn(Optional.of(asset2));
+        when(asset1.getId()).thenReturn(310L);
+        when(asset2.getId()).thenReturn(311L);
+
+        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
+                310L, "Unknown Vendor", "Unknown Product", "1.0"
+        )).thenReturn(Optional.empty());
+
+        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
+                311L, "Unknown Vendor", "Unknown Product", "2.0"
+        )).thenReturn(Optional.empty());
+
+        when(validator.resolve("Unknown Vendor", "Unknown Product"))
+                .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
+                        DictionaryValidationException.DictionaryErrorCode.DICT_PRODUCT_NOT_FOUND,
+                        "product",
+                        "not found",
+                        "unknown vendor",
+                        "unknown product"
+                ));
+
+        service.importSoftware(31L);
+
+        verify(validator, times(1)).resolve("Unknown Vendor", "Unknown Product");
+        verify(softwareInstallRepository, times(2)).save(any(SoftwareInstall.class));
+        verify(canonicalBackfillService).backfillForSoftwareIds(anyList(), eq(false));
     }
 
     @Test
