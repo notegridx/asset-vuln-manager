@@ -71,10 +71,18 @@ public class CanonicalBackfillService {
 
     public BackfillResult backfill(int maxRows, boolean forceRebuild) {
         int safeMax = Math.max(1, Math.min(maxRows, 5_000_000));
+        long startNanos = System.nanoTime();
 
         int scanned = 0;
+
+        // 旧互換の戻り値用
         int linked = 0;
         int missed = 0;
+
+        // 詳細ログ用
+        int fullyLinked = 0;
+        int vendorOnly = 0;
+        int pureMiss = 0;
 
         List<SoftwareInstall> all = forceRebuild
                 ? softwareRepo.findAll()
@@ -91,14 +99,21 @@ public class CanonicalBackfillService {
 
             int[] result = chunkTx.execute(status -> {
                 int processedInChunk = 0;
+
+                // 旧互換の戻り値用
                 int _linked = 0;
                 int _missed = 0;
+
+                // 詳細ログ用
+                int _fullyLinked = 0;
+                int _vendorOnly = 0;
+                int _pureMiss = 0;
 
                 for (SoftwareInstall s : chunk) {
                     if (processedInChunk >= remaining) break;
 
-                    boolean fullyLinked = (s.getCpeVendorId() != null && s.getCpeProductId() != null);
-                    if (fullyLinked && !forceRebuild) {
+                    boolean alreadyFullyLinked = (s.getCpeVendorId() != null && s.getCpeProductId() != null);
+                    if (alreadyFullyLinked && !forceRebuild) {
                         processedInChunk++;
                         continue;
                     }
@@ -112,21 +127,27 @@ public class CanonicalBackfillService {
 
                     if (res.hit() && !s.isCanonicalLinkDisabled()) {
                         s.linkCanonical(res.vendorId(), res.productId());
+
                         _linked++;
+                        _fullyLinked++;
                     } else if (res.vendorId() != null) {
-                        // vendor-only を先に埋める
+                        // vendor-only を埋める（product は unresolved）
                         s.linkCanonical(res.vendorId(), null);
+
                         _linked++;
+                        _missed++;
+                        _vendorOnly++;
 
                         if (shouldUpsertUnresolved(unresolvedSeen, vendorIn, productIn)) {
                             upsertUnresolvedMapping(sourceIn, vendorIn, productIn, versionIn);
                         }
-                        _missed++;
                     } else {
+                        _missed++;
+                        _pureMiss++;
+
                         if (shouldUpsertUnresolved(unresolvedSeen, vendorIn, productIn)) {
                             upsertUnresolvedMapping(sourceIn, vendorIn, productIn, versionIn);
                         }
-                        _missed++;
                     }
 
                     processedInChunk++;
@@ -139,21 +160,40 @@ public class CanonicalBackfillService {
 
                 em.flush();
                 em.clear();
-                return new int[]{processedInChunk, _linked, _missed};
+                return new int[]{processedInChunk, _linked, _missed, _fullyLinked, _vendorOnly, _pureMiss};
             });
 
             if (result != null) {
                 scanned += result[0];
+
                 linked += result[1];
                 missed += result[2];
+
+                fullyLinked += result[3];
+                vendorOnly += result[4];
+                pureMiss += result[5];
             }
 
-            if (scanned % LOG_EVERY == 0) {
-                log.info("Canonical backfill progress: scanned={}, linked={}, missed={}", scanned, linked, missed);
+            if (scanned > 0 && scanned % LOG_EVERY == 0) {
+                long elapsedMs = elapsedMs(startNanos);
+                String rowsPerSec = formatRowsPerSec(scanned, elapsedMs);
+
+                log.info(
+                        "Canonical backfill progress: scanned={}, linked={}, missed={}, fullyLinked={}, vendorOnly={}, pureMiss={}, elapsedMs={}, rowsPerSec={}",
+                        scanned, linked, missed, fullyLinked, vendorOnly, pureMiss, elapsedMs, rowsPerSec
+                );
             }
         }
 
-        log.info("Canonical backfill done: scanned={}, linked={}, missed={}", scanned, linked, missed);
+        long elapsedMs = elapsedMs(startNanos);
+        String elapsedSec = formatElapsedSec(elapsedMs);
+        String rowsPerSec = formatRowsPerSec(scanned, elapsedMs);
+
+        log.info(
+                "Canonical backfill done: scanned={}, linked={}, missed={}, fullyLinked={}, vendorOnly={}, pureMiss={}, elapsedMs={}, elapsedSec={}, rowsPerSec={}",
+                scanned, linked, missed, fullyLinked, vendorOnly, pureMiss, elapsedMs, elapsedSec, rowsPerSec
+        );
+
         return new BackfillResult(scanned, linked, missed, forceRebuild);
     }
 
@@ -179,9 +219,18 @@ public class CanonicalBackfillService {
             return new BackfillResult(0, 0, 0, forceRebuild);
         }
 
+        long startNanos = System.nanoTime();
+
         int scanned = 0;
+
+        // 旧互換の戻り値用
         int linked = 0;
         int missed = 0;
+
+        // 詳細ログ用
+        int fullyLinked = 0;
+        int vendorOnly = 0;
+        int pureMiss = 0;
 
         // 同一 backfill 実行中の unresolved upsert を dedupe
         Set<String> unresolvedSeen = new HashSet<>();
@@ -192,16 +241,23 @@ public class CanonicalBackfillService {
 
             int[] result = chunkTx.execute(status -> {
                 int processedInChunk = 0;
+
+                // 旧互換の戻り値用
                 int _linked = 0;
                 int _missed = 0;
+
+                // 詳細ログ用
+                int _fullyLinked = 0;
+                int _vendorOnly = 0;
+                int _pureMiss = 0;
 
                 List<SoftwareInstall> chunk = softwareRepo.findAllById(chunkIds);
 
                 for (SoftwareInstall s : chunk) {
                     if (s == null) continue;
 
-                    boolean fullyLinked = (s.getCpeVendorId() != null && s.getCpeProductId() != null);
-                    if (fullyLinked && !forceRebuild) {
+                    boolean alreadyFullyLinked = (s.getCpeVendorId() != null && s.getCpeProductId() != null);
+                    if (alreadyFullyLinked && !forceRebuild) {
                         processedInChunk++;
                         continue;
                     }
@@ -215,20 +271,26 @@ public class CanonicalBackfillService {
 
                     if (res.hit() && !s.isCanonicalLinkDisabled()) {
                         s.linkCanonical(res.vendorId(), res.productId());
+
                         _linked++;
+                        _fullyLinked++;
                     } else if (res.vendorId() != null) {
                         s.linkCanonical(res.vendorId(), null);
+
                         _linked++;
+                        _missed++;
+                        _vendorOnly++;
 
                         if (shouldUpsertUnresolved(unresolvedSeen, vendorIn, productIn)) {
                             upsertUnresolvedMapping(sourceIn, vendorIn, productIn, versionIn);
                         }
-                        _missed++;
                     } else {
+                        _missed++;
+                        _pureMiss++;
+
                         if (shouldUpsertUnresolved(unresolvedSeen, vendorIn, productIn)) {
                             upsertUnresolvedMapping(sourceIn, vendorIn, productIn, versionIn);
                         }
-                        _missed++;
                     }
 
                     processedInChunk++;
@@ -241,18 +303,29 @@ public class CanonicalBackfillService {
 
                 em.flush();
                 em.clear();
-                return new int[]{processedInChunk, _linked, _missed};
+                return new int[]{processedInChunk, _linked, _missed, _fullyLinked, _vendorOnly, _pureMiss};
             });
 
             if (result != null) {
                 scanned += result[0];
+
                 linked += result[1];
                 missed += result[2];
+
+                fullyLinked += result[3];
+                vendorOnly += result[4];
+                pureMiss += result[5];
             }
         }
 
-        log.info("Canonical backfill (by ids) done: scanned={}, linked={}, missed={}, forceRebuild={}",
-                scanned, linked, missed, forceRebuild);
+        long elapsedMs = elapsedMs(startNanos);
+        String elapsedSec = formatElapsedSec(elapsedMs);
+        String rowsPerSec = formatRowsPerSec(scanned, elapsedMs);
+
+        log.info(
+                "Canonical backfill (by ids) done: scanned={}, linked={}, missed={}, fullyLinked={}, vendorOnly={}, pureMiss={}, forceRebuild={}, elapsedMs={}, elapsedSec={}, rowsPerSec={}",
+                scanned, linked, missed, fullyLinked, vendorOnly, pureMiss, forceRebuild, elapsedMs, elapsedSec, rowsPerSec
+        );
 
         return new BackfillResult(scanned, linked, missed, forceRebuild);
     }
@@ -376,6 +449,22 @@ public class CanonicalBackfillService {
                 .limit(CAND_LIMIT)
                 .map(p -> String.valueOf(p.getId()))
                 .collect(Collectors.joining(","));
+    }
+
+    private static long elapsedMs(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
+    }
+
+    private static String formatElapsedSec(long elapsedMs) {
+        return String.format("%.3f", elapsedMs / 1000.0);
+    }
+
+    private static String formatRowsPerSec(int rows, long elapsedMs) {
+        if (elapsedMs <= 0L) {
+            return rows > 0 ? String.valueOf(rows) : "0.0";
+        }
+        double rowsPerSec = rows / (elapsedMs / 1000.0);
+        return String.format("%.1f", rowsPerSec);
     }
 
     private static String normalizeNullable(String s) {
