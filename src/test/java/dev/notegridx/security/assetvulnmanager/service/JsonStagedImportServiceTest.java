@@ -659,4 +659,80 @@ class JsonStagedImportServiceTest {
         assertThat(run.getValidRows()).isEqualTo(1);
         assertThat(run.getInvalidRows()).isEqualTo(0);
     }
+
+    @Test
+    void importSoftware_reusesAssetLookup_forSameExternalKey() {
+        ImportStagingSoftware row1 = mock(ImportStagingSoftware.class);
+        ImportStagingSoftware row2 = mock(ImportStagingSoftware.class);
+        Asset asset = mock(Asset.class);
+
+        when(row1.isValid()).thenReturn(true);
+        when(row1.getExternalKey()).thenReturn("asset-001");
+        when(row1.getVendor()).thenReturn("VendorA");
+        when(row1.getProduct()).thenReturn("ProductA");
+        when(row1.getVersion()).thenReturn("1.0");
+        when(row1.getVendorRaw()).thenReturn("VendorA");
+        when(row1.getProductRaw()).thenReturn("ProductA");
+        when(row1.getVersionRaw()).thenReturn("1.0");
+
+        when(row2.isValid()).thenReturn(true);
+        when(row2.getExternalKey()).thenReturn("asset-001");
+        when(row2.getVendor()).thenReturn("VendorB");
+        when(row2.getProduct()).thenReturn("ProductB");
+        when(row2.getVersion()).thenReturn("2.0");
+        when(row2.getVendorRaw()).thenReturn("VendorB");
+        when(row2.getProductRaw()).thenReturn("ProductB");
+        when(row2.getVersionRaw()).thenReturn("2.0");
+
+        when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(20L))
+                .thenReturn(List.of(row1, row2));
+
+        when(assetRepository.findByExternalKey("asset-001"))
+                .thenReturn(Optional.of(asset));
+        when(asset.getId()).thenReturn(100L);
+
+        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(100L, "VendorA", "ProductA", "1.0"))
+                .thenReturn(Optional.empty());
+        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(100L, "VendorB", "ProductB", "2.0"))
+                .thenReturn(Optional.empty());
+
+        when(validator.resolve("VendorA", "ProductA"))
+                .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
+                        DictionaryValidationException.DictionaryErrorCode.DICT_PRODUCT_NOT_FOUND,
+                        "product", "not found", "vendora", "producta"
+                ));
+        when(validator.resolve("VendorB", "ProductB"))
+                .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
+                        DictionaryValidationException.DictionaryErrorCode.DICT_PRODUCT_NOT_FOUND,
+                        "product", "not found", "vendorb", "productb"
+                ));
+
+        service.importSoftware(20L);
+
+        verify(assetRepository).findByExternalKey("asset-001");
+    }
+
+    @Test
+    void importSoftware_cachesMissingAsset_forSameExternalKey() {
+        ImportStagingSoftware row1 = mock(ImportStagingSoftware.class);
+        ImportStagingSoftware row2 = mock(ImportStagingSoftware.class);
+
+        when(row1.isValid()).thenReturn(true);
+        when(row1.getExternalKey()).thenReturn("missing-asset");
+        when(row2.isValid()).thenReturn(true);
+        when(row2.getExternalKey()).thenReturn("missing-asset");
+
+        when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(21L))
+                .thenReturn(List.of(row1, row2));
+
+        when(assetRepository.findByExternalKey("missing-asset"))
+                .thenReturn(Optional.empty());
+
+        service.importSoftware(21L);
+
+        verify(assetRepository).findByExternalKey("missing-asset");
+        verify(softwareInstallRepository, never()).save(any());
+    }
+
+
 }

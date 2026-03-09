@@ -5,9 +5,7 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.HexFormat;
-import java.util.List;
+import java.util.*;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import org.springframework.stereotype.Service;
@@ -410,6 +408,7 @@ public class JsonStagedImportService {
         LocalDateTime now = LocalDateTime.now();
 
         List<Long> backfillCandidateIds = new ArrayList<>();
+        Map<String, Optional<Asset>> assetCache = new HashMap<>();
 
         for (ImportStagingSoftware r : rows) {
             if (!r.isValid()) continue;
@@ -417,7 +416,11 @@ public class JsonStagedImportService {
             String externalKey = normNullable(r.getExternalKey());
             if (externalKey == null) continue;
 
-            Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
+            Optional<Asset> assetOpt = assetCache.computeIfAbsent(
+                    externalKey,
+                    assetRepository::findByExternalKey
+            );
+            Asset asset = assetOpt.orElse(null);
             if (asset == null) continue;
 
             String vendorRaw = normEmpty(r.getVendorRaw());
@@ -487,18 +490,14 @@ public class JsonStagedImportService {
                 sw.unlinkCanonical();
             } else {
                 var res = softwareDictionaryValidator.resolve(vIn, pIn);
-                if (res.hit()) {
-                    sw.linkCanonical(res.vendorId(), res.productId());
-                } else {
-                    sw.unlinkCanonical();
-                }
+                if (res.hit()) sw.linkCanonical(res.vendorId(), res.productId());
+                else sw.unlinkCanonical();
             }
 
             SoftwareInstall saved = softwareInstallRepository.save(sw);
             upserted++;
 
             boolean fullyLinked = saved.getCpeVendorId() != null && saved.getCpeProductId() != null;
-
             if (!windowsComponent && !fullyLinked && saved.getId() != null) {
                 backfillCandidateIds.add(saved.getId());
             }
