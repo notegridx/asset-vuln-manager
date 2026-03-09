@@ -17,8 +17,10 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -78,6 +80,9 @@ public class CanonicalBackfillService {
                 ? softwareRepo.findAll()
                 : softwareRepo.findNeedsCanonicalLink();
 
+        // 同一 backfill 実行中の unresolved upsert を dedupe
+        Set<String> unresolvedSeen = new HashSet<>();
+
         for (int offset = 0; offset < all.size() && scanned < safeMax; offset += TX_CHUNK) {
             int to = Math.min(all.size(), offset + TX_CHUNK);
             List<SoftwareInstall> chunk = all.subList(offset, to);
@@ -100,6 +105,11 @@ public class CanonicalBackfillService {
 
                     var res = linker.resolve(s);
 
+                    String vendorIn = coalesceNullable(s.getVendorRaw(), s.getVendor());
+                    String productIn = coalesceNullable(s.getProductRaw(), s.getProduct());
+                    String versionIn = coalesceNullable(s.getVersionRaw(), s.getVersion());
+                    String sourceIn = safeString(s.getSource());
+
                     if (res.hit() && !s.isCanonicalLinkDisabled()) {
                         s.linkCanonical(res.vendorId(), res.productId());
                         _linked++;
@@ -108,21 +118,14 @@ public class CanonicalBackfillService {
                         s.linkCanonical(res.vendorId(), null);
                         _linked++;
 
-                        // product は unresolved なので unresolved_mappings も積む
-                        upsertUnresolvedMapping(
-                                safeString(s.getSource()),
-                                coalesceNullable(s.getVendorRaw(), s.getVendor()),
-                                coalesceNullable(s.getProductRaw(), s.getProduct()),
-                                coalesceNullable(s.getVersionRaw(), s.getVersion())
-                        );
+                        if (shouldUpsertUnresolved(unresolvedSeen, vendorIn, productIn)) {
+                            upsertUnresolvedMapping(sourceIn, vendorIn, productIn, versionIn);
+                        }
                         _missed++;
                     } else {
-                        upsertUnresolvedMapping(
-                                safeString(s.getSource()),
-                                coalesceNullable(s.getVendorRaw(), s.getVendor()),
-                                coalesceNullable(s.getProductRaw(), s.getProduct()),
-                                coalesceNullable(s.getVersionRaw(), s.getVersion())
-                        );
+                        if (shouldUpsertUnresolved(unresolvedSeen, vendorIn, productIn)) {
+                            upsertUnresolvedMapping(sourceIn, vendorIn, productIn, versionIn);
+                        }
                         _missed++;
                     }
 
@@ -180,6 +183,9 @@ public class CanonicalBackfillService {
         int linked = 0;
         int missed = 0;
 
+        // 同一 backfill 実行中の unresolved upsert を dedupe
+        Set<String> unresolvedSeen = new HashSet<>();
+
         for (int offset = 0; offset < ids.size(); offset += TX_CHUNK) {
             int to = Math.min(ids.size(), offset + TX_CHUNK);
             List<Long> chunkIds = ids.subList(offset, to);
@@ -202,6 +208,11 @@ public class CanonicalBackfillService {
 
                     var res = linker.resolve(s);
 
+                    String vendorIn = coalesceNullable(s.getVendorRaw(), s.getVendor());
+                    String productIn = coalesceNullable(s.getProductRaw(), s.getProduct());
+                    String versionIn = coalesceNullable(s.getVersionRaw(), s.getVersion());
+                    String sourceIn = safeString(s.getSource());
+
                     if (res.hit() && !s.isCanonicalLinkDisabled()) {
                         s.linkCanonical(res.vendorId(), res.productId());
                         _linked++;
@@ -209,20 +220,14 @@ public class CanonicalBackfillService {
                         s.linkCanonical(res.vendorId(), null);
                         _linked++;
 
-                        upsertUnresolvedMapping(
-                                safeString(s.getSource()),
-                                coalesceNullable(s.getVendorRaw(), s.getVendor()),
-                                coalesceNullable(s.getProductRaw(), s.getProduct()),
-                                coalesceNullable(s.getVersionRaw(), s.getVersion())
-                        );
+                        if (shouldUpsertUnresolved(unresolvedSeen, vendorIn, productIn)) {
+                            upsertUnresolvedMapping(sourceIn, vendorIn, productIn, versionIn);
+                        }
                         _missed++;
                     } else {
-                        upsertUnresolvedMapping(
-                                safeString(s.getSource()),
-                                coalesceNullable(s.getVendorRaw(), s.getVendor()),
-                                coalesceNullable(s.getProductRaw(), s.getProduct()),
-                                coalesceNullable(s.getVersionRaw(), s.getVersion())
-                        );
+                        if (shouldUpsertUnresolved(unresolvedSeen, vendorIn, productIn)) {
+                            upsertUnresolvedMapping(sourceIn, vendorIn, productIn, versionIn);
+                        }
                         _missed++;
                     }
 
@@ -305,6 +310,19 @@ public class CanonicalBackfillService {
         fillCandidatesIfPossible(um);
 
         unresolvedMappingRepository.save(um);
+    }
+
+    private boolean shouldUpsertUnresolved(Set<String> unresolvedSeen, String vendorRaw, String productRaw) {
+        String key = unresolvedKey(vendorRaw, productRaw);
+        if (key == null) return false;
+        return unresolvedSeen.add(key);
+    }
+
+    private String unresolvedKey(String vendorRaw, String productRaw) {
+        String v = normalizeNullable(vendorRaw);
+        String p = normalizeNullable(productRaw);
+        if (v == null || p == null) return null;
+        return v + "\u0000" + p;
     }
 
     private void fillCandidatesIfPossible(UnresolvedMapping um) {
