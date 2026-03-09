@@ -409,6 +409,8 @@ public class JsonStagedImportService {
         int upserted = 0;
         LocalDateTime now = LocalDateTime.now();
 
+        List<Long> backfillCandidateIds = new ArrayList<>();
+
         for (ImportStagingSoftware r : rows) {
             if (!r.isValid()) continue;
 
@@ -433,7 +435,9 @@ public class JsonStagedImportService {
             if (productDisplay.isEmpty()) continue;
 
             SoftwareInstall sw = softwareInstallRepository
-                    .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendorDisplay, productDisplay, versionDisplay)
+                    .findByAssetIdAndVendorAndProductAndVersion(
+                            asset.getId(), vendorDisplay, productDisplay, versionDisplay
+                    )
                     .orElse(null);
 
             if (sw == null) {
@@ -455,7 +459,6 @@ public class JsonStagedImportService {
             trySetSoftwareType(sw, r.getType());
 
             sw.captureRaw(vendorRaw, productRaw, versionRaw);
-
             sw.setSource(src);
 
             sw.updateImportExtended(
@@ -478,30 +481,32 @@ public class JsonStagedImportService {
             String vIn = normNullable(vendorRaw);
             String pIn = normNullable(productRaw);
 
-            if (looksLikeWindowsComponent(pIn)) {
+            boolean windowsComponent = looksLikeWindowsComponent(pIn);
+
+            if (windowsComponent) {
                 sw.unlinkCanonical();
             } else {
                 var res = softwareDictionaryValidator.resolve(vIn, pIn);
-                if (res.hit()) sw.linkCanonical(res.vendorId(), res.productId());
-                else sw.unlinkCanonical();
+                if (res.hit()) {
+                    sw.linkCanonical(res.vendorId(), res.productId());
+                } else {
+                    sw.unlinkCanonical();
+                }
             }
 
-            softwareInstallRepository.save(sw);
+            SoftwareInstall saved = softwareInstallRepository.save(sw);
             upserted++;
+
+            boolean fullyLinked = saved.getCpeVendorId() != null && saved.getCpeProductId() != null;
+
+            if (!windowsComponent && !fullyLinked && saved.getId() != null) {
+                backfillCandidateIds.add(saved.getId());
+            }
         }
 
-        List<Long> ids = softwareInstallRepository.findIdsByImportRunId(runId);
-        var bf = canonicalBackfillService.backfillForSoftwareIds(ids, false);
+        canonicalBackfillService.backfillForSoftwareIds(backfillCandidateIds, false);
 
-        run.markImported(
-                0,
-                upserted,
-                "Software imported: upserted=" + upserted
-                        + ", backfill(scanned=" + bf.scanned()
-                        + ", linked=" + bf.linked()
-                        + ", missed=" + bf.missed()
-                        + ") at " + now
-        );
+        run.markImported(0, upserted, null);
         return importRunRepository.save(run);
     }
 

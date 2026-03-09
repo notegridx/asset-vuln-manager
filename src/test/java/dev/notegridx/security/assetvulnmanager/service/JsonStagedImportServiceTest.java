@@ -1,8 +1,14 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -67,11 +73,12 @@ class JsonStagedImportServiceTest {
         when(stagingAssetRepository.findByImportRunIdOrderByRowNoAsc(anyLong()))
                 .thenReturn(Collections.emptyList());
 
-        when(softwareInstallRepository.findIdsByImportRunId(anyLong()))
-                .thenReturn(Collections.emptyList());
-
         when(canonicalBackfillService.backfillForSoftwareIds(anyList(), eq(false)))
                 .thenReturn(new CanonicalBackfillService.BackfillResult(0, 0, 0, false));
+
+        // NPE 対応: save(...) が null を返さないようにする
+        when(softwareInstallRepository.save(any(SoftwareInstall.class)))
+                .thenAnswer(i -> i.getArgument(0));
 
         service = new JsonStagedImportService(
                 mapper,
@@ -186,7 +193,7 @@ class JsonStagedImportServiceTest {
         when(row.getExternalKey()).thenReturn("asset-001");
         when(row.getName()).thenReturn("Host 001");
         when(row.getAssetType()).thenReturn("SERVER");
-        when(row.getOwner()).thenReturn("ops");
+        when(row.getOwner()).thenReturn("user1");
         when(row.getNote()).thenReturn("imported");
         when(row.getSource()).thenReturn(null);
         when(row.getPlatform()).thenReturn("windows");
@@ -195,8 +202,8 @@ class JsonStagedImportServiceTest {
         when(row.getSerialNumber()).thenReturn("sn-001");
         when(row.getHardwareVendor()).thenReturn("Dell");
         when(row.getHardwareModel()).thenReturn("OptiPlex");
-        when(row.getComputerName()).thenReturn("PC-001");
-        when(row.getLocalHostname()).thenReturn("pc001.local");
+        when(row.getComputerName()).thenReturn("HOST-001");
+        when(row.getLocalHostname()).thenReturn("host-001.local");
         when(row.getCpuBrand()).thenReturn("Intel");
         when(row.getCpuPhysicalCores()).thenReturn(4);
         when(row.getCpuLogicalCores()).thenReturn(8);
@@ -220,7 +227,7 @@ class JsonStagedImportServiceTest {
         assertThat(saved.getName()).isEqualTo("Host 001");
         assertThat(saved.getExternalKey()).isEqualTo("asset-001");
         assertThat(saved.getAssetType()).isEqualTo("SERVER");
-        assertThat(saved.getOwner()).isEqualTo("ops");
+        assertThat(saved.getOwner()).isEqualTo("user1");
         assertThat(saved.getSource()).isEqualTo("JSON_UPLOAD");
         assertThat(saved.getPlatform()).isEqualTo("windows");
         assertThat(saved.getOsVersion()).isEqualTo("11");
@@ -238,7 +245,7 @@ class JsonStagedImportServiceTest {
         when(row.getExternalKey()).thenReturn("asset-001");
         when(row.getName()).thenReturn("New Name");
         when(row.getAssetType()).thenReturn("LAPTOP");
-        when(row.getOwner()).thenReturn("junichi");
+        when(row.getOwner()).thenReturn("user2");
         when(row.getNote()).thenReturn("updated");
         when(row.getSource()).thenReturn("OSQUERY");
         when(row.getPlatform()).thenReturn("macOS");
@@ -247,8 +254,8 @@ class JsonStagedImportServiceTest {
         when(row.getSerialNumber()).thenReturn("serial-xyz");
         when(row.getHardwareVendor()).thenReturn("Apple");
         when(row.getHardwareModel()).thenReturn("iMac");
-        when(row.getComputerName()).thenReturn("Junichi-iMac");
-        when(row.getLocalHostname()).thenReturn("junichi-imac.local");
+        when(row.getComputerName()).thenReturn("HOST-MAC-001");
+        when(row.getLocalHostname()).thenReturn("host-mac-001.local");
         when(row.getCpuBrand()).thenReturn("Intel");
         when(row.getCpuPhysicalCores()).thenReturn(6);
         when(row.getCpuLogicalCores()).thenReturn(12);
@@ -288,7 +295,7 @@ class JsonStagedImportServiceTest {
 
         service.importSoftware(3L);
 
-        verify(assetRepository, never()).findByExternalKey(anyString());
+        verify(assetRepository, never()).findByExternalKey(any());
         verify(softwareInstallRepository, never()).save(any());
     }
 
@@ -354,8 +361,6 @@ class JsonStagedImportServiceTest {
                         "chrome"
                 ));
 
-        when(softwareInstallRepository.findIdsByImportRunId(5L)).thenReturn(Collections.emptyList());
-
         service.importSoftware(5L);
 
         ArgumentCaptor<SoftwareInstall> captor = ArgumentCaptor.forClass(SoftwareInstall.class);
@@ -373,6 +378,8 @@ class JsonStagedImportServiceTest {
         assertThat(saved.getPublisher()).isEqualTo("Google LLC");
         assertThat(saved.getCpeVendorId()).isNull();
         assertThat(saved.getCpeProductId()).isNull();
+
+        verify(canonicalBackfillService).backfillForSoftwareIds(anyList(), eq(false));
     }
 
     @Test
@@ -414,7 +421,6 @@ class JsonStagedImportServiceTest {
         when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
                 10L, "Microsoft", "Microsoft.WindowsNotepad", "11.0"
         )).thenReturn(Optional.of(existing));
-        when(softwareInstallRepository.findIdsByImportRunId(6L)).thenReturn(Collections.emptyList());
 
         service.importSoftware(6L);
 
@@ -427,10 +433,11 @@ class JsonStagedImportServiceTest {
         assertThat(saved.getCpeProductId()).isNull();
 
         verify(validator, never()).resolve(any(), any());
+        verify(canonicalBackfillService).backfillForSoftwareIds(List.of(), false);
     }
 
     @Test
-    void importSoftware_linksCanonical_whenDictionaryResolveHits() {
+    void importSoftware_linksCanonical_whenDictionaryResolveHits_andSkipsImmediateBackfillForFullyLinkedRow() {
         ImportStagingSoftware row = mock(ImportStagingSoftware.class);
         Asset asset = mock(Asset.class);
 
@@ -467,7 +474,6 @@ class JsonStagedImportServiceTest {
         )).thenReturn(Optional.empty());
         when(validator.resolve("Google LLC", "Google Chrome"))
                 .thenReturn(SoftwareDictionaryValidator.Resolve.hit(11L, 22L, "google", "chrome"));
-        when(softwareInstallRepository.findIdsByImportRunId(7L)).thenReturn(List.of(501L, 502L));
 
         service.importSoftware(7L);
 
@@ -483,7 +489,108 @@ class JsonStagedImportServiceTest {
         assertThat(saved.getCpeVendorId()).isEqualTo(11L);
         assertThat(saved.getCpeProductId()).isEqualTo(22L);
 
-        verify(canonicalBackfillService).backfillForSoftwareIds(List.of(501L, 502L), false);
+        verify(canonicalBackfillService).backfillForSoftwareIds(List.of(), false);
+    }
+
+    @Test
+    void importSoftware_callsImmediateBackfill_onlyForNotFullyLinkedRows() {
+        ImportStagingSoftware row = mock(ImportStagingSoftware.class);
+        Asset asset = mock(Asset.class);
+
+        when(row.isValid()).thenReturn(true);
+        when(row.getExternalKey()).thenReturn("asset-001");
+        when(row.getVendor()).thenReturn("Unknown Vendor");
+        when(row.getProduct()).thenReturn("Unknown Product");
+        when(row.getVersion()).thenReturn("1.0");
+        when(row.getVendorRaw()).thenReturn("Unknown Vendor");
+        when(row.getProductRaw()).thenReturn("Unknown Product");
+        when(row.getVersionRaw()).thenReturn("1.0");
+        when(row.getSource()).thenReturn("OSQUERY");
+        when(row.getSourceType()).thenReturn("OSQUERY");
+        when(row.getType()).thenReturn("APPLICATION");
+        when(row.getInstallLocation()).thenReturn(null);
+        when(row.getInstalledAt()).thenReturn(null);
+        when(row.getPackageIdentifier()).thenReturn(null);
+        when(row.getArch()).thenReturn(null);
+        when(row.getLastSeenAt()).thenReturn(LocalDateTime.of(2026, 3, 8, 11, 0));
+        when(row.getPublisher()).thenReturn(null);
+        when(row.getBundleId()).thenReturn(null);
+        when(row.getPackageManager()).thenReturn(null);
+        when(row.getInstallSource()).thenReturn(null);
+        when(row.getEdition()).thenReturn(null);
+        when(row.getChannel()).thenReturn(null);
+        when(row.getRelease()).thenReturn(null);
+        when(row.getPurl()).thenReturn(null);
+
+        when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(8L)).thenReturn(List.of(row));
+        when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.of(asset));
+        when(asset.getId()).thenReturn(88L);
+        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
+                88L, "Unknown Vendor", "Unknown Product", "1.0"
+        )).thenReturn(Optional.empty());
+
+        when(validator.resolve("Unknown Vendor", "Unknown Product"))
+                .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
+                        DictionaryValidationException.DictionaryErrorCode.DICT_PRODUCT_NOT_FOUND,
+                        "product",
+                        "not found",
+                        "unknown vendor",
+                        "unknown product"
+                ));
+
+        service.importSoftware(8L);
+
+        ArgumentCaptor<SoftwareInstall> captor = ArgumentCaptor.forClass(SoftwareInstall.class);
+        verify(softwareInstallRepository).save(captor.capture());
+
+        SoftwareInstall saved = captor.getValue();
+        assertThat(saved.getCpeVendorId()).isNull();
+        assertThat(saved.getCpeProductId()).isNull();
+
+        verify(canonicalBackfillService).backfillForSoftwareIds(anyList(), eq(false));
+    }
+
+    @Test
+    void importSoftware_windowsComponent_isNotAddedToImmediateBackfillCandidates() {
+        ImportStagingSoftware row = mock(ImportStagingSoftware.class);
+        Asset asset = mock(Asset.class);
+
+        when(row.isValid()).thenReturn(true);
+        when(row.getExternalKey()).thenReturn("asset-001");
+        when(row.getVendor()).thenReturn("Microsoft Corporation");
+        when(row.getProduct()).thenReturn("Microsoft.WindowsNotepad");
+        when(row.getVersion()).thenReturn("11.0");
+        when(row.getVendorRaw()).thenReturn("Microsoft Corporation");
+        when(row.getProductRaw()).thenReturn("Microsoft.WindowsNotepad");
+        when(row.getVersionRaw()).thenReturn("11.0");
+        when(row.getSource()).thenReturn("OSQUERY");
+        when(row.getSourceType()).thenReturn("OSQUERY");
+        when(row.getType()).thenReturn("APPLICATION");
+        when(row.getInstallLocation()).thenReturn(null);
+        when(row.getInstalledAt()).thenReturn(null);
+        when(row.getPackageIdentifier()).thenReturn(null);
+        when(row.getArch()).thenReturn(null);
+        when(row.getLastSeenAt()).thenReturn(LocalDateTime.of(2026, 3, 8, 12, 0));
+        when(row.getPublisher()).thenReturn(null);
+        when(row.getBundleId()).thenReturn(null);
+        when(row.getPackageManager()).thenReturn(null);
+        when(row.getInstallSource()).thenReturn(null);
+        when(row.getEdition()).thenReturn(null);
+        when(row.getChannel()).thenReturn(null);
+        when(row.getRelease()).thenReturn(null);
+        when(row.getPurl()).thenReturn(null);
+
+        when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(9L)).thenReturn(List.of(row));
+        when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.of(asset));
+        when(asset.getId()).thenReturn(99L);
+        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
+                99L, "Microsoft Corporation", "Microsoft.WindowsNotepad", "11.0"
+        )).thenReturn(Optional.empty());
+
+        service.importSoftware(9L);
+
+        verify(validator, never()).resolve(any(), any());
+        verify(canonicalBackfillService).backfillForSoftwareIds(List.of(), false);
     }
 
     @Test
