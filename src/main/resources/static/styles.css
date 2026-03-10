@@ -1885,3 +1885,12 @@ td.canon-reason .line-clamp-2 {
     -webkit-appearance: none;
     font: inherit;
 }
+
+.admin-error-box {
+    background: #2a0a0a;
+    border-left: 4px solid #ff3b3b;
+    color: #ffb3b3;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    border-radius: 4px;
+}

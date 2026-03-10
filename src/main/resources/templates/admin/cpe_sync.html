@@ -44,6 +44,11 @@
             </div>
         </div>
 
+        <div th:if="${error != null}" class="admin-error-box">
+            <strong>⚠ Error</strong>
+            <span th:text="${error}">Product dictionary update is already running.</span>
+        </div>
+
         <form th:action="@{/admin/cpe/sync}" method="post" class="mt-12">
 
             <div class="field">

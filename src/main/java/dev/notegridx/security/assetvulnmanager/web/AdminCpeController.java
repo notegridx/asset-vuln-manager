@@ -1,6 +1,7 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.service.AdminCpeSyncService;
+import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.CpeFeedSyncService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -34,9 +35,14 @@ public class AdminCpeController {
             Model model
     ) throws IOException {
 
-        var result = adminCpeSyncService.runSync(force, maxItems);
+        try {
+            var result = adminCpeSyncService.runSync(force, maxItems);
+            model.addAttribute("result", result);
 
-        model.addAttribute("result", result);
+        } catch (AdminJobAlreadyRunningException ex) {
+            model.addAttribute("error", ex.getMessage());
+        }
+
         model.addAttribute("force", force);
         model.addAttribute("maxItems", maxItems);
 
