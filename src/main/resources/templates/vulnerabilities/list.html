@@ -12,39 +12,55 @@
     </div>
 
     <!-- ===== Filters ===== -->
-    <form method="get" th:action="@{/vulnerabilities}" class="card p-12 my-12">
-        <!-- use toolbar rhythm (same as .toolbar .form-row) -->
+    <form id="vulnFilterForm" method="get" th:action="@{/vulnerabilities}" class="card p-12 my-12">
+        <input type="hidden" name="page" value="0">
+
         <div class="form-row">
 
             <div class="field minw-220">
                 <label>Search</label>
-                <input type="text" name="q" placeholder="CVE / keyword"
-                       th:value="${q}">
+                <input type="text"
+                       name="q"
+                       placeholder="CVE / keyword"
+                       th:value="${q}"
+                       data-auto-submit="search">
             </div>
 
             <div class="field minw-160">
                 <label>Published From</label>
-                <input type="date" name="publishedFrom" th:value="${publishedFrom}">
+                <input type="date"
+                       name="publishedFrom"
+                       th:value="${publishedFrom}"
+                       data-auto-submit="change">
             </div>
 
             <div class="field minw-160">
                 <label>Published To</label>
-                <input type="date" name="publishedTo" th:value="${publishedTo}">
+                <input type="date"
+                       name="publishedTo"
+                       th:value="${publishedTo}"
+                       data-auto-submit="change">
             </div>
 
             <div class="field minw-170">
                 <label>Last Modified From</label>
-                <input type="date" name="lastModifiedFrom" th:value="${lastModifiedFrom}">
+                <input type="date"
+                       name="lastModifiedFrom"
+                       th:value="${lastModifiedFrom}"
+                       data-auto-submit="change">
             </div>
 
             <div class="field minw-170">
                 <label>Last Modified To</label>
-                <input type="date" name="lastModifiedTo" th:value="${lastModifiedTo}">
+                <input type="date"
+                       name="lastModifiedTo"
+                       th:value="${lastModifiedTo}"
+                       data-auto-submit="change">
             </div>
 
             <div class="field minw-160">
                 <label>Sort</label>
-                <select name="sort">
+                <select name="sort" data-auto-submit="change">
                     <option value="LAST_MODIFIED" th:selected="${sort == 'LAST_MODIFIED'}">Last Modified</option>
                     <option value="CVSS" th:selected="${sort == 'CVSS'}">CVSS (desc)</option>
                     <option value="SEVERITY" th:selected="${sort == 'SEVERITY'}">Severity</option>
@@ -53,7 +69,7 @@
 
             <div class="field minw-160">
                 <label>Severity</label>
-                <select name="severity">
+                <select name="severity" data-auto-submit="change">
                     <option value="" th:selected="${severity == ''}">All</option>
                     <option value="CRITICAL" th:selected="${severity == 'CRITICAL'}">CRITICAL</option>
                     <option value="HIGH" th:selected="${severity == 'HIGH'}">HIGH</option>
@@ -65,17 +81,29 @@
 
             <div class="field minw-130">
                 <label>Min CVSS</label>
-                <input type="number" name="minCvss" step="0.1" min="0" max="10" th:value="${minCvss}">
+                <input type="number"
+                       name="minCvss"
+                       step="0.1"
+                       min="0"
+                       max="10"
+                       th:value="${minCvss}"
+                       data-auto-submit="blur">
             </div>
 
             <div class="field minw-130">
                 <label>Max CVSS</label>
-                <input type="number" name="maxCvss" step="0.1" min="0" max="10" th:value="${maxCvss}">
+                <input type="number"
+                       name="maxCvss"
+                       step="0.1"
+                       min="0"
+                       max="10"
+                       th:value="${maxCvss}"
+                       data-auto-submit="blur">
             </div>
 
             <div class="field minw-160">
                 <label>Page size</label>
-                <select name="size">
+                <select name="size" data-auto-submit="change">
                     <option value="25" th:selected="${size == 25}">25</option>
                     <option value="50" th:selected="${size == 50}">50</option>
                     <option value="100" th:selected="${size == 100}">100</option>
@@ -86,7 +114,7 @@
 
             <div class="field minw-190">
                 <label>No CVSS rows</label>
-                <select name="includeNoCvss">
+                <select name="includeNoCvss" data-auto-submit="change">
                     <option value="true" th:selected="${includeNoCvss}">Include</option>
                     <option value="false" th:selected="${!includeNoCvss}">Exclude</option>
                 </select>
@@ -94,36 +122,35 @@
 
             <div class="field check-row">
                 <label class="check-label">
-                    <input type="checkbox" name="withCpe" value="true" th:checked="${withCpe}">
+                    <input type="checkbox" name="withCpe" value="true" th:checked="${withCpe}" data-auto-submit="change">
                     With CPE
                 </label>
 
                 <label class="check-label">
-                    <input type="checkbox" name="withRange" value="true" th:checked="${withRange}">
+                    <input type="checkbox" name="withRange" value="true" th:checked="${withRange}" data-auto-submit="change">
                     With version range
                 </label>
 
                 <label class="check-label">
-                    <input type="checkbox" name="kevOnly" value="true" th:checked="${kevOnly}">
+                    <input type="checkbox" name="kevOnly" value="true" th:checked="${kevOnly}" data-auto-submit="change">
                     KEV only
                 </label>
 
                 <label class="check-label">
-                    <input type="checkbox" name="hasAlerts" value="true" th:checked="${hasAlerts}">
+                    <input type="checkbox" name="hasAlerts" value="true" th:checked="${hasAlerts}" data-auto-submit="change">
                     Has alerts
                 </label>
 
                 <label class="check-label">
-                    <input type="checkbox" name="openOnly" value="true" th:checked="${openOnly}">
+                    <input type="checkbox" name="openOnly" value="true" th:checked="${openOnly}" data-auto-submit="change">
                     Open only
                 </label>
             </div>
 
-            <div class="actions ml-auto">
-                <input type="hidden" name="page" value="0">
-                <button type="submit" class="btn btn-primary">Apply</button>
-            </div>
+        </div>
 
+        <div class="muted mt-8" style="font-size:12px;">
+            Search is applied automatically after typing. Date fields apply on selection. CVSS fields apply when you leave the field.
         </div>
     </form>
 
@@ -173,15 +200,14 @@
                          th:text="${v.description != null ? v.description : '-'}"></div>
                 </td>
 
-                <!-- KEV -->
                 <td>
-                                    <span th:if="${v.kevFlag}"
-                                          class="badge"
-                                          title=""
-                                          th:attr="title=${'Added: ' + (v.kevDateAdded != null ? #temporals.format(v.kevDateAdded,'yyyy-MM-dd') : '-') +
-                                          ' / Due: ' + (v.kevDueDate != null ? #temporals.format(v.kevDueDate,'yyyy-MM-dd') : '-') +
-                                          ' / Ransomware: ' + (v.kevRansomwareUse != null ? v.kevRansomwareUse : '-') }"
-                                          style="background: var(--warn); color: #111;">
+                    <span th:if="${v.kevFlag}"
+                          class="badge"
+                          title=""
+                          th:attr="title=${'Added: ' + (v.kevDateAdded != null ? #temporals.format(v.kevDateAdded,'yyyy-MM-dd') : '-') +
+                          ' / Due: ' + (v.kevDueDate != null ? #temporals.format(v.kevDueDate,'yyyy-MM-dd') : '-') +
+                          ' / Ransomware: ' + (v.kevRansomwareUse != null ? v.kevRansomwareUse : '-') }"
+                          style="background: var(--warn); color: #111;">
                         KEV
                     </span>
                     <span th:unless="${v.kevFlag}" class="muted">-</span>
@@ -203,6 +229,52 @@
             </tbody>
         </table>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('vulnFilterForm');
+            if (!form) return;
+
+            const pageInput = form.querySelector('input[name="page"]');
+            let searchTimer = null;
+
+            function submitForm() {
+                if (pageInput) {
+                    pageInput.value = '0';
+                }
+                form.submit();
+            }
+
+            form.querySelectorAll('[data-auto-submit="change"]').forEach(function (el) {
+                el.addEventListener('change', submitForm);
+            });
+
+            form.querySelectorAll('[data-auto-submit="blur"]').forEach(function (el) {
+                el.addEventListener('blur', submitForm);
+                el.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        submitForm();
+                    }
+                });
+            });
+
+            form.querySelectorAll('[data-auto-submit="search"]').forEach(function (el) {
+                el.addEventListener('input', function () {
+                    clearTimeout(searchTimer);
+                    searchTimer = setTimeout(submitForm, 500);
+                });
+
+                el.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        clearTimeout(searchTimer);
+                        submitForm();
+                    }
+                });
+            });
+        });
+    </script>
 
 </main>
 </body>
