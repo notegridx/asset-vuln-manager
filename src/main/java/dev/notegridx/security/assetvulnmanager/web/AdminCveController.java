@@ -1,8 +1,8 @@
-
 package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient;
 import dev.notegridx.security.assetvulnmanager.service.AdminCveFeedSyncService;
+import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,23 +41,23 @@ public class AdminCveController {
             k = NvdCveFeedClient.FeedKind.MODIFIED;
         }
 
-        // YEARのときはyear必須
-        if (k == NvdCveFeedClient.FeedKind.YEAR && year == null) {
-            model.addAttribute("kind", kind);
-            model.addAttribute("year", null);
-            model.addAttribute("force", force);
-            model.addAttribute("maxItems", maxItems);
-            model.addAttribute("error", "Year is required when selecting YEAR feed.");
-            return "admin/cve_sync";
-        }
-
-        var result = adminCveFeedSyncService.runSync(k, year, force, maxItems);
-
         model.addAttribute("kind", k.name());
         model.addAttribute("year", year);
         model.addAttribute("force", force);
         model.addAttribute("maxItems", maxItems);
-        model.addAttribute("result", result);
+
+        if (k == NvdCveFeedClient.FeedKind.YEAR && year == null) {
+            model.addAttribute("error", "Year is required when selecting YEAR feed.");
+            return "admin/cve_sync";
+        }
+
+        try {
+            var result = adminCveFeedSyncService.runSync(k, year, force, maxItems);
+            model.addAttribute("result", result);
+        } catch (AdminJobAlreadyRunningException ex) {
+            model.addAttribute("error", ex.getMessage());
+        }
+
         return "admin/cve_sync";
     }
 }
