@@ -26,9 +26,46 @@ public class SecurityConfig {
         http
                 .authenticationProvider(authenticationProvider())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/error", "/styles.css", "/css/**", "/js/**", "/images/**").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/", "/dashboard", "/assets/**", "/software/**", "/vulnerabilities/**", "/alerts/**").authenticated()
+                        // public
+                        .requestMatchers(
+                                "/login",
+                                "/error",
+                                "/styles.css",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**"
+                        ).permitAll()
+
+                        // admin only: user management
+                        .requestMatchers("/admin/users/**").hasRole("ADMIN")
+
+                        // operator + admin: operational actions
+                        .requestMatchers(
+                                "/admin/import/**",
+                                "/admin/import-runs/**",
+                                "/admin/cpe/**",
+                                "/admin/cve/**",
+                                "/admin/kev/**",
+                                "/admin/sync/**",
+                                "/admin/alerts/**",
+                                "/admin/canonical/**",
+                                "/admin/unresolved/**",
+                                "/admin/synonyms/**",
+                                "/admin/aliases/**",
+                                "/admin/runs/**"
+                        ).hasAnyRole("ADMIN", "OPERATOR")
+
+                        // read-only application screens
+                        .requestMatchers(
+                                "/",
+                                "/dashboard",
+                                "/assets/**",
+                                "/software/**",
+                                "/vulnerabilities/**",
+                                "/alerts/**"
+                        ).hasAnyRole("ADMIN", "OPERATOR", "VIEWER")
+
+                        // fallback
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
