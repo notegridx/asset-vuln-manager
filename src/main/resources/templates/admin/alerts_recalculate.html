@@ -85,6 +85,11 @@
   <div class="card card--section">
     <h2 class="m-0 mt-0" style="margin:0 0 10px 0;">Execute</h2>
 
+    <div th:if="${error != null}" class="admin-error-box">
+      <strong>⚠ Error</strong>
+      <span th:text="${error}">Alert generation is already running.</span>
+    </div>
+
     <form th:action="@{/admin/alerts/recalculate}" method="post">
       <div class="actions actions--mt-14">
         <button type="submit" class="btn btn-primary">Generate Alerts</button>

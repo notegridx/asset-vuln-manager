@@ -6,6 +6,7 @@ import dev.notegridx.security.assetvulnmanager.domain.AdminRun;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.repository.AdminRunRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminCveDeltaUpdateService;
+import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,13 +46,16 @@ public class AdminSyncController {
 			@RequestParam(name = "maxResults", defaultValue = "200") int maxResults,
 			Model model
 	) {
-		var result = deltaUpdateService.runDeltaUpdate(daysBack, maxResults);
+		try {
+			var result = deltaUpdateService.runDeltaUpdate(daysBack, maxResults);
+			model.addAttribute("result", result);
+		} catch (AdminJobAlreadyRunningException ex) {
+			model.addAttribute("error", ex.getMessage());
+		}
 
 		model.addAttribute("daysBack", daysBack);
 		model.addAttribute("maxResults", maxResults);
-		model.addAttribute("result", result);
 
-		// After run, show the latest job run record too.
 		loadLastRun(model);
 		return "admin/sync";
 	}

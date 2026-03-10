@@ -6,12 +6,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class AdminCpeSyncService {
-
-    private static final AtomicBoolean RUNNING = new AtomicBoolean(false);
 
     private final CpeFeedSyncService cpeFeedSyncService;
     private final AdminRunRecorder runRecorder;
@@ -27,44 +24,35 @@ public class AdminCpeSyncService {
     @Transactional
     public CpeFeedSyncService.SyncResult runSync(boolean force, int maxItems) throws IOException {
 
-        if (!RUNNING.compareAndSet(false, true)) {
-            throw new AdminJobAlreadyRunningException(
-                    "Product dictionary update is already running. Wait for the current run to finish."
-            );
-        }
+        int safeMax = Math.max(1, Math.min(maxItems, 5_000_000));
 
         try {
-            int safeMax = Math.max(1, Math.min(maxItems, 5_000_000));
-
-            var run = runRecorder.start(
+            return runRecorder.runExclusive(
                     AdminJobType.CPE_SYNC,
                     Map.of(
                             "force", force,
                             "maxItems", safeMax
+                    ),
+                    "Product dictionary update is already running. Wait for the current run to finish.",
+                    () -> cpeFeedSyncService.sync(force, safeMax),
+                    result -> Map.of(
+                            "skipped", result.skipped(),
+                            "vendorsInserted", result.vendorsInserted(),
+                            "productsInserted", result.productsInserted(),
+                            "cpeParsed", result.cpeParsed(),
+                            "metaSha256", result.metaSha256(),
+                            "metaLastModified", result.metaLastModified(),
+                            "metaSize", result.metaSize()
                     )
             );
-
-            try {
-                var result = cpeFeedSyncService.sync(force, safeMax);
-
-                runRecorder.success(run, Map.of(
-                        "skipped", result.skipped(),
-                        "vendorsInserted", result.vendorsInserted(),
-                        "productsInserted", result.productsInserted(),
-                        "cpeParsed", result.cpeParsed(),
-                        "metaSha256", result.metaSha256(),
-                        "metaLastModified", result.metaLastModified(),
-                        "metaSize", result.metaSize()
-                ));
-
-                return result;
-
-            } catch (Exception ex) {
-                runRecorder.failed(run, ex);
-                throw ex;
+        } catch (Exception ex) {
+            if (ex instanceof IOException ioEx) {
+                throw ioEx;
             }
-        } finally {
-            RUNNING.set(false);
+            if (ex instanceof RuntimeException runtimeEx) {
+                throw runtimeEx;
+            }
+            throw new RuntimeException(ex);
         }
     }
 }

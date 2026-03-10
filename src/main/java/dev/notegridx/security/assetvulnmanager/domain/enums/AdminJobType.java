@@ -8,9 +8,10 @@ public enum AdminJobType {
     CPE_SYNC,
     CVE_FEED_SYNC,
     CVE_DELTA_UPDATE,
-    KEV_SYNC,          // ★ 追加
+    KEV_SYNC,
 
     ALERT_RECALCULATE,
+    CANONICAL_BACKFILL,
     ALIAS_SEED_IMPORT,
 
     // 将来の統合枠（必要に応じて細分化してOK）

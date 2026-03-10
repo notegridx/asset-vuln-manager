@@ -112,6 +112,11 @@
     </div>
   </div>
 
+  <div th:if="${error != null}" class="admin-error-box">
+    <strong>⚠ Error</strong>
+    <span th:text="${error}">KEV sync is already running.</span>
+  </div>
+
   <!-- Run form -->
   <div class="card" style="padding:12px; margin:12px 0;">
     <h2 style="margin:0 0 10px 0;">Run KEV sync</h2>

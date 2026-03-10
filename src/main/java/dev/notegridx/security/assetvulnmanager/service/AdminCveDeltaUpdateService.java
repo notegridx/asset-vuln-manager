@@ -31,39 +31,40 @@ public class AdminCveDeltaUpdateService {
         int safeDays = Math.max(1, Math.min(daysBack, 120));
         int safeMax = Math.max(1, Math.min(maxResults, 2000));
 
-        var run = runRecorder.start(
-                AdminJobType.CVE_DELTA_UPDATE,
-                Map.of(
-                        "daysBack", safeDays,
-                        "maxResults", safeMax
-                )
-        );
-
         try {
-            OffsetDateTime end = OffsetDateTime.now();
-            OffsetDateTime start = end.minusDays(safeDays);
+            DeltaUpdateResult result = runRecorder.runExclusive(
+                    AdminJobType.CVE_DELTA_UPDATE,
+                    Map.of(
+                            "daysBack", safeDays,
+                            "maxResults", safeMax
+                    ),
+                    "CVE delta update is already running. Wait for the current run to finish.",
+                    () -> {
+                        OffsetDateTime end = OffsetDateTime.now();
+                        OffsetDateTime start = end.minusDays(safeDays);
 
-            var importResult = nvdImportService.importFromNvd(start, end, safeMax);
+                        var importResult = nvdImportService.importFromNvd(start, end, safeMax);
 
-            var result = new DeltaUpdateResult(
-                    importResult.vulnerabilitiesUpserted(),
-                    importResult.affectedCpesInserted(),
-                    importResult.fetched()
+                        return new DeltaUpdateResult(
+                                importResult.vulnerabilitiesUpserted(),
+                                importResult.affectedCpesInserted(),
+                                importResult.fetched()
+                        );
+                    },
+                    r -> Map.of(
+                            "vulnerabilitiesUpserted", r.vulnerabilitiesUpserted(),
+                            "affectedCpesInserted", r.affectedCpesInserted(),
+                            "fetched", r.fetched()
+                    )
             );
 
-            runRecorder.success(run, Map.of(
-                    "vulnerabilitiesUpserted", result.vulnerabilitiesUpserted(),
-                    "affectedCpesInserted", result.affectedCpesInserted(),
-                    "fetched", result.fetched()
-            ));
-
             log.info("CVE delta update completed.");
-
             return result;
 
-        } catch (Exception ex) {
-            runRecorder.failed(run, ex);
+        } catch (RuntimeException ex) {
             throw ex;
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
         }
     }
 

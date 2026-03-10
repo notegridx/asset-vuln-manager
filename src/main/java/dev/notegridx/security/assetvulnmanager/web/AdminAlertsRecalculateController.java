@@ -2,7 +2,8 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
-import dev.notegridx.security.assetvulnmanager.service.MatchingService;
+import dev.notegridx.security.assetvulnmanager.service.AdminAlertsRecalculateService;
+import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,14 +14,14 @@ import java.util.List;
 @Controller
 public class AdminAlertsRecalculateController {
 
-    private final MatchingService matchingService;
+    private final AdminAlertsRecalculateService adminAlertsRecalculateService;
     private final SoftwareInstallRepository softwareInstallRepository;
 
     public AdminAlertsRecalculateController(
-            MatchingService matchingService,
+            AdminAlertsRecalculateService adminAlertsRecalculateService,
             SoftwareInstallRepository softwareInstallRepository
     ) {
-        this.matchingService = matchingService;
+        this.adminAlertsRecalculateService = adminAlertsRecalculateService;
         this.softwareInstallRepository = softwareInstallRepository;
     }
 
@@ -33,11 +34,14 @@ public class AdminAlertsRecalculateController {
     @PostMapping("/admin/alerts/recalculate")
     public String run(Model model) {
 
-        // Matching & Upsert alerts only
-        var matchResult = matchingService.matchAndUpsertAlerts();
+        try {
+            var matchResult = adminAlertsRecalculateService.runRecalculate();
+            model.addAttribute("matchResult", matchResult);
+        } catch (AdminJobAlreadyRunningException ex) {
+            model.addAttribute("error", ex.getMessage());
+        }
 
         addCanonicalStats(model);
-        model.addAttribute("matchResult", matchResult);
         return "admin/alerts_recalculate";
     }
 

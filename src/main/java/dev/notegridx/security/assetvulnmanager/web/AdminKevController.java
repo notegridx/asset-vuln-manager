@@ -5,11 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.notegridx.security.assetvulnmanager.domain.AdminRun;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.repository.AdminRunRepository;
+import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.AdminKevSyncService;
 import dev.notegridx.security.assetvulnmanager.service.KevSyncService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -48,8 +51,12 @@ public class AdminKevController {
             @RequestParam(name = "maxItems", defaultValue = "50000") int maxItems,
             Model model
     ) {
-        KevSyncService.SyncResult result = adminKevSyncService.run(force, maxItems);
-        model.addAttribute("result", result);
+        try {
+            KevSyncService.SyncResult result = adminKevSyncService.run(force, maxItems);
+            model.addAttribute("result", result);
+        } catch (AdminJobAlreadyRunningException ex) {
+            model.addAttribute("error", ex.getMessage());
+        }
 
         AdminRun last = findLast();
         bindLastRun(model, last);

@@ -4,9 +4,9 @@ import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
-import dev.notegridx.security.assetvulnmanager.service.CanonicalBackfillService;
+import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
+import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
-import dev.notegridx.security.assetvulnmanager.service.SynonymService;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,22 +26,18 @@ public class AdminCanonicalController {
     private final AssetRepository assetRepo;
     private final SoftwareInstallRepository softwareRepo;
     private final CanonicalCpeLinkingService linker;
-
-    private final CanonicalBackfillService backfillService;
-    private final SynonymService synonymService;
+    private final AdminCanonicalBackfillService adminCanonicalBackfillService;
 
     public AdminCanonicalController(
             AssetRepository assetRepo,
             SoftwareInstallRepository softwareRepo,
             CanonicalCpeLinkingService linker,
-            CanonicalBackfillService backfillService,
-            SynonymService synonymService
+            AdminCanonicalBackfillService adminCanonicalBackfillService
     ) {
         this.assetRepo = assetRepo;
         this.softwareRepo = softwareRepo;
         this.linker = linker;
-        this.backfillService = backfillService;
-        this.synonymService = synonymService;
+        this.adminCanonicalBackfillService = adminCanonicalBackfillService;
     }
 
     public enum Filter {
@@ -131,10 +127,12 @@ public class AdminCanonicalController {
             @RequestParam(name = "redirect", required = false) String redirect,
             RedirectAttributes ra
     ) {
-        synonymService.clearCaches();
-
-        var result = backfillService.backfill(maxRows, relink);
-        ra.addFlashAttribute("backfillResult", result);
+        try {
+            var result = adminCanonicalBackfillService.runBackfill(maxRows, relink);
+            ra.addFlashAttribute("backfillResult", result);
+        } catch (AdminJobAlreadyRunningException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        }
 
         return safeRedirectOrDefault(redirect, "/admin/canonical");
     }
