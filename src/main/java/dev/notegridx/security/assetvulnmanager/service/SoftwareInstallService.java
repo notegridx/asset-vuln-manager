@@ -2,13 +2,17 @@ package dev.notegridx.security.assetvulnmanager.service;
 
 import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareType;
 import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+import dev.notegridx.security.assetvulnmanager.web.form.SoftwareInstallForm;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 
@@ -81,7 +85,6 @@ public class SoftwareInstallService {
         if (r.hit()) {
             si.linkCanonical(r.vendorId(), r.productId());
         } else if (r.vendorId() != null) {
-            // ✅ vendor は確定しているので vendor-only を保持
             si.linkCanonical(r.vendorId(), null);
         } else {
             si.unlinkCanonical();
@@ -111,13 +114,88 @@ public class SoftwareInstallService {
         if (r.hit()) {
             si.linkCanonical(r.vendorId(), r.productId());
         } else if (r.vendorId() != null) {
-            // ✅ 入力が変わって product が外れても vendor が確定していれば vendor-only に落とす
-            // （古い product link の残留は防ぎつつ vendor は保持）
             si.linkCanonical(r.vendorId(), null);
         } else {
             si.unlinkCanonical();
         }
 
         return softwareInstallRepository.save(si);
+    }
+
+    @Transactional
+    public SoftwareInstall updateEditableFields(Long softwareInstallId, SoftwareInstallForm form) {
+        SoftwareDictionaryValidator.Resolve r;
+        if (dictMode == DictMode.STRICT) {
+            r = dictValidator.resolveOrThrow(form.getVendor(), form.getProduct());
+        } else {
+            r = dictValidator.resolve(form.getVendor(), form.getProduct());
+        }
+
+        SoftwareInstall si = getRequired(softwareInstallId);
+
+        si.updateDetails(
+                form.getVendor(),
+                form.getProduct(),
+                form.getVersion(),
+                form.getCpeName()
+        );
+
+        si.setType(parseSoftwareType(form.getType()));
+        si.setSource(form.getSource());
+
+        si.captureRaw(
+                form.getVendorRaw(),
+                form.getProductRaw(),
+                form.getVersionRaw()
+        );
+
+        si.updateImportExtended(
+                form.getInstallLocation(),
+                parseLocalDateTime(form.getInstalledAt()),
+                form.getPackageIdentifier(),
+                form.getArch(),
+                form.getSourceType(),
+                parseLocalDateTime(form.getLastSeenAt()),
+                form.getPublisher(),
+                form.getBundleId(),
+                form.getPackageManager(),
+                form.getInstallSource(),
+                form.getEdition(),
+                form.getChannel(),
+                form.getRelease(),
+                form.getPurl()
+        );
+
+        if (r.hit()) {
+            si.linkCanonical(r.vendorId(), r.productId());
+        } else if (r.vendorId() != null) {
+            si.linkCanonical(r.vendorId(), null);
+        } else {
+            si.unlinkCanonical();
+        }
+
+        return softwareInstallRepository.save(si);
+    }
+
+    private static SoftwareType parseSoftwareType(String value) {
+        if (value == null || value.isBlank()) {
+            return SoftwareType.APPLICATION;
+        }
+        try {
+            return SoftwareType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return SoftwareType.APPLICATION;
+        }
+    }
+
+    private static LocalDateTime parseLocalDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value.trim());
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Invalid datetime format: " + value, ex);
+        }
     }
 }

@@ -13,22 +13,26 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @Controller
 @RequiredArgsConstructor
 @RequestMapping("/software")
 public class SoftwareController {
 
+    private static final DateTimeFormatter HTML_DATETIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+
     private final SoftwareInstallRepository softwareInstallRepository;
     private final SoftwareInstallService softwareInstallService;
 
-    // 追加: Software detail
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, Model model) {
         SoftwareInstall s = softwareInstallRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("SoftwareInstall not found. id=" + id));
 
         model.addAttribute("software", s);
-        model.addAttribute("assetId", s.getAsset().getId()); // 戻りリンク等で使う
+        model.addAttribute("assetId", s.getAsset().getId());
         return "software/detail";
     }
 
@@ -49,16 +53,8 @@ public class SoftwareController {
         SoftwareInstall s = softwareInstallRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("SoftwareInstall not found. id=" + id));
 
-        SoftwareInstallForm form = new SoftwareInstallForm();
-        form.setVendor(s.getVendor());
-        form.setProduct(s.getProduct());
-        form.setVersion(s.getVersion());
-        form.setCpeName(s.getCpeName());
-
-        model.addAttribute("softwareInstallForm", form);
-        model.addAttribute("softwareId", s.getId());
-        model.addAttribute("assetId", s.getAsset().getId());
-
+        SoftwareInstallForm form = toForm(s);
+        addEditModel(model, s, form);
         return "software/edit";
     }
 
@@ -73,38 +69,78 @@ public class SoftwareController {
                 .orElseThrow(() -> new IllegalArgumentException("SoftwareInstall not found. id=" + id));
 
         if (bindingResult.hasErrors()) {
-            model.addAttribute("softwareId", s.getId());
-            model.addAttribute("assetId", s.getAsset().getId());
+            addEditModel(model, s, form);
             return "software/edit";
         }
 
         try {
-            softwareInstallService.updateDetails(
-                    id,
-                    form.getVendor(),
-                    form.getProduct(),
-                    form.getVersion(),
-                    form.getCpeName()
-            );
+            softwareInstallService.updateEditableFields(id, form);
 
         } catch (DictionaryValidationException e) {
-            // vendor / product のどちらで落ちてもフォームに表示できる
             bindingResult.rejectValue(
                     e.getField(),
                     e.getCode().name(),
                     e.getMessage()
             );
-            model.addAttribute("softwareId", s.getId());
-            model.addAttribute("assetId", s.getAsset().getId());
+            addEditModel(model, s, form);
+            return "software/edit";
+
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("invalid", e.getMessage());
+            addEditModel(model, s, form);
             return "software/edit";
 
         } catch (DataIntegrityViolationException e) {
             bindingResult.reject("duplicate", "This software is already registered for this asset.");
-            model.addAttribute("softwareId", s.getId());
-            model.addAttribute("assetId", s.getAsset().getId());
+            addEditModel(model, s, form);
             return "software/edit";
         }
 
         return "redirect:/assets/" + s.getAsset().getId();
+    }
+
+    private void addEditModel(Model model, SoftwareInstall s, SoftwareInstallForm form) {
+        model.addAttribute("softwareInstallForm", form);
+        model.addAttribute("softwareId", s.getId());
+        model.addAttribute("assetId", s.getAsset().getId());
+    }
+
+    private SoftwareInstallForm toForm(SoftwareInstall s) {
+        SoftwareInstallForm form = new SoftwareInstallForm();
+
+        form.setType(s.getType() != null ? s.getType().name() : null);
+        form.setSource(s.getSource());
+        form.setSourceType(s.getSourceType());
+
+        form.setVendor(s.getVendor());
+        form.setProduct(s.getProduct());
+        form.setVersion(s.getVersion());
+        form.setCpeName(s.getCpeName());
+
+        form.setVendorRaw(s.getVendorRaw());
+        form.setProductRaw(s.getProductRaw());
+        form.setVersionRaw(s.getVersionRaw());
+
+        form.setLastSeenAt(formatDateTime(s.getLastSeenAt()));
+        form.setInstalledAt(formatDateTime(s.getInstalledAt()));
+
+        form.setInstallLocation(s.getInstallLocation());
+        form.setPackageIdentifier(s.getPackageIdentifier());
+        form.setArch(s.getArch());
+
+        form.setPublisher(s.getPublisher());
+        form.setBundleId(s.getBundleId());
+        form.setPackageManager(s.getPackageManager());
+        form.setInstallSource(s.getInstallSource());
+        form.setEdition(s.getEdition());
+        form.setChannel(s.getChannel());
+        form.setRelease(s.getRelease());
+        form.setPurl(s.getPurl());
+
+        return form;
+    }
+
+    private String formatDateTime(LocalDateTime value) {
+        return value == null ? null : value.format(HTML_DATETIME);
     }
 }
