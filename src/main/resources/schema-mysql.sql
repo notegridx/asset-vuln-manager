@@ -981,3 +981,91 @@ SET @ddl = IF (EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_s
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ddl = IF (EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'cpe_product_aliases' AND index_name = 'idx_cpe_product_aliases_vendor_id'), 'SELECT 1', 'CREATE INDEX idx_cpe_product_aliases_vendor_id ON cpe_product_aliases(cpe_vendor_id)');
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- =========================================================
+-- Security / Users / Roles
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS app_users
+(
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    account_non_locked BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_app_users_username UNIQUE (username)
+    ) ENGINE=InnoDB;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'app_users'
+           AND index_name = 'idx_app_users_username'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_app_users_username ON app_users(username)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+CREATE TABLE IF NOT EXISTS app_roles
+(
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_app_roles_name UNIQUE (role_name)
+    ) ENGINE=InnoDB;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'app_roles'
+           AND index_name = 'idx_app_roles_name'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_app_roles_name ON app_roles(role_name)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+CREATE TABLE IF NOT EXISTS app_user_roles
+(
+    user_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT pk_app_user_roles PRIMARY KEY (user_id, role_id),
+    CONSTRAINT fk_app_user_roles_user FOREIGN KEY (user_id) REFERENCES app_users(id),
+    CONSTRAINT fk_app_user_roles_role FOREIGN KEY (role_id) REFERENCES app_roles(id)
+    ) ENGINE=InnoDB;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'app_user_roles'
+           AND index_name = 'idx_app_user_roles_user'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_app_user_roles_user ON app_user_roles(user_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'app_user_roles'
+           AND index_name = 'idx_app_user_roles_role'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_app_user_roles_role ON app_user_roles(role_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+INSERT IGNORE INTO app_roles (role_name) VALUES ('ADMIN');
+INSERT IGNORE INTO app_roles (role_name) VALUES ('OPERATOR');
+INSERT IGNORE INTO app_roles (role_name) VALUES ('VIEWER');

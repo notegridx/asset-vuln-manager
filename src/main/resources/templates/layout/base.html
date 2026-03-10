@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <head th:fragment="head(title)">
   <meta charset="UTF-8">
@@ -10,7 +12,6 @@
 
 <body th:fragment="layout(title, active, content)">
 <div class="container">
-  <!-- 既存の header の <nav>...</nav> を、これに置き換え -->
 
   <header>
     <div class="brand">
@@ -76,5 +77,4 @@
 </script>
 
 </body>
-
 </html>

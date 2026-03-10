@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 
-<nav th:fragment="nav(active)">
+<nav th:fragment="nav(active)" sec:authorize="isAuthenticated()">
     <div class="nav-wrap" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
 
         <!-- Primary -->
@@ -49,7 +51,9 @@
            th:href="@{/alerts}">Alerts</a>
 
         <!-- Operations dropdown -->
-        <details class="nav-admin" th:classappend="${active == 'admin'} ? ' is-active' : ''">
+        <details class="nav-admin"
+                 sec:authorize="hasRole('ADMIN')"
+                 th:classappend="${active == 'admin'} ? ' is-active' : ''">
             <summary class="nav-link nav-admin__trigger"
                      th:classappend="${active == 'admin'} ? ' active' : ''">
                 Operations
@@ -169,8 +173,31 @@
                     </a>
                 </div>
 
+                <div class="nav-admin-divider" role="separator"></div>
+
+                <!-- Security -->
+                <div class="nav-admin-section">
+                    <div class="nav-admin-section__title">Security</div>
+
+                    <a class="nav-admin-item"
+                       role="menuitem"
+                       th:href="@{/admin/users}">
+                        Users
+                    </a>
+                </div>
+
             </div>
         </details>
+
+        <div class="nav-userbox" sec:authorize="isAuthenticated()">
+            <span class="nav-userbox__name">
+                <strong sec:authentication="name">admin</strong>
+            </span>
+
+            <form th:action="@{/logout}" method="post" class="nav-logout-form">
+                <button type="submit" class="nav-link nav-link--button">Logout</button>
+            </form>
+        </div>
 
     </div>
 </nav>

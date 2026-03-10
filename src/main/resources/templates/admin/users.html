@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('Users')}"></head>
+
+<body th:replace="~{layout/base :: layout('Users', 'admin', ~{::main})}">
+<main>
+
+    <div class="page-header page-header--split">
+        <div class="page-header__left">
+            <h1>Users</h1>
+            <div class="muted mt-6">Create users, enable or disable accounts, and update roles.</div>
+        </div>
+
+        <div class="page-header__right page-header__right--pills">
+            <span class="pill" th:text="'Users: ' + ${#lists.size(users)}">Users: 0</span>
+            <span class="pill" th:text="'Roles: ' + ${#lists.size(roles)}">Roles: 0</span>
+        </div>
+    </div>
+
+    <div th:if="${message}" class="badge badge--ok" style="margin:12px 0;" th:text="${message}">
+        Saved.
+    </div>
+
+    <div th:if="${error}" class="badge badge--danger" style="margin:12px 0;" th:text="${error}">
+        Error.
+    </div>
+
+    <!-- Create user -->
+    <div class="card" style="padding:16px; margin:12px 0;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <div>
+                <h2 style="margin:0;">Create User</h2>
+                <div class="muted" style="font-size:12px; margin-top:6px;">
+                    Username must be unique. At least one role is required.
+                </div>
+            </div>
+        </div>
+
+        <form th:action="@{/admin/users}" method="post" style="margin-top:14px;">
+            <div class="form-row">
+                <div class="field" style="min-width:220px; flex:1 1 220px;">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" type="text" required maxlength="100">
+                </div>
+
+                <div class="field" style="min-width:220px; flex:1 1 220px;">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" required>
+                </div>
+
+                <div class="field" style="min-width:220px; flex:1 1 260px;">
+                    <label>Roles</label>
+                    <div class="card" style="padding:10px;">
+                        <label th:each="r : ${roles}" style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
+                            <input type="checkbox" name="roles" th:value="${r.roleName}">
+                            <span th:text="${r.roleName}">ADMIN</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="field" style="min-width:120px;">
+                    <label for="enabled">Enabled</label>
+                    <label style="display:inline-flex; align-items:center; gap:8px; min-height:42px;">
+                        <input id="enabled" type="checkbox" name="enabled" checked>
+                        <span>Active</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="actions" style="margin-top:14px;">
+                <button type="submit" class="btn btn-primary">Create User</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- User list -->
+    <div class="card" style="padding:12px;">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <div>
+                <h2 style="margin:0;">User List</h2>
+                <div class="muted" style="font-size:12px; margin-top:6px;">
+                    Manage account state and assigned roles.
+                </div>
+            </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:12px;">
+            <table class="table" style="margin-top:0;">
+                <thead>
+                <tr>
+                    <th style="min-width:70px;">ID</th>
+                    <th style="min-width:180px;">Username</th>
+                    <th style="min-width:120px;">Enabled</th>
+                    <th style="min-width:220px;">Roles</th>
+                    <th style="min-width:180px;">Created</th>
+                    <th style="min-width:300px;">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="u : ${users}">
+                    <td th:text="${u.id}">1</td>
+
+                    <td>
+                        <div th:text="${u.username}">admin</div>
+                        <div class="muted" style="font-size:12px;"
+                             th:text="${u.accountNonLocked ? 'not locked' : 'locked'}">not locked</div>
+                    </td>
+
+                    <td>
+                        <span th:if="${u.enabled}" class="badge badge--ok">Enabled</span>
+                        <span th:if="${!u.enabled}" class="badge badge--danger">Disabled</span>
+                    </td>
+
+                    <td>
+                        <span th:each="r, st : ${u.roles}">
+                            <span class="pill" th:text="${r.roleName}">ADMIN</span><span th:if="${!st.last}"> </span>
+                        </span>
+                    </td>
+
+                    <td>
+                        <span th:text="${u.createdAt != null ? #temporals.format(u.createdAt, 'yyyy-MM-dd HH:mm') : '-'}">-</span>
+                    </td>
+
+                    <td>
+                        <div class="actions" style="margin:0; gap:8px; align-items:flex-start; flex-direction:column;">
+
+                            <div class="actions" style="margin:0; gap:8px;">
+                                <form th:if="${u.enabled}"
+                                      th:action="@{/admin/users/{id}/disable(id=${u.id})}"
+                                      method="post">
+                                    <button type="submit"
+                                            class="btn"
+                                            onclick="return confirm('Disable this user?');">
+                                        Disable
+                                    </button>
+                                </form>
+
+                                <form th:if="${!u.enabled}"
+                                      th:action="@{/admin/users/{id}/enable(id=${u.id})}"
+                                      method="post">
+                                    <button type="submit" class="btn btn-primary">
+                                        Enable
+                                    </button>
+                                </form>
+                            </div>
+
+                            <form th:action="@{/admin/users/{id}/roles(id=${u.id})}"
+                                  method="post"
+                                  style="width:100%;">
+                                <div class="field" style="margin:0;">
+                                    <label style="font-size:12px;">Update roles</label>
+                                    <div class="card" style="padding:10px;">
+                                        <label th:each="r : ${roles}"
+                                               style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
+                                            <input type="checkbox"
+                                                   name="roles"
+                                                   th:value="${r.roleName}"
+                                                   th:checked="${u.roles.contains(r)}">
+                                            <span th:text="${r.roleName}">ADMIN</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="actions" style="margin-top:8px;">
+                                    <button type="submit" class="btn">Save Roles</button>
+                                </div>
+                            </form>
+
+                        </div>
+                    </td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(users)}">
+                    <td colspan="6" class="muted">No users.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+</body>
+</html>

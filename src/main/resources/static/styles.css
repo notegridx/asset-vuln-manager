@@ -1852,3 +1852,36 @@ td.canon-reason {
 td.canon-reason .line-clamp-2 {
     white-space: normal;
 }
+
+/* =========================================================
+   SECURITY / USER NAV
+   Login user info + logout button
+   (minimal addition — no existing rule conflicts)
+   ========================================================= */
+
+.nav-userbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 8px;
+    flex-wrap: wrap;
+}
+
+.nav-userbox__name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.nav-logout-form {
+    margin: 0;
+}
+
+.nav-link--button {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+}

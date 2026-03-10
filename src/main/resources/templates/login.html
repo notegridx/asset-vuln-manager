@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" th:href="@{/styles.css}">
+</head>
+<body>
+<div class="container" style="max-width:520px; padding-top:48px;">
+    <main>
+        <div class="page">
+            <div class="page-header">
+                <div class="page-title">
+                    <h1>Login</h1>
+                    <div class="sub muted">asset-vuln-manager</div>
+                </div>
+            </div>
+
+            <div class="card" style="padding:16px;">
+                <div th:if="${param.error}" class="badge badge--danger" style="margin-bottom:12px;">
+                    Invalid username or password.
+                </div>
+
+                <div th:if="${param.logout}" class="badge badge--ok" style="margin-bottom:12px;">
+                    Logged out.
+                </div>
+
+                <form th:action="@{/login}" method="post">
+                    <div class="field">
+                        <label for="username">Username</label>
+                        <input id="username" name="username" type="text" autocomplete="username" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="password">Password</label>
+                        <input id="password" name="password" type="password" autocomplete="current-password" required>
+                    </div>
+
+                    <div class="actions" style="margin-top:14px;">
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </div>
+                </form>
+
+                <div class="muted" style="margin-top:14px; font-size:12px;">
+                    Initial account: <code>admin</code> / <code>admin123!</code>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>
