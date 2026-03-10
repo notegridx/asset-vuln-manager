@@ -1,13 +1,6 @@
 spring:
-  datasource:
-    url: jdbc:h2:file:~/assetvulndb;MODE=MySQL;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
-    driverClassName: org.h2.Driver
-    username: sa
-    password:
-
-  sql:
-    init:
-      mode: always
+  profiles:
+    default: h2
 
   jpa:
     hibernate:
@@ -15,11 +8,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
 
   thymeleaf:
     cache: false
@@ -32,40 +20,27 @@ logging:
   level:
     org.hibernate.SQL: info
     dev.notegridx.security.assetvulnmanager: info
-    dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService: info
-    dev.notegridx.security.assetvulnmanager.service.TokenMatchingService: info
+    dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService: DEBUG
+    dev.notegridx.security.assetvulnmanager.service.TokenMatchingService: DEBUG
 
 app:
 
-  # ---------------------------------------------------------
-  # Software dictionary behavior
-  # ---------------------------------------------------------
   software:
-    dict-mode: STRICT  # or LENIENT
+    dict-mode: STRICT
 
-  # ---------------------------------------------------------
-  # Import session settings
-  # ---------------------------------------------------------
   import:
     session-ttl-minutes: 30
     session-dir:
 
-  # ---------------------------------------------------------
-  # NVD Settings
-  # ---------------------------------------------------------
   nvd:
-
-    # --- NVD API (差分同期用: 既存) ---
     base-url: https://services.nvd.nist.gov
     api-key: ${NVD_API_KEY:}
 
-    # --- CPE Dictionary Feed (既存) ---
     cpe:
       base-url: https://nvd.nist.gov
       meta-path: /feeds/json/cpe/2.0/nvdcpe-2.0.meta
       gz-path: /feeds/json/cpe/2.0/nvdcpe-2.0.tar.gz
 
-    # --- CVE JSON 2.0 Feed (新規追加) ---
     cve:
       base-url: https://nvd.nist.gov
 
@@ -80,6 +55,6 @@ app:
       year:
         meta-path-pattern: /feeds/json/cve/2.0/nvdcve-2.0-{year}.meta
         gz-path-pattern: /feeds/json/cve/2.0/nvdcve-2.0-{year}.json.gz
-    # software dict-mode (互換維持)
+
     software:
       dict-mode: STRICT

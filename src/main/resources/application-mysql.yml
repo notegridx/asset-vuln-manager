@@ -1,0 +1,19 @@
+spring:
+  config:
+    activate:
+      on-profile: mysql
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/assetvulndb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Tokyo&useSSL=false&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME:assetvuln}
+    password: ${DB_PASSWORD:assetvuln}
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-mysql.sql
+
+  h2:
+    console:
+      enabled: false

@@ -85,7 +85,7 @@ public class ImportStagingSoftware {
     @Column(name = "channel", length = 64)
     private String channel;
 
-    @Column(name = "release", length = 128)
+    @Column(name = "release_label", length = 128)
     private String release;
 
     @Column(name = "purl", length = 512)

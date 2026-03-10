@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.Optional;
 
 /**
  * CVE Feed Sync (JSON feed .json.gz) - streaming safe, chunked upsert.
@@ -69,6 +70,8 @@ public class CveFeedSyncService {
     private final VendorProductNormalizer normalizer;
     private final CpeVendorRepository cpeVendorRepository;
     private final CpeProductRepository cpeProductRepository;
+    private final VulnerabilityKeyService vulnerabilityKeyService;
+
 
     private final EntityManager em;
     private final TransactionTemplate chunkTx;
@@ -91,6 +94,7 @@ public class CveFeedSyncService {
             VendorProductNormalizer normalizer,
             CpeVendorRepository cpeVendorRepository,
             CpeProductRepository cpeProductRepository,
+            VulnerabilityKeyService vulnerabilityKeyService,
             EntityManager em,
             PlatformTransactionManager txManager
     ) {
@@ -103,6 +107,7 @@ public class CveFeedSyncService {
         this.normalizer = normalizer;
         this.cpeVendorRepository = cpeVendorRepository;
         this.cpeProductRepository = cpeProductRepository;
+        this.vulnerabilityKeyService = vulnerabilityKeyService;
 
         this.em = em;
 
@@ -760,17 +765,33 @@ public class CveFeedSyncService {
             }
         }
 
-        // ★ version range 4列は NULL を使わない（未指定は ""）
-        //   Entity側でも normalize しているが、ここでも明示しておく
+        // version range 4列は NULL を使わない（未指定は ""）
         String vsi = nullToEmpty(a.versionStartIncluding);
         String vse = nullToEmpty(a.versionStartExcluding);
         String vei = nullToEmpty(a.versionEndIncluding);
         String vee = nullToEmpty(a.versionEndExcluding);
 
-        // ---- Idempotency guard (avoid UX_VAC_DEDUPE violation) ----
-        // UNIQUE: (vulnerability_id, cpe_name, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
-        // 一度 UNIQUE違反を踏むと JPA が TX を rollback-only にすることがあり、catchしても最後に UnexpectedRollbackException になりうる。
-        // → 先に existence check で弾いて、そもそも UNIQUE違反を発生させない。
+        // 新規: dedupe_key を生成
+        String dedupeKey = vulnerabilityKeyService.buildAffectedCpeKey(
+                v.getId(),
+                criteria,
+                vsi,
+                vse,
+                vei,
+                vee
+        );
+
+        // ---- Idempotency guard (dedupe_key 優先) ----
+        // まず新しい dedupe_key で存在確認
+        if (dedupeKey != null && !dedupeKey.isBlank()) {
+            boolean existsByKey = affectedCpeRepository.existsByDedupeKey(dedupeKey);
+            if (existsByKey) {
+                return 0;
+            }
+        }
+
+        // 既存フォールバック:
+        // H2既存利用や移行途中のデータ互換のため、従来の複合キーexistsも残す
         if (v.getId() != null) {
             boolean exists = affectedCpeRepository
                     .existsByVulnerabilityIdAndCpeNameAndVersionStartIncludingAndVersionStartExcludingAndVersionEndIncludingAndVersionEndExcluding(
@@ -786,7 +807,6 @@ public class CveFeedSyncService {
             }
         }
 
-
         VulnerabilityAffectedCpe vac = new VulnerabilityAffectedCpe(
                 v,
                 criteria,
@@ -799,17 +819,17 @@ public class CveFeedSyncService {
                 vei,
                 vee
         );
+        vac.setDedupeKey(dedupeKey);
 
         try {
             affectedCpeRepository.save(vac);
 
-            // UNIQUE違反をこの場で確定させて握りつぶす（後続 flush で chunk rollback しないように）
+            // UNIQUE違反をこの場で確定させて握りつぶす
             em.flush();
             return 1;
 
         } catch (DataIntegrityViolationException e) {
-            // ux_vac_dedupe hit → duplicate skip
-            // 例外後に persistence context が不安定になるのを避けてクリア
+            // uq_vac_dedupe_key / uq_vac_dedupe hit → duplicate skip
             try {
                 em.clear();
             } catch (Exception ignore) {
@@ -817,7 +837,6 @@ public class CveFeedSyncService {
             return 0;
 
         } catch (PersistenceException e) {
-            // Providerにより直接PersistenceExceptionになる場合に備える
             try {
                 em.clear();
             } catch (Exception ignore) {
