@@ -111,7 +111,42 @@ class AdminUsersControllerWebMvcTest {
                 "alice".equals(u.getUsername())
                         && u.isEnabled()
                         && u.isAccountNonLocked()
+                        && !u.isPasswordChangeRequired()
+                        && !u.isBootstrapAdmin()
                         && u.getRoles().size() == 2
+                        && hasRole(u, "ADMIN")
+                        && hasRole(u, "USER")
+        ));
+    }
+
+    @Test
+    @DisplayName("POST /admin/users creates non-bootstrap user without forced password change")
+    void create_valid_defaultsSecurityFlagsToFalse() throws Exception {
+        AppRole userRole = role("USER");
+
+        when(appUserRepository.existsByUsername("bob")).thenReturn(false);
+        when(appRoleRepository.findByRoleNameIn(List.of("USER")))
+                .thenReturn(List.of(userRole));
+        when(passwordEncoder.encode("secret123")).thenReturn("ENC(secret123)");
+        when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/admin/users")
+                        .with(csrf())
+                        .param("username", "bob")
+                        .param("password", "secret123")
+                        .param("roles", "USER"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/users"))
+                .andExpect(flash().attribute("message", "User created: bob"));
+
+        verify(appUserRepository).save(argThat(u ->
+                "bob".equals(u.getUsername())
+                        && !u.isEnabled()
+                        && u.isAccountNonLocked()
+                        && !u.isPasswordChangeRequired()
+                        && !u.isBootstrapAdmin()
+                        && u.getRoles().size() == 1
+                        && hasRole(u, "USER")
         ));
     }
 
@@ -126,6 +161,24 @@ class AdminUsersControllerWebMvcTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/users"))
                 .andExpect(flash().attribute("error", "Username is required."));
+
+        verify(appUserRepository, never()).save(any());
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    @DisplayName("POST /admin/users rejects blank password")
+    void create_blankPassword_rejects() throws Exception {
+        when(appUserRepository.existsByUsername("alice")).thenReturn(false);
+
+        mockMvc.perform(post("/admin/users")
+                        .with(csrf())
+                        .param("username", "alice")
+                        .param("password", "   ")
+                        .param("roles", "USER"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/users"))
+                .andExpect(flash().attribute("error", "Password is required."));
 
         verify(appUserRepository, never()).save(any());
         verify(passwordEncoder, never()).encode(any());

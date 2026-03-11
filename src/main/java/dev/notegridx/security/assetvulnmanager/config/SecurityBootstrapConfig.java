@@ -34,6 +34,11 @@ public class SecurityBootstrapConfig {
 
             AppUser admin = AppUser.of("admin", passwordEncoder.encode("admin123!"));
             admin.replaceRoles(new LinkedHashSet<>(roles));
+            admin.setPasswordChangeRequired(true);
+            admin.setBootstrapAdmin(true);
+            admin.setEnabled(true);
+            admin.setAccountNonLocked(true);
+
             appUserRepository.save(admin);
         };
     }

@@ -1,15 +1,29 @@
 package dev.notegridx.security.assetvulnmanager.config;
 
+import dev.notegridx.security.assetvulnmanager.domain.AppUser;
+import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
 import dev.notegridx.security.assetvulnmanager.service.AppUserDetailsService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
 
 @Configuration
 @EnableMethodSecurity
@@ -22,9 +36,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ObjectProvider<AppUserRepository> appUserRepositoryProvider
+    ) throws Exception {
         http
                 .authenticationProvider(authenticationProvider())
+                .addFilterAfter(forcePasswordChangeFilter(appUserRepositoryProvider), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         // public
                         .requestMatchers(
@@ -35,6 +53,9 @@ public class SecurityConfig {
                                 "/js/**",
                                 "/images/**"
                         ).permitAll()
+
+                        // any authenticated user may change their own password
+                        .requestMatchers("/account/change-password").authenticated()
 
                         // admin only: user management
                         .requestMatchers("/admin/users/**").hasRole("ADMIN")
@@ -70,7 +91,7 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/dashboard", true)
+                        .successHandler(authenticationSuccessHandler(appUserRepositoryProvider))
                         .failureUrl("/login?error")
                         .permitAll()
                 )
@@ -82,6 +103,86 @@ public class SecurityConfig {
                 .rememberMe(Customizer.withDefaults());
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationSuccessHandler authenticationSuccessHandler(
+            ObjectProvider<AppUserRepository> appUserRepositoryProvider
+    ) {
+        return (request, response, authentication) -> {
+            String target = "/dashboard";
+
+            AppUserRepository appUserRepository = appUserRepositoryProvider.getIfAvailable();
+            if (appUserRepository != null && authentication != null) {
+                AppUser user = appUserRepository.findByUsername(authentication.getName()).orElse(null);
+                if (user != null && user.isPasswordChangeRequired()) {
+                    target = "/account/change-password";
+                }
+            }
+
+            response.sendRedirect(request.getContextPath() + target);
+        };
+    }
+
+    @Bean
+    public OncePerRequestFilter forcePasswordChangeFilter(
+            ObjectProvider<AppUserRepository> appUserRepositoryProvider
+    ) {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(
+                    HttpServletRequest request,
+                    HttpServletResponse response,
+                    FilterChain filterChain
+            ) throws ServletException, IOException {
+                String uri = request.getRequestURI();
+                String contextPath = request.getContextPath();
+                String path = (contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath))
+                        ? uri.substring(contextPath.length())
+                        : uri;
+
+                if (isAllowedWithoutPasswordChange(path)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                Authentication authentication = org.springframework.security.core.context.SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+                if (authentication == null
+                        || !authentication.isAuthenticated()
+                        || authentication instanceof AnonymousAuthenticationToken) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                AppUserRepository appUserRepository = appUserRepositoryProvider.getIfAvailable();
+                if (appUserRepository == null) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                AppUser user = appUserRepository.findByUsername(authentication.getName()).orElse(null);
+                if (user != null && user.isPasswordChangeRequired()) {
+                    response.sendRedirect(request.getContextPath() + "/account/change-password");
+                    return;
+                }
+
+                filterChain.doFilter(request, response);
+            }
+
+            private boolean isAllowedWithoutPasswordChange(String path) {
+                return path.equals("/login")
+                        || path.equals("/logout")
+                        || path.equals("/error")
+                        || path.equals("/account/change-password")
+                        || path.startsWith("/styles.css")
+                        || path.startsWith("/css/")
+                        || path.startsWith("/js/")
+                        || path.startsWith("/images/");
+            }
+        };
     }
 
     @Bean

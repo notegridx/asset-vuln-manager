@@ -31,6 +31,12 @@ public class AppUser {
     @Column(name = "account_non_locked", nullable = false)
     private boolean accountNonLocked = true;
 
+    @Column(name = "password_change_required", nullable = false)
+    private boolean passwordChangeRequired = false;
+
+    @Column(name = "bootstrap_admin", nullable = false)
+    private boolean bootstrapAdmin = false;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "app_user_roles",
@@ -53,6 +59,8 @@ public class AppUser {
         this.passwordHash = requireNotBlank(passwordHash, "passwordHash");
         this.enabled = true;
         this.accountNonLocked = true;
+        this.passwordChangeRequired = false;
+        this.bootstrapAdmin = false;
     }
 
     public static AppUser of(String username, String passwordHash) {
@@ -69,6 +77,14 @@ public class AppUser {
 
     public void setAccountNonLocked(boolean accountNonLocked) {
         this.accountNonLocked = accountNonLocked;
+    }
+
+    public void setPasswordChangeRequired(boolean passwordChangeRequired) {
+        this.passwordChangeRequired = passwordChangeRequired;
+    }
+
+    public void setBootstrapAdmin(boolean bootstrapAdmin) {
+        this.bootstrapAdmin = bootstrapAdmin;
     }
 
     public void replaceRoles(Set<AppRole> roles) {
