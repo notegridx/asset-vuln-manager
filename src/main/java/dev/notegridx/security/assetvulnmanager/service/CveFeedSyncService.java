@@ -31,7 +31,8 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.*;
-import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * CVE Feed Sync (JSON feed .json.gz) - streaming safe, chunked upsert.
@@ -44,7 +45,8 @@ import java.util.Optional;
  * Upsert policy aligned with current domain:
  * - Vulnerability unique: (source, external_id) -> update via applyNvdDetails()
  * - VulnerabilityAffectedCpe unique:
- * (vulnerability_id, cpe_name, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
+ * (vulnerability_id, cpe_name, version_start_including, version_start_excluding,
+ * version_end_including, version_end_excluding)
  * -> insert-only, duplicates ignored
  */
 @Service
@@ -71,7 +73,6 @@ public class CveFeedSyncService {
     private final CpeVendorRepository cpeVendorRepository;
     private final CpeProductRepository cpeProductRepository;
     private final VulnerabilityKeyService vulnerabilityKeyService;
-
 
     private final EntityManager em;
     private final TransactionTemplate chunkTx;
@@ -185,7 +186,6 @@ public class CveFeedSyncService {
         }
     }
 
-    // 旧呼び出し互換（既存の feedName(kind) 呼び出しが全部生きる）
     private String feedName(NvdCveFeedClient.FeedKind kind) {
         return feedName(kind, null);
     }
@@ -271,12 +271,10 @@ public class CveFeedSyncService {
                 JsonToken v = p.nextToken();
 
                 if (!"vulnerabilities".equals(field) || v != JsonToken.START_ARRAY) {
-                    // skip irrelevant field value
                     p.skipChildren();
                     continue;
                 }
 
-                // vulnerabilities array
                 while (p.nextToken() != JsonToken.END_ARRAY) {
                     if (p.currentToken() != JsonToken.START_OBJECT) {
                         p.skipChildren();
@@ -309,12 +307,10 @@ public class CveFeedSyncService {
                     }
                 }
 
-                // array finished (or cap reached)
                 break;
             }
         }
 
-        // tail flush
         if (!buffer.isEmpty() && parsed[0] > 0) {
             List<ParsedVulnerability> chunk = new ArrayList<>(buffer);
             buffer.clear();
@@ -334,11 +330,10 @@ public class CveFeedSyncService {
      * Parse one element of the "vulnerabilities" array.
      * Expected shape (typical NVD 2.0 feed):
      * {
-     * "cve": { "id": "...", "descriptions":[...], "metrics":{...}, "configurations":[...] , ... },
+     * "cve": { "id": "...", "descriptions":[...], "metrics":{...}, "configurations":[...], ... },
      * "published":"2024-..Z",
      * "lastModified":"2024-..Z"
      * }
-     * <p>
      * This parser is best-effort and tolerant.
      * It consumes the END_OBJECT token of the item.
      */
@@ -354,7 +349,6 @@ public class CveFeedSyncService {
 
         List<ParsedAffectedCpe> affected = new ArrayList<>();
 
-        // item object
         while (p.nextToken() != JsonToken.END_OBJECT) {
             if (p.currentToken() != JsonToken.FIELD_NAME) continue;
 
@@ -371,12 +365,10 @@ public class CveFeedSyncService {
             }
 
             if (!"cve".equals(field) || v != JsonToken.START_OBJECT) {
-                // skip unknown field value
                 p.skipChildren();
                 continue;
             }
 
-            // cve object
             while (p.nextToken() != JsonToken.END_OBJECT) {
                 if (p.currentToken() != JsonToken.FIELD_NAME) continue;
 
@@ -396,7 +388,6 @@ public class CveFeedSyncService {
                     continue;
                 }
                 if ("descriptions".equals(cf) && cv == JsonToken.START_ARRAY) {
-                    // prefer English description
                     String desc = parseDescriptionsPreferEn(p);
                     if (desc != null) description = desc;
                     continue;
@@ -416,7 +407,6 @@ public class CveFeedSyncService {
                     continue;
                 }
 
-                // ignore others
                 p.skipChildren();
             }
         }
@@ -425,7 +415,7 @@ public class CveFeedSyncService {
 
         ParsedVulnerability out = new ParsedVulnerability();
         out.cveId = cveId;
-        out.title = null; // NVD feed doesn't reliably provide a "title" -> keep null
+        out.title = null;
         out.description = description;
         out.cvssVersion = cvssVersion;
         out.cvssScore = cvssScore;
@@ -482,7 +472,6 @@ public class CveFeedSyncService {
      * "cvssMetricV30":[...],
      * "cvssMetricV2":[{ "cvssData":{"version":"2.0","baseScore":5.0}, ... }]
      * }
-     * <p>
      * Pick the best available in order: V31 -> V30 -> V2
      */
     private CvssPick parseMetricsPickBest(JsonParser p) throws IOException {
@@ -507,7 +496,6 @@ public class CveFeedSyncService {
             CvssPick pick = parseFirstCvssMetricArrayElement(p);
             if (pick == null) continue;
 
-            // pick priority
             int prio = cvssPriority(f);
             if (best == null || prio < best.priority) {
                 pick.priority = prio;
@@ -519,7 +507,6 @@ public class CveFeedSyncService {
     }
 
     private int cvssPriority(String metricsField) {
-        // lower is better
         if ("cvssMetricV31".equals(metricsField)) return 0;
         if ("cvssMetricV30".equals(metricsField)) return 1;
         if ("cvssMetricV2".equals(metricsField)) return 2;
@@ -529,7 +516,6 @@ public class CveFeedSyncService {
     private CvssPick parseFirstCvssMetricArrayElement(JsonParser p) throws IOException {
         CvssPick out = null;
 
-        // take only the first element (usually primary)
         if (p.nextToken() == JsonToken.START_OBJECT) {
 
             String version = null;
@@ -566,11 +552,8 @@ public class CveFeedSyncService {
                 out.version = version;
                 out.score = score;
             }
-        } else {
-            // array empty
         }
 
-        // skip remaining elements in the array
         p.skipChildren();
         while (p.currentToken() != JsonToken.END_ARRAY) {
             if (p.nextToken() == null) break;
@@ -582,7 +565,6 @@ public class CveFeedSyncService {
     }
 
     private void parseConfigurationsToAffected(JsonParser p, List<ParsedAffectedCpe> out) throws IOException {
-        // configurations: [ { "nodes":[ ... ] }, ... ]
         while (p.nextToken() != JsonToken.END_ARRAY) {
             if (p.currentToken() != JsonToken.START_OBJECT) {
                 p.skipChildren();
@@ -596,14 +578,7 @@ public class CveFeedSyncService {
                 JsonToken v = p.nextToken();
 
                 if ("nodes".equals(f) && v == JsonToken.START_ARRAY) {
-                    // nodes: [ node, node, ... ]
-                    while (p.nextToken() != JsonToken.END_ARRAY) {
-                        if (p.currentToken() != JsonToken.START_OBJECT) {
-                            p.skipChildren();
-                            continue;
-                        }
-                        parseNodeRecursive(p, out);
-                    }
+                    parseNodesArray(p, out);
                 } else {
                     p.skipChildren();
                 }
@@ -611,12 +586,18 @@ public class CveFeedSyncService {
         }
     }
 
-    /**
-     * Parse node recursively:
-     * node: { "cpeMatch":[{...}], "children":[ node, ...], ... }
-     */
-    private void parseNodeRecursive(JsonParser p, List<ParsedAffectedCpe> out) throws IOException {
-        // node object
+    private void parseNodesArray(JsonParser p, List<ParsedAffectedCpe> out) throws IOException {
+        while (p.nextToken() != JsonToken.END_ARRAY) {
+            if (p.currentToken() != JsonToken.START_OBJECT) {
+                p.skipChildren();
+                continue;
+            }
+
+            parseNodeObject(p, out);
+        }
+    }
+
+    private void parseNodeObject(JsonParser p, List<ParsedAffectedCpe> out) throws IOException {
         while (p.nextToken() != JsonToken.END_OBJECT) {
             if (p.currentToken() != JsonToken.FIELD_NAME) continue;
 
@@ -625,21 +606,11 @@ public class CveFeedSyncService {
 
             if ("cpeMatch".equals(f) && v == JsonToken.START_ARRAY) {
                 parseCpeMatchArray(p, out);
-                continue;
+            } else if ("children".equals(f) && v == JsonToken.START_ARRAY) {
+                parseNodesArray(p, out);
+            } else {
+                p.skipChildren();
             }
-
-            if ("children".equals(f) && v == JsonToken.START_ARRAY) {
-                while (p.nextToken() != JsonToken.END_ARRAY) {
-                    if (p.currentToken() != JsonToken.START_OBJECT) {
-                        p.skipChildren();
-                        continue;
-                    }
-                    parseNodeRecursive(p, out);
-                }
-                continue;
-            }
-
-            p.skipChildren();
         }
     }
 
@@ -650,10 +621,8 @@ public class CveFeedSyncService {
                 continue;
             }
 
-            Boolean vulnerable = null;
-            String criteria = null;
-
-            String vsi = null, vse = null, vei = null, vee = null;
+            ParsedAffectedCpe a = new ParsedAffectedCpe();
+            boolean vulnerable = true;
 
             while (p.nextToken() != JsonToken.END_OBJECT) {
                 if (p.currentToken() != JsonToken.FIELD_NAME) continue;
@@ -661,35 +630,26 @@ public class CveFeedSyncService {
                 String f = p.currentName();
                 JsonToken v = p.nextToken();
 
-                if ("vulnerable".equals(f) && v == JsonToken.VALUE_TRUE) {
-                    vulnerable = true;
-                } else if ("vulnerable".equals(f) && v == JsonToken.VALUE_FALSE) {
-                    vulnerable = false;
+                if ("vulnerable".equals(f) && (v == JsonToken.VALUE_TRUE || v == JsonToken.VALUE_FALSE)) {
+                    vulnerable = p.getBooleanValue();
                 } else if ("criteria".equals(f) && v == JsonToken.VALUE_STRING) {
-                    criteria = norm(p.getValueAsString());
+                    a.criteria = p.getValueAsString();
                 } else if ("versionStartIncluding".equals(f) && v == JsonToken.VALUE_STRING) {
-                    vsi = norm(p.getValueAsString());
+                    a.versionStartIncluding = p.getValueAsString();
                 } else if ("versionStartExcluding".equals(f) && v == JsonToken.VALUE_STRING) {
-                    vse = norm(p.getValueAsString());
+                    a.versionStartExcluding = p.getValueAsString();
                 } else if ("versionEndIncluding".equals(f) && v == JsonToken.VALUE_STRING) {
-                    vei = norm(p.getValueAsString());
+                    a.versionEndIncluding = p.getValueAsString();
                 } else if ("versionEndExcluding".equals(f) && v == JsonToken.VALUE_STRING) {
-                    vee = norm(p.getValueAsString());
+                    a.versionEndExcluding = p.getValueAsString();
                 } else {
                     p.skipChildren();
                 }
             }
 
-            if (Boolean.FALSE.equals(vulnerable)) continue;
-            if (criteria == null || !criteria.startsWith("cpe:2.3:")) continue;
-
-            ParsedAffectedCpe a = new ParsedAffectedCpe();
-            a.criteria = criteria;
-            a.versionStartIncluding = vsi;
-            a.versionStartExcluding = vse;
-            a.versionEndIncluding = vei;
-            a.versionEndExcluding = vee;
-            out.add(a);
+            if (vulnerable && norm(a.criteria) != null) {
+                out.add(a);
+            }
         }
     }
 
@@ -697,14 +657,38 @@ public class CveFeedSyncService {
         int vulnUpserted = 0;
         int affectedInserted = 0;
 
+        if (chunk == null || chunk.isEmpty()) {
+            return new ChunkResult(0, 0);
+        }
+
+        List<String> externalIds = chunk.stream()
+                .filter(Objects::nonNull)
+                .map(pv -> pv.cveId)
+                .filter(Objects::nonNull)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .toList();
+
+        Map<String, Vulnerability> existingByExternalId = vulnerabilityRepository
+                .findBySourceAndExternalIdIn(SOURCE_NVD, externalIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        Vulnerability::getExternalId,
+                        Function.identity()
+                ));
+
         int processedInTx = 0;
 
         for (ParsedVulnerability pv : chunk) {
-            if (pv == null || pv.cveId == null) continue;
+            if (pv == null || pv.cveId == null || pv.cveId.isBlank()) {
+                continue;
+            }
 
-            Vulnerability v = vulnerabilityRepository
-                    .findBySourceAndExternalId(SOURCE_NVD, pv.cveId)
-                    .orElseGet(() -> new Vulnerability(SOURCE_NVD, pv.cveId));
+            Vulnerability v = existingByExternalId.get(pv.cveId);
+            if (v == null) {
+                v = new Vulnerability(SOURCE_NVD, pv.cveId);
+                existingByExternalId.put(pv.cveId, v);
+            }
 
             v.applyNvdDetails(
                     pv.title,
@@ -715,18 +699,15 @@ public class CveFeedSyncService {
                     pv.lastModifiedAt
             );
 
-            vulnerabilityRepository.save(v);
+            v = vulnerabilityRepository.save(v);
             vulnUpserted++;
 
             if (pv.affected != null && !pv.affected.isEmpty()) {
-                for (ParsedAffectedCpe a : pv.affected) {
-                    affectedInserted += upsertAffectedOne(v, a);
-                }
+                affectedInserted += upsertAffectedBatch(v, pv.affected);
             }
 
             processedInTx++;
             if (processedInTx % FLUSH_EVERY == 0) {
-                // keep persistence context small
                 try {
                     em.flush();
                     em.clear();
@@ -736,66 +717,55 @@ public class CveFeedSyncService {
             }
         }
 
+        try {
+            em.flush();
+            em.clear();
+        } catch (Exception e) {
+            log.warn("final flush/clear failed (ignored). err={}", safeMsg(e));
+        }
+
         return new ChunkResult(vulnUpserted, affectedInserted);
     }
 
-    private int upsertAffectedOne(Vulnerability v, ParsedAffectedCpe a) {
-        if (a == null) return 0;
-
-        String criteria = norm(a.criteria);
-        if (criteria == null || !criteria.startsWith("cpe:2.3:")) return 0;
-
-        Long vendorId = null;
-        Long productId = null;
-        String vendorNorm = null;
-        String productNorm = null;
-
-        // parse vendor/product from criteria -> normalize -> dictionary ids (best effort)
-        Optional<CpeNameParser.VendorProduct> vpOpt = cpeNameParser.parseVendorProduct(criteria);
-        if (vpOpt.isPresent()) {
-            CpeNameParser.VendorProduct vp = vpOpt.get();
-            vendorNorm = normalizer.normalizeVendor(vp.vendor());
-            productNorm = normalizer.normalizeProduct(vp.product());
-
-            if (vendorNorm != null && productNorm != null) {
-                vendorId = cachedVendorId(vendorNorm);
-                if (vendorId != null) {
-                    productId = cachedProductId(vendorId, productNorm);
-                }
-            }
+    private int upsertAffectedBatch(Vulnerability v, List<ParsedAffectedCpe> items) {
+        if (v == null || v.getId() == null || items == null || items.isEmpty()) {
+            return 0;
         }
 
-        // version range 4列は NULL を使わない（未指定は ""）
-        String vsi = nullToEmpty(a.versionStartIncluding);
-        String vse = nullToEmpty(a.versionStartExcluding);
-        String vei = nullToEmpty(a.versionEndIncluding);
-        String vee = nullToEmpty(a.versionEndExcluding);
+        int inserted = 0;
+        int pending = 0;
 
-        // 新規: dedupe_key を生成
-        String dedupeKey = vulnerabilityKeyService.buildAffectedCpeKey(
-                v.getId(),
-                criteria,
-                vsi,
-                vse,
-                vei,
-                vee
-        );
+        Vulnerability managedV = v;
 
-        // ---- Idempotency guard (dedupe_key 優先) ----
-        // まず新しい dedupe_key で存在確認
-        if (dedupeKey != null && !dedupeKey.isBlank()) {
-            boolean existsByKey = affectedCpeRepository.existsByDedupeKey(dedupeKey);
-            if (existsByKey) {
-                return 0;
+        // same vulnerability + same criteria/range within this batch
+        Set<String> seenNaturalKeys = new HashSet<>();
+
+        for (ParsedAffectedCpe a : items) {
+            if (a == null) {
+                continue;
             }
-        }
 
-        // 既存フォールバック:
-        // H2既存利用や移行途中のデータ互換のため、従来の複合キーexistsも残す
-        if (v.getId() != null) {
+            String criteria = norm(a.criteria);
+            if (criteria == null || !criteria.startsWith("cpe:2.3:")) {
+                continue;
+            }
+
+            String vsi = nullToEmpty(a.versionStartIncluding);
+            String vse = nullToEmpty(a.versionStartExcluding);
+            String vei = nullToEmpty(a.versionEndIncluding);
+            String vee = nullToEmpty(a.versionEndExcluding);
+
+            String naturalKey = managedV.getId() + "|" + criteria + "|" + vsi + "|" + vse + "|" + vei + "|" + vee;
+
+            // 1) skip duplicates inside current parsed batch
+            if (!seenNaturalKeys.add(naturalKey)) {
+                continue;
+            }
+
+            // 2) skip duplicates already stored in DB
             boolean exists = affectedCpeRepository
                     .existsByVulnerabilityIdAndCpeNameAndVersionStartIncludingAndVersionStartExcludingAndVersionEndIncludingAndVersionEndExcluding(
-                            v.getId(),
+                            managedV.getId(),
                             criteria,
                             vsi,
                             vse,
@@ -803,46 +773,98 @@ public class CveFeedSyncService {
                             vee
                     );
             if (exists) {
-                return 0;
+                continue;
+            }
+
+            Long vendorId = null;
+            Long productId = null;
+            String vendorNorm = null;
+            String productNorm = null;
+
+            Optional<CpeNameParser.VendorProduct> vpOpt = cpeNameParser.parseVendorProduct(criteria);
+            if (vpOpt.isPresent()) {
+                CpeNameParser.VendorProduct vp = vpOpt.get();
+                vendorNorm = normalizer.normalizeVendor(vp.vendor());
+                productNorm = normalizer.normalizeProduct(vp.product());
+
+                if (vendorNorm != null && productNorm != null) {
+                    vendorId = cachedVendorId(vendorNorm);
+                    if (vendorId != null) {
+                        productId = cachedProductId(vendorId, productNorm);
+                    }
+                }
+            }
+
+            String dedupeKey = vulnerabilityKeyService.buildAffectedCpeKey(
+                    managedV.getId(),
+                    criteria,
+                    vsi,
+                    vse,
+                    vei,
+                    vee
+            );
+
+            VulnerabilityAffectedCpe row = new VulnerabilityAffectedCpe(
+                    managedV,
+                    criteria,
+                    vendorId,
+                    productId,
+                    vendorNorm,
+                    productNorm,
+                    vsi,
+                    vse,
+                    vei,
+                    vee
+            );
+            row.setDedupeKey(dedupeKey);
+
+            affectedCpeRepository.save(row);
+            inserted++;
+            pending++;
+
+            if (pending >= FLUSH_EVERY) {
+                try {
+                    em.flush();
+                    em.clear();
+                    managedV = em.getReference(Vulnerability.class, v.getId());
+                } catch (Exception e) {
+                    log.warn("flush/clear failed during affected batch. err={}", safeMsg(e));
+                    throw e;
+                }
+                pending = 0;
             }
         }
 
-        VulnerabilityAffectedCpe vac = new VulnerabilityAffectedCpe(
-                v,
-                criteria,
-                vendorId,
-                productId,
-                vendorNorm,
-                productNorm,
-                vsi,
-                vse,
-                vei,
-                vee
-        );
-        vac.setDedupeKey(dedupeKey);
-
-        try {
-            affectedCpeRepository.save(vac);
-
-            // UNIQUE違反をこの場で確定させて握りつぶす
-            em.flush();
-            return 1;
-
-        } catch (DataIntegrityViolationException e) {
-            // uq_vac_dedupe_key / uq_vac_dedupe hit → duplicate skip
+        if (pending > 0) {
             try {
+                em.flush();
                 em.clear();
-            } catch (Exception ignore) {
+            } catch (Exception e) {
+                log.warn("flush/clear failed at affected batch tail. err={}", safeMsg(e));
+                throw e;
             }
-            return 0;
-
-        } catch (PersistenceException e) {
-            try {
-                em.clear();
-            } catch (Exception ignore) {
-            }
-            throw e;
         }
+
+        return inserted;
+    }
+
+    private boolean isDuplicateConstraint(Throwable ex) {
+        Throwable t = ex;
+        while (t != null) {
+            String msg = t.getMessage();
+            if (msg != null) {
+                String m = msg.toLowerCase(Locale.ROOT);
+                if (m.contains("duplicate")
+                        || m.contains("unique")
+                        || m.contains("constraint")
+                        || m.contains("uq_vac_dedupe_key")
+                        || m.contains("uq_vac_dedupe")) {
+                    return true;
+                }
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     private Long cachedVendorId(String vendorNorm) {
@@ -857,7 +879,6 @@ public class CveFeedSyncService {
 
         if (id == null) {
             try {
-                // displayName はとりあえず null でOK（後で整備）
                 CpeVendor created = new CpeVendor(vendorNorm, null);
                 created.markAsNvdCve();
                 created = cpeVendorRepository.save(created);
@@ -865,7 +886,6 @@ public class CveFeedSyncService {
                 id = created.getId();
                 log.debug("CPE vendor created from CVE feed sync: nameNorm={}, source={}", vendorNorm, created.getSource());
             } catch (DataIntegrityViolationException dup) {
-                // race/duplicate: 先に別TXが作った
                 id = cpeVendorRepository.findByNameNorm(vendorNorm)
                         .map(CpeVendor::getId)
                         .orElse(null);
@@ -889,7 +909,6 @@ public class CveFeedSyncService {
 
         if (id == null) {
             try {
-                // vendor は参照だけでOK
                 CpeVendor vendorRef = cpeVendorRepository.getReferenceById(vendorId);
 
                 CpeProduct created = new CpeProduct(vendorRef, productNorm, null);
@@ -900,7 +919,6 @@ public class CveFeedSyncService {
                 log.debug("CPE product created from CVE feed sync: vendorId={}, nameNorm={}, source={}",
                         vendorId, productNorm, created.getSource());
             } catch (DataIntegrityViolationException dup) {
-                // race/duplicate: 先に別TXが作った
                 id = cpeProductRepository.findByVendorIdAndNameNorm(vendorId, productNorm)
                         .map(CpeProduct::getId)
                         .orElse(null);
@@ -910,7 +928,6 @@ public class CveFeedSyncService {
         if (id != null) productIdCache.put(key, id);
         return id;
     }
-
 
     private String feedName(NvdCveFeedClient.FeedKind kind, Integer year) {
         return switch (kind) {
@@ -924,11 +941,9 @@ public class CveFeedSyncService {
         String s = norm(iso);
         if (s == null) return null;
 
-        // NVD feed uses ISO-8601 with Z
         try {
             return OffsetDateTime.parse(s).toLocalDateTime();
         } catch (DateTimeParseException ignore) {
-            // fallback: try LocalDateTime
             try {
                 return LocalDateTime.parse(s);
             } catch (DateTimeParseException ignore2) {
@@ -973,8 +988,6 @@ public class CveFeedSyncService {
         String t = s.trim();
         return t.isEmpty() ? "" : t;
     }
-
-    // ---- results ----
 
     private static final class ParsedVulnerability {
         String cveId;
