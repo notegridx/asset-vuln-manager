@@ -85,14 +85,17 @@ public class AdminCanonicalController {
         List<Asset> assets = assetRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
         model.addAttribute("assets", assets);
 
+        // ===== Global stats: ignore asset/filter/q/limit and count entire software_installs =====
+        List<SoftwareInstall> allSoftware = softwareRepo.findAll();
+        var stats = linker.stats(allSoftware);
+        model.addAttribute("stats", stats);
+
+        // ===== Page rows: current view only =====
         List<SoftwareInstall> base = softwareRepo.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
                 .filter(s -> assetId == null || (s.getAsset() != null && Objects.equals(s.getAsset().getId(), assetId)))
                 .filter(s -> keyword == null || containsKeyword(s, keyword))
                 .limit(safeLimit)
                 .toList();
-
-        var stats = linker.stats(base);
-        model.addAttribute("stats", stats);
 
         List<Row> analyzed = base.stream()
                 .map(s -> Row.from(s, linker.analyze(s)))
