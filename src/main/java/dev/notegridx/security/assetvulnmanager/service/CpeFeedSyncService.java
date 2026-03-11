@@ -30,7 +30,16 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 @Service
@@ -47,6 +56,7 @@ public class CpeFeedSyncService {
 
     // peek-log safety
     private static final int PEEK_KEYS_LIMIT = 80;
+    private static final boolean ENABLE_FIRST_ENTRY_PEEK_LOG = false;
 
     // caches (LRU)
     private final Map<String, Long> vendorIdCache = new LruMap<>(200_000);
@@ -93,6 +103,7 @@ public class CpeFeedSyncService {
     public SyncResult sync(boolean force, int maxItems) throws IOException {
         int safeMax = clamp(maxItems, 1, 5_000_000);
         LocalDateTime now = LocalDateTime.now();
+        long startedAtNs = System.nanoTime();
 
         // 1) META fetch (small)
         CpeFeedMetaParser.FeedMeta meta = feedClient.fetchMeta(metaParser);
@@ -110,7 +121,7 @@ public class CpeFeedSyncService {
 
         // 3) download tar.gz -> temp file (streaming, no byte[])
         Path tmp = null;
-        long bytes = 0;
+        long bytes = 0L;
         try {
             tmp = feedClient.downloadTarGzToTempFile();
             bytes = Files.size(tmp);
@@ -124,11 +135,33 @@ public class CpeFeedSyncService {
                 state.updateMeta(meta.sha256(), meta.lastModified(), meta.size(), now);
                 syncStateRepository.save(state);
 
-                log.info("CPE feed sync done: vendorsInserted={}, productsInserted={}, cpeParsed={}, vendorCache={}, productCache={}",
-                        r.vendorsInserted, r.productsInserted, r.cpeParsed, vendorIdCache.size(), productKeyCache.size());
+                long elapsedMs = elapsedMs(startedAtNs);
+                double elapsedSec = elapsedMs / 1000.0d;
+                double rowsPerSec = elapsedSec <= 0.0d ? r.cpeParsed : (r.cpeParsed / elapsedSec);
 
-                return SyncResult.executed(r.vendorsInserted, r.productsInserted, r.cpeParsed,
-                        meta.sha256(), meta.lastModified(), meta.size());
+                log.info(
+                        "CPE feed sync done: vendorsInserted={}, productsInserted={}, cpeParsed={}, elapsedMs={}, elapsedSec={}, rowsPerSec={}, vendorCache={}, productCache={}",
+                        r.vendorsInserted,
+                        r.productsInserted,
+                        r.cpeParsed,
+                        elapsedMs,
+                        String.format(Locale.ROOT, "%.3f", elapsedSec),
+                        String.format(Locale.ROOT, "%.2f", rowsPerSec),
+                        vendorIdCache.size(),
+                        productKeyCache.size()
+                );
+
+                return SyncResult.executed(
+                        r.vendorsInserted,
+                        r.productsInserted,
+                        r.cpeParsed,
+                        elapsedMs,
+                        elapsedSec,
+                        rowsPerSec,
+                        meta.sha256(),
+                        meta.lastModified(),
+                        meta.size()
+                );
             }
         } finally {
             if (tmp != null) {
@@ -144,8 +177,8 @@ public class CpeFeedSyncService {
     /**
      * tar.gz -> (GZIPInputStream) -> (TarArchiveInputStream)
      * For first tar entry only:
-     * - readAllEntryBytes (cannot re-read stream)
-     * - peek keys(depth<=2, limit<=80) and log
+     * - if enabled, readAllEntryBytes
+     * - optionally peek keys(depth<=2, limit<=80) and log
      * - parse from byte[] (ByteArrayInputStream)
      * Remaining entries:
      * - parse directly from tar stream
@@ -155,7 +188,6 @@ public class CpeFeedSyncService {
         final int[] productsInserted = {0};
         final int[] parsed = {0};
 
-        // streaming buffer
         List<CpeNameParser.VendorProduct> buffer = new ArrayList<>(TX_CHUNK);
 
         try (GZIPInputStream gin = new GZIPInputStream(tarGzStream);
@@ -165,13 +197,14 @@ public class CpeFeedSyncService {
 
             TarArchiveEntry entry;
             while ((entry = tin.getNextTarEntry()) != null) {
-                if (!entry.isFile()) continue;
+                if (!entry.isFile()) {
+                    continue;
+                }
 
                 String entryName = entry.getName();
                 log.info("CPE tar entry: name={}, size={}", entryName, entry.getSize());
 
-                if (!firstEntryPeeked) {
-                    // 1st entry: read all bytes, peek keys, then parse from byte[]
+                if (!firstEntryPeeked && ENABLE_FIRST_ENTRY_PEEK_LOG) {
                     byte[] entryBytes = readAllEntryBytes(tin);
 
                     Set<String> keys = collectKeysDepthLe2(entryBytes, PEEK_KEYS_LIMIT);
@@ -179,13 +212,14 @@ public class CpeFeedSyncService {
 
                     parseCpeJsonStream(new ByteArrayInputStream(entryBytes), maxItems, parsed, buffer, vendorsInserted, productsInserted);
                     firstEntryPeeked = true;
-
                 } else {
-                    // subsequent entries: parse directly from tar stream
                     parseCpeJsonStream(tin, maxItems, parsed, buffer, vendorsInserted, productsInserted);
+                    firstEntryPeeked = true;
                 }
 
-                if (parsed[0] >= maxItems) break;
+                if (parsed[0] >= maxItems) {
+                    break;
+                }
             }
 
             // tail flush
@@ -194,13 +228,12 @@ public class CpeFeedSyncService {
                 buffer.clear();
 
                 chunkTx.execute(status -> {
-                    var r = upsertChunk(chunk, parsed[0]);
+                    ChunkResult r = upsertChunk(chunk, parsed[0]);
                     vendorsInserted[0] += r.vendorsInserted;
                     productsInserted[0] += r.productsInserted;
                     return null;
                 });
             }
-
         }
 
         return new ParseUpsertResult(vendorsInserted[0], productsInserted[0], parsed[0]);
@@ -229,25 +262,37 @@ public class CpeFeedSyncService {
 
             while (p.nextToken() != null) {
 
-                if (p.currentToken() != JsonToken.FIELD_NAME) continue;
+                if (p.currentToken() != JsonToken.FIELD_NAME) {
+                    continue;
+                }
 
                 String field = p.currentName();
                 JsonToken v = p.nextToken();
 
-                if (v != JsonToken.VALUE_STRING) continue;
+                if (v != JsonToken.VALUE_STRING) {
+                    continue;
+                }
 
                 boolean isCpeField = "cpe23Uri".equals(field) || "cpeName".equals(field);
-                if (!isCpeField) continue;
+                if (!isCpeField) {
+                    continue;
+                }
 
                 String cpe = p.getValueAsString();
-                if (cpe == null || !cpe.startsWith("cpe:2.3:")) continue;
+                if (cpe == null || !cpe.startsWith("cpe:2.3:")) {
+                    continue;
+                }
 
                 parsed[0]++;
 
-                if (parsed[0] > maxItems) break;
+                if (parsed[0] > maxItems) {
+                    break;
+                }
 
                 Optional<CpeNameParser.VendorProduct> vpOpt = cpeNameParser.parseVendorProduct(cpe);
-                if (vpOpt.isEmpty()) continue;
+                if (vpOpt.isEmpty()) {
+                    continue;
+                }
 
                 buffer.add(vpOpt.get());
 
@@ -256,7 +301,7 @@ public class CpeFeedSyncService {
                     buffer.clear();
 
                     chunkTx.execute(status -> {
-                        var r = upsertChunk(chunk, parsed[0]);
+                        ChunkResult r = upsertChunk(chunk, parsed[0]);
                         vendorsInserted[0] += r.vendorsInserted;
                         productsInserted[0] += r.productsInserted;
                         return null;
@@ -277,7 +322,9 @@ public class CpeFeedSyncService {
      */
     private Set<String> collectKeysDepthLe2(byte[] jsonBytes, int limit) {
         LinkedHashSet<String> out = new LinkedHashSet<>();
-        if (jsonBytes == null || jsonBytes.length == 0) return out;
+        if (jsonBytes == null || jsonBytes.length == 0) {
+            return out;
+        }
 
         try (JsonParser p = jsonFactory.createParser(new ByteArrayInputStream(jsonBytes))) {
             int objectDepth = 0;
@@ -289,8 +336,9 @@ public class CpeFeedSyncService {
                 } else if (t == JsonToken.END_OBJECT) {
                     objectDepth = Math.max(0, objectDepth - 1);
                 } else if (t == JsonToken.FIELD_NAME) {
-                    // depth<=2 means root object (1) and its direct nested object (2)
-                    if (objectDepth <= 2) out.add(p.currentName());
+                    if (objectDepth <= 2) {
+                        out.add(p.currentName());
+                    }
                 }
             }
         } catch (Exception e) {
@@ -318,27 +366,50 @@ public class CpeFeedSyncService {
         int vIns = 0;
         int pIns = 0;
 
-        int processed = 0;
-        for (var vp : chunk) {
-            processed++;
+        Map<String, VendorBucket> byVendor = new LinkedHashMap<>();
 
-            VendorEnsureResult vr = ensureVendor(vp.vendor());
+        for (CpeNameParser.VendorProduct vp : chunk) {
+            if (vp == null) {
+                continue;
+            }
+
+            String vendorKey = vp.vendor();
+            String productKey = vp.product();
+
+            if (vendorKey == null || vendorKey.isBlank()) {
+                continue;
+            }
+            if (productKey == null || productKey.isBlank()) {
+                continue;
+            }
+
+            VendorBucket bucket = byVendor.computeIfAbsent(vendorKey, k -> new VendorBucket());
+            bucket.products.add(productKey);
+        }
+
+        int processedVendors = 0;
+        for (Map.Entry<String, VendorBucket> e : byVendor.entrySet()) {
+            processedVendors++;
+
+            VendorEnsureResult vr = ensureVendor(e.getKey());
             Long vendorId = vr.id();
-            if (vendorId == null) continue;
+            if (vendorId == null) {
+                continue;
+            }
 
-            if (vr.inserted) vIns++;
+            if (vr.inserted) {
+                vIns++;
+            }
 
-            boolean productInserted = ensureProduct(vendorId, vp.product());
-            if (productInserted) pIns++;
+            int inserted = ensureProductsBulk(vendorId, e.getValue().products);
+            pIns += inserted;
 
-            // periodic flush/clear to avoid persistence context bloat
-            if (processed % FLUSH_EVERY == 0) {
+            if (processedVendors % FLUSH_EVERY == 0) {
                 em.flush();
                 em.clear();
             }
         }
 
-        // final flush for this chunk
         em.flush();
         em.clear();
 
@@ -356,28 +427,31 @@ public class CpeFeedSyncService {
      * - whether this call inserted a new row
      */
     private VendorEnsureResult ensureVendor(String vendorKey) {
-        if (vendorKey == null || vendorKey.isBlank()) return VendorEnsureResult.none();
+        if (vendorKey == null || vendorKey.isBlank()) {
+            return VendorEnsureResult.none();
+        }
 
         Long cached = vendorIdCache.get(vendorKey);
-        if (cached != null) return VendorEnsureResult.existing(cached);
+        if (cached != null) {
+            return VendorEnsureResult.existing(cached);
+        }
 
-        // 1) try DB read
-        var existing = vendorRepository.findByNameNorm(vendorKey).orElse(null);
+        CpeVendor existing = vendorRepository.findByNameNorm(vendorKey).orElse(null);
         if (existing != null) {
             vendorIdCache.put(vendorKey, existing.getId());
             return VendorEnsureResult.existing(existing.getId());
         }
 
-        // 2) try insert, race-safe with unique + exception
         try {
             CpeVendor saved = vendorRepository.save(new CpeVendor(vendorKey, null));
             Long id = saved.getId();
-            if (id != null) vendorIdCache.put(vendorKey, id);
+            if (id != null) {
+                vendorIdCache.put(vendorKey, id);
+            }
             return (id == null) ? VendorEnsureResult.none() : VendorEnsureResult.inserted(id);
 
         } catch (DataIntegrityViolationException dup) {
-            // someone inserted concurrently; re-read
-            var ex2 = vendorRepository.findByNameNorm(vendorKey).orElse(null);
+            CpeVendor ex2 = vendorRepository.findByNameNorm(vendorKey).orElse(null);
             if (ex2 != null) {
                 vendorIdCache.put(vendorKey, ex2.getId());
                 return VendorEnsureResult.existing(ex2.getId());
@@ -386,38 +460,72 @@ public class CpeFeedSyncService {
         }
     }
 
-    private boolean ensureProduct(Long vendorId, String productKey) {
-        if (vendorId == null) return false;
-        if (productKey == null || productKey.isBlank()) return false;
+    private int ensureProductsBulk(Long vendorId, Collection<String> productKeys) {
+        if (vendorId == null || productKeys == null || productKeys.isEmpty()) {
+            return 0;
+        }
 
-        // cache: vendorId -> known products
         Set<String> known = productKeyCache.computeIfAbsent(vendorId, k -> new HashSet<>());
-        if (known.contains(productKey)) return false;
 
-        // fast path: if DB says it exists, mark cache and return
-        if (productRepository.existsByVendorIdAndNameNorm(vendorId, productKey)) {
-            known.add(productKey);
-            return false;
+        LinkedHashSet<String> requested = new LinkedHashSet<>();
+        for (String productKey : productKeys) {
+            if (productKey == null || productKey.isBlank()) {
+                continue;
+            }
+            requested.add(productKey);
+        }
+        if (requested.isEmpty()) {
+            return 0;
         }
 
-        // insert with exception-based upsert
-        try {
-            // attach vendor reference (no extra SELECT)
-            CpeVendor vendorRef = em.getReference(CpeVendor.class, vendorId);
-            productRepository.save(new CpeProduct(vendorRef, productKey, null));
-            known.add(productKey);
-            return true;
-
-        } catch (DataIntegrityViolationException dup) {
-            // inserted by someone else / earlier in tx: treat as exists
-            known.add(productKey);
-            return false;
+        List<String> unknown = new ArrayList<>();
+        for (String productKey : requested) {
+            if (!known.contains(productKey)) {
+                unknown.add(productKey);
+            }
         }
+        if (unknown.isEmpty()) {
+            return 0;
+        }
+
+        List<CpeProduct> existingRows = productRepository.findByVendorIdAndNameNormIn(vendorId, unknown);
+        for (CpeProduct row : existingRows) {
+            if (row.getNameNorm() != null) {
+                known.add(row.getNameNorm());
+            }
+        }
+
+        int inserted = 0;
+        CpeVendor vendorRef = em.getReference(CpeVendor.class, vendorId);
+
+        for (String productKey : unknown) {
+            if (known.contains(productKey)) {
+                continue;
+            }
+
+            try {
+                productRepository.save(new CpeProduct(vendorRef, productKey, null));
+                known.add(productKey);
+                inserted++;
+            } catch (DataIntegrityViolationException dup) {
+                known.add(productKey);
+            }
+        }
+
+        return inserted;
+    }
+
+    private static long elapsedMs(long startedAtNs) {
+        return (System.nanoTime() - startedAtNs) / 1_000_000L;
     }
 
     private static int clamp(int v, int min, int max) {
-        if (v < min) return min;
-        if (v > max) return max;
+        if (v < min) {
+            return min;
+        }
+        if (v > max) {
+            return max;
+        }
         return v;
     }
 
@@ -427,9 +535,21 @@ public class CpeFeedSyncService {
     }
 
     private record VendorEnsureResult(Long id, boolean inserted) {
-        static VendorEnsureResult inserted(Long id) { return new VendorEnsureResult(id, true); }
-        static VendorEnsureResult existing(Long id) { return new VendorEnsureResult(id, false); }
-        static VendorEnsureResult none() { return new VendorEnsureResult(null, false); }
+        static VendorEnsureResult inserted(Long id) {
+            return new VendorEnsureResult(id, true);
+        }
+
+        static VendorEnsureResult existing(Long id) {
+            return new VendorEnsureResult(id, false);
+        }
+
+        static VendorEnsureResult none() {
+            return new VendorEnsureResult(null, false);
+        }
+    }
+
+    private static final class VendorBucket {
+        private final Set<String> products = new LinkedHashSet<>();
     }
 
     private record ChunkResult(int vendorsInserted, int productsInserted) {
@@ -443,16 +563,29 @@ public class CpeFeedSyncService {
             int vendorsInserted,
             int productsInserted,
             int cpeParsed,
+            long elapsedMs,
+            double elapsedSec,
+            double rowsPerSec,
             String metaSha256,
             String metaLastModified,
             Long metaSize
     ) {
         public static SyncResult skipped(String sha256, String lastModified, Long size) {
-            return new SyncResult(true, 0, 0, 0, sha256, lastModified, size);
+            return new SyncResult(true, 0, 0, 0, 0L, 0.0d, 0.0d, sha256, lastModified, size);
         }
 
-        public static SyncResult executed(int vIns, int pIns, int parsed, String sha256, String lastModified, Long size) {
-            return new SyncResult(false, vIns, pIns, parsed, sha256, lastModified, size);
+        public static SyncResult executed(
+                int vIns,
+                int pIns,
+                int parsed,
+                long elapsedMs,
+                double elapsedSec,
+                double rowsPerSec,
+                String sha256,
+                String lastModified,
+                Long size
+        ) {
+            return new SyncResult(false, vIns, pIns, parsed, elapsedMs, elapsedSec, rowsPerSec, sha256, lastModified, size);
         }
     }
 

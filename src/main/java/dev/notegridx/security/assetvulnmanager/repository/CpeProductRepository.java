@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,8 @@ public interface CpeProductRepository extends JpaRepository<CpeProduct, Long> {
     Optional<CpeProduct> findByVendorIdAndNameNorm(Long vendorId, String nameNorm);
 
     boolean existsByVendorIdAndNameNorm(Long vendorId, String nameNorm);
+
+    List<CpeProduct> findByVendorIdAndNameNormIn(Long vendorId, Collection<String> nameNorms);
 
     // 前方一致サジェスト用（vendor scope）
     List<CpeProduct> findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(Long vendorId, String prefix);

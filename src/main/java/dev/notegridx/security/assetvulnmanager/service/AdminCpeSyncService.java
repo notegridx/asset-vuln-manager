@@ -40,6 +40,9 @@ public class AdminCpeSyncService {
                             "vendorsInserted", result.vendorsInserted(),
                             "productsInserted", result.productsInserted(),
                             "cpeParsed", result.cpeParsed(),
+                            "elapsedMs", result.elapsedMs(),
+                            "elapsedSec", result.elapsedSec(),
+                            "rowsPerSec", result.rowsPerSec(),
                             "metaSha256", result.metaSha256(),
                             "metaLastModified", result.metaLastModified(),
                             "metaSize", result.metaSize()
