@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
 <head th:replace="~{layout/base :: head('Vulnerabilities')}"></head>
 
@@ -160,16 +160,16 @@
 
     <!-- ===== Table ===== -->
     <div class="card p-0 overflow-auto">
-        <table class="table">
+        <table class="table" style="table-layout:fixed; width:100%;">
             <thead>
             <tr>
-                <th class="col-cve">CVE</th>
-                <th class="col-sev">Severity</th>
-                <th class="col-cvss">CVSS</th>
-                <th class="col-desc">Description</th>
-                <th class="col-kev">KEV</th>
-                <th class="col-lastmod">Last Modified</th>
-                <th class="col-open">Open</th>
+                <th style="width:14%;">CVE</th>
+                <th style="width:9%;">Severity</th>
+                <th style="width:7%;">CVSS</th>
+                <th style="width:38%;">Description</th>
+                <th style="width:12%;">KEV</th>
+                <th style="width:13%;">Last Modified</th>
+                <th style="width:7%;">Open</th>
             </tr>
             </thead>
             <tbody>

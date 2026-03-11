@@ -22,21 +22,19 @@
     </div>
 
     <!-- Toolbar (actions area, unified) -->
-    <div class="card" style="padding:12px; margin:12px 0;">
-        <div class="toolbar"
-             style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+    <div class="toolbar"
+         style="padding:12px; margin:12px 0; display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
 
-            <div class="toolbar__left" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <div class="toolbar__left" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
         <span class="muted" style="font-size:12px;">
           Actions
         </span>
-            </div>
-
-            <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <a class="btn" th:href="@{/assets/new}">+ Register new asset</a>
-            </div>
-
         </div>
+
+        <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a class="btn" th:href="@{/assets/new}">Register new asset</a>
+        </div>
+
     </div>
 
     <!-- Table wrapper (stable start/height) -->

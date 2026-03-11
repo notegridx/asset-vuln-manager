@@ -11,7 +11,7 @@
   - severity: empty string => treated as "ALL" (controller normalizes)
 -->
 <div th:fragment="filters(status, certainty, severity, view, assetId, softwareId)"
-     class="card p-12 my-12">
+     class="my-12">
 
   <form method="get" th:action="@{/alerts}">
     <div class="toolbar flex gap-16 flex-wrap items-end">

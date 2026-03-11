@@ -11,15 +11,6 @@
         Unified job execution history (CPE/CVE sync, delta update, alert recalc, seed import, etc.).
     </p>
 
-    <div class="card" style="padding:12px; margin:12px 0;">
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            <a class="btn" th:href="@{/admin/cpe/sync}">Update Product Dictionary</a>
-            <a class="btn" th:href="@{/admin/cve/sync}">Update Vulnerability Data</a>
-            <a class="btn btn-soft" th:href="@{/admin/sync}">CVE Delta Update</a>
-            <a class="btn btn-soft" th:href="@{/admin/alerts/recalculate}">Generate Alerts</a>
-        </div>
-    </div>
-
     <div class="card">
         <div class="table-wrap">
             <table class="table table--fixed">                <thead>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
 <head th:replace="~{layout/base :: head('Alerts')}"></head>
 
@@ -33,15 +33,15 @@
 
   <div class="card p-0 overflow-auto">
     <div class="table-wrap">
-      <table class="table m-0">
+      <table class="table m-0" style="table-layout:fixed; width:100%;">
         <thead>
         <tr>
-          <th class="col-id">ID</th>
-          <th>Asset</th>
-          <th>Software</th>
-          <th>Vulnerability</th>
-          <th class="col-status">Status</th>
-          <th class="col-lastseen">Last Seen</th>
+          <th style="width:5%;">ID</th>
+          <th style="width:10%;">Asset</th>
+          <th style="width:40%;">Software</th>
+          <th style="width:13%;">Vulnerability</th>
+          <th style="width:12%;">Status</th>
+          <th style="width:20%;">Last Seen</th>
         </tr>
         </thead>
 
