@@ -89,12 +89,12 @@
             <table class="table" style="table-layout:fixed; width:100%;">
                 <thead>
                 <tr>
-                    <th style="width:8%;">ID</th>
-                    <th style="width:18%;">Username</th>
-                    <th style="width:12%;">Enabled</th>
-                    <th style="width:20%;">Roles</th>
-                    <th style="width:14%;">Created</th>
-                    <th style="width:28%;">Actions</th>
+                    <th style="width:5%;">ID</th>
+                    <th style="width:15%;">Username</th>
+                    <th style="width:10%;">Enabled</th>
+                    <th style="width:10%;">Roles</th>
+                    <th style="width:15%;">Created</th>
+                    <th style="width:35%;">Actions</th>
                 </tr>
                 </thead>
                 <tbody id="users-table-body">
@@ -147,20 +147,21 @@
 
                                 <div class="field" style="margin:0;">
                                     <label style="font-size:12px;">Update Roles</label>
-                                    <div class="card" style="padding:10px;">
-                                        <label th:each="r : ${roles}"
-                                               style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
-                                            <input type="checkbox"
-                                                   name="roles"
-                                                   th:value="${r.roleName}"
-                                                   th:checked="${u.roles.contains(r)}">
-                                            <span th:text="${r.roleName}">ADMIN</span>
-                                        </label>
-                                    </div>
-                                </div>
 
-                                <div class="actions" style="margin-top:8px;">
-                                    <button type="submit" class="btn">Apply</button>
+                                    <div class="actions" style="margin:0; gap:10px; align-items:center;">
+                                        <div class="card" style="padding:10px; flex:1;">
+                                            <label th:each="r : ${roles}"
+                                                   style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
+                                                <input type="checkbox"
+                                                       name="roles"
+                                                       th:value="${r.roleName}"
+                                                       th:checked="${u.roles.contains(r)}">
+                                                <span th:text="${r.roleName}">ADMIN</span>
+                                            </label>
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary">Apply</button>
+                                    </div>
                                 </div>
                             </form>
 
