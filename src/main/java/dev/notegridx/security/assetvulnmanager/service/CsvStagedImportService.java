@@ -153,6 +153,15 @@ public class CsvStagedImportService {
             String product = normNullable(r.get("product"));
             String version = normNullableAllowEmpty(r.get("version"));
 
+            String vendorRaw = normNullable(r.get("vendor_raw"));
+            if (vendorRaw == null) vendorRaw = vendor;
+
+            String productRaw = normNullable(r.get("product_raw"));
+            if (productRaw == null) productRaw = product;
+
+            String versionRaw = normNullableAllowEmpty(r.get("version_raw"));
+            if (versionRaw == null) versionRaw = version;
+
             LocalDateTime installedAt = parseDateTimeNullable(r.get("installed_at"));
 
             s.fill(
@@ -168,9 +177,9 @@ public class CsvStagedImportService {
                     parseDateTimeNullable(r.get("last_seen_at")),
                     normNullable(r.get("type")),
                     normNullable(r.get("source")),
-                    normNullable(r.get("vendor_raw")),
-                    normNullable(r.get("product_raw")),
-                    normNullable(r.get("version_raw")),
+                    vendorRaw,
+                    productRaw,
+                    versionRaw,
                     normNullable(r.get("publisher")),
                     normNullable(r.get("bundle_id")),
                     normNullable(r.get("package_manager")),
@@ -310,7 +319,16 @@ public class CsvStagedImportService {
 
             trySetSoftwareType(sw, r.getType());
 
-            sw.captureRaw(r.getVendorRaw(), r.getProductRaw(), r.getVersionRaw());
+            String vendorRaw = normNullable(r.getVendorRaw());
+            if (vendorRaw == null) vendorRaw = normNullable(vendor);
+
+            String productRaw = normNullable(r.getProductRaw());
+            if (productRaw == null) productRaw = normNullable(product);
+
+            String versionRaw = normNullableAllowEmpty(r.getVersionRaw());
+            if (versionRaw == null) versionRaw = normNullableAllowEmpty(version);
+
+            sw.captureRaw(vendorRaw, productRaw, versionRaw);
 
             String st = normNullable(r.getSourceType());
             String src = normNullable(r.getSource());
@@ -338,10 +356,8 @@ public class CsvStagedImportService {
                     r.getPurl()
             );
 
-            String vIn = normNullable(r.getVendorRaw());
-            String pIn = normNullable(r.getProductRaw());
-            if (vIn == null) vIn = normNullable(vendor);
-            if (pIn == null) pIn = normNullable(product);
+            String vIn = vendorRaw;
+            String pIn = productRaw;
 
             var res = softwareDictionaryValidator.resolve(vIn, pIn);
             if (res.hit()) {
