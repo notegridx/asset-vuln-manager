@@ -149,6 +149,258 @@
         border: 1px solid #c34a4a;
         font-weight: 600;
     }
+    /* ===== admin/canonical: visual cleanup only ===== */
+
+    .canon-card {
+        padding: 12px;
+        margin: 12px 0;
+    }
+
+    .canon-card--flash {
+        padding: 10px;
+        margin: 12px 0;
+        border: 1px solid var(--line);
+    }
+
+    .canon-page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .canon-header-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .canon-actions-between {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .canon-inline-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .canon-inline-actions--tight {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .canon-help {
+        font-size: 12px;
+    }
+
+    .canon-help.mt-6 {
+        margin-top: 6px;
+    }
+
+    .canon-section-top {
+        margin-top: 12px;
+    }
+
+    .canon-table-top {
+        margin-top: 12px;
+    }
+
+    .canon-table-no-top {
+        margin-top: 0;
+    }
+
+    .canon-filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        align-items: end;
+    }
+
+    .canon-limit {
+        width: 90px;
+    }
+
+    .canon-asset-cell,
+    .canon-raw-cell,
+    .canon-normalized-cell {
+        overflow-wrap: anywhere;
+    }
+
+    /* Result cell itself must stay as a normal table cell */
+    td.canon-result {
+        display: table-cell;
+        white-space: normal;
+        vertical-align: top;
+    }
+
+    /* only inner wrappers should be flex */
+    td.canon-result .canon-result-main,
+    td.canon-result .canon-result-sub {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    td.canon-result .canon-result-sub {
+        margin-top: 6px;
+    }
+
+    .canon-result-main,
+    .canon-result-sub {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .canon-result-sub {
+        margin-top: 6px;
+    }
+
+    .canon-action-col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .canon-btn-sm {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 10px;
+    }
+
+    /* ===== Stats cards ===== */
+
+    .canon-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .canon-stat-item {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        min-width: 0;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+
+    .canon-stat-item:hover {
+        border-color: rgba(138, 180, 255, 0.45);
+        background: rgba(138, 180, 255, 0.06);
+        transform: translateY(-1px);
+    }
+
+    .canon-stat-label {
+        min-width: 0;
+        font-size: 13px;
+        line-height: 1.35;
+        color: var(--text);
+        overflow-wrap: anywhere;
+    }
+
+    .canon-stat-value {
+        justify-self: end;
+        white-space: nowrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .canon-stat-tooltip {
+        position: absolute;
+        left: 0;
+        bottom: calc(100% + 8px);
+        z-index: 20;
+
+        width: max-content;
+        max-width: min(320px, calc(100vw - 48px));
+        padding: 8px 10px;
+
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--text);
+
+        background: #111;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+
+        opacity: 0;
+        transform: translateY(4px);
+        pointer-events: none;
+        transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .canon-stat-tooltip::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 18px;
+        border: 6px solid transparent;
+        border-top-color: #111;
+    }
+
+    .canon-stat-item:hover .canon-stat-tooltip {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    @media (max-width: 1180px) {
+        .canon-stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 980px) {
+        .canon-filter-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 760px) {
+        .canon-stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .canon-stat-tooltip {
+            left: 8px;
+            right: 8px;
+            width: auto;
+            max-width: none;
+        }
+    }
+
+    .badge--disabled {
+        background: #6b1f1f;
+        color: #fff;
+        border: 1px solid #c34a4a;
+        font-weight: 600;
+    }
 </style>
 
 <body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
@@ -271,92 +523,96 @@
 
     <!-- Stats -->
     <div th:if="${stats != null}" class="card canon-card">
-        <details class="canon-collapse">
-            <summary class="canon-collapse__summary">
-                <div>
-                    <h2 style="margin:0;">Stats (on current result set)</h2>
-                    <div class="muted canon-help">
-                        Dictionary stats are counted <b>only</b> for <b>notLinked</b> rows.
-                    </div>
-                </div>
-            </summary>
-
-            <div class="table-wrap canon-table-top">
-                <table class="canon-table-no-top">
-                    <thead>
-                    <tr>
-                        <th style="width: 240px;">Metric</th>
-                        <th style="width: 120px;">Value</th>
-                        <th>Description</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-
-                    <tr>
-                        <td>total</td>
-                        <td th:text="${stats.total}">0</td>
-                        <td class="muted">Rows currently loaded (after asset/keyword filter, before “filter”
-                            selection).
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>fullyLinkedSql</td>
-                        <td th:text="${stats.fullyLinkedSql}">0</td>
-                        <td class="muted">Both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are set.</td>
-                    </tr>
-                    <tr>
-                        <td>vendorOnlyLinkedSql</td>
-                        <td th:text="${stats.vendorOnlyLinkedSql}">0</td>
-                        <td class="muted"><code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>notLinkedSql</td>
-                        <td th:text="${stats.notLinkedSql}">0</td>
-                        <td class="muted">Neither <code>cpe_vendor_id</code> nor <code>cpe_product_id</code> is set.
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>linkedValid</td>
-                        <td th:text="${stats.linkedValid}">0</td>
-                        <td class="muted">Fully linked and IDs are valid (dictionary rows exist).</td>
-                    </tr>
-                    <tr>
-                        <td>linkedStale</td>
-                        <td th:text="${stats.linkedStale}">0</td>
-                        <td class="muted">Fully linked but referenced dictionary rows are missing (stale IDs).</td>
-                    </tr>
-
-                    <tr>
-                        <td>fullyResolvable</td>
-                        <td th:text="${stats.fullyResolvable}">0</td>
-                        <td class="muted"><b>(not linked only)</b> Dictionary can resolve both vendor and product.</td>
-                    </tr>
-                    <tr>
-                        <td>vendorResolvableOnly</td>
-                        <td th:text="${stats.vendorResolvableOnly}">0</td>
-                        <td class="muted"><b>(not linked only)</b> Vendor is resolvable, but product is not.</td>
-                    </tr>
-                    <tr>
-                        <td>unresolvable</td>
-                        <td th:text="${stats.unresolvable}">0</td>
-                        <td class="muted"><b>(not linked only)</b> Neither vendor nor product can be resolved from
-                            normalized strings.
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>needsNormalization</td>
-                        <td th:text="${stats.needsNormalization}">0</td>
-                        <td class="muted">Row has not been normalized (or normalized fields are blank).</td>
-                    </tr>
-
-                    </tbody>
-                </table>
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Stats (on current result set)</h2>
+            <div class="muted canon-help">
+                Dictionary stats are counted <b>only</b> for <b>notLinked</b> rows.
             </div>
-        </details>
+        </div>
+
+        <div class="canon-stats-grid">
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">total</div>
+                <div class="canon-stat-value" th:text="${stats.total}">0</div>
+                <div class="canon-stat-tooltip">
+                    Rows currently loaded (after asset/keyword filter, before filter selection).
+                </div>
+            </div>
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">fullyLinkedSql</div>
+                <div class="canon-stat-value" th:text="${stats.fullyLinkedSql}">0</div>
+                <div class="canon-stat-tooltip">
+                    Both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are set.
+                </div>
+            </div>
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">vendorOnlyLinkedSql</div>
+                <div class="canon-stat-value" th:text="${stats.vendorOnlyLinkedSql}">0</div>
+                <div class="canon-stat-tooltip">
+                    <code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.
+                </div>
+            </div>
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">notLinkedSql</div>
+                <div class="canon-stat-value" th:text="${stats.notLinkedSql}">0</div>
+                <div class="canon-stat-tooltip">
+                    Neither <code>cpe_vendor_id</code> nor <code>cpe_product_id</code> is set.
+                </div>
+            </div>
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">linkedValid</div>
+                <div class="canon-stat-value" th:text="${stats.linkedValid}">0</div>
+                <div class="canon-stat-tooltip">
+                    Fully linked and IDs are valid. Referenced dictionary rows exist.
+                </div>
+            </div>
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">linkedStale</div>
+                <div class="canon-stat-value" th:text="${stats.linkedStale}">0</div>
+                <div class="canon-stat-tooltip">
+                    Fully linked but referenced dictionary rows are missing. These are stale IDs.
+                </div>
+            </div>
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">fullyResolvable</div>
+                <div class="canon-stat-value" th:text="${stats.fullyResolvable}">0</div>
+                <div class="canon-stat-tooltip">
+                    <b>(not linked only)</b> Dictionary can resolve both vendor and product.
+                </div>
+            </div>
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">vendorResolvableOnly</div>
+                <div class="canon-stat-value" th:text="${stats.vendorResolvableOnly}">0</div>
+                <div class="canon-stat-tooltip">
+                    <b>(not linked only)</b> Vendor is resolvable, but product is not.
+                </div>
+            </div>
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">unresolvable</div>
+                <div class="canon-stat-value" th:text="${stats.unresolvable}">0</div>
+                <div class="canon-stat-tooltip">
+                    <b>(not linked only)</b> Neither vendor nor product can be resolved from normalized strings.
+                </div>
+            </div>
+
+            <div class="canon-stat-item">
+                <div class="canon-stat-label">needsNormalization</div>
+                <div class="canon-stat-value" th:text="${stats.needsNormalization}">0</div>
+                <div class="canon-stat-tooltip">
+                    Row has not been normalized, or normalized fields are blank.
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <!-- Table -->

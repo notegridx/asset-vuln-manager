@@ -63,17 +63,14 @@
       <table class="table m-0">
         <thead>
         <tr>
-          <th style="width:60px;">#</th>
-          <th style="width:120px;">Valid</th>
-          <th style="width:220px;">externalKey</th>
-          <th style="width:160px;">vendor</th>
-          <th style="width:220px;">product</th>
-          <th style="width:140px;">version</th>
-          <th style="width:240px;">installLocation</th>
-          <th style="width:180px;">installedAt</th>
-          <th style="width:180px;">packageIdentifier</th>
-          <th style="width:120px;">arch</th>
-          <th>error</th>
+          <th style="width:5%;">#</th>
+          <th style="width:5%;">Valid</th>
+          <th style="width:18%;">externalKey</th>
+          <th style="width:12%;">vendor</th>
+          <th style="width:15%;">product</th>
+          <th style="width:10%;">version</th>
+          <th style="width:15%;">installLocation</th>
+          <th style="width:20%;">error</th>
         </tr>
         </thead>
         <tbody>
@@ -88,9 +85,6 @@
           <td th:text="${r.product}">p</td>
           <td th:text="${r.version}">ver</td>
           <td class="cell-break" th:text="${r.installLocation}">loc</td>
-          <td th:text="${r.installedAt}">at</td>
-          <td class="cell-break" th:text="${r.packageIdentifier}">pkg</td>
-          <td th:text="${r.arch}">arch</td>
           <td class="muted cell-break" th:text="${r.validationError}">-</td>
         </tr>
         </tbody>
