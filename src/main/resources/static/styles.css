@@ -441,6 +441,13 @@ footer {
     margin-top: 6px;
 }
 
+.table th,
+.table td {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
 /* =========================================================
    COMPONENTS: FORMS / FIELDS
    Shared field, input, select, and textarea styling
