@@ -9,12 +9,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.security.Principal;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Controller
@@ -44,34 +50,30 @@ public class AdminUsersController {
     }
 
     @PostMapping
+    @ResponseBody
     @Transactional
-    public String create(
+    public Map<String, Object> create(
             @RequestParam("username") String username,
             @RequestParam("password") String password,
             @RequestParam(name = "roles", required = false) List<String> roleNames,
-            @RequestParam(name = "enabled", defaultValue = "false") boolean enabled,
-            RedirectAttributes ra
+            @RequestParam(name = "enabled", defaultValue = "false") boolean enabled
     ) {
         String u = safe(username);
         String p = safe(password);
 
         if (u == null) {
-            ra.addFlashAttribute("error", "Username is required.");
-            return "redirect:/admin/users";
+            return error("Username is required.");
         }
         if (p == null) {
-            ra.addFlashAttribute("error", "Password is required.");
-            return "redirect:/admin/users";
+            return error("Password is required.");
         }
         if (appUserRepository.existsByUsername(u)) {
-            ra.addFlashAttribute("error", "Username already exists: " + u);
-            return "redirect:/admin/users";
+            return error("Username already exists: " + u);
         }
 
         Set<AppRole> roles = resolveRoles(roleNames);
         if (roles.isEmpty()) {
-            ra.addFlashAttribute("error", "At least one role is required.");
-            return "redirect:/admin/users";
+            return error("At least one role is required.");
         }
 
         AppUser user = AppUser.of(u, passwordEncoder.encode(p));
@@ -81,86 +83,99 @@ public class AdminUsersController {
 
         appUserRepository.save(user);
 
-        ra.addFlashAttribute("message", "User created: " + u);
-        return "redirect:/admin/users";
+        return ok(
+                "message", "User created: " + u,
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "enabled", user.isEnabled(),
+                "roles", user.getRoles().stream().map(AppRole::getRoleName).sorted().toList()
+        );
     }
 
     @PostMapping("/{id}/enable")
+    @ResponseBody
     @Transactional
-    public String enable(
-            @PathVariable("id") Long id,
-            RedirectAttributes ra
-    ) {
+    public Map<String, Object> enable(@PathVariable("id") Long id) {
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
-            ra.addFlashAttribute("error", "User not found. id=" + id);
-            return "redirect:/admin/users";
+            return error("User not found. id=" + id);
         }
 
         user.setEnabled(true);
         appUserRepository.save(user);
 
-        ra.addFlashAttribute("message", "User enabled: " + user.getUsername());
-        return "redirect:/admin/users";
+        return ok(
+                "message", "User enabled: " + user.getUsername(),
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "enabled", true,
+                "roles", user.getRoles().stream().map(AppRole::getRoleName).sorted().toList()
+        );
     }
 
     @PostMapping("/{id}/disable")
+    @ResponseBody
     @Transactional
-    public String disable(
+    public Map<String, Object> disable(
             @PathVariable("id") Long id,
-            Principal principal,
-            RedirectAttributes ra
+            Principal principal
     ) {
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
-            ra.addFlashAttribute("error", "User not found. id=" + id);
-            return "redirect:/admin/users";
+            return error("User not found. id=" + id);
         }
 
         if (principal != null && user.getUsername().equalsIgnoreCase(principal.getName())) {
-            ra.addFlashAttribute("error", "You cannot disable your own account.");
-            return "redirect:/admin/users";
+            return error("You cannot disable your own account.");
         }
 
         user.setEnabled(false);
         appUserRepository.save(user);
 
-        ra.addFlashAttribute("message", "User disabled: " + user.getUsername());
-        return "redirect:/admin/users";
+        return ok(
+                "message", "User disabled: " + user.getUsername(),
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "enabled", false,
+                "roles", user.getRoles().stream().map(AppRole::getRoleName).sorted().toList()
+        );
     }
 
     @PostMapping("/{id}/roles")
+    @ResponseBody
     @Transactional
-    public String updateRoles(
+    public Map<String, Object> updateRoles(
             @PathVariable("id") Long id,
             @RequestParam(name = "roles", required = false) List<String> roleNames,
-            Principal principal,
-            RedirectAttributes ra
+            Principal principal
     ) {
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
-            ra.addFlashAttribute("error", "User not found. id=" + id);
-            return "redirect:/admin/users";
+            return error("User not found. id=" + id);
         }
 
         Set<AppRole> roles = resolveRoles(roleNames);
         if (roles.isEmpty()) {
-            ra.addFlashAttribute("error", "At least one role is required.");
-            return "redirect:/admin/users";
+            return error("At least one role is required.");
         }
 
         boolean editingSelf = principal != null && user.getUsername().equalsIgnoreCase(principal.getName());
-        boolean selfWouldLoseAdmin = editingSelf && roles.stream().noneMatch(r -> "ADMIN".equalsIgnoreCase(r.getRoleName()));
+        boolean selfWouldLoseAdmin = editingSelf
+                && roles.stream().noneMatch(r -> "ADMIN".equalsIgnoreCase(r.getRoleName()));
+
         if (selfWouldLoseAdmin) {
-            ra.addFlashAttribute("error", "You cannot remove ADMIN from your own account.");
-            return "redirect:/admin/users";
+            return error("You cannot remove ADMIN from your own account.");
         }
 
         user.replaceRoles(roles);
         appUserRepository.save(user);
 
-        ra.addFlashAttribute("message", "Roles updated: " + user.getUsername());
-        return "redirect:/admin/users";
+        return ok(
+                "message", "Roles updated: " + user.getUsername(),
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "roles", user.getRoles().stream().map(AppRole::getRoleName).sorted().toList()
+        );
     }
 
     private Set<AppRole> resolveRoles(List<String> roleNames) {
@@ -179,5 +194,21 @@ public class AdminUsersController {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private Map<String, Object> error(String message) {
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("ok", false);
+        res.put("error", message);
+        return res;
+    }
+
+    private Map<String, Object> ok(Object... kv) {
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("ok", true);
+        for (int i = 0; i + 1 < kv.length; i += 2) {
+            res.put(String.valueOf(kv[i]), kv[i + 1]);
+        }
+        return res;
     }
 }

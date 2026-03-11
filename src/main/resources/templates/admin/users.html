@@ -12,19 +12,12 @@
         </div>
 
         <div class="page-header__right page-header__right--pills">
-            <span class="pill" th:text="'Users: ' + ${#lists.size(users)}">Users: 0</span>
+            <span class="pill" id="users-count-pill" th:text="'Users: ' + ${#lists.size(users)}">Users: 0</span>
             <span class="pill" th:text="'Roles: ' + ${#lists.size(roles)}">Roles: 0</span>
         </div>
     </div>
 
-    <div th:if="${message}" class="badge badge--ok" style="margin:12px 0;" th:text="${message}">
-        Saved.
-    </div>
-
-    <div th:if="${error}" class="badge badge--danger" style="margin:12px 0;" th:text="${error}">
-        Error.
-    </div>
-
+    <div id="users-page-message" class="my-12" style="display:none;"></div>
     <!-- Create user -->
     <div class="card" style="padding:16px; margin:12px 0;">
         <div class="actions" style="margin:0; align-items:flex-end;">
@@ -36,7 +29,15 @@
             </div>
         </div>
 
-        <form th:action="@{/admin/users}" method="post" style="margin-top:14px;">
+        <form id="create-user-form"
+              th:action="@{/admin/users}"
+              method="post"
+              style="margin-top:14px;">
+            <input type="hidden"
+                   th:if="${_csrf != null}"
+                   th:name="${_csrf.parameterName}"
+                   th:value="${_csrf.token}">
+
             <div class="form-row">
                 <div class="field" style="min-width:220px; flex:1 1 220px;">
                     <label for="username">Username</label>
@@ -51,7 +52,8 @@
                 <div class="field" style="min-width:220px; flex:1 1 260px;">
                     <label>Roles</label>
                     <div class="card" style="padding:10px;">
-                        <label th:each="r : ${roles}" style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
+                        <label th:each="r : ${roles}"
+                               style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
                             <input type="checkbox" name="roles" th:value="${r.roleName}">
                             <span th:text="${r.roleName}">ADMIN</span>
                         </label>
@@ -59,10 +61,9 @@
                 </div>
 
                 <div class="field" style="min-width:120px;">
-                    <label for="enabled">Enabled</label>
-                    <label style="display:inline-flex; align-items:center; gap:8px; min-height:42px;">
-                        <input id="enabled" type="checkbox" name="enabled" checked>
-                        <span>Active</span>
+                    <label style="display:inline-flex; align-items:center; gap:8px;">
+                        <input type="checkbox" name="enabled" value="true">
+                        <span>Enabled</span>
                     </label>
                 </div>
             </div>
@@ -73,93 +74,93 @@
         </form>
     </div>
 
-    <!-- User list -->
-    <div class="card" style="padding:12px;">
+    <!-- Users list -->
+    <div class="card" style="padding:16px; margin:12px 0;">
         <div class="actions" style="margin:0; align-items:flex-end;">
             <div>
-                <h2 style="margin:0;">User List</h2>
+                <h2 style="margin:0;">Existing Users</h2>
                 <div class="muted" style="font-size:12px; margin-top:6px;">
-                    Manage account state and assigned roles.
+                    Click Enabled / Disabled to toggle account state. Update roles with Apply.
                 </div>
             </div>
         </div>
 
-        <div class="table-wrap" style="margin-top:12px;">
-            <table class="table" style="margin-top:0; width:100%; table-layout:fixed;">
+        <div class="table-wrap" style="margin-top:14px;">
+            <table class="table" style="table-layout:fixed; width:100%;">
                 <thead>
                 <tr>
-                    <th style="width:5%;">ID</th>
-                    <th style="width:20%;">Username</th>
-                    <th style="width:10%;">Enabled</th>
+                    <th style="width:8%;">ID</th>
+                    <th style="width:18%;">Username</th>
+                    <th style="width:12%;">Enabled</th>
                     <th style="width:20%;">Roles</th>
-                    <th style="width:15%;">Created</th>
-                    <th style="width:30%;">Actions</th>
+                    <th style="width:14%;">Created</th>
+                    <th style="width:28%;">Actions</th>
                 </tr>
                 </thead>
-                <tbody>
-                <tr th:each="u : ${users}">
-                    <td th:text="${u.id}">1</td>
+                <tbody id="users-table-body">
+                <tr th:each="u : ${users}"
+                    class="user-row"
+                    th:attr="data-user-id=${u.id},data-username=${u.username}">
+                    <td class="js-user-id" th:text="${u.id}">1</td>
 
-                    <td>
-                        <div th:text="${u.username}">admin</div>
-                        <div class="muted" style="font-size:12px;"
-                             th:text="${u.accountNonLocked ? 'not locked' : 'locked'}">not locked</div>
+                    <td style="white-space:normal; word-break:break-word; overflow-wrap:anywhere;">
+                        <div class="js-username" th:text="${u.username}">admin</div>
+                        <div class="muted js-bootstrap-admin"
+                             style="font-size:12px;"
+                             th:if="${u.bootstrapAdmin}">
+                            bootstrap admin
+                        </div>
                     </td>
 
                     <td>
-                        <span th:if="${u.enabled}" class="badge badge--ok">Enabled</span>
-                        <span th:if="${!u.enabled}" class="badge badge--danger">Disabled</span>
+                        <button type="button"
+                                class="js-enabled-toggle btn btn-sm"
+                                th:classappend="${u.enabled} ? ' btn-primary' : ' btn-danger'"
+                                th:attr="data-user-id=${u.id},data-enabled=${u.enabled},title=${u.enabled} ? 'Click to disable' : 'Click to enable'">
+                            <span th:text="${u.enabled} ? 'Enabled' : 'Disabled'">Enabled</span>
+                        </button>
                     </td>
 
-                    <td>
+                    <td class="js-roles-cell"
+                        style="white-space:normal; word-break:break-word; overflow-wrap:anywhere;">
                         <span th:each="r, st : ${u.roles}">
                             <span class="pill" th:text="${r.roleName}">ADMIN</span><span th:if="${!st.last}"> </span>
                         </span>
                     </td>
 
                     <td>
-                        <span th:text="${u.createdAt != null ? #temporals.format(u.createdAt, 'yyyy-MM-dd HH:mm') : '-'}">-</span>
+                        <span class="muted"
+                              th:text="${u.createdAt != null ? #temporals.format(u.createdAt, 'yyyy-MM-dd HH:mm') : '-'}">-</span>
                     </td>
 
                     <td>
                         <div class="actions" style="margin:0; gap:8px; align-items:flex-start; flex-direction:column;">
 
-                            <div class="actions" style="margin:0; gap:8px;">
-                                <form th:if="${u.enabled}"
-                                      th:action="@{/admin/users/{id}/disable(id=${u.id})}"
-                                      method="post">
-                                    <button type="submit"
-                                            class="btn"
-                                            onclick="return confirm('Disable this user?');">
-                                        Disable
-                                    </button>
-                                </form>
-
-                                <form th:if="${!u.enabled}"
-                                      th:action="@{/admin/users/{id}/enable(id=${u.id})}"
-                                      method="post">
-                                    <button type="submit" class="btn btn-primary">
-                                        Enable
-                                    </button>
-                                </form>
-                            </div>
-
-                            <form th:action="@{/admin/users/{id}/roles(id=${u.id})}"
+                            <form class="roles-form"
+                                  th:action="@{/admin/users/{id}/roles(id=${u.id})}"
                                   method="post"
                                   style="width:100%;">
+                                <input type="hidden"
+                                       th:if="${_csrf != null}"
+                                       th:name="${_csrf.parameterName}"
+                                       th:value="${_csrf.token}">
+
                                 <div class="field" style="margin:0;">
-                                    <label style="font-size:12px;">Update roles</label>
+                                    <label style="font-size:12px;">Update Roles</label>
                                     <div class="card" style="padding:10px;">
                                         <label th:each="r : ${roles}"
                                                style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
                                             <input type="checkbox"
                                                    name="roles"
                                                    th:value="${r.roleName}"
-                                                   th:checked="${u.roles.contains(r)}"
-                                                   onchange="this.form.submit()">
+                                                   th:checked="${u.roles.contains(r)}">
                                             <span th:text="${r.roleName}">ADMIN</span>
                                         </label>
                                     </div>
+                                </div>
+
+                                <div class="actions" style="margin-top:8px;">
+                                    <button type="submit" class="btn">Apply</button>
                                 </div>
                             </form>
 
@@ -167,13 +168,431 @@
                     </td>
                 </tr>
 
-                <tr th:if="${#lists.isEmpty(users)}">
+                <tr id="no-users-row" th:if="${#lists.isEmpty(users)}">
                     <td colspan="6" class="muted">No users.</td>
                 </tr>
                 </tbody>
             </table>
         </div>
     </div>
+
+    <template id="user-row-template">
+        <tr class="user-row" data-user-id="" data-username="">
+            <td class="js-user-id"></td>
+
+            <td style="white-space:normal; word-break:break-word; overflow-wrap:anywhere;">
+                <div class="js-username"></div>
+                <div class="muted js-bootstrap-admin" style="font-size:12px; display:none;">
+                    bootstrap admin
+                </div>
+            </td>
+
+            <td>
+                <button type="button"
+                        class="js-enabled-toggle btn btn-danger btn-sm"
+                        data-user-id=""
+                        data-enabled="false"
+                        title="Click to enable">
+                    Disabled
+                </button>
+            </td>
+
+            <td class="js-roles-cell" style="white-space:normal; word-break:break-word; overflow-wrap:anywhere;"></td>
+
+            <td>
+                <span class="muted js-created-at">-</span>
+            </td>
+
+            <td>
+                <div class="actions" style="margin:0; gap:8px; align-items:flex-start; flex-direction:column;">
+                    <form class="roles-form" method="post" style="width:100%;">
+                        <input type="hidden" class="js-csrf-field" name="" value="">
+                        <div class="field" style="margin:0;">
+                            <label style="font-size:12px;">Update Roles</label>
+                            <div class="card js-roles-editor" style="padding:10px;"></div>
+                        </div>
+
+                        <div class="actions" style="margin-top:8px;">
+                            <button type="submit" class="btn">Apply</button>
+                        </div>
+                    </form>
+                </div>
+            </td>
+        </tr>
+    </template>
+
+    <script th:inline="javascript">
+        (() => {
+            const usersTableBody = document.getElementById("users-table-body");
+            const usersCountPill = document.getElementById("users-count-pill");
+            const pageMessage = document.getElementById("users-page-message");
+            const createUserForm = document.getElementById("create-user-form");
+            const userRowTemplate = document.getElementById("user-row-template");
+
+            const allRoles = /*[[${roles.![roleName]}]]*/ [];
+
+            const csrf = {
+                parameterName: /*[[${_csrf != null ? _csrf.parameterName : '_csrf'}]]*/ "_csrf",
+                token: /*[[${_csrf != null ? _csrf.token : ''}]]*/ ""
+            };
+
+            function escapeHtml(value) {
+                return String(value ?? "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#39;");
+            }
+
+            function showMessage(message, isError) {
+                if (!message) {
+                    pageMessage.style.display = "none";
+                    pageMessage.className = "my-12";
+                    pageMessage.textContent = "";
+                    return;
+                }
+
+                pageMessage.style.display = "";
+
+                if (isError) {
+                    pageMessage.className = "admin-error-box my-12";
+                    pageMessage.textContent = message;
+                } else {
+                    pageMessage.className = "badge badge--ok my-12";
+                    pageMessage.textContent = message;
+                }
+            }
+
+            function updateUsersCount() {
+                const count = usersTableBody.querySelectorAll("tr.user-row").length;
+                usersCountPill.textContent = "Users: " + count;
+
+                const currentNoUsersRow = document.getElementById("no-users-row");
+                if (count === 0) {
+                    if (!currentNoUsersRow) {
+                        const tr = document.createElement("tr");
+                        tr.id = "no-users-row";
+                        tr.innerHTML = '<td colspan="6" class="muted">No users.</td>';
+                        usersTableBody.appendChild(tr);
+                    }
+                } else if (currentNoUsersRow) {
+                    currentNoUsersRow.remove();
+                }
+            }
+
+            function setButtonBusy(button, busy, busyText) {
+                if (!button) return;
+
+                if (busy) {
+                    if (!button.dataset.originalText) {
+                        button.dataset.originalText = button.textContent;
+                    }
+                    button.disabled = true;
+                    if (busyText) {
+                        button.textContent = busyText;
+                    }
+                } else {
+                    button.disabled = false;
+                    if (button.dataset.originalText) {
+                        button.textContent = button.dataset.originalText;
+                        delete button.dataset.originalText;
+                    }
+                }
+            }
+
+            function buildRolesPillsHtml(roles) {
+                if (!roles || roles.length === 0) {
+                    return '<span class="muted">-</span>';
+                }
+                return roles
+                    .slice()
+                    .sort()
+                    .map(role => `<span class="pill">${escapeHtml(role)}</span>`)
+                    .join(" ");
+            }
+
+            function updateEnabledToggle(toggle, enabled, userId) {
+                if (!toggle) return;
+
+                toggle.dataset.enabled = String(!!enabled);
+                if (userId != null) {
+                    toggle.dataset.userId = String(userId);
+                }
+                toggle.className = enabled
+                    ? "js-enabled-toggle btn btn-primary btn-sm"
+                    : "js-enabled-toggle btn btn-danger btn-sm";
+                toggle.textContent = enabled ? "Enabled" : "Disabled";
+                toggle.title = enabled ? "Click to disable" : "Click to enable";
+            }
+
+            function updateUserRow(row, payload) {
+                if (!row || !payload) return;
+
+                if (payload.id != null) {
+                    row.dataset.userId = String(payload.id);
+                    const idCell = row.querySelector(".js-user-id");
+                    if (idCell) {
+                        idCell.textContent = payload.id;
+                    }
+                }
+
+                if (payload.username != null) {
+                    row.dataset.username = payload.username;
+                    const usernameEl = row.querySelector(".js-username");
+                    if (usernameEl) {
+                        usernameEl.textContent = payload.username;
+                    }
+                }
+
+                if (payload.enabled != null) {
+                    const toggle = row.querySelector(".js-enabled-toggle");
+                    updateEnabledToggle(toggle, payload.enabled, payload.id);
+                }
+
+                if (Array.isArray(payload.roles)) {
+                    const rolesCell = row.querySelector(".js-roles-cell");
+                    if (rolesCell) {
+                        rolesCell.innerHTML = buildRolesPillsHtml(payload.roles);
+                    }
+
+                    const checkboxes = row.querySelectorAll('input[type="checkbox"][name="roles"]');
+                    checkboxes.forEach(cb => {
+                        cb.checked = payload.roles.includes(cb.value);
+                    });
+                }
+
+                const rolesForm = row.querySelector(".roles-form");
+                if (rolesForm && payload.id != null) {
+                    rolesForm.action = `/admin/users/${payload.id}/roles`;
+                }
+            }
+
+            async function submitFormAsJson(form) {
+                const formData = new FormData(form);
+
+                const response = await fetch(form.action, {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Accept": "application/json"
+                    },
+                    credentials: "same-origin"
+                });
+
+                let json;
+                try {
+                    json = await response.json();
+                } catch (e) {
+                    throw new Error("Invalid server response.");
+                }
+
+                if (!response.ok) {
+                    throw new Error(json?.error || "Request failed.");
+                }
+
+                return json;
+            }
+
+            async function postJson(url) {
+                const formData = new FormData();
+                if (csrf.token) {
+                    formData.append(csrf.parameterName, csrf.token);
+                }
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Accept": "application/json"
+                    },
+                    credentials: "same-origin"
+                });
+
+                let json;
+                try {
+                    json = await response.json();
+                } catch (e) {
+                    throw new Error("Invalid server response.");
+                }
+
+                if (!response.ok) {
+                    throw new Error(json?.error || "Request failed.");
+                }
+
+                return json;
+            }
+
+            async function handleCreateUserSubmit(event) {
+                event.preventDefault();
+                showMessage("", false);
+
+                const form = event.currentTarget;
+                const button = form.querySelector('button[type="submit"]');
+
+                try {
+                    setButtonBusy(button, true, "Creating...");
+                    const json = await submitFormAsJson(form);
+
+                    if (!json.ok) {
+                        showMessage(json.error || "Failed to create user.", true);
+                        return;
+                    }
+
+                    const row = appendUserRow(json);
+                    updateUserRow(row, json);
+                    updateUsersCount();
+                    form.reset();
+                    showMessage(json.message || "User created.", false);
+                } catch (e) {
+                    showMessage(e.message || "Failed to create user.", true);
+                } finally {
+                    setButtonBusy(button, false);
+                }
+            }
+
+            async function handleEnabledToggleClick(event) {
+                showMessage("", false);
+
+                const button = event.currentTarget;
+                const row = button.closest(".user-row");
+                const userId = row?.dataset?.userId;
+                const enabled = button.dataset.enabled === "true";
+
+                if (!userId) {
+                    showMessage("User id is missing.", true);
+                    return;
+                }
+
+                if (enabled && !window.confirm("Disable this user?")) {
+                    return;
+                }
+
+                try {
+                    setButtonBusy(button, true, "Updating...");
+
+                    const url = enabled
+                        ? `/admin/users/${userId}/disable`
+                        : `/admin/users/${userId}/enable`;
+
+                    const json = await postJson(url);
+
+                    if (!json.ok) {
+                        setButtonBusy(button, false);
+                        showMessage(json.error || "Failed to update user.", true);
+                        return;
+                    }
+
+                    button.disabled = false;
+                    delete button.dataset.originalText;
+
+                    updateUserRow(row, json);
+                    showMessage(json.message || "Updated.", false);
+                } catch (e) {
+                    setButtonBusy(button, false);
+                    showMessage(e.message || "Failed to update user.", true);
+                }
+            }
+
+            async function handleRolesSubmit(event) {
+                event.preventDefault();
+                showMessage("", false);
+
+                const form = event.currentTarget;
+                const button = form.querySelector('button[type="submit"]');
+                const row = form.closest(".user-row");
+
+                try {
+                    setButtonBusy(button, true, "Applying...");
+                    const json = await submitFormAsJson(form);
+
+                    if (!json.ok) {
+                        showMessage(json.error || "Failed to update roles.", true);
+                        return;
+                    }
+
+                    updateUserRow(row, json);
+                    showMessage(json.message || "Roles updated.", false);
+                } catch (e) {
+                    showMessage(e.message || "Failed to update roles.", true);
+                } finally {
+                    setButtonBusy(button, false);
+                }
+            }
+
+            function bindRowEvents(scope) {
+                scope.querySelectorAll(".js-enabled-toggle").forEach(button => {
+                    if (!button.dataset.bound) {
+                        button.dataset.bound = "true";
+                        button.addEventListener("click", handleEnabledToggleClick);
+                    }
+                });
+
+                scope.querySelectorAll(".roles-form").forEach(form => {
+                    if (!form.dataset.bound) {
+                        form.dataset.bound = "true";
+                        form.addEventListener("submit", handleRolesSubmit);
+                    }
+                });
+            }
+
+            function buildRolesEditorHtml(selectedRoles) {
+                return allRoles.map(role => {
+                    const checked = selectedRoles.includes(role) ? " checked" : "";
+                    return `
+                        <label style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
+                            <input type="checkbox" name="roles" value="${escapeHtml(role)}"${checked}>
+                            <span>${escapeHtml(role)}</span>
+                        </label>
+                    `;
+                }).join("");
+            }
+
+            function appendUserRow(payload) {
+                const fragment = userRowTemplate.content.cloneNode(true);
+                const row = fragment.querySelector(".user-row");
+
+                row.dataset.userId = payload.id ?? "";
+                row.dataset.username = payload.username ?? "";
+
+                const toggle = row.querySelector(".js-enabled-toggle");
+                updateEnabledToggle(toggle, !!payload.enabled, payload.id);
+
+                const rolesForm = row.querySelector(".roles-form");
+                rolesForm.action = `/admin/users/${payload.id}/roles`;
+
+                const csrfField = row.querySelector(".js-csrf-field");
+                if (csrf.token) {
+                    csrfField.name = csrf.parameterName;
+                    csrfField.value = csrf.token;
+                } else {
+                    csrfField.remove();
+                }
+
+                const selectedRoles = Array.isArray(payload.roles) ? payload.roles : [];
+                const rolesEditor = row.querySelector(".js-roles-editor");
+                rolesEditor.innerHTML = buildRolesEditorHtml(selectedRoles);
+
+                const createdAtEl = row.querySelector(".js-created-at");
+                createdAtEl.textContent = "-";
+
+                usersTableBody.appendChild(fragment);
+                const appendedRow = usersTableBody.querySelector(`tr.user-row[data-user-id="${payload.id}"]`);
+                bindRowEvents(appendedRow);
+                return appendedRow;
+            }
+
+            bindRowEvents(document);
+
+            if (createUserForm) {
+                createUserForm.addEventListener("submit", handleCreateUserSubmit);
+            }
+
+            updateUsersCount();
+        })();
+    </script>
 
 </main>
 </body>
