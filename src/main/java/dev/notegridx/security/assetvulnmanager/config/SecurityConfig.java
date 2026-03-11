@@ -51,7 +51,8 @@ public class SecurityConfig {
                                 "/styles.css",
                                 "/css/**",
                                 "/js/**",
-                                "/images/**"
+                                "/images/**",
+                                "/h2-console/**"
                         ).permitAll()
 
                         // any authenticated user may change their own password
@@ -89,6 +90,8 @@ public class SecurityConfig {
                         // fallback
                         .anyRequest().authenticated()
                 )
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"))
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .formLogin(form -> form
                         .loginPage("/login")
                         .successHandler(authenticationSuccessHandler(appUserRepositoryProvider))
@@ -180,7 +183,8 @@ public class SecurityConfig {
                         || path.startsWith("/styles.css")
                         || path.startsWith("/css/")
                         || path.startsWith("/js/")
-                        || path.startsWith("/images/");
+                        || path.startsWith("/images/")
+                        || path.startsWith("/h2-console");
             }
         };
     }
