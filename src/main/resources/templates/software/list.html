@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <head th:replace="~{layout/base :: head('Installed Software')}"></head>
 
@@ -228,7 +230,9 @@
                     </td>
 
                     <td>
-                        <div class="actions" style="margin:0; justify-content:flex-start; gap:6px; flex-wrap:wrap;">
+                        <div sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+                             class="actions"
+                             style="margin:0; justify-content:flex-start; gap:6px; flex-wrap:wrap;">
                             <a class="btn btn--small" th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
 
                             <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
@@ -239,6 +243,8 @@
                                 <button class="btn btn--small btn--danger" type="submit">Delete</button>
                             </form>
                         </div>
+
+                        <span sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>
                     </td>
                 </tr>
 

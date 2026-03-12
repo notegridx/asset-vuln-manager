@@ -8,6 +8,7 @@ import dev.notegridx.security.assetvulnmanager.web.form.SoftwareInstallForm;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -36,6 +37,7 @@ public class SoftwareController {
         return "software/detail";
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @PostMapping("/{id}/delete")
     public String deleteSoftware(
             @PathVariable("id") Long id,
@@ -48,6 +50,7 @@ public class SoftwareController {
         return "redirect:/assets";
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, Model model) {
         SoftwareInstall s = softwareInstallRepository.findById(id)
@@ -58,6 +61,7 @@ public class SoftwareController {
         return "software/edit";
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @PostMapping("/{id}/edit")
     public String update(
             @PathVariable Long id,

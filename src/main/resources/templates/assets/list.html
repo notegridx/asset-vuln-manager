@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout/base :: head('Asset Inventory')}"></head>
 
 <body th:replace="~{layout/base :: layout('Asset Inventory', 'assets', ~{::main})}">
 <main>
 
-    <!-- Page header (same structure as Alerts/Vulnerabilities unified version) -->
     <div class="page-header"
          style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
         <div class="page-header__left">
@@ -21,23 +21,20 @@
         </div>
     </div>
 
-    <!-- Toolbar (actions area, unified) -->
     <div class="toolbar"
          style="padding:12px; margin:12px 0; display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
 
         <div class="toolbar__left" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-        <span class="muted" style="font-size:12px;">
-          Actions
-        </span>
+            <span class="muted" style="font-size:12px;">Actions</span>
         </div>
 
-        <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="toolbar__right"
+             sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+             style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <a class="btn" th:href="@{/assets/new}">Register new asset</a>
         </div>
-
     </div>
 
-    <!-- Table wrapper (stable start/height) -->
     <div class="table-wrap">
         <table style="margin-top:0;">
             <thead>
@@ -60,6 +57,7 @@
                     No assets registered yet. Start by registering your first asset.
                 </td>
             </tr>
+
             <tr th:each="a : ${assets}">
                 <td th:text="${a.id}">1</td>
 
@@ -72,26 +70,24 @@
                 </td>
 
                 <td th:text="${a.assetType != null ? a.assetType : '-'}">server</td>
-
                 <td th:text="${a.owner != null ? a.owner : '-'}">owner</td>
-
-                <!-- NEW -->
                 <td th:text="${a.platform != null ? a.platform : '-'}">windows</td>
-
-                <!-- NEW -->
                 <td th:text="${a.osVersion != null ? a.osVersion : '-'}">11.0.22631</td>
-
                 <td th:text="${a.updatedAt}">2026-02-16T08:00</td>
 
                 <td>
-                    <div style="display:flex; gap:8px; align-items:center;">
+                    <div sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+                         style="display:flex; gap:8px; align-items:center;">
                         <a class="btn" th:href="@{/assets/{id}/edit(id=${a.id})}">Edit</a>
 
-                        <form th:action="@{/assets/{id}/delete(id=${a.id})}" method="post"
+                        <form th:action="@{/assets/{id}/delete(id=${a.id})}"
+                              method="post"
                               onsubmit="return confirm('Delete this asset? This will also delete installed software and related alerts.');">
                             <button class="btn btn--danger" type="submit">Delete</button>
                         </form>
                     </div>
+
+                    <span sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>
                 </td>
             </tr>
             </tbody>

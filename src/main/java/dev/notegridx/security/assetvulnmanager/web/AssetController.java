@@ -1,21 +1,5 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.Valid;
-
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
-
 import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
 import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
@@ -28,6 +12,21 @@ import dev.notegridx.security.assetvulnmanager.service.DictionaryValidationExcep
 import dev.notegridx.security.assetvulnmanager.service.SoftwareInstallService;
 import dev.notegridx.security.assetvulnmanager.web.form.AssetForm;
 import dev.notegridx.security.assetvulnmanager.web.form.SoftwareInstallForm;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Controller
 public class AssetController {
@@ -52,6 +51,7 @@ public class AssetController {
         this.cpeProductRepository = cpeProductRepository;
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @PostMapping("/assets/{id}/delete")
     public String deleteAsset(@PathVariable("id") Long id) {
         assetService.deleteCascade(id);
@@ -65,12 +65,14 @@ public class AssetController {
         return "assets/list";
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @GetMapping("/assets/new")
     public String newForm(Model model) {
         model.addAttribute("assetForm", new AssetForm());
         return "assets/new";
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @PostMapping("/assets")
     public String create(
             @Valid @ModelAttribute("assetForm") AssetForm form,
@@ -143,6 +145,7 @@ public class AssetController {
         return "assets/detail";
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @GetMapping("/assets/{assetId}/software/new")
     public String newSoftware(@PathVariable Long assetId, Model model) {
         Asset asset = assetService.getRequired(assetId);
@@ -152,6 +155,7 @@ public class AssetController {
         return "assets/software_new";
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @PostMapping("/assets/{assetId}/software")
     public String createSoftware(
             @PathVariable Long assetId,
@@ -193,6 +197,7 @@ public class AssetController {
         return "redirect:/assets/" + assetId;
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @GetMapping("/assets/{id}/edit")
     public String editAsset(@PathVariable Long id, Model model) {
         Asset asset = assetService.getRequired(id);
@@ -212,6 +217,7 @@ public class AssetController {
         return "assets/edit";
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @PostMapping("/assets/{id}/edit")
     public String updateAsset(@PathVariable Long id,
                               @Valid @ModelAttribute("assetForm") AssetForm form,

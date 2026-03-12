@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
@@ -77,12 +78,31 @@ public class SecurityConfig {
                                 "/admin/runs/**"
                         ).hasAnyRole("ADMIN", "OPERATOR")
 
+                        // write screens / write actions (asset & software inventory)
+                        .requestMatchers(HttpMethod.GET,
+                                "/assets/new",
+                                "/assets/*/edit",
+                                "/assets/*/software/new",
+                                "/software/*/edit"
+                        ).hasAnyRole("ADMIN", "OPERATOR")
+
+                        .requestMatchers(HttpMethod.POST,
+                                "/assets",
+                                "/assets/*/edit",
+                                "/assets/*/delete",
+                                "/assets/*/software",
+                                "/software/*/edit",
+                                "/software/*/delete"
+                        ).hasAnyRole("ADMIN", "OPERATOR")
+
                         // read-only application screens
-                        .requestMatchers(
+                        .requestMatchers(HttpMethod.GET,
                                 "/",
                                 "/dashboard",
-                                "/assets/**",
-                                "/software/**",
+                                "/assets",
+                                "/assets/*",
+                                "/software",
+                                "/software/*",
                                 "/vulnerabilities/**",
                                 "/alerts/**"
                         ).hasAnyRole("ADMIN", "OPERATOR", "VIEWER")

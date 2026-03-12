@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <head th:replace="~{layout/base :: head('Asset Detail')}"></head>
 
@@ -122,7 +124,9 @@
 
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <a class="btn btn-ghost" th:href="@{/assets}">Back to Assets</a>
-            <a class="btn" th:href="@{/assets/{id}/edit(id=${asset.id})}">Edit Asset</a>
+            <a sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+               class="btn"
+               th:href="@{/assets/{id}/edit(id=${asset.id})}">Edit Asset</a>
         </div>
     </div>
 
@@ -136,7 +140,6 @@
 
         <div class="kv" style="grid-template-columns: 180px 1fr 180px 1fr; gap:10px 14px;">
 
-            <!-- Identity -->
             <b>ID</b>
             <span th:text="${asset.id}">1</span>
 
@@ -161,7 +164,6 @@
             <b>Note</b>
             <span th:text="${asset.note != null && !#strings.isEmpty(asset.note) ? asset.note : '-'}">-</span>
 
-            <!-- System / Hardware -->
             <b>Platform</b>
             <span th:text="${asset.platform != null && !#strings.isEmpty(asset.platform) ? asset.platform : '-'}">windows</span>
 
@@ -200,7 +202,6 @@
             hostname
         </span>
 
-            <!-- OS -->
             <b>OS Name</b>
             <span th:text="${asset.osName != null && !#strings.isEmpty(asset.osName) ? asset.osName : '-'}">
             Microsoft Windows
@@ -225,7 +226,6 @@
             11.0.0
         </span>
 
-            <!-- CPU / Observation -->
             <b>CPU Brand</b>
             <span th:text="${asset.cpuBrand != null && !#strings.isEmpty(asset.cpuBrand) ? asset.cpuBrand : '-'}">
             Intel
@@ -252,7 +252,9 @@
         <h2 style="margin:0;">Installed Software</h2>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <a class="btn btn-ghost" th:href="@{/software}">Open Software Inventory</a>
-            <a class="btn" th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
+            <a sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+               class="btn"
+               th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
         </div>
     </div>
 
@@ -279,7 +281,6 @@
             <tr th:each="s : ${installs}"
                 th:classappend="${alertCountBySoftwareId[s.id] != null and alertCountBySoftwareId[s.id] > 0} ? ' software-row--has-alerts' : ''">
 
-                <!-- Vendor -->
                 <td class="asset-sw-vendor">
                     <div th:text="${(s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null)
                         ? vendorNameMap[s.cpeVendorId]
@@ -291,7 +292,6 @@
                     </div>
                 </td>
 
-                <!-- Product -->
                 <td>
                     <div class="asset-sw-product-main">
                         <a th:href="@{/software/{id}(id=${s.id})}"
@@ -314,7 +314,6 @@
                     </div>
                 </td>
 
-                <!-- Version -->
                 <td>
                     <div th:text="${s.version != null && !#strings.isEmpty(s.version) ? s.version : '(not set)'}">1.0</div>
 
@@ -325,7 +324,6 @@
                     </div>
                 </td>
 
-                <!-- Link status -->
                 <td class="asset-sw-link">
                     <div th:if="${s.cpeVendorId != null and s.cpeProductId != null and !s.canonicalLinkDisabled}">
                         <span class="pill"
@@ -356,15 +354,13 @@
                     </div>
                 </td>
 
-                <!-- Last Seen -->
                 <td class="asset-sw-lastseen"
                     th:text="${s.lastSeenAt != null ? #temporals.format(s.lastSeenAt, 'yyyy-MM-dd HH:mm') : '-'}">
                     -
                 </td>
 
-                <!-- Actions -->
                 <td>
-                    <div class="asset-sw-actions">
+                    <div sec:authorize="hasAnyRole('ADMIN','OPERATOR')" class="asset-sw-actions">
                         <a th:href="@{/software/{id}/edit(id=${s.id})}" class="btn btn-sm">Edit</a>
 
                         <form th:action="@{/software/{id}/delete(id=${s.id})}"
@@ -374,6 +370,8 @@
                             <button class="btn btn-danger btn-sm" type="submit">Delete</button>
                         </form>
                     </div>
+
+                    <span sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>
                 </td>
             </tr>
             </tbody>
