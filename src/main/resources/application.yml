@@ -41,6 +41,12 @@ app:
       meta-path: /feeds/json/cpe/2.0/nvdcpe-2.0.meta
       gz-path: /feeds/json/cpe/2.0/nvdcpe-2.0.tar.gz
 
+      meta-timeout-seconds: 60
+      download-timeout-minutes: 20
+      connect-timeout-millis: 30000
+      response-timeout-seconds: 120
+      max-retries: 3
+
     cve:
       base-url: https://nvd.nist.gov
 
