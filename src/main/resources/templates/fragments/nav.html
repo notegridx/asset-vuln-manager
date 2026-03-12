@@ -87,9 +87,9 @@
 
                 <div class="nav-admin-divider" role="separator"></div>
 
-                <!-- Data Sync -->
+                <!-- CVE Delta Update (API) -->
                 <div class="nav-admin-section">
-                    <div class="nav-admin-section__title">Data Sync</div>
+                    <div class="nav-admin-section__title">CVE Delta Update (API)</div>
 
                     <a class="nav-admin-item"
                        role="menuitem"
@@ -183,13 +183,42 @@
         </details>
 
         <div class="nav-right" style="margin-left:auto; display:flex; align-items:center; gap:10px;">
-            <span class="muted">
-                <strong sec:authentication="name">admin</strong>
-            </span>
+            <details class="nav-admin">
+                <summary class="nav-link nav-admin__trigger"
+                         aria-haspopup="menu">
+                    Account
+                    <span class="nav-admin__chev" aria-hidden="true">▾</span>
+                </summary>
 
-            <form th:action="@{/logout}" method="post" class="nav-logout-form">
-                <button type="submit" class="nav-link nav-link--button">Logout</button>
-            </form>
+                <div class="nav-admin-menu" role="menu" aria-label="Account menu">
+                    <div class="nav-admin-section">
+                        <div class="nav-admin-section__title">Signed in</div>
+
+                        <div class="nav-admin-item nav-admin-item--static">
+                            <strong sec:authentication="name">admin</strong>
+                        </div>
+
+                        <a class="nav-admin-item"
+                           role="menuitem"
+                           th:href="@{/account/change-password}">
+                            Change Password
+                        </a>
+                    </div>
+
+                    <div class="nav-admin-divider" role="separator"></div>
+
+                    <div class="nav-admin-section">
+                        <form th:action="@{/logout}" method="post" style="margin:0;">
+                            <button type="submit"
+                                    class="nav-admin-item"
+                                    role="menuitem"
+                                    style="width:100%; text-align:left; background:none; border:none; cursor:pointer;">
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </details>
         </div>
 
     </div>

@@ -1901,3 +1901,35 @@ td.canon-reason .line-clamp-2 {
     margin-bottom: 16px;
     border-radius: 4px;
 }
+
+/* =========================================
+   Account menu adjustments
+   ========================================= */
+
+/* Signed-in user row (non-clickable) */
+.nav-admin-item--static {
+  cursor: default;
+  opacity: .85;
+  background: none;
+}
+
+.nav-admin-item--static:hover {
+  background: none;
+}
+
+/* Logout button inside dropdown */
+.nav-admin-menu button.nav-admin-item {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 10px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* Username emphasis */
+.nav-account-username {
+  font-weight: 600;
+  letter-spacing: .2px;
+}
