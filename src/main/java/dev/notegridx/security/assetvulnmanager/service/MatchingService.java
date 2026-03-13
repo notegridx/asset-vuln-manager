@@ -18,6 +18,7 @@ import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
 import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityAffectedCpe;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertMatchMethod;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertUncertainReason;
 import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
@@ -25,6 +26,7 @@ import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallReposit
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
 import dev.notegridx.security.assetvulnmanager.utility.DbTime;
+import jakarta.persistence.EntityManager;
 
 @Service
 public class MatchingService {
@@ -33,6 +35,7 @@ public class MatchingService {
 	private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
 	private final VulnerabilityRepository vulnerabilityRepository;
 	private final AlertRepository alertRepository;
+	private final EntityManager entityManager;
 
 	private final VersionRangeMatcher versionMatcher = new VersionRangeMatcher();
 
@@ -43,13 +46,15 @@ public class MatchingService {
 			VulnerabilityAffectedCpeRepository affectedCpeRepository,
 			VulnerabilityRepository vulnerabilityRepository,
 			AlertRepository alertRepository,
-			CanonicalBackfillService canonicalBackfillService
+			CanonicalBackfillService canonicalBackfillService,
+			EntityManager entityManager
 	) {
 		this.softwareInstallRepository = softwareInstallRepository;
 		this.affectedCpeRepository = affectedCpeRepository;
 		this.vulnerabilityRepository = vulnerabilityRepository;
 		this.alertRepository = alertRepository;
 		this.canonicalBackfillService = canonicalBackfillService;
+		this.entityManager = entityManager;
 	}
 
 	@Transactional
@@ -57,7 +62,6 @@ public class MatchingService {
 
 		// run開始時刻（この時刻以降に touchDetected(now) されなかった OPEN は stale とみなす）
 		LocalDateTime runStartedAt = DbTime.now();
-		LocalDateTime now = runStartedAt;
 		// このランの検出時刻は runStartedAt に固定（touch/insert 全て同じ）
 		// ※ runStartedAt と lastSeenAt の精度差が無くなるので stale 誤判定しない
 		LocalDateTime detectedAt = runStartedAt;
@@ -146,7 +150,14 @@ public class MatchingService {
 				Optional<Alert> existing = alertRepository.findBySoftwareInstallIdAndVulnerabilityId(si.getId(), vulnId);
 				if (existing.isPresent()) {
 					Alert a = existing.get();
-					a.touchDetected(detectedAt);
+
+					if (a.getStatus() == AlertStatus.CLOSED
+							&& a.getCloseReason() == CloseReason.AUTO_CLOSED_NO_LONGER_AFFECTED) {
+						a.reopen(detectedAt);
+					} else {
+						a.touchDetected(detectedAt);
+					}
+
 					a.updateMatchContext(certainty, reason, method);
 					alertRepository.save(a);
 					alertsTouched++;
@@ -233,7 +244,14 @@ public class MatchingService {
 					Optional<Alert> existing = alertRepository.findBySoftwareInstallIdAndVulnerabilityId(si.getId(), vulnId);
 					if (existing.isPresent()) {
 						Alert a = existing.get();
-						a.touchDetected(detectedAt);
+
+						if (a.getStatus() == AlertStatus.CLOSED
+								&& a.getCloseReason() == CloseReason.AUTO_CLOSED_NO_LONGER_AFFECTED) {
+							a.reopen(detectedAt);
+						} else {
+							a.touchDetected(detectedAt);
+						}
+
 						a.updateMatchContext(certainty, reason, AlertMatchMethod.CPE_NAME);
 						alertRepository.save(a);
 						alertsTouched++;
@@ -249,7 +267,11 @@ public class MatchingService {
 			}
 		}
 
-		// ---- 追加: stale OPEN を自動クローズ（理由つき）----
+		// touch / reopen / insert の変更を DB に確実に反映してから
+		// bulk update（stale close）を実行する
+		entityManager.flush();
+
+		// ---- stale OPEN を自動クローズ（理由つき）----
 		int autoClosed = alertRepository.closeStaleOpenAlerts(
 				runStartedAt,
 				CloseReason.AUTO_CLOSED_NO_LONGER_AFFECTED,

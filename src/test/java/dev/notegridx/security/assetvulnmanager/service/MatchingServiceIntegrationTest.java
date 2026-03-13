@@ -17,6 +17,8 @@ import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
+import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -372,5 +374,208 @@ class MatchingServiceIntegrationTest {
         assertThat(alert.getUncertainReason()).isNull();
         assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
         assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("matchAndUpsertAlerts reopens previously auto-closed alert when the software is still affected")
+    void matchAndUpsertAlerts_reopensPreviouslyAutoClosedAlert_whenStillAffected() {
+        CpeVendor vendor = cpeVendorRepository.save(new CpeVendor("google", "Google"));
+        CpeProduct product = cpeProductRepository.save(new CpeProduct(vendor, "chrome", "Google Chrome"));
+
+        Asset asset = assetRepository.save(new Asset("Host-07"));
+
+        SoftwareInstall sw = new SoftwareInstall(asset, "Google Chrome");
+        sw.updateDetails("Google LLC", "Google Chrome", "145.0.7632.117", null);
+        sw.linkCanonical(vendor.getId(), product.getId());
+        sw = softwareInstallRepository.save(sw);
+
+        Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0007");
+        vuln.applyNvdDetails(
+                "Test vulnerability 7",
+                "Test description 7",
+                "3.1",
+                new BigDecimal("8.8"),
+                null,
+                null
+        );
+        vuln = vulnerabilityRepository.save(vuln);
+
+        affectedCpeRepository.save(new VulnerabilityAffectedCpe(
+                vuln,
+                "cpe:2.3:a:google:chrome:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                product.getId(),
+                "google",
+                "chrome",
+                "",
+                "",
+                "145.0.7632.159",
+                ""
+        ));
+
+        Alert existing = new Alert(
+                sw,
+                vuln,
+                java.time.LocalDateTime.now().minusDays(1),
+                AlertCertainty.CONFIRMED,
+                null,
+                AlertMatchMethod.DICT_ID
+        );
+        existing.close(CloseReason.AUTO_CLOSED_NO_LONGER_AFFECTED, java.time.LocalDateTime.now().minusHours(12));
+        existing = alertRepository.save(existing);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.alertsTouched()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = alertRepository
+                .findBySoftwareInstallIdAndVulnerabilityId(sw.getId(), vuln.getId())
+                .orElse(null);
+
+        assertThat(alert).isNotNull();
+        assertThat(alert.getId()).isEqualTo(existing.getId());
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCloseReason()).isNull();
+        assertThat(alert.getClosedAt()).isNull();
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getUncertainReason()).isNull();
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+        assertThat(alert.getLastSeenAt()).isAfterOrEqualTo(alert.getFirstSeenAt());
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("matchAndUpsertAlerts does not auto-close alerts that were touched in the same run")
+    void matchAndUpsertAlerts_doesNotAutoCloseTouchedAlerts_inSameRun() {
+        CpeVendor vendor = cpeVendorRepository.save(new CpeVendor("google", "Google"));
+        CpeProduct product = cpeProductRepository.save(new CpeProduct(vendor, "chrome", "Google Chrome"));
+
+        Asset asset = assetRepository.save(new Asset("Host-08"));
+
+        SoftwareInstall sw = new SoftwareInstall(asset, "Google Chrome");
+        sw.updateDetails("Google LLC", "Google Chrome", "145.0.7632.117", null);
+        sw.linkCanonical(vendor.getId(), product.getId());
+        sw = softwareInstallRepository.save(sw);
+
+        Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0008");
+        vuln.applyNvdDetails(
+                "Test vulnerability 8",
+                "Test description 8",
+                "3.1",
+                new BigDecimal("8.8"),
+                null,
+                null
+        );
+        vuln = vulnerabilityRepository.save(vuln);
+
+        affectedCpeRepository.save(new VulnerabilityAffectedCpe(
+                vuln,
+                "cpe:2.3:a:google:chrome:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                product.getId(),
+                "google",
+                "chrome",
+                "",
+                "",
+                "145.0.7632.159",
+                ""
+        ));
+
+        Alert existing = new Alert(
+                sw,
+                vuln,
+                java.time.LocalDateTime.now().minusDays(2),
+                AlertCertainty.CONFIRMED,
+                null,
+                AlertMatchMethod.DICT_ID
+        );
+        existing = alertRepository.save(existing);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.alertsTouched()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = alertRepository
+                .findBySoftwareInstallIdAndVulnerabilityId(sw.getId(), vuln.getId())
+                .orElse(null);
+
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCloseReason()).isNull();
+        assertThat(alert.getClosedAt()).isNull();
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+    }
+
+    @Test
+    @DisplayName("matchAndUpsertAlerts does not reopen manually closed alert even if it matches again")
+    void matchAndUpsertAlerts_doesNotReopenManuallyClosedAlert() {
+        CpeVendor vendor = cpeVendorRepository.save(new CpeVendor("google", "Google"));
+        CpeProduct product = cpeProductRepository.save(new CpeProduct(vendor, "chrome", "Google Chrome"));
+
+        Asset asset = assetRepository.save(new Asset("Host-09"));
+
+        SoftwareInstall sw = new SoftwareInstall(asset, "Google Chrome");
+        sw.updateDetails("Google LLC", "Google Chrome", "145.0.7632.117", null);
+        sw.linkCanonical(vendor.getId(), product.getId());
+        sw = softwareInstallRepository.save(sw);
+
+        Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0009");
+        vuln.applyNvdDetails(
+                "Test vulnerability 9",
+                "Test description 9",
+                "3.1",
+                new BigDecimal("8.8"),
+                null,
+                null
+        );
+        vuln = vulnerabilityRepository.save(vuln);
+
+        affectedCpeRepository.save(new VulnerabilityAffectedCpe(
+                vuln,
+                "cpe:2.3:a:google:chrome:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                product.getId(),
+                "google",
+                "chrome",
+                "",
+                "",
+                "145.0.7632.159",
+                ""
+        ));
+
+        Alert existing = new Alert(
+                sw,
+                vuln,
+                java.time.LocalDateTime.now().minusDays(1),
+                AlertCertainty.CONFIRMED,
+                null,
+                AlertMatchMethod.DICT_ID
+        );
+        existing.close(CloseReason.ACCEPTED_RISK, java.time.LocalDateTime.now().minusHours(10));
+        existing = alertRepository.save(existing);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.alertsTouched()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = alertRepository
+                .findBySoftwareInstallIdAndVulnerabilityId(sw.getId(), vuln.getId())
+                .orElse(null);
+
+        assertThat(alert).isNotNull();
+        assertThat(alert.getId()).isEqualTo(existing.getId());
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.CLOSED);
+        assertThat(alert.getCloseReason()).isEqualTo(CloseReason.ACCEPTED_RISK);
+        assertThat(alert.getClosedAt()).isNotNull();
     }
 }

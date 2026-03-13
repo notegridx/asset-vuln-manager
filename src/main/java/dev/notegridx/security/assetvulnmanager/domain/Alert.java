@@ -141,6 +141,14 @@ public class Alert {
 		this.lastSeenAt = DbTime.normalize(detectedAt);
 	}
 
+	public void reopen(LocalDateTime detectedAt) {
+		LocalDateTime dt = DbTime.normalize(detectedAt);
+		this.status = AlertStatus.OPEN;
+		this.closeReason = null;
+		this.closedAt = null;
+		this.lastSeenAt = dt;
+	}
+
 	public void updateMatchContext(AlertCertainty certainty, AlertUncertainReason reason, AlertMatchMethod matchedBy) {
 		AlertCertainty safe = (certainty == null ? AlertCertainty.CONFIRMED : certainty);
 		this.certainty = safe;

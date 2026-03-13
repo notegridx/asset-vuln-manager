@@ -53,7 +53,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
     List<Alert> findBySoftwareInstallIdIn(Collection<Long> ids);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
         update Alert a
            set a.status = dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus.CLOSED,

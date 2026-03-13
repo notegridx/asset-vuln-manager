@@ -801,9 +801,9 @@ CREATE TABLE IF NOT EXISTS alerts
     matched_by VARCHAR(32),
 
     close_reason VARCHAR(255),
-    first_seen_at TIMESTAMP NOT NULL,
-    last_seen_at TIMESTAMP NOT NULL,
-    closed_at TIMESTAMP NULL,
+    first_seen_at TIMESTAMP(6) NOT NULL,
+    last_seen_at TIMESTAMP(6) NOT NULL,
+    closed_at TIMESTAMP(6) NULL,
 
     snapshot_asset_id BIGINT,
     snapshot_asset_name VARCHAR(255),
@@ -813,8 +813,8 @@ CREATE TABLE IF NOT EXISTS alerts
     snapshot_product VARCHAR(255),
     snapshot_version VARCHAR(64),
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT fk_alert_sw FOREIGN KEY (software_install_id) REFERENCES software_installs(id),
     CONSTRAINT fk_alert_vuln FOREIGN KEY (vulnerability_id) REFERENCES vulnerabilities(id),
