@@ -2,6 +2,8 @@ package dev.notegridx.security.assetvulnmanager.domain;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
+
 import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -209,7 +211,7 @@ public class SoftwareInstall {
     public void markSeen(String source) {
         String s = normalizeNullable(source);
         this.source = (s == null) ? "MANUAL" : s;
-        this.lastSeenAt = LocalDateTime.now();
+        this.lastSeenAt = DbTime.now();
     }
 
     /**
@@ -229,7 +231,6 @@ public class SoftwareInstall {
     }
 
     /**
-     * JSON/OSQUERY 等の拡張カラム更新用（要件: last_seen_at 更新 / source_type 固定などに使う）
      *
      * NOTE: initial JSON import policy:
      *  - sourceType: "JSON_UPLOAD"
@@ -338,7 +339,7 @@ public class SoftwareInstall {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
         this.createdAt = now;
         this.updatedAt = now;
 
@@ -353,7 +354,7 @@ public class SoftwareInstall {
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DbTime.now();
 
         if (this.vendor == null) this.vendor = "";
         if (this.version == null) this.version = "";

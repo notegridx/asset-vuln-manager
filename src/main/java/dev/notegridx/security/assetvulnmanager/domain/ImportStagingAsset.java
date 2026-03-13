@@ -2,6 +2,8 @@ package dev.notegridx.security.assetvulnmanager.domain;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 
@@ -20,11 +22,11 @@ public class ImportStagingAsset {
     @Column(name = "row_no", nullable = false)
     private int rowNo;
 
-    // invalid行も保存してPreviewで見せるため nullable=true にする
+    // invalid行も保存してPreviewで見せるためEnullable=true にする
     @Column(name = "external_key", length = 128)
     private String externalKey;
 
-    // invalid行も保存してPreviewで見せるため nullable=true にする
+    // invalid行も保存してPreviewで見せるためEnullable=true にする
     @Column(length = 255)
     private String name;
 
@@ -36,7 +38,7 @@ public class ImportStagingAsset {
     @Lob
     private String note;
 
-    // source は fill で必ず入れる（NOT NULLのままでOK）
+    // source は fill で忁E入れるEEOT NULLのままでOKEE
     @Column(nullable = false)
     private String source = "JSON_UPLOAD";
 
@@ -180,7 +182,7 @@ public class ImportStagingAsset {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
         this.createdAt = now;
         this.updatedAt = now;
         if (this.source == null || this.source.isBlank()) this.source = "JSON_UPLOAD";
@@ -188,7 +190,7 @@ public class ImportStagingAsset {
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DbTime.now();
         if (this.source == null || this.source.isBlank()) this.source = "JSON_UPLOAD";
     }
 }

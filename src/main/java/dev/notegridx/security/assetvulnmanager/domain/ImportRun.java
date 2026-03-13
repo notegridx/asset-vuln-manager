@@ -2,6 +2,8 @@ package dev.notegridx.security.assetvulnmanager.domain;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 
@@ -74,12 +76,11 @@ public class ImportRun {
     protected ImportRun() {
     }
 
-    // 既存互換：CSV等が使う start は残す
     public static ImportRun start(String source, String kind) {
         ImportRun run = new ImportRun();
         run.source = source;
         run.kind = kind;
-        run.startedAt = LocalDateTime.now();
+        run.startedAt = DbTime.now();
         run.assetsUpserted = 0;
         run.softwareUpserted = 0;
         run.unresolvedCount = 0;
@@ -93,7 +94,6 @@ public class ImportRun {
         return run;
     }
 
-    // 新規：staging用途（Upload→Preview→Import）
     public static ImportRun newStaged(String source, String kind, String originalFilename, String sha256) {
         ImportRun run = ImportRun.start(source, kind);
         run.status = "STAGED";
@@ -113,18 +113,18 @@ public class ImportRun {
         this.softwareUpserted = softwareUpserted;
         this.summary = summary;
         this.status = "IMPORTED";
-        this.finishedAt = LocalDateTime.now();
+        this.finishedAt = DbTime.now();
     }
 
     public void markFailed(String errorMessage) {
         this.status = "FAILED";
         this.errorMessage = errorMessage;
-        this.finishedAt = LocalDateTime.now();
+        this.finishedAt = DbTime.now();
     }
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
 
         if (this.startedAt == null) this.startedAt = now;
         if (this.createdAt == null) this.createdAt = now;
@@ -136,11 +136,9 @@ public class ImportRun {
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DbTime.now();
         if (this.status == null || this.status.trim().isEmpty()) this.status = "IMPORTED";
     }
-
-    // ---- setters（CsvImportService が使う分だけ）----
 
     public void setSource(String source) { this.source = source; }
     public void setKind(String kind) { this.kind = kind; }

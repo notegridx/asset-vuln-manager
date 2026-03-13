@@ -2,6 +2,7 @@ package dev.notegridx.security.assetvulnmanager.domain;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 import jakarta.persistence.*;
 import lombok.Getter;
 
@@ -16,26 +17,26 @@ public class CveSyncState {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name="feed_name", nullable = false, length = 64)
+    @Column(name = "feed_name", nullable = false, length = 64)
     private String feedName;
 
-    @Column(name="meta_sha256", length = 128)
+    @Column(name = "meta_sha256", length = 128)
     private String metaSha256;
 
-    @Column(name="meta_last_modified", length = 64)
+    @Column(name = "meta_last_modified", length = 64)
     private String metaLastModified;
 
-    @Column(name="meta_size")
+    @Column(name = "meta_size")
     private Long metaSize;
 
-    @Column(name="last_synced_at")
+    @Column(name = "last_synced_at")
     private LocalDateTime lastSyncedAt;
 
-    @Column(name="created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
 
-    @Column(name="updated_at", nullable = false)
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     protected CveSyncState() {}
 
@@ -54,7 +55,19 @@ public class CveSyncState {
         this.metaLastModified = lastModified;
         this.metaSize = size;
         this.lastSyncedAt = now;
-        this.updatedAt = (now != null) ? now : LocalDateTime.now();
+        this.updatedAt = (now != null) ? now : DbTime.now();
+    }
+
+    @PrePersist
+    void prePersist() {
+        LocalDateTime now = DbTime.now();
+        if (this.createdAt == null) this.createdAt = now;
+        if (this.updatedAt == null) this.updatedAt = now;
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        this.updatedAt = DbTime.now();
     }
 
     private static boolean eq(Object a, Object b) {

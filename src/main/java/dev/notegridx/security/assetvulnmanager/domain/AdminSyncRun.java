@@ -5,6 +5,8 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
+
 @Entity
 @Table(
         name = "admin_sync_runs",
@@ -103,6 +105,6 @@ public class AdminSyncRun {
 
     @PrePersist
     void prePersist() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = DbTime.now();
     }
 }

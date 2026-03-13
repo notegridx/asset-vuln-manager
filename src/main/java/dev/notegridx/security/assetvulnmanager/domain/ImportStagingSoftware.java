@@ -21,7 +21,7 @@ public class ImportStagingSoftware {
     @Column(name = "row_no", nullable = false)
     private int rowNo;
 
-    // invalid行も保存してPreviewで見せるため nullable=true にする
+    // invalid行も保存してPreviewで見せるためEnullable=true にする
     @Column(name = "external_key", length = 128)
     private String externalKey;
 
@@ -176,7 +176,7 @@ public class ImportStagingSoftware {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
         this.createdAt = now;
         this.updatedAt = now;
         if (this.sourceType == null || this.sourceType.isBlank()) this.sourceType = "JSON_UPLOAD";
@@ -184,7 +184,7 @@ public class ImportStagingSoftware {
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DbTime.now();
         if (this.sourceType == null || this.sourceType.isBlank()) this.sourceType = "JSON_UPLOAD";
     }
 

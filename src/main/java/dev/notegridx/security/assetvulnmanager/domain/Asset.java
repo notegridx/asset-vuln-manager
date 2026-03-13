@@ -1,6 +1,8 @@
 package dev.notegridx.security.assetvulnmanager.domain;
 
 import java.time.LocalDateTime;
+
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -121,7 +123,7 @@ public class Asset {
     // =========================================================
 
     public void markSeen(String source) {
-        markSeenAt(source, LocalDateTime.now());
+        markSeenAt(source, DbTime.now());
     }
 
     public void markSeenAt(String source, LocalDateTime seenAt) {
@@ -208,16 +210,16 @@ public class Asset {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
         this.createdAt = now;
         this.updatedAt = now;
         if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
-        // lastSeenAt は null 許容（初回観測まで未設定でもOK）
+        // lastSeenAt は null 許容EE回観測まで未設定でもOKEE
     }
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DbTime.now();
         if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
     }
 

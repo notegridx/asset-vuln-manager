@@ -7,6 +7,8 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
+
 @Getter
 @Entity
 @Table(name = "cpe_product_aliases")
@@ -31,11 +33,11 @@ public class CpeProductAlias {
     @Column(name = "note", length = 1024)
     private String note;
 
-    // ✅ Stringのまま維持（既存Controller互換）
+    // Stringのまま維持E既存Controller互換
     @Column(name = "status", nullable = false, length = 16)
     private String status = STATUS_ACTIVE;
 
-    // ✅ enum（ユーザー提示版を使用）
+    // EenumEユーザー提示版を使用
     @Enumerated(EnumType.STRING)
     @Column(name = "source", nullable = false, length = 32)
     private AliasSource source = AliasSource.MANUAL;
@@ -82,14 +84,14 @@ public class CpeProductAlias {
     ) {
         CpeProductAlias a = new CpeProductAlias(cpeVendorId, cpeProductId, aliasNorm, note);
         a.source = (source == null) ? AliasSource.MANUAL : source;
-        a.reviewState = (reviewState == null) ? AliasReviewState.AUTO : reviewState; // nullならAUTO寄せ
+        a.reviewState = (reviewState == null) ? AliasReviewState.AUTO : reviewState; // nullならAUTO寁E
         a.confidence = confidence;
         a.evidenceUrl = evidenceUrl;
         a.status = STATUS_ACTIVE;
         return a;
     }
 
-    // ✅ 既存Controllerが呼ぶので必須
+    // ✁E既存Controllerが呼ぶので忁EE
     public void setStatus(String status) {
         if (status == null) {
             this.status = STATUS_ACTIVE;
@@ -112,7 +114,7 @@ public class CpeProductAlias {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
         this.createdAt = (this.createdAt == null) ? now : this.createdAt;
         this.updatedAt = (this.updatedAt == null) ? now : this.updatedAt;
 
@@ -123,7 +125,7 @@ public class CpeProductAlias {
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DbTime.now();
         if (this.status == null || this.status.trim().isEmpty()) this.status = STATUS_ACTIVE;
         if (this.source == null) this.source = AliasSource.MANUAL;
         if (this.reviewState == null) this.reviewState = AliasReviewState.MANUAL;

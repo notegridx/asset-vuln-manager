@@ -5,6 +5,8 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
+
 @Entity
 @Table(
         name = "cpe_products",
@@ -76,13 +78,13 @@ public class CpeProduct {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
         this.createdAt = now;
         this.updatedAt = now;
     }
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DbTime.now();
     }
 }

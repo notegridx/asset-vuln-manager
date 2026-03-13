@@ -2,6 +2,8 @@ package dev.notegridx.security.assetvulnmanager.domain;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 
@@ -62,15 +64,16 @@ public class UnresolvedMapping {
         um.vendorRaw = vendorRaw;
         um.productRaw = productRaw;
         um.versionRaw = versionRaw;
+        LocalDateTime now = DbTime.now();
         um.status = "NEW";
-        um.firstSeenAt = LocalDateTime.now();
-        um.lastSeenAt = LocalDateTime.now();
+        um.firstSeenAt = now;
+        um.lastSeenAt = now;
         return um;
     }
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
         if (firstSeenAt == null) firstSeenAt = now;
         if (lastSeenAt == null) lastSeenAt = now;
         createdAt = now;
@@ -79,10 +82,10 @@ public class UnresolvedMapping {
 
     @PreUpdate
     void preUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = DbTime.now();
     }
 
-    // ===== setters（CsvImportService が使う分）=====
+    // ===== settersEEsvImportService が使ぁEEEE====
 
     public void setSource(String source) {
         this.source = source;

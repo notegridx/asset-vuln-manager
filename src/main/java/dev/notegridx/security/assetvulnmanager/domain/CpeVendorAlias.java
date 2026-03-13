@@ -7,6 +7,8 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
+
 @Getter
 @Entity
 @Table(name = "cpe_vendor_aliases")
@@ -28,11 +30,11 @@ public class CpeVendorAlias {
     @Column(name = "note", length = 1024)
     private String note;
 
-    // ✅ Stringのまま維持（既存Controller互換）
+    // ✁EStringのまま維持E既存Controller互換EE
     @Column(name = "status", nullable = false, length = 16)
     private String status = STATUS_ACTIVE;
 
-    // ✅ enum（ユーザー提示版を使用）
+    // ✁EenumEユーザー提示版を使用EE
     @Enumerated(EnumType.STRING)
     @Column(name = "source", nullable = false, length = 32)
     private AliasSource source = AliasSource.MANUAL;
@@ -65,7 +67,7 @@ public class CpeVendorAlias {
         this.reviewState = AliasReviewState.MANUAL;
     }
 
-    // Controller互換（必須）
+    // Controller互換E忁E！E
     public CpeVendorAlias(String aliasNorm, Long cpeVendorId, String note) {
         this.cpeVendorId = cpeVendorId;
         this.aliasNorm = aliasNorm;
@@ -75,7 +77,7 @@ public class CpeVendorAlias {
         this.reviewState = AliasReviewState.MANUAL;
     }
 
-    // 自動投入/提案投入向け（Top20投入はここを使う）
+    // 自動投入/提案投入向けEEop20投Eはここを使ぁEE
     public static CpeVendorAlias seeded(
             Long cpeVendorId,
             String aliasNorm,
@@ -87,14 +89,14 @@ public class CpeVendorAlias {
     ) {
         CpeVendorAlias a = new CpeVendorAlias(cpeVendorId, aliasNorm, note);
         a.source = (source == null) ? AliasSource.MANUAL : source;
-        a.reviewState = (reviewState == null) ? AliasReviewState.AUTO : reviewState; // nullならAUTO寄せ
+        a.reviewState = (reviewState == null) ? AliasReviewState.AUTO : reviewState; // nullならAUTO寁E
         a.confidence = confidence;
         a.evidenceUrl = evidenceUrl;
         a.status = STATUS_ACTIVE;
         return a;
     }
 
-    // ✅ 既存Controllerが呼ぶので必須
+    // ✁E既存Controllerが呼ぶので忁EE
     public void setStatus(String status) {
         if (status == null) {
             this.status = STATUS_ACTIVE;
@@ -104,7 +106,7 @@ public class CpeVendorAlias {
         this.status = s.isEmpty() ? STATUS_ACTIVE : s;
     }
 
-    // 任意（Controller変更は不要）
+    // 任意！Eontroller変更は不要EE
     public void toggleStatus() {
         String cur = (status == null) ? "" : status.trim();
         this.status = STATUS_ACTIVE.equals(cur) ? STATUS_INACTIVE : STATUS_ACTIVE;
@@ -119,7 +121,7 @@ public class CpeVendorAlias {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
         this.createdAt = (this.createdAt == null) ? now : this.createdAt;
         this.updatedAt = (this.updatedAt == null) ? now : this.updatedAt;
 
@@ -130,7 +132,7 @@ public class CpeVendorAlias {
 
     @PreUpdate
     void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = DbTime.now();
         if (this.status == null || this.status.trim().isEmpty()) this.status = STATUS_ACTIVE;
         if (this.source == null) this.source = AliasSource.MANUAL;
         if (this.reviewState == null) this.reviewState = AliasReviewState.MANUAL;
