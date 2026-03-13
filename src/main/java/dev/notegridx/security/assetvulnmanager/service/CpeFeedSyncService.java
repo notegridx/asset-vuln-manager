@@ -12,6 +12,7 @@ import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCpeFeedClient;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeSyncStateRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
+import dev.notegridx.security.assetvulnmanager.domain.enums.CpeSyncSourceMode;
 import jakarta.persistence.EntityManager;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -105,10 +106,8 @@ public class CpeFeedSyncService {
         LocalDateTime now = LocalDateTime.now();
         long startedAtNs = System.nanoTime();
 
-        // 1) META fetch (small)
         CpeFeedMetaParser.FeedMeta meta = feedClient.fetchMeta(metaParser);
 
-        // 2) compare with sync_state
         CpeSyncState state = syncStateRepository.findByFeedName(FEED_NAME)
                 .orElseGet(() -> new CpeSyncState(FEED_NAME));
 
@@ -116,10 +115,9 @@ public class CpeFeedSyncService {
         if (!force && same) {
             log.info("CPE feed sync skipped (meta unchanged). feedName={}, sha256={}, lastModified={}, size={}",
                     FEED_NAME, meta.sha256(), meta.lastModified(), meta.size());
-            return SyncResult.skipped(meta.sha256(), meta.lastModified(), meta.size());
+            return SyncResult.skippedDownload(meta.sha256(), meta.lastModified(), meta.size());
         }
 
-        // 3) download tar.gz -> temp file (streaming, no byte[])
         Path tmp = null;
         long bytes = 0L;
         try {
@@ -127,11 +125,9 @@ public class CpeFeedSyncService {
             bytes = Files.size(tmp);
             log.info("CPE feed downloaded to temp: file={}, bytes={}, force={}, cap={}", tmp, bytes, force, safeMax);
 
-            // 4) parse & upsert with chunked transactions
             try (InputStream in = Files.newInputStream(tmp)) {
                 ParseUpsertResult r = parseAndUpsertTarGzChunked(in, safeMax);
 
-                // 5) update sync state
                 state.updateMeta(meta.sha256(), meta.lastModified(), meta.size(), now);
                 syncStateRepository.save(state);
 
@@ -151,7 +147,7 @@ public class CpeFeedSyncService {
                         productKeyCache.size()
                 );
 
-                return SyncResult.executed(
+                return SyncResult.executedDownload(
                         r.vendorsInserted,
                         r.productsInserted,
                         r.cpeParsed,
@@ -174,15 +170,54 @@ public class CpeFeedSyncService {
         }
     }
 
-    /**
-     * tar.gz -> (GZIPInputStream) -> (TarArchiveInputStream)
-     * For first tar entry only:
-     * - if enabled, readAllEntryBytes
-     * - optionally peek keys(depth<=2, limit<=80) and log
-     * - parse from byte[] (ByteArrayInputStream)
-     * Remaining entries:
-     * - parse directly from tar stream
-     */
+    public SyncResult syncFromUploadedTarGz(InputStream tarGzStream, String originalFilename, int maxItems) throws IOException {
+        if (tarGzStream == null) {
+            throw new IllegalArgumentException("Uploaded file stream is empty.");
+        }
+
+        int safeMax = clamp(maxItems, 1, 5_000_000);
+        long startedAtNs = System.nanoTime();
+
+        try (InputStream in = tarGzStream) {
+            ParseUpsertResult r = parseAndUpsertTarGzChunked(in, safeMax);
+
+            long elapsedMs = elapsedMs(startedAtNs);
+            double elapsedSec = elapsedMs / 1000.0d;
+            double rowsPerSec = elapsedSec <= 0.0d ? r.cpeParsed : (r.cpeParsed / elapsedSec);
+
+            log.info(
+                    "CPE upload sync done: filename={}, vendorsInserted={}, productsInserted={}, cpeParsed={}, elapsedMs={}, elapsedSec={}, rowsPerSec={}, vendorCache={}, productCache={}",
+                    originalFilename,
+                    r.vendorsInserted,
+                    r.productsInserted,
+                    r.cpeParsed,
+                    elapsedMs,
+                    String.format(Locale.ROOT, "%.3f", elapsedSec),
+                    String.format(Locale.ROOT, "%.2f", rowsPerSec),
+                    vendorIdCache.size(),
+                    productKeyCache.size()
+            );
+
+            return SyncResult.executedUpload(
+                    r.vendorsInserted,
+                    r.productsInserted,
+                    r.cpeParsed,
+                    elapsedMs,
+                    elapsedSec,
+                    rowsPerSec,
+                    originalFilename
+            );
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (IOException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException(
+                    "Uploaded file is not a valid CPE Dictionary .tar.gz archive: " + safeMsg(ex), ex
+            );
+        }
+    }
+
     private ParseUpsertResult parseAndUpsertTarGzChunked(InputStream tarGzStream, int maxItems) throws IOException {
         final int[] vendorsInserted = {0};
         final int[] productsInserted = {0};
@@ -222,7 +257,6 @@ public class CpeFeedSyncService {
                 }
             }
 
-            // tail flush
             if (!buffer.isEmpty() && parsed[0] > 0) {
                 List<CpeNameParser.VendorProduct> chunk = new ArrayList<>(buffer);
                 buffer.clear();
@@ -239,16 +273,6 @@ public class CpeFeedSyncService {
         return new ParseUpsertResult(vendorsInserted[0], productsInserted[0], parsed[0]);
     }
 
-    /**
-     * Parse one JSON stream (one tar entry) with Jackson streaming,
-     * extracting CPE name strings.
-     *
-     * Feed/API2 often uses "cpeName" (not "cpe23Uri").
-     * We accept both keys and only count valid "cpe:2.3:" strings.
-     *
-     * NOTE: JsonFactory is configured with AUTO_CLOSE_SOURCE disabled,
-     * so closing parser won't close underlying TarArchiveInputStream.
-     */
     private void parseCpeJsonStream(
             InputStream jsonStream,
             int maxItems,
@@ -316,10 +340,6 @@ public class CpeFeedSyncService {
         }
     }
 
-    /**
-     * Collect FIELD_NAME keys for a "peek" log, limited depth <= 2.
-     * Implementation is best-effort, safe, and bounded.
-     */
     private Set<String> collectKeysDepthLe2(byte[] jsonBytes, int limit) {
         LinkedHashSet<String> out = new LinkedHashSet<>();
         if (jsonBytes == null || jsonBytes.length == 0) {
@@ -348,10 +368,6 @@ public class CpeFeedSyncService {
         return out;
     }
 
-    /**
-     * Reads current tar entry bytes fully from TarArchiveInputStream.
-     * (Required because tar entry cannot be rewound.)
-     */
     private static byte[] readAllEntryBytes(TarArchiveInputStream tin) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream(1024 * 1024);
         byte[] buf = new byte[8192];
@@ -421,11 +437,6 @@ public class CpeFeedSyncService {
         return new ChunkResult(vIns, pIns);
     }
 
-    /**
-     * Ensure vendor exists and return:
-     * - id
-     * - whether this call inserted a new row
-     */
     private VendorEnsureResult ensureVendor(String vendorKey) {
         if (vendorKey == null || vendorKey.isBlank()) {
             return VendorEnsureResult.none();
@@ -559,6 +570,7 @@ public class CpeFeedSyncService {
     }
 
     public record SyncResult(
+            CpeSyncSourceMode sourceMode,
             boolean skipped,
             int vendorsInserted,
             int productsInserted,
@@ -566,15 +578,76 @@ public class CpeFeedSyncService {
             long elapsedMs,
             double elapsedSec,
             double rowsPerSec,
-            String metaSha256,
-            String metaLastModified,
-            Long metaSize
+            String sourceFilename,
+            CpeSyncMeta meta
     ) {
-        public static SyncResult skipped(String sha256, String lastModified, Long size) {
-            return new SyncResult(true, 0, 0, 0, 0L, 0.0d, 0.0d, sha256, lastModified, size);
+        public SyncResult {
+            if (sourceMode == null) {
+                throw new IllegalArgumentException("sourceMode must not be null");
+            }
+            if (vendorsInserted < 0) {
+                throw new IllegalArgumentException("vendorsInserted must be >= 0");
+            }
+            if (productsInserted < 0) {
+                throw new IllegalArgumentException("productsInserted must be >= 0");
+            }
+            if (cpeParsed < 0) {
+                throw new IllegalArgumentException("cpeParsed must be >= 0");
+            }
+            if (elapsedMs < 0) {
+                throw new IllegalArgumentException("elapsedMs must be >= 0");
+            }
+            if (elapsedSec < 0) {
+                throw new IllegalArgumentException("elapsedSec must be >= 0");
+            }
+            if (rowsPerSec < 0) {
+                throw new IllegalArgumentException("rowsPerSec must be >= 0");
+            }
+            if (meta == null) {
+                meta = new CpeSyncMeta(null, null, null);
+            }
         }
 
-        public static SyncResult executed(
+        public boolean isDownload() {
+            return sourceMode == CpeSyncSourceMode.DOWNLOAD;
+        }
+
+        public boolean isUpload() {
+            return sourceMode == CpeSyncSourceMode.UPLOAD;
+        }
+
+        public boolean hasMeta() {
+            return meta != null && !meta.isEmpty();
+        }
+
+        public String metaSha256() {
+            return meta != null ? meta.sha256() : null;
+        }
+
+        public String metaLastModified() {
+            return meta != null ? meta.lastModified() : null;
+        }
+
+        public Long metaSize() {
+            return meta != null ? meta.size() : null;
+        }
+
+        public static SyncResult skippedDownload(String sha256, String lastModified, Long size) {
+            return new SyncResult(
+                    CpeSyncSourceMode.DOWNLOAD,
+                    true,
+                    0,
+                    0,
+                    0,
+                    0L,
+                    0.0d,
+                    0.0d,
+                    null,
+                    new CpeSyncMeta(sha256, lastModified, size)
+            );
+        }
+
+        public static SyncResult executedDownload(
                 int vIns,
                 int pIns,
                 int parsed,
@@ -585,7 +658,41 @@ public class CpeFeedSyncService {
                 String lastModified,
                 Long size
         ) {
-            return new SyncResult(false, vIns, pIns, parsed, elapsedMs, elapsedSec, rowsPerSec, sha256, lastModified, size);
+            return new SyncResult(
+                    CpeSyncSourceMode.DOWNLOAD,
+                    false,
+                    vIns,
+                    pIns,
+                    parsed,
+                    elapsedMs,
+                    elapsedSec,
+                    rowsPerSec,
+                    null,
+                    new CpeSyncMeta(sha256, lastModified, size)
+            );
+        }
+
+        public static SyncResult executedUpload(
+                int vIns,
+                int pIns,
+                int parsed,
+                long elapsedMs,
+                double elapsedSec,
+                double rowsPerSec,
+                String sourceFilename
+        ) {
+            return new SyncResult(
+                    CpeSyncSourceMode.UPLOAD,
+                    false,
+                    vIns,
+                    pIns,
+                    parsed,
+                    elapsedMs,
+                    elapsedSec,
+                    rowsPerSec,
+                    sourceFilename,
+                    new CpeSyncMeta(null, null, null)
+            );
         }
     }
 

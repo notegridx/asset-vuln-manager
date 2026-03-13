@@ -6,13 +6,14 @@
 <body th:replace="~{layout/base :: layout('Update Product Dictionary', 'admin', ~{::main})}">
 <main>
 
-    <!-- Page Header (unified with other pages) -->
+    <!-- Page Header -->
     <div class="page-header page-header--split">
 
         <div class="page-header__left">
             <h1>Update Product Dictionary</h1>
             <div class="muted mt-6">
-                Download and refresh the NVD CPE Dictionary in your local database.
+                Download and refresh the NVD CPE Dictionary in your local database,
+                or upload a local NVD CPE Dictionary tar.gz file.
                 This dictionary provides canonical vendor/product definitions used for product mapping and alert generation.
             </div>
         </div>
@@ -30,7 +31,8 @@
             <ul class="list-indent">
                 <li>Safe for large feeds (streaming + chunked transactions).</li>
                 <li>Idempotent: re-running will not create duplicates.</li>
-                <li>If the feed has not changed since the last run, the update may be skipped unless forced.</li>
+                <li>If the downloaded feed has not changed since the last run, the update may be skipped unless forced.</li>
+                <li>Upload mode parses a local <code>.tar.gz</code> or <code>.tgz</code> archive and does not update NVD sync-state metadata.</li>
             </ul>
         </div>
     </div>
@@ -44,21 +46,71 @@
             </div>
         </div>
 
+        <!-- Error -->
         <div th:if="${error != null}" class="admin-error-box">
             <strong>⚠ Error</strong>
-            <span th:text="${error}">Product dictionary update is already running.</span>
+            <span th:text="${error}">Product dictionary update failed.</span>
         </div>
 
-        <form th:action="@{/admin/cpe/sync}" method="post" class="mt-12">
+        <!-- Success -->
+        <div th:if="${success != null}" class="admin-success-box">
+            <strong>✓ Success</strong>
+            <span th:text="${success}">Product dictionary updated successfully.</span>
+        </div>
+
+        <form th:action="@{/admin/cpe/sync}" method="post" enctype="multipart/form-data" class="mt-12">
 
             <div class="field">
-                <label>
-                    <input type="checkbox" name="force" th:checked="${force != null and force}">
-                    Force update (ignore previous sync state)
-                </label>
-                <div class="muted text-12" style="margin-top:4px;">
-                    Use this if you suspect the local sync state is out of date or you want to re-process the dictionary.
+                <label>Source</label>
+
+                <div style="display:flex; gap:18px; flex-wrap:wrap; margin-top:6px;">
+                    <label>
+                        <input type="radio" name="mode" value="DOWNLOAD"
+                               th:checked="${mode == null or mode == 'DOWNLOAD'}">
+                        Download from NVD
+                    </label>
+
+                    <label>
+                        <input type="radio" name="mode" value="UPLOAD"
+                               th:checked="${mode == 'UPLOAD'}">
+                        Upload local tar.gz
+                    </label>
                 </div>
+
+                <div class="muted text-12" style="margin-top:4px;">
+                    Download mode uses the official NVD feed. Upload mode accepts a local <code>.tar.gz</code> or <code>.tgz</code> archive.
+                </div>
+            </div>
+
+            <div id="downloadModeFields"
+                 th:style="${mode == 'UPLOAD'} ? 'display:none;' : ''">
+
+                <div class="field">
+                    <label>
+                        <input type="checkbox" name="force" th:checked="${force != null and force}">
+                        Force update (download mode only)
+                    </label>
+                    <div class="muted text-12" style="margin-top:4px;">
+                        Use this if you suspect the local sync state is out of date or you want to re-process the downloaded dictionary.
+                        This option is ignored in upload mode.
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="uploadModeFields"
+                 th:style="${mode == 'UPLOAD'} ? '' : 'display:none;'">
+
+                <div class="field">
+                    <label>Local tar.gz file (used only in upload mode)</label>
+                    <input type="file"
+                           name="file"
+                           accept=".tar.gz,.tgz,application/gzip,application/x-gzip">
+                    <div class="muted text-12" style="margin-top:4px;">
+                        Select a local NVD CPE Dictionary archive when using upload mode.
+                    </div>
+                </div>
+
             </div>
 
             <div class="field">
@@ -97,39 +149,105 @@
                 </tr>
                 </thead>
                 <tbody>
+
                 <tr>
                     <td>skipped (dictionary unchanged)</td>
                     <td th:text="${result.skipped}">false</td>
                 </tr>
-                <tr>
+
+                <tr th:if="${mode == 'DOWNLOAD'}">
                     <td>meta sha256</td>
-                    <td th:text="${result.metaSha256}">-</td>
+                    <td th:text="${result.metaSha256} ?: '-'">-</td>
                 </tr>
-                <tr>
+                <tr th:if="${mode == 'DOWNLOAD'}">
                     <td>meta last modified</td>
-                    <td th:text="${result.metaLastModified}">-</td>
+                    <td th:text="${result.metaLastModified} ?: '-'">-</td>
                 </tr>
-                <tr>
+                <tr th:if="${mode == 'DOWNLOAD'}">
                     <td>meta size (bytes)</td>
-                    <td th:text="${result.metaSize}">0</td>
+                    <td th:text="${result.metaSize} ?: '-'">-</td>
                 </tr>
 
                 <tr th:if="${result.vendorsInserted != null}">
                     <td>new vendors added</td>
                     <td th:text="${result.vendorsInserted}">0</td>
                 </tr>
+
                 <tr th:if="${result.productsInserted != null}">
                     <td>new products added</td>
                     <td th:text="${result.productsInserted}">0</td>
                 </tr>
+
                 <tr th:if="${result.cpeParsed != null}">
                     <td>dictionary entries parsed</td>
                     <td th:text="${result.cpeParsed}">0</td>
                 </tr>
+
+                <tr th:if="${result.elapsedMs != null}">
+                    <td>elapsed ms</td>
+                    <td th:text="${result.elapsedMs}">0</td>
+                </tr>
+
+                <tr th:if="${result.elapsedSec != null}">
+                    <td>elapsed sec</td>
+                    <td th:text="${#numbers.formatDecimal(result.elapsedSec, 1, 3)}">0.000</td>
+                </tr>
+
+                <tr th:if="${result.rowsPerSec != null}">
+                    <td>rows per sec</td>
+                    <td th:text="${#numbers.formatDecimal(result.rowsPerSec, 1, 2)}">0.00</td>
+                </tr>
+
                 </tbody>
             </table>
         </div>
     </div>
+
+    <script>
+        (() => {
+            const modeRadios = document.querySelectorAll('input[name="mode"]');
+            const downloadModeFields = document.getElementById('downloadModeFields');
+            const uploadModeFields = document.getElementById('uploadModeFields');
+            const forceCheckbox = document.querySelector('input[name="force"]');
+            const fileInput = document.querySelector('input[name="file"]');
+
+            if (!modeRadios.length || !downloadModeFields || !uploadModeFields) {
+                return;
+            }
+
+            function applyModeUi() {
+                const selected = document.querySelector('input[name="mode"]:checked');
+                const mode = selected ? selected.value : 'DOWNLOAD';
+
+                const isUpload = mode === 'UPLOAD';
+                const isDownload = mode === 'DOWNLOAD';
+
+                downloadModeFields.style.display = isDownload ? '' : 'none';
+                uploadModeFields.style.display = isUpload ? '' : 'none';
+
+                if (forceCheckbox) {
+                    forceCheckbox.disabled = isUpload;
+                    if (isUpload) {
+                        forceCheckbox.checked = false;
+                    }
+                }
+
+                if (fileInput) {
+                    fileInput.disabled = isDownload;
+                    fileInput.required = isUpload;
+                    if (isDownload) {
+                        fileInput.value = '';
+                    }
+                }
+            }
+
+            modeRadios.forEach(radio => {
+                radio.addEventListener('change', applyModeUi);
+            });
+
+            applyModeUi();
+        })();
+    </script>
 
 </main>
 </body>
