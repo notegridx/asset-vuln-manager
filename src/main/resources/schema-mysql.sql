@@ -64,10 +64,10 @@ CREATE TABLE IF NOT EXISTS assets
     os_patch INT,
 
     -- snapshot observation timestamp
-    last_seen_at TIMESTAMP NULL,
+    last_seen_at TIMESTAMP(6) NULL,
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT uq_assets_external_key UNIQUE (external_key)
     ) ENGINE=InnoDB;
@@ -166,8 +166,8 @@ CREATE TABLE IF NOT EXISTS cpe_vendors
     name_norm VARCHAR(255) NOT NULL,
     display_name VARCHAR(255),
     source VARCHAR(20) NOT NULL DEFAULT 'CPE_DICT',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_cpe_vendors_name UNIQUE (name_norm)
     ) ENGINE=InnoDB;
 
@@ -190,8 +190,8 @@ CREATE TABLE IF NOT EXISTS cpe_products
     name_norm VARCHAR(255) NOT NULL,
     display_name VARCHAR(255),
     source VARCHAR(20) NOT NULL DEFAULT 'CPE_DICT',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_cpe_products_vendor FOREIGN KEY (vendor_id) REFERENCES cpe_vendors(id),
     CONSTRAINT uq_cpe_products_vendor_name UNIQUE (vendor_id, name_norm)
     ) ENGINE=InnoDB;
@@ -243,9 +243,9 @@ CREATE TABLE IF NOT EXISTS cpe_sync_state
     meta_sha256 VARCHAR(128),
     meta_last_modified VARCHAR(64),
     meta_size BIGINT,
-    last_synced_at TIMESTAMP NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_synced_at TIMESTAMP(6) NULL,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_cpe_sync_state_feed UNIQUE (feed_name)
     ) ENGINE=InnoDB;
 
@@ -271,15 +271,15 @@ CREATE TABLE IF NOT EXISTS import_runs
 
     source VARCHAR(32) NOT NULL,
     kind VARCHAR(32) NOT NULL,
-    started_at TIMESTAMP NOT NULL,
-    finished_at TIMESTAMP NULL,
+    started_at TIMESTAMP(6) NOT NULL,
+    finished_at TIMESTAMP(6) NULL,
     file_hash VARCHAR(128),
     summary TEXT,
     assets_upserted INT NOT NULL DEFAULT 0,
     software_upserted INT NOT NULL DEFAULT 0,
     unresolved_count INT NOT NULL DEFAULT 0,
     error_count INT NOT NULL DEFAULT 0,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     status VARCHAR(16) NOT NULL DEFAULT 'IMPORTED',
     original_filename VARCHAR(255),
@@ -289,7 +289,7 @@ CREATE TABLE IF NOT EXISTS import_runs
     invalid_rows INT NOT NULL DEFAULT 0,
     error_message VARCHAR(1024),
 
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
     ) ENGINE=InnoDB;
 
 SET @ddl = IF (
@@ -417,12 +417,12 @@ CREATE TABLE IF NOT EXISTS software_installs
     cpe_vendor_id BIGINT,
     cpe_product_id BIGINT,
 
-    last_seen_at TIMESTAMP NULL,
+    last_seen_at TIMESTAMP(6) NULL,
 
     import_run_id BIGINT,
 
     install_location VARCHAR(1024),
-    installed_at TIMESTAMP NULL,
+    installed_at TIMESTAMP(6) NULL,
     package_identifier VARCHAR(255),
     arch VARCHAR(64),
 
@@ -441,8 +441,8 @@ CREATE TABLE IF NOT EXISTS software_installs
 
     canonical_link_disabled BOOLEAN NOT NULL DEFAULT FALSE,
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT fk_sw_asset FOREIGN KEY (asset_id) REFERENCES assets(id),
     CONSTRAINT fk_sw_cpe_vendor FOREIGN KEY (cpe_vendor_id) REFERENCES cpe_vendors(id),
@@ -524,13 +524,13 @@ CREATE TABLE IF NOT EXISTS import_staging_assets
     os_minor INT,
     os_patch INT,
 
-    last_seen_at TIMESTAMP NULL,
+    last_seen_at TIMESTAMP(6) NULL,
 
     is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     validation_error VARCHAR(1024),
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT fk_stage_assets_run FOREIGN KEY (import_run_id) REFERENCES import_runs(id)
     ) ENGINE=InnoDB;
@@ -554,13 +554,13 @@ CREATE TABLE IF NOT EXISTS import_staging_software
     version VARCHAR(64),
 
     install_location VARCHAR(1024),
-    installed_at TIMESTAMP NULL,
+    installed_at TIMESTAMP(6) NULL,
     package_identifier VARCHAR(255),
     arch VARCHAR(64),
 
     source_type VARCHAR(64) NOT NULL DEFAULT 'JSON_UPLOAD',
 
-    last_seen_at TIMESTAMP NULL,
+    last_seen_at TIMESTAMP(6) NULL,
 
     type VARCHAR(32),
     source VARCHAR(32),
@@ -583,8 +583,8 @@ CREATE TABLE IF NOT EXISTS import_staging_software
     is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     validation_error VARCHAR(1024),
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT fk_stage_sw_run FOREIGN KEY (import_run_id) REFERENCES import_runs(id)
     ) ENGINE=InnoDB;
@@ -614,8 +614,8 @@ CREATE TABLE IF NOT EXISTS vulnerabilities
     cvss_version VARCHAR(16),
     cvss_score DOUBLE,
 
-    published_at TIMESTAMP NULL,
-    last_modified_at TIMESTAMP NULL,
+    published_at TIMESTAMP(6) NULL,
+    last_modified_at TIMESTAMP(6) NULL,
 
     -- ==============================
     -- KEV metadata
@@ -624,10 +624,10 @@ CREATE TABLE IF NOT EXISTS vulnerabilities
     kev_date_added DATE,
     kev_due_date DATE,
     kev_ransomware_use VARCHAR(16),
-    kev_updated_at TIMESTAMP NULL,
+    kev_updated_at TIMESTAMP(6) NULL,
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT uq_vuln_source_external UNIQUE (source, external_id)
     ) ENGINE=InnoDB;
@@ -652,10 +652,10 @@ CREATE TABLE IF NOT EXISTS kev_sync_state
     last_modified VARCHAR(128),
     body_sha256 VARCHAR(128),
     body_size BIGINT,
-    fetched_at TIMESTAMP NULL,
+    fetched_at TIMESTAMP(6) NULL,
 
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP(6) NOT NULL,
+    updated_at TIMESTAMP(6) NOT NULL,
 
     CONSTRAINT uq_kev_sync_state_feed UNIQUE (feed_name)
     ) ENGINE=InnoDB;
@@ -690,8 +690,8 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
     -- 安定dedupe用
     dedupe_key CHAR(64),
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT fk_vac_vuln
     FOREIGN KEY (vulnerability_id) REFERENCES vulnerabilities(id),
@@ -848,10 +848,10 @@ CREATE TABLE IF NOT EXISTS cve_sync_state
     meta_last_modified VARCHAR(64),
     meta_size BIGINT,
 
-    last_synced_at TIMESTAMP NULL,
+    last_synced_at TIMESTAMP(6) NULL,
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT uq_cve_sync_state_feed UNIQUE (feed_name)
     ) ENGINE=InnoDB;
@@ -882,11 +882,11 @@ CREATE TABLE IF NOT EXISTS unresolved_mappings
     status VARCHAR(16) NOT NULL DEFAULT 'NEW',
     note VARCHAR(1024),
 
-    first_seen_at TIMESTAMP NOT NULL,
-    last_seen_at TIMESTAMP NOT NULL,
+    first_seen_at TIMESTAMP(6) NOT NULL,
+    last_seen_at TIMESTAMP(6) NOT NULL,
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT uk_um_vendor_product UNIQUE (vendor_raw, product_raw)
     ) ENGINE=InnoDB;
@@ -913,8 +913,8 @@ CREATE TABLE IF NOT EXISTS cpe_vendor_aliases
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
     note VARCHAR(1024),
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     source VARCHAR(32) NOT NULL DEFAULT 'MANUAL',
     confidence INT NOT NULL DEFAULT 0,
@@ -943,8 +943,8 @@ CREATE TABLE IF NOT EXISTS cpe_product_aliases
     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
     note VARCHAR(1024),
 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     source VARCHAR(32) NOT NULL DEFAULT 'MANUAL',
     confidence INT NOT NULL DEFAULT 0,
@@ -995,8 +995,8 @@ CREATE TABLE IF NOT EXISTS app_users
     account_non_locked BOOLEAN NOT NULL DEFAULT TRUE,
     password_change_required BOOLEAN NOT NULL DEFAULT FALSE,
     bootstrap_admin BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_app_users_username UNIQUE (username)
     ) ENGINE=InnoDB;
 
@@ -1016,8 +1016,8 @@ CREATE TABLE IF NOT EXISTS app_roles
 (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     role_name VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_app_roles_name UNIQUE (role_name)
     ) ENGINE=InnoDB;
 
@@ -1037,7 +1037,7 @@ CREATE TABLE IF NOT EXISTS app_user_roles
 (
     user_id BIGINT NOT NULL,
     role_id BIGINT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     CONSTRAINT pk_app_user_roles PRIMARY KEY (user_id, role_id),
     CONSTRAINT fk_app_user_roles_user FOREIGN KEY (user_id) REFERENCES app_users(id),
