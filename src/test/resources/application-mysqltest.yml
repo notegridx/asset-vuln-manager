@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    url: jdbc:tc:mysql:8.4.4:///assetvulndb
+    username: test
+    password: test
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-mysql.sql
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  h2:
+    console:
+      enabled: false
+
+logging:
+  level:
+    org.hibernate.SQL: info
+    org.springframework.jdbc.datasource.init: info
+    dev.notegridx.security.assetvulnmanager: info
+
+app:
+  software:
+    dict-mode: STRICT
