@@ -3,23 +3,27 @@ package dev.notegridx.security.assetvulnmanager.service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
 import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityAffectedCpe;
+import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityCriteriaCpe;
+import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityCriteriaNode;
+import dev.notegridx.security.assetvulnmanager.domain.enums.CriteriaNodeType;
+import dev.notegridx.security.assetvulnmanager.domain.enums.CriteriaOperator;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.CpeNameParser;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdClient;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.dto.NvdCveResponse;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
+import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityCriteriaCpeRepository;
+import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityCriteriaNodeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
 
 @Service
@@ -28,11 +32,12 @@ public class NvdImportService {
 	private static final Logger log = LoggerFactory.getLogger(NvdImportService.class);
 
 	private static final String SOURCE_NVD = "NVD";
-	private static final long SENTINEL_ID = -1L;
 
 	private final NvdClient nvdClient;
 	private final VulnerabilityRepository vulnerabilityRepository;
 	private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
+	private final VulnerabilityCriteriaNodeRepository criteriaNodeRepository;
+	private final VulnerabilityCriteriaCpeRepository criteriaCpeRepository;
 
 	private final CpeNameParser cpeNameParser;
 	private final VendorProductNormalizer normalizer;
@@ -43,6 +48,8 @@ public class NvdImportService {
 			NvdClient nvdClient,
 			VulnerabilityRepository vulnerabilityRepository,
 			VulnerabilityAffectedCpeRepository affectedCpeRepository,
+			VulnerabilityCriteriaNodeRepository criteriaNodeRepository,
+			VulnerabilityCriteriaCpeRepository criteriaCpeRepository,
 			CpeNameParser cpeNameParser,
 			VendorProductNormalizer normalizer,
 			CpeVendorRepository cpeVendorRepository,
@@ -51,6 +58,8 @@ public class NvdImportService {
 		this.nvdClient = nvdClient;
 		this.vulnerabilityRepository = vulnerabilityRepository;
 		this.affectedCpeRepository = affectedCpeRepository;
+		this.criteriaNodeRepository = criteriaNodeRepository;
+		this.criteriaCpeRepository = criteriaCpeRepository;
 		this.cpeNameParser = cpeNameParser;
 		this.normalizer = normalizer;
 		this.cpeVendorRepository = cpeVendorRepository;
@@ -93,25 +102,21 @@ public class NvdImportService {
 					lastModifiedAt
 			);
 
-			vulnerabilityRepository.save(v);
+			v = vulnerabilityRepository.save(v);
 			vulnUpserted++;
 
-			Set<AffectedSpec> specs = extractAffectedSpecs(item.cve().configurations());
+			CriteriaParseBundle bundle = buildCriteriaParseBundle(item.cve().configurations());
 
-			for (AffectedSpec spec : specs) {
+			replaceCriteriaTree(v, bundle.roots());
 
-				// range 4列は NULL を使わない（未指定は ""）
-				String vStartInc = nullToEmpty(spec.versionStartIncluding());
-				String vStartExc = nullToEmpty(spec.versionStartExcluding());
-				String vEndInc   = nullToEmpty(spec.versionEndIncluding());
-				String vEndExc   = nullToEmpty(spec.versionEndExcluding());
+			for (AffectedSpec spec : bundle.affected()) {
 
-				String vsi = (vStartInc == null) ? "" : vStartInc;
-				String vse = (vStartExc == null) ? "" : vStartExc;
-				String vei = (vEndInc   == null) ? "" : vEndInc;
-				String vee = (vEndExc   == null) ? "" : vEndExc;
+				String vsi = nullToEmpty(spec.versionStartIncluding());
+				String vse = nullToEmpty(spec.versionStartExcluding());
+				String vei = nullToEmpty(spec.versionEndIncluding());
+				String vee = nullToEmpty(spec.versionEndExcluding());
 
-				Long vulnId = v.getId(); // v は save 済み前提
+				Long vulnId = v.getId();
 				if (vulnId != null) {
 					boolean exists = affectedCpeRepository
 							.existsByVulnerabilityIdAndCpeNameAndVersionStartIncludingAndVersionStartExcludingAndVersionEndIncludingAndVersionEndExcluding(
@@ -120,7 +125,7 @@ public class NvdImportService {
 									vsi, vse, vei, vee
 							);
 					if (exists) {
-						continue; // duplicate skip
+						continue;
 					}
 				}
 
@@ -134,7 +139,9 @@ public class NvdImportService {
 						spec.cpePart(),
 						spec.targetSw(),
 						spec.targetHw(),
-						vsi, vse, vei, vee
+						vsi, vse, vei, vee,
+						null,
+						0
 				));
 				affectedInserted++;
 			}
@@ -144,6 +151,289 @@ public class NvdImportService {
 				vulnUpserted, affectedInserted, items.size());
 
 		return new ImportResult(vulnUpserted, affectedInserted, items.size());
+	}
+
+	private void replaceCriteriaTree(Vulnerability vulnerability, List<ParsedCriteriaRoot> roots) {
+		if (vulnerability == null || vulnerability.getId() == null) {
+			return;
+		}
+
+		criteriaCpeRepository.deleteByVulnerabilityId(vulnerability.getId());
+		criteriaNodeRepository.deleteByVulnerabilityId(vulnerability.getId());
+
+		if (roots == null || roots.isEmpty()) {
+			return;
+		}
+
+		int rootSort = 0;
+		for (ParsedCriteriaRoot root : roots) {
+			if (root == null || root.rootNode() == null) continue;
+			persistCriteriaNodeRecursive(
+					vulnerability,
+					null,
+					root.rootGroupNo(),
+					rootSort++,
+					root.rootNode()
+			);
+		}
+	}
+
+	private void persistCriteriaNodeRecursive(
+			Vulnerability vulnerability,
+			Long parentId,
+			int rootGroupNo,
+			int sortOrder,
+			ParsedCriteriaNode parsed
+	) {
+		if (parsed == null) return;
+
+		VulnerabilityCriteriaNode savedNode = criteriaNodeRepository.save(
+				new VulnerabilityCriteriaNode(
+						vulnerability,
+						parentId,
+						rootGroupNo,
+						parsed.nodeType(),
+						parsed.operator(),
+						parsed.negate(),
+						sortOrder
+				)
+		);
+
+		if (parsed.nodeType() == CriteriaNodeType.LEAF_GROUP && parsed.cpes() != null) {
+			for (ParsedCriteriaCpe cpe : parsed.cpes()) {
+				if (cpe == null) continue;
+
+				criteriaCpeRepository.save(new VulnerabilityCriteriaCpe(
+						savedNode.getId(),
+						vulnerability,
+						cpe.cpeName(),
+						cpe.cpeVendorId(),
+						cpe.cpeProductId(),
+						cpe.vendorNorm(),
+						cpe.productNorm(),
+						cpe.cpePart(),
+						cpe.targetSw(),
+						cpe.targetHw(),
+						cpe.versionStartIncluding(),
+						cpe.versionStartExcluding(),
+						cpe.versionEndIncluding(),
+						cpe.versionEndExcluding(),
+						cpe.matchVulnerable()
+				));
+			}
+		}
+
+		if (parsed.children() != null && !parsed.children().isEmpty()) {
+			int childSort = 0;
+			for (ParsedCriteriaNode child : parsed.children()) {
+				persistCriteriaNodeRecursive(
+						vulnerability,
+						savedNode.getId(),
+						rootGroupNo,
+						childSort++,
+						child
+				);
+			}
+		}
+	}
+
+	private CriteriaParseBundle buildCriteriaParseBundle(List<NvdCveResponse.Configurations> configurationsList) {
+		Set<AffectedSpec> affected = new LinkedHashSet<>();
+		List<ParsedCriteriaRoot> roots = new ArrayList<>();
+
+		if (configurationsList == null || configurationsList.isEmpty()) {
+			return new CriteriaParseBundle(new ArrayList<>(affected), roots);
+		}
+
+		int rootGroupNo = 0;
+		for (NvdCveResponse.Configurations configurations : configurationsList) {
+			if (configurations == null || configurations.nodes() == null || configurations.nodes().isEmpty()) {
+				rootGroupNo++;
+				continue;
+			}
+
+			List<ParsedCriteriaNode> topNodes = new ArrayList<>();
+			for (NvdCveResponse.Node node : configurations.nodes()) {
+				ParsedCriteriaNode parsed = toParsedCriteriaNode(node, affected);
+				if (parsed != null) {
+					topNodes.add(parsed);
+				}
+			}
+
+			if (topNodes.isEmpty()) {
+				rootGroupNo++;
+				continue;
+			}
+
+			ParsedCriteriaNode rootNode;
+			if (topNodes.size() == 1) {
+				rootNode = topNodes.get(0);
+			} else {
+				rootNode = new ParsedCriteriaNode(
+						CriteriaNodeType.OPERATOR,
+						CriteriaOperator.OR,
+						false,
+						topNodes,
+						List.of()
+				);
+			}
+
+			roots.add(new ParsedCriteriaRoot(rootGroupNo, rootNode));
+			rootGroupNo++;
+		}
+
+		return new CriteriaParseBundle(new ArrayList<>(affected), roots);
+	}
+
+	private ParsedCriteriaNode toParsedCriteriaNode(
+			NvdCveResponse.Node node,
+			Set<AffectedSpec> affectedOut
+	) {
+		if (node == null) return null;
+
+		List<ParsedCriteriaNode> children = new ArrayList<>();
+
+		if (node.children() != null) {
+			for (NvdCveResponse.Node child : node.children()) {
+				ParsedCriteriaNode parsedChild = toParsedCriteriaNode(child, affectedOut);
+				if (parsedChild != null) {
+					children.add(parsedChild);
+				}
+			}
+		}
+
+		if (node.nodes() != null) {
+			for (NvdCveResponse.Node child : node.nodes()) {
+				ParsedCriteriaNode parsedChild = toParsedCriteriaNode(child, affectedOut);
+				if (parsedChild != null) {
+					children.add(parsedChild);
+				}
+			}
+		}
+
+		List<ParsedCriteriaCpe> leafCpes = new ArrayList<>();
+		if (node.cpeMatch() != null) {
+			for (NvdCveResponse.CpeMatch m : node.cpeMatch()) {
+				ParsedCriteriaCpe parsedCpe = toParsedCriteriaCpe(m, affectedOut);
+				if (parsedCpe != null) {
+					leafCpes.add(parsedCpe);
+				}
+			}
+		}
+
+		boolean negate = Boolean.TRUE.equals(node.negate());
+		CriteriaOperator operator = parseCriteriaOperator(node.operator());
+
+		if (children.isEmpty() && leafCpes.isEmpty()) {
+			return null;
+		}
+
+		if (children.isEmpty()) {
+			return new ParsedCriteriaNode(
+					CriteriaNodeType.LEAF_GROUP,
+					null,
+					negate,
+					List.of(),
+					leafCpes
+			);
+		}
+
+		if (!leafCpes.isEmpty()) {
+			children.add(new ParsedCriteriaNode(
+					CriteriaNodeType.LEAF_GROUP,
+					null,
+					false,
+					List.of(),
+					leafCpes
+			));
+		}
+
+		return new ParsedCriteriaNode(
+				CriteriaNodeType.OPERATOR,
+				operator == null ? CriteriaOperator.OR : operator,
+				negate,
+				children,
+				List.of()
+		);
+	}
+
+	private ParsedCriteriaCpe toParsedCriteriaCpe(
+			NvdCveResponse.CpeMatch m,
+			Set<AffectedSpec> affectedOut
+	) {
+		if (m == null) return null;
+		if (Boolean.FALSE.equals(m.vulnerable())) return null;
+
+		String criteria = normalize(m.criteria());
+		if (criteria == null || !criteria.startsWith("cpe:2.3:")) return null;
+
+		String vendorNorm = null;
+		String productNorm = null;
+		Long vendorId = null;
+		Long productId = null;
+
+		String cpePart = null;
+		String targetSw = null;
+		String targetHw = null;
+
+		var parsedOpt = cpeNameParser.parse(criteria);
+		if (parsedOpt.isPresent()) {
+			var parsed = parsedOpt.get();
+
+			cpePart = normalizeCpePart(parsed.part());
+			targetSw = normalizeTargetSw(parsed.targetSw());
+			targetHw = normalizeTargetHw(parsed.targetHw());
+
+			vendorNorm = normalizer.normalizeVendor(parsed.vendor());
+			productNorm = normalizer.normalizeProduct(parsed.product());
+
+			if (vendorNorm != null && productNorm != null) {
+				vendorId = cpeVendorRepository.findByNameNorm(vendorNorm)
+						.map(v -> v.getId())
+						.orElse(null);
+				if (vendorId != null) {
+					productId = cpeProductRepository.findByVendorIdAndNameNorm(vendorId, productNorm)
+							.map(p -> p.getId())
+							.orElse(null);
+				}
+			}
+		}
+
+		String vsi = nullToEmpty(normalize(m.versionStartIncluding()));
+		String vse = nullToEmpty(normalize(m.versionStartExcluding()));
+		String vei = nullToEmpty(normalize(m.versionEndIncluding()));
+		String vee = nullToEmpty(normalize(m.versionEndExcluding()));
+
+		affectedOut.add(new AffectedSpec(
+				criteria,
+				vendorId,
+				productId,
+				vendorNorm,
+				productNorm,
+				cpePart,
+				targetSw,
+				targetHw,
+				vsi,
+				vse,
+				vei,
+				vee
+		));
+
+		return new ParsedCriteriaCpe(
+				criteria,
+				vendorId,
+				productId,
+				vendorNorm,
+				productNorm,
+				cpePart,
+				targetSw,
+				targetHw,
+				vsi,
+				vse,
+				vei,
+				vee,
+				true
+		);
 	}
 
 	private static String pickEnDescription(List<NvdCveResponse.LangString> descriptions) {
@@ -186,102 +476,28 @@ public class NvdImportService {
 		String v = normalize(s);
 		if (v == null) return null;
 
-		// 1) ISO_OFFSET_DATE_TIME (e.g. 2026-02-22T18:00:01-05:00 / ...Z)
 		try {
 			return OffsetDateTime.parse(v).toLocalDateTime();
 		} catch (Exception ignore) {}
 
-		// 2) Instant (e.g. 2026-02-22T23:00:01Z)
 		try {
 			return java.time.Instant.parse(v).atOffset(java.time.ZoneOffset.UTC).toLocalDateTime();
 		} catch (Exception ignore) {}
 
-		// 3) LocalDateTime (no offset)
 		try {
 			return LocalDateTime.parse(v);
 		} catch (Exception e) {
-			// ✅ ここで初めてログ（1回だけでもOK）
-			// log.warn("Failed to parse NVD datetime: [{}]", v);
 			return null;
 		}
 	}
 
-	private Set<AffectedSpec> extractAffectedSpecs(List<NvdCveResponse.Configurations> configurationsList) {
-		Set<AffectedSpec> out = new LinkedHashSet<>();
-		if (configurationsList == null || configurationsList.isEmpty()) return out;
-
-		for (var configurations : configurationsList) {
-			if (configurations == null || configurations.nodes() == null) continue;
-			for (var n : configurations.nodes()) collectFromNode(n, out);
-		}
-
-		out.removeIf(Objects::isNull);
-		out.removeIf(s -> s.criteria() == null || !s.criteria().startsWith("cpe:2.3:"));
-		return out;
-	}
-
-	private void collectFromNode(NvdCveResponse.Node node, Set<AffectedSpec> out) {
-		if (node == null) return;
-
-		if (node.cpeMatch() != null) {
-			for (var m : node.cpeMatch()) {
-				if (m == null) continue;
-				if (Boolean.FALSE.equals(m.vulnerable())) continue;
-
-				String criteria = normalize(m.criteria());
-				if (criteria == null) continue;
-
-				String vendorNorm = null;
-				String productNorm = null;
-				Long vendorId = null;
-				Long productId = null;
-
-				String cpePart = null;
-				String targetSw = null;
-				String targetHw = null;
-
-				var parsedOpt = cpeNameParser.parse(criteria);
-				if (parsedOpt.isPresent()) {
-					var parsed = parsedOpt.get();
-
-					cpePart = normalize(parsed.part());
-					targetSw = normalizeTargetSw(parsed.targetSw());
-					targetHw = normalizeTargetHw(parsed.targetHw());
-
-					vendorNorm = normalizer.normalizeVendor(parsed.vendor());
-					productNorm = normalizer.normalizeProduct(parsed.product());
-
-					if (vendorNorm != null && productNorm != null) {
-						vendorId = cpeVendorRepository.findByNameNorm(vendorNorm)
-								.map(v -> v.getId())
-								.orElse(null);
-						if (vendorId != null) {
-							productId = cpeProductRepository.findByVendorIdAndNameNorm(vendorId, productNorm)
-									.map(p -> p.getId())
-									.orElse(null);
-						}
-					}
-				}
-
-				out.add(new AffectedSpec(
-						criteria,
-						vendorId,
-						productId,
-						vendorNorm,
-						productNorm,
-						cpePart,
-						targetSw,
-						targetHw,
-						normalize(m.versionStartIncluding()),
-						normalize(m.versionStartExcluding()),
-						normalize(m.versionEndIncluding()),
-						normalize(m.versionEndExcluding())
-				));
-			}
-		}
-
-		if (node.children() != null) {
-			for (var c : node.children()) collectFromNode(c, out);
+	private static CriteriaOperator parseCriteriaOperator(String raw) {
+		String s = normalize(raw);
+		if (s == null) return null;
+		try {
+			return CriteriaOperator.valueOf(s.toUpperCase(Locale.ROOT));
+		} catch (Exception ex) {
+			return null;
 		}
 	}
 
@@ -316,6 +532,19 @@ public class NvdImportService {
 		return s.toLowerCase(Locale.ROOT);
 	}
 
+	private static String normalizeCpePart(String raw) {
+		String s = normalize(raw);
+		if (s == null) {
+			return null;
+		}
+
+		String x = s.toLowerCase(Locale.ROOT);
+		return switch (x) {
+			case "a", "o", "h" -> x;
+			default -> x;
+		};
+	}
+
 	private static String nullToEmpty(String s) {
 		return (s == null) ? "" : s;
 	}
@@ -335,6 +564,40 @@ public class NvdImportService {
 			String versionStartExcluding,
 			String versionEndIncluding,
 			String versionEndExcluding
+	) {}
+
+	private record ParsedCriteriaRoot(
+			int rootGroupNo,
+			ParsedCriteriaNode rootNode
+	) {}
+
+	private record ParsedCriteriaNode(
+			CriteriaNodeType nodeType,
+			CriteriaOperator operator,
+			boolean negate,
+			List<ParsedCriteriaNode> children,
+			List<ParsedCriteriaCpe> cpes
+	) {}
+
+	private record ParsedCriteriaCpe(
+			String cpeName,
+			Long cpeVendorId,
+			Long cpeProductId,
+			String vendorNorm,
+			String productNorm,
+			String cpePart,
+			String targetSw,
+			String targetHw,
+			String versionStartIncluding,
+			String versionStartExcluding,
+			String versionEndIncluding,
+			String versionEndExcluding,
+			boolean matchVulnerable
+	) {}
+
+	private record CriteriaParseBundle(
+			List<AffectedSpec> affected,
+			List<ParsedCriteriaRoot> roots
 	) {}
 
 	public record ImportResult(int vulnerabilitiesUpserted, int affectedCpesInserted, int fetched) {}

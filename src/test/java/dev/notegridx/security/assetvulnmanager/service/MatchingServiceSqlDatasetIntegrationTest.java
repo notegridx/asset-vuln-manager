@@ -138,7 +138,7 @@ class MatchingServiceSqlDatasetIntegrationTest {
         var result = matchingService.matchAndUpsertAlerts();
 
         assertThat(result).isNotNull();
-        assertThat(result.pairsFound()).isZero();
+        assertThat(result.pairsFound()).isEqualTo(1);
         assertThat(result.alertsInserted()).isZero();
         assertThat(result.alertsTouched()).isZero();
         assertThat(result.alertsAutoClosed()).isZero();
@@ -185,7 +185,7 @@ class MatchingServiceSqlDatasetIntegrationTest {
         var result = matchingService.matchAndUpsertAlerts();
 
         assertThat(result).isNotNull();
-        assertThat(result.pairsFound()).isZero();
+        assertThat(result.pairsFound()).isEqualTo(1);
         assertThat(result.alertsInserted()).isZero();
         assertThat(result.alertsTouched()).isZero();
         assertThat(result.alertsAutoClosed()).isZero();
@@ -233,7 +233,7 @@ class MatchingServiceSqlDatasetIntegrationTest {
         var result = matchingService.matchAndUpsertAlerts();
 
         assertThat(result).isNotNull();
-        assertThat(result.pairsFound()).isZero();
+        assertThat(result.pairsFound()).isEqualTo(1);
         assertThat(result.alertsInserted()).isZero();
         assertThat(result.alertsTouched()).isZero();
         assertThat(result.alertsAutoClosed()).isZero();
@@ -281,7 +281,7 @@ class MatchingServiceSqlDatasetIntegrationTest {
         var result = matchingService.matchAndUpsertAlerts();
 
         assertThat(result).isNotNull();
-        assertThat(result.pairsFound()).isZero();
+        assertThat(result.pairsFound()).isEqualTo(1);
         assertThat(result.alertsInserted()).isZero();
         assertThat(result.alertsTouched()).isZero();
         assertThat(result.alertsAutoClosed()).isZero();
@@ -329,7 +329,7 @@ class MatchingServiceSqlDatasetIntegrationTest {
         var result = matchingService.matchAndUpsertAlerts();
 
         assertThat(result).isNotNull();
-        assertThat(result.pairsFound()).isZero();
+        assertThat(result.pairsFound()).isEqualTo(1);
         assertThat(result.alertsInserted()).isZero();
         assertThat(result.alertsTouched()).isZero();
         assertThat(result.alertsAutoClosed()).isZero();
@@ -410,7 +410,7 @@ class MatchingServiceSqlDatasetIntegrationTest {
         var result = matchingService.matchAndUpsertAlerts();
 
         assertThat(result).isNotNull();
-        assertThat(result.pairsFound()).isZero();
+        assertThat(result.pairsFound()).isEqualTo(1);
         assertThat(result.alertsInserted()).isZero();
         assertThat(result.alertsTouched()).isZero();
         assertThat(result.alertsAutoClosed()).isEqualTo(1);
@@ -512,7 +512,7 @@ class MatchingServiceSqlDatasetIntegrationTest {
         var result = matchingService.matchAndUpsertAlerts();
 
         assertThat(result).isNotNull();
-        assertThat(result.pairsFound()).isZero();
+        assertThat(result.pairsFound()).isEqualTo(1);
         assertThat(result.alertsInserted()).isZero();
         assertThat(result.alertsTouched()).isZero();
         assertThat(result.alertsAutoClosed()).isZero();
@@ -531,12 +531,266 @@ class MatchingServiceSqlDatasetIntegrationTest {
         var result = matchingService.matchAndUpsertAlerts();
 
         assertThat(result).isNotNull();
-        assertThat(result.pairsFound()).isZero();
+        assertThat(result.pairsFound()).isEqualTo(1);
         assertThat(result.alertsInserted()).isZero();
         assertThat(result.alertsTouched()).isZero();
         assertThat(result.alertsAutoClosed()).isZero();
 
         Alert alert = findAlert(3020L, 2020L);
         assertThat(alert).isNull();
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case21_dict_id_criteria_or_match.sql"
+    })
+    void case21_dictId_criteriaOrMatch_generatesConfirmedAlert() {
+        assertSeedPresent(3021L, 2021L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3021L, 2021L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getUncertainReason()).isNull();
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case22_dict_id_criteria_or_no_match.sql"
+    })
+    void case22_dictId_criteriaOrNoMatch_generatesNoAlert() {
+        assertSeedPresent(3022L, 2022L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isZero();
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        assertNoAlert(3022L, 2022L);
+        assertThat(alertRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case23_dict_id_criteria_and_missing_leg.sql"
+    })
+    void case23_dictId_criteriaAndMissingLeg_generatesNoAlert() {
+        assertSeedPresent(3023L, 2023L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        assertNoAlert(3023L, 2023L);
+        assertThat(alertRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case24_dict_id_criteria_and_match.sql"
+    })
+    void case24_dictId_criteriaAndMatch_generatesConfirmedAlert() {
+        assertSeedPresent(3024L, 2024L);
+        assertSeedPresent(3025L, 2024L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3024L, 2024L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+
+        assertNoAlert(3025L, 2024L);
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case25_dict_id_nested_or_and_match.sql"
+    })
+    void case25_dictId_nestedOrAndMatch_generatesConfirmedAlert() {
+        assertSeedPresent(3026L, 2025L);
+        assertSeedPresent(3027L, 2025L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3026L, 2025L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+
+        assertNoAlert(3027L, 2025L);
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case26_dict_id_nested_or_and_missing_leg.sql"
+    })
+    void case26_dictId_nestedOrAndMissingLeg_generatesNoAlert() {
+        assertSeedPresent(3028L, 2026L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        assertNoAlert(3028L, 2026L);
+        assertThat(alertRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case27_dict_id_nested_version_unconfirmed.sql"
+    })
+    void case27_dictId_nestedVersionUnconfirmed_generatesUnconfirmedAlert() {
+        assertSeedPresent(3029L, 2027L);
+        assertSeedPresent(3030L, 2027L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3030L, 2027L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.UNCONFIRMED);
+        assertThat(alert.getUncertainReason()).isEqualTo(AlertUncertainReason.MISSING_SOFTWARE_VERSION);
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+
+        assertNoAlert(3029L, 2027L);
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case28_dict_id_target_sw_inside_leaf_no_match.sql"
+    })
+    void case28_dictId_targetSwInsideLeafNoMatch_generatesNoAlert() {
+        assertSeedPresent(3031L, 2028L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        assertNoAlert(3031L, 2028L);
+        assertThat(alertRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case29_dict_id_multiple_root_groups_or.sql"
+    })
+    void case29_dictId_multipleRootGroupsOr_generatesConfirmedAlert() {
+        assertSeedPresent(3032L, 2029L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3032L, 2029L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case30_dict_id_criteria_reopen_closed_auto_closed.sql"
+    })
+    void case30_dictId_criteriaReopenClosedAutoClosed_reopensAlert() {
+        assertSeedPresent(3033L, 2030L);
+        assertSeedPresent(3034L, 2030L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isEqualTo(1);
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3033L, 2030L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCloseReason()).isNull();
+        assertThat(alert.getClosedAt()).isNull();
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+
+        assertNoAlert(3034L, 2030L);
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    private void assertNoAlert(long softwareInstallId, long vulnerabilityId) {
+        assertThat(findAlert(softwareInstallId, vulnerabilityId)).isNull();
     }
 }

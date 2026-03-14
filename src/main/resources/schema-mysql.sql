@@ -690,6 +690,9 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
     version_end_including   VARCHAR(255) NOT NULL DEFAULT '',
     version_end_excluding   VARCHAR(255) NOT NULL DEFAULT '',
 
+    criteria_node_id BIGINT NULL,
+    root_group_no INT NOT NULL DEFAULT 0,
+
     dedupe_key CHAR(64),
 
     created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -706,23 +709,281 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
 
     ) ENGINE=InnoDB;
 
-CREATE INDEX idx_vac_cpe
-    ON vulnerability_affected_cpes(cpe_name);
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_affected_cpes'
+           AND index_name = 'idx_vac_cpe'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vac_cpe ON vulnerability_affected_cpes(cpe_name)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-CREATE INDEX idx_vac_vuln
-    ON vulnerability_affected_cpes(vulnerability_id);
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_affected_cpes'
+           AND index_name = 'idx_vac_vuln'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vac_vuln ON vulnerability_affected_cpes(vulnerability_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-CREATE INDEX idx_vac_vendor_product_id
-    ON vulnerability_affected_cpes(cpe_vendor_id, cpe_product_id);
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_affected_cpes'
+           AND index_name = 'idx_vac_vendor_product_id'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vac_vendor_product_id ON vulnerability_affected_cpes(cpe_vendor_id, cpe_product_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-CREATE INDEX idx_vac_vendor_product_norm
-    ON vulnerability_affected_cpes(vendor_norm, product_norm);
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_affected_cpes'
+           AND index_name = 'idx_vac_vendor_product_norm'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vac_vendor_product_norm ON vulnerability_affected_cpes(vendor_norm, product_norm)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-CREATE INDEX idx_vac_target_sw
-    ON vulnerability_affected_cpes(target_sw);
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_affected_cpes'
+           AND index_name = 'idx_vac_target_sw'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vac_target_sw ON vulnerability_affected_cpes(target_sw)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-CREATE UNIQUE INDEX uq_vac_dedupe_key
-    ON vulnerability_affected_cpes(dedupe_key);
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_affected_cpes'
+           AND index_name = 'idx_vac_criteria_node'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vac_criteria_node ON vulnerability_affected_cpes(criteria_node_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_affected_cpes'
+           AND index_name = 'idx_vac_vuln_root'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vac_vuln_root ON vulnerability_affected_cpes(vulnerability_id, root_group_no)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_affected_cpes'
+           AND index_name = 'uq_vac_dedupe_key'
+    ),
+    'SELECT 1',
+    'CREATE UNIQUE INDEX uq_vac_dedupe_key ON vulnerability_affected_cpes(dedupe_key)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- =========================================================
+-- Vulnerability criteria tree
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS vulnerability_criteria_nodes
+(
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    vulnerability_id BIGINT NOT NULL,
+    parent_id BIGINT NULL,
+
+    root_group_no INT NOT NULL DEFAULT 0,
+    node_type VARCHAR(16) NOT NULL,
+    operator VARCHAR(8) NULL,
+    negate BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order INT NOT NULL DEFAULT 0,
+
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+
+    CONSTRAINT fk_vcn_vuln
+    FOREIGN KEY (vulnerability_id) REFERENCES vulnerabilities(id),
+
+    CONSTRAINT fk_vcn_parent
+    FOREIGN KEY (parent_id) REFERENCES vulnerability_criteria_nodes(id)
+
+    ) ENGINE=InnoDB;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_criteria_nodes'
+           AND index_name = 'idx_vcn_vuln_root'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vcn_vuln_root ON vulnerability_criteria_nodes(vulnerability_id, root_group_no)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_criteria_nodes'
+           AND index_name = 'idx_vcn_parent'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vcn_parent ON vulnerability_criteria_nodes(parent_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_criteria_nodes'
+           AND index_name = 'idx_vcn_vuln_type'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vcn_vuln_type ON vulnerability_criteria_nodes(vulnerability_id, node_type)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+CREATE TABLE IF NOT EXISTS vulnerability_criteria_cpes
+(
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    node_id BIGINT NOT NULL,
+    vulnerability_id BIGINT NOT NULL,
+
+    cpe_name VARCHAR(512) NOT NULL,
+
+    cpe_vendor_id BIGINT NULL,
+    cpe_product_id BIGINT NULL,
+
+    vendor_norm VARCHAR(255) NULL,
+    product_norm VARCHAR(255) NULL,
+
+    cpe_part VARCHAR(8) NULL,
+    target_sw VARCHAR(64) NULL,
+    target_hw VARCHAR(64) NULL,
+
+    version_start_including VARCHAR(255) NOT NULL DEFAULT '',
+    version_start_excluding VARCHAR(255) NOT NULL DEFAULT '',
+    version_end_including   VARCHAR(255) NOT NULL DEFAULT '',
+    version_end_excluding   VARCHAR(255) NOT NULL DEFAULT '',
+
+    match_vulnerable BOOLEAN NOT NULL DEFAULT TRUE,
+    dedupe_key CHAR(64) NULL,
+
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+
+    CONSTRAINT fk_vcc_node
+    FOREIGN KEY (node_id) REFERENCES vulnerability_criteria_nodes(id),
+
+    CONSTRAINT fk_vcc_vuln
+    FOREIGN KEY (vulnerability_id) REFERENCES vulnerabilities(id),
+
+    CONSTRAINT fk_vcc_vendor
+    FOREIGN KEY (cpe_vendor_id) REFERENCES cpe_vendors(id),
+
+    CONSTRAINT fk_vcc_product
+    FOREIGN KEY (cpe_product_id) REFERENCES cpe_products(id)
+
+    ) ENGINE=InnoDB;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_criteria_cpes'
+           AND index_name = 'idx_vcc_vuln'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vcc_vuln ON vulnerability_criteria_cpes(vulnerability_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_criteria_cpes'
+           AND index_name = 'idx_vcc_node'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vcc_node ON vulnerability_criteria_cpes(node_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_criteria_cpes'
+           AND index_name = 'idx_vcc_vendor_product_id'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vcc_vendor_product_id ON vulnerability_criteria_cpes(cpe_vendor_id, cpe_product_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_criteria_cpes'
+           AND index_name = 'idx_vcc_vendor_product_norm'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vcc_vendor_product_norm ON vulnerability_criteria_cpes(vendor_norm, product_norm)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_criteria_cpes'
+           AND index_name = 'idx_vcc_cpe_name'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_vcc_cpe_name ON vulnerability_criteria_cpes(cpe_name)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'vulnerability_criteria_cpes'
+           AND index_name = 'uq_vcc_dedupe_key'
+    ),
+    'SELECT 1',
+    'CREATE UNIQUE INDEX uq_vcc_dedupe_key ON vulnerability_criteria_cpes(dedupe_key)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- =========================================================
 -- Alerts

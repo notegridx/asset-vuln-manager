@@ -4,7 +4,6 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -25,7 +24,6 @@ public class AdminCveDeltaUpdateService {
         this.runRecorder = runRecorder;
     }
 
-    @Transactional
     public DeltaUpdateResult runDeltaUpdate(int daysBack, int maxResults) {
 
         int safeDays = Math.max(1, Math.min(daysBack, 120));

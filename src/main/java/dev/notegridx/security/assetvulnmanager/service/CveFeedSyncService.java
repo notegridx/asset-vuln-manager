@@ -3,14 +3,27 @@ package dev.notegridx.security.assetvulnmanager.service;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import dev.notegridx.security.assetvulnmanager.domain.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
+import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
+import dev.notegridx.security.assetvulnmanager.domain.CveSyncState;
+import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
+import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityAffectedCpe;
+import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityCriteriaCpe;
+import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityCriteriaNode;
+import dev.notegridx.security.assetvulnmanager.domain.enums.CriteriaNodeType;
+import dev.notegridx.security.assetvulnmanager.domain.enums.CriteriaOperator;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.CpeNameParser;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.CveFeedMetaParser;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient;
+import dev.notegridx.security.assetvulnmanager.infra.nvd.dto.NvdCveResponse;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CveSyncStateRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
+import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityCriteriaCpeRepository;
+import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityCriteriaNodeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
 import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
@@ -64,6 +77,8 @@ public class CveFeedSyncService {
 
     private final VulnerabilityRepository vulnerabilityRepository;
     private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
+    private final VulnerabilityCriteriaNodeRepository criteriaNodeRepository;
+    private final VulnerabilityCriteriaCpeRepository criteriaCpeRepository;
     private final CveSyncStateRepository syncStateRepository;
 
     // for canonical linking (vendor/product id & normalization)
@@ -80,6 +95,7 @@ public class CveFeedSyncService {
 
     // IMPORTANT: prevent JsonParser.close() from closing underlying stream (GZIP)
     private final JsonFactory jsonFactory;
+    private final ObjectMapper objectMapper;
 
     // small-ish caches (LRU)
     private final Map<String, Long> vendorIdCache = new LruMap<>(50_000);
@@ -89,6 +105,8 @@ public class CveFeedSyncService {
             NvdCveFeedClient feedClient,
             VulnerabilityRepository vulnerabilityRepository,
             VulnerabilityAffectedCpeRepository affectedCpeRepository,
+            VulnerabilityCriteriaNodeRepository criteriaNodeRepository,
+            VulnerabilityCriteriaCpeRepository criteriaCpeRepository,
             CveSyncStateRepository syncStateRepository,
             CpeNameParser cpeNameParser,
             VendorProductNormalizer normalizer,
@@ -101,6 +119,8 @@ public class CveFeedSyncService {
         this.feedClient = feedClient;
         this.vulnerabilityRepository = vulnerabilityRepository;
         this.affectedCpeRepository = affectedCpeRepository;
+        this.criteriaNodeRepository = criteriaNodeRepository;
+        this.criteriaCpeRepository = criteriaCpeRepository;
         this.syncStateRepository = syncStateRepository;
 
         this.cpeNameParser = cpeNameParser;
@@ -118,6 +138,7 @@ public class CveFeedSyncService {
         JsonFactory jf = new JsonFactory();
         jf.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
         this.jsonFactory = jf;
+        this.objectMapper = new ObjectMapper();
     }
 
     /**
@@ -325,6 +346,7 @@ public class CveFeedSyncService {
         LocalDateTime lastModifiedAt = null;
 
         List<ParsedAffectedCpe> affected = new ArrayList<>();
+        List<ParsedCriteriaRoot> criteriaRoots = new ArrayList<>();
 
         while (p.nextToken() != JsonToken.END_OBJECT) {
             if (p.currentToken() != JsonToken.FIELD_NAME) continue;
@@ -380,7 +402,11 @@ public class CveFeedSyncService {
                 }
 
                 if ("configurations".equals(cf) && cv == JsonToken.START_ARRAY) {
-                    parseConfigurationsToAffected(p, affected);
+                    List<NvdCveResponse.Configurations> configurations =
+                            objectMapper.readValue(p, new TypeReference<List<NvdCveResponse.Configurations>>() {});
+                    CriteriaParseBundle bundle = buildCriteriaParseBundle(configurations);
+                    affected.addAll(bundle.affected());
+                    criteriaRoots.addAll(bundle.roots());
                     continue;
                 }
 
@@ -399,6 +425,7 @@ public class CveFeedSyncService {
         out.publishedAt = publishedAt;
         out.lastModifiedAt = lastModifiedAt;
         out.affected = affected;
+        out.criteriaRoots = criteriaRoots;
 
         return out;
     }
@@ -532,103 +559,195 @@ public class CveFeedSyncService {
         return out;
     }
 
-    private void parseConfigurationsToAffected(JsonParser p, List<ParsedAffectedCpe> out) throws IOException {
-        while (p.nextToken() != JsonToken.END_ARRAY) {
-            if (p.currentToken() != JsonToken.START_OBJECT) {
-                p.skipChildren();
+    private CriteriaParseBundle buildCriteriaParseBundle(List<NvdCveResponse.Configurations> configurationsList) {
+        List<ParsedAffectedCpe> affected = new ArrayList<>();
+        List<ParsedCriteriaRoot> roots = new ArrayList<>();
+
+        if (configurationsList == null || configurationsList.isEmpty()) {
+            return new CriteriaParseBundle(affected, roots);
+        }
+
+        int rootGroupNo = 0;
+        for (NvdCveResponse.Configurations configurations : configurationsList) {
+            if (configurations == null || configurations.nodes() == null || configurations.nodes().isEmpty()) {
+                rootGroupNo++;
                 continue;
             }
 
-            while (p.nextToken() != JsonToken.END_OBJECT) {
-                if (p.currentToken() != JsonToken.FIELD_NAME) continue;
-
-                String f = p.currentName();
-                JsonToken v = p.nextToken();
-
-                if ("nodes".equals(f) && v == JsonToken.START_ARRAY) {
-                    parseNodesArray(p, out);
-                } else {
-                    p.skipChildren();
+            List<ParsedCriteriaNode> topNodes = new ArrayList<>();
+            for (NvdCveResponse.Node node : configurations.nodes()) {
+                ParsedCriteriaNode parsed = toParsedCriteriaNode(node, affected);
+                if (parsed != null) {
+                    topNodes.add(parsed);
                 }
             }
-        }
-    }
 
-    private void parseNodesArray(JsonParser p, List<ParsedAffectedCpe> out) throws IOException {
-        while (p.nextToken() != JsonToken.END_ARRAY) {
-            if (p.currentToken() != JsonToken.START_OBJECT) {
-                p.skipChildren();
+            if (topNodes.isEmpty()) {
+                rootGroupNo++;
                 continue;
             }
 
-            parseNodeObject(p, out);
-        }
-    }
-
-    private void parseNodeObject(JsonParser p, List<ParsedAffectedCpe> out) throws IOException {
-        while (p.nextToken() != JsonToken.END_OBJECT) {
-            if (p.currentToken() != JsonToken.FIELD_NAME) continue;
-
-            String f = p.currentName();
-            JsonToken v = p.nextToken();
-
-            if ("cpeMatch".equals(f) && v == JsonToken.START_ARRAY) {
-                parseCpeMatchArray(p, out);
-            } else if ("children".equals(f) && v == JsonToken.START_ARRAY) {
-                parseNodesArray(p, out);
+            ParsedCriteriaNode rootNode;
+            if (topNodes.size() == 1) {
+                rootNode = topNodes.get(0);
             } else {
-                p.skipChildren();
+                rootNode = new ParsedCriteriaNode(
+                        CriteriaNodeType.OPERATOR,
+                        CriteriaOperator.OR,
+                        false,
+                        topNodes,
+                        List.of()
+                );
             }
+
+            roots.add(new ParsedCriteriaRoot(rootGroupNo, rootNode));
+            rootGroupNo++;
         }
+
+        return new CriteriaParseBundle(affected, roots);
     }
 
-    private void parseCpeMatchArray(JsonParser p, List<ParsedAffectedCpe> out) throws IOException {
-        while (p.nextToken() != JsonToken.END_ARRAY) {
-            if (p.currentToken() != JsonToken.START_OBJECT) {
-                p.skipChildren();
-                continue;
-            }
+    private ParsedCriteriaNode toParsedCriteriaNode(
+            NvdCveResponse.Node node,
+            List<ParsedAffectedCpe> flatOut
+    ) {
+        if (node == null) return null;
 
-            ParsedAffectedCpe a = new ParsedAffectedCpe();
-            boolean vulnerable = true;
+        List<ParsedCriteriaNode> children = new ArrayList<>();
 
-            while (p.nextToken() != JsonToken.END_OBJECT) {
-                if (p.currentToken() != JsonToken.FIELD_NAME) continue;
-
-                String f = p.currentName();
-                JsonToken v = p.nextToken();
-
-                if ("vulnerable".equals(f) && (v == JsonToken.VALUE_TRUE || v == JsonToken.VALUE_FALSE)) {
-                    vulnerable = p.getBooleanValue();
-                } else if ("criteria".equals(f) && v == JsonToken.VALUE_STRING) {
-                    a.criteria = p.getValueAsString();
-                } else if ("versionStartIncluding".equals(f) && v == JsonToken.VALUE_STRING) {
-                    a.versionStartIncluding = p.getValueAsString();
-                } else if ("versionStartExcluding".equals(f) && v == JsonToken.VALUE_STRING) {
-                    a.versionStartExcluding = p.getValueAsString();
-                } else if ("versionEndIncluding".equals(f) && v == JsonToken.VALUE_STRING) {
-                    a.versionEndIncluding = p.getValueAsString();
-                } else if ("versionEndExcluding".equals(f) && v == JsonToken.VALUE_STRING) {
-                    a.versionEndExcluding = p.getValueAsString();
-                } else {
-                    p.skipChildren();
+        if (node.children() != null) {
+            for (NvdCveResponse.Node child : node.children()) {
+                ParsedCriteriaNode parsedChild = toParsedCriteriaNode(child, flatOut);
+                if (parsedChild != null) {
+                    children.add(parsedChild);
                 }
             }
-
-            if (!vulnerable || norm(a.criteria) == null) {
-                continue;
-            }
-
-            Optional<CpeNameParser.ParsedCpe23> parsedOpt = cpeNameParser.parse(a.criteria);
-            if (parsedOpt.isPresent()) {
-                CpeNameParser.ParsedCpe23 parsed = parsedOpt.get();
-                a.cpePart = normalizeCpePart(parsed.part());
-                a.targetSw = normalizeTargetSw(parsed.targetSw());
-                a.targetHw = normalizeTargetHw(parsed.targetHw());
-            }
-
-            out.add(a);
         }
+
+        if (node.nodes() != null) {
+            for (NvdCveResponse.Node child : node.nodes()) {
+                ParsedCriteriaNode parsedChild = toParsedCriteriaNode(child, flatOut);
+                if (parsedChild != null) {
+                    children.add(parsedChild);
+                }
+            }
+        }
+
+        List<ParsedCriteriaCpe> leafCpes = new ArrayList<>();
+        if (node.cpeMatch() != null) {
+            for (NvdCveResponse.CpeMatch m : node.cpeMatch()) {
+                ParsedCriteriaCpe parsedCpe = toParsedCriteriaCpe(m, flatOut);
+                if (parsedCpe != null) {
+                    leafCpes.add(parsedCpe);
+                }
+            }
+        }
+
+        boolean negate = Boolean.TRUE.equals(node.negate());
+        CriteriaOperator operator = parseCriteriaOperator(node.operator());
+
+        if (children.isEmpty() && leafCpes.isEmpty()) {
+            return null;
+        }
+
+        if (children.isEmpty()) {
+            return new ParsedCriteriaNode(
+                    CriteriaNodeType.LEAF_GROUP,
+                    null,
+                    negate,
+                    List.of(),
+                    leafCpes
+            );
+        }
+
+        if (!leafCpes.isEmpty()) {
+            children.add(new ParsedCriteriaNode(
+                    CriteriaNodeType.LEAF_GROUP,
+                    null,
+                    false,
+                    List.of(),
+                    leafCpes
+            ));
+        }
+
+        return new ParsedCriteriaNode(
+                CriteriaNodeType.OPERATOR,
+                operator == null ? CriteriaOperator.OR : operator,
+                negate,
+                children,
+                List.of()
+        );
+    }
+
+    private ParsedCriteriaCpe toParsedCriteriaCpe(
+            NvdCveResponse.CpeMatch m,
+            List<ParsedAffectedCpe> flatOut
+    ) {
+        if (m == null) return null;
+        if (Boolean.FALSE.equals(m.vulnerable())) return null;
+
+        String criteria = norm(m.criteria());
+        if (criteria == null || !criteria.startsWith("cpe:2.3:")) return null;
+
+        String vendorNorm = null;
+        String productNorm = null;
+        Long vendorId = null;
+        Long productId = null;
+
+        String cpePart = null;
+        String targetSw = null;
+        String targetHw = null;
+
+        Optional<CpeNameParser.ParsedCpe23> parsedOpt = cpeNameParser.parse(criteria);
+        if (parsedOpt.isPresent()) {
+            CpeNameParser.ParsedCpe23 parsed = parsedOpt.get();
+
+            cpePart = normalizeCpePart(parsed.part());
+            targetSw = normalizeTargetSw(parsed.targetSw());
+            targetHw = normalizeTargetHw(parsed.targetHw());
+
+            vendorNorm = normalizer.normalizeVendor(parsed.vendor());
+            productNorm = normalizer.normalizeProduct(parsed.product());
+
+            if (vendorNorm != null && productNorm != null) {
+                vendorId = cachedVendorId(vendorNorm);
+                if (vendorId != null) {
+                    productId = cachedProductId(vendorId, productNorm);
+                }
+            }
+        }
+
+        String vsi = nullToEmpty(m.versionStartIncluding());
+        String vse = nullToEmpty(m.versionStartExcluding());
+        String vei = nullToEmpty(m.versionEndIncluding());
+        String vee = nullToEmpty(m.versionEndExcluding());
+
+        ParsedAffectedCpe flat = new ParsedAffectedCpe();
+        flat.criteria = criteria;
+        flat.cpePart = cpePart;
+        flat.targetSw = targetSw;
+        flat.targetHw = targetHw;
+        flat.versionStartIncluding = vsi;
+        flat.versionStartExcluding = vse;
+        flat.versionEndIncluding = vei;
+        flat.versionEndExcluding = vee;
+        flatOut.add(flat);
+
+        return new ParsedCriteriaCpe(
+                criteria,
+                vendorId,
+                productId,
+                vendorNorm,
+                productNorm,
+                cpePart,
+                targetSw,
+                targetHw,
+                vsi,
+                vse,
+                vei,
+                vee,
+                true
+        );
     }
 
     private ChunkResult upsertChunk(List<ParsedVulnerability> chunk) {
@@ -680,6 +799,8 @@ public class CveFeedSyncService {
             v = vulnerabilityRepository.save(v);
             vulnUpserted++;
 
+            replaceCriteriaTree(v, pv.criteriaRoots);
+
             if (pv.affected != null && !pv.affected.isEmpty()) {
                 affectedInserted += upsertAffectedBatch(v, pv.affected);
             }
@@ -703,6 +824,122 @@ public class CveFeedSyncService {
         }
 
         return new ChunkResult(vulnUpserted, affectedInserted);
+    }
+
+    private void replaceCriteriaTree(Vulnerability vulnerability, List<ParsedCriteriaRoot> roots) {
+        if (vulnerability == null || vulnerability.getId() == null) {
+            return;
+        }
+
+        Long vulnerabilityId = vulnerability.getId();
+
+        criteriaCpeRepository.deleteByVulnerabilityId(vulnerabilityId);
+        criteriaNodeRepository.deleteByVulnerabilityId(vulnerabilityId);
+
+        try {
+            em.flush();
+            em.clear();
+        } catch (Exception e) {
+            log.warn("flush/clear after criteria delete failed. vulnerabilityId={}, err={}",
+                    vulnerabilityId, safeMsg(e));
+            throw e;
+        }
+
+        if (roots == null || roots.isEmpty()) {
+            return;
+        }
+
+        Vulnerability managedV = em.getReference(Vulnerability.class, vulnerabilityId);
+
+        int rootSort = 0;
+        for (ParsedCriteriaRoot root : roots) {
+            if (root == null || root.rootNode() == null) {
+                continue;
+            }
+            persistCriteriaNodeRecursive(
+                    managedV,
+                    null,
+                    root.rootGroupNo(),
+                    rootSort++,
+                    root.rootNode()
+            );
+        }
+    }
+
+    private void persistCriteriaNodeRecursive(
+            Vulnerability vulnerability,
+            Long parentId,
+            int rootGroupNo,
+            int sortOrder,
+            ParsedCriteriaNode parsed
+    ) {
+        if (parsed == null) return;
+
+        VulnerabilityCriteriaNode savedNode = criteriaNodeRepository.save(
+                new VulnerabilityCriteriaNode(
+                        vulnerability,
+                        parentId,
+                        rootGroupNo,
+                        parsed.nodeType(),
+                        parsed.operator(),
+                        parsed.negate(),
+                        sortOrder
+                )
+        );
+
+        int pending = 0;
+
+        if (parsed.nodeType() == CriteriaNodeType.LEAF_GROUP && parsed.cpes() != null) {
+            for (ParsedCriteriaCpe cpe : parsed.cpes()) {
+                if (cpe == null) continue;
+
+                VulnerabilityCriteriaCpe row = new VulnerabilityCriteriaCpe(
+                        savedNode.getId(),
+                        vulnerability,
+                        cpe.cpeName(),
+                        cpe.cpeVendorId(),
+                        cpe.cpeProductId(),
+                        cpe.vendorNorm(),
+                        cpe.productNorm(),
+                        cpe.cpePart(),
+                        cpe.targetSw(),
+                        cpe.targetHw(),
+                        cpe.versionStartIncluding(),
+                        cpe.versionStartExcluding(),
+                        cpe.versionEndIncluding(),
+                        cpe.versionEndExcluding(),
+                        cpe.matchVulnerable()
+                );
+                criteriaCpeRepository.save(row);
+                pending++;
+
+                if (pending >= FLUSH_EVERY) {
+                    em.flush();
+                    em.clear();
+                    pending = 0;
+                    vulnerability = em.getReference(Vulnerability.class, vulnerability.getId());
+                }
+            }
+        }
+
+        if (pending > 0) {
+            em.flush();
+            em.clear();
+            vulnerability = em.getReference(Vulnerability.class, vulnerability.getId());
+        }
+
+        if (parsed.children() != null && !parsed.children().isEmpty()) {
+            int childSort = 0;
+            for (ParsedCriteriaNode child : parsed.children()) {
+                persistCriteriaNodeRecursive(
+                        vulnerability,
+                        savedNode.getId(),
+                        rootGroupNo,
+                        childSort++,
+                        child
+                );
+            }
+        }
     }
 
     private int upsertAffectedBatch(Vulnerability v, List<ParsedAffectedCpe> items) {
@@ -805,7 +1042,9 @@ public class CveFeedSyncService {
                     vsi,
                     vse,
                     vei,
-                    vee
+                    vee,
+                    null,
+                    0
             );
             row.setDedupeKey(dedupeKey);
 
@@ -961,6 +1200,16 @@ public class CveFeedSyncService {
         }
     }
 
+    private static CriteriaOperator parseCriteriaOperator(String raw) {
+        String s = norm(raw);
+        if (s == null) return null;
+        try {
+            return CriteriaOperator.valueOf(s.toUpperCase(Locale.ROOT));
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
     private static String normalizeCpePart(String raw) {
         String s = norm(raw);
         if (s == null) {
@@ -1035,6 +1284,7 @@ public class CveFeedSyncService {
         LocalDateTime publishedAt;
         LocalDateTime lastModifiedAt;
         List<ParsedAffectedCpe> affected = new ArrayList<>();
+        List<ParsedCriteriaRoot> criteriaRoots = new ArrayList<>();
     }
 
     private static final class ParsedAffectedCpe {
@@ -1046,6 +1296,44 @@ public class CveFeedSyncService {
         String versionStartExcluding;
         String versionEndIncluding;
         String versionEndExcluding;
+    }
+
+    private record ParsedCriteriaRoot(
+            int rootGroupNo,
+            ParsedCriteriaNode rootNode
+    ) {
+    }
+
+    private record ParsedCriteriaNode(
+            CriteriaNodeType nodeType,
+            CriteriaOperator operator,
+            boolean negate,
+            List<ParsedCriteriaNode> children,
+            List<ParsedCriteriaCpe> cpes
+    ) {
+    }
+
+    private record ParsedCriteriaCpe(
+            String cpeName,
+            Long cpeVendorId,
+            Long cpeProductId,
+            String vendorNorm,
+            String productNorm,
+            String cpePart,
+            String targetSw,
+            String targetHw,
+            String versionStartIncluding,
+            String versionStartExcluding,
+            String versionEndIncluding,
+            String versionEndExcluding,
+            boolean matchVulnerable
+    ) {
+    }
+
+    private record CriteriaParseBundle(
+            List<ParsedAffectedCpe> affected,
+            List<ParsedCriteriaRoot> roots
+    ) {
     }
 
     private static final class CvssPick {

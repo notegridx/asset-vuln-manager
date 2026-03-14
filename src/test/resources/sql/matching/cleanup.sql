@@ -1,6 +1,8 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 DELETE FROM alerts;
+DELETE FROM vulnerability_criteria_cpes;
+DELETE FROM vulnerability_criteria_nodes;
 DELETE FROM vulnerability_affected_cpes;
 DELETE FROM software_installs;
 DELETE FROM vulnerabilities;

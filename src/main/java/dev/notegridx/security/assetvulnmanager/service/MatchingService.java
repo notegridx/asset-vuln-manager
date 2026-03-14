@@ -1,7 +1,7 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
 import dev.notegridx.security.assetvulnmanager.domain.Alert;
-import dev.notegridx.security.assetvulnmanager.domain.Asset;
+import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
 import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityAffectedCpe;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +36,8 @@ public class MatchingService {
 	private final VulnerabilityRepository vulnerabilityRepository;
 	private final AlertRepository alertRepository;
 	private final CanonicalBackfillService canonicalBackfillService;
+	private final CriteriaTreeLoader criteriaTreeLoader;
+	private final CriteriaEvaluator criteriaEvaluator;
 	private final EntityManager entityManager;
 
 	private final VersionRangeMatcher versionMatcher = new VersionRangeMatcher();
@@ -45,6 +48,8 @@ public class MatchingService {
 			VulnerabilityRepository vulnerabilityRepository,
 			AlertRepository alertRepository,
 			CanonicalBackfillService canonicalBackfillService,
+			CriteriaTreeLoader criteriaTreeLoader,
+			CriteriaEvaluator criteriaEvaluator,
 			EntityManager entityManager
 	) {
 		this.softwareInstallRepository = softwareInstallRepository;
@@ -52,6 +57,8 @@ public class MatchingService {
 		this.vulnerabilityRepository = vulnerabilityRepository;
 		this.alertRepository = alertRepository;
 		this.canonicalBackfillService = canonicalBackfillService;
+		this.criteriaTreeLoader = criteriaTreeLoader;
+		this.criteriaEvaluator = criteriaEvaluator;
 		this.entityManager = entityManager;
 	}
 
@@ -65,88 +72,86 @@ public class MatchingService {
 		int alertsInserted = 0;
 		int alertsTouched = 0;
 
-		// ---- Phase1: canonical / normalized + version range + OS-aware filter ----
-		var installsAll = softwareInstallRepository.findAll();
+		List<SoftwareInstall> installsAll = softwareInstallRepository.findAll();
 
-		for (var si : installsAll) {
-			List<VulnerabilityAffectedCpe> candidates = new ArrayList<>();
-			AlertMatchMethod method = null;
+		Map<Long, List<SoftwareInstall>> installsByAssetKey = new LinkedHashMap<>();
+		Map<Long, Map<Long, CandidateBundle>> candidateBundlesByAssetKey = new LinkedHashMap<>();
+		Map<Long, SoftwareInstall> installById = new HashMap<>();
 
-			Long vid = si.getCpeVendorId();
-			Long pid = si.getCpeProductId();
-
-			if (vid != null && pid != null) {
-				candidates = affectedCpeRepository.findCandidatesByCanonical(vid, pid);
-				if (!candidates.isEmpty()) {
-					method = AlertMatchMethod.DICT_ID;
-				}
-			}
-
-			if (candidates.isEmpty()) {
-				String vn = normalize(si.getNormalizedVendor());
-				String pn = normalize(si.getNormalizedProduct());
-				if (vn != null && pn != null) {
-					candidates = affectedCpeRepository.findCandidatesByNorm(vn, pn);
-					if (!candidates.isEmpty()) {
-						method = AlertMatchMethod.NORM;
-					}
-				}
-			}
-
-			if (candidates.isEmpty()) {
+		for (SoftwareInstall si : installsAll) {
+			if (si == null || si.getId() == null) {
 				continue;
 			}
 
-			String softwareVersion = normalize(si.getVersion());
-			Map<Long, BestVerdict> bestByVuln = new HashMap<>();
+			long assetKey = assetGroupKey(si);
+			installsByAssetKey.computeIfAbsent(assetKey, k -> new ArrayList<>()).add(si);
+			candidateBundlesByAssetKey.computeIfAbsent(assetKey, k -> new LinkedHashMap<>());
+			installById.put(si.getId(), si);
 
-			for (VulnerabilityAffectedCpe a : candidates) {
-				if (!isRelevantForAsset(a, si.getAsset())) {
+			collectCandidatesForInstall(
+					si,
+					candidateBundlesByAssetKey.get(assetKey)
+			);
+		}
+
+		Map<Long, Vulnerability> vulnerabilityCache = new HashMap<>();
+		for (Map<Long, CandidateBundle> perAsset : candidateBundlesByAssetKey.values()) {
+			if (perAsset == null || perAsset.isEmpty()) {
+				continue;
+			}
+
+			List<Long> vulnIds = new ArrayList<>(perAsset.keySet());
+			vulnerabilityRepository.findAllById(vulnIds)
+					.forEach(v -> vulnerabilityCache.put(v.getId(), v));
+		}
+
+		for (Map.Entry<Long, List<SoftwareInstall>> assetEntry : installsByAssetKey.entrySet()) {
+			Long assetKey = assetEntry.getKey();
+			List<SoftwareInstall> assetInstalls = assetEntry.getValue();
+
+			Map<Long, CandidateBundle> bundles = candidateBundlesByAssetKey.getOrDefault(assetKey, Map.of());
+			if (bundles.isEmpty()) {
+				continue;
+			}
+
+			for (Map.Entry<Long, CandidateBundle> e : bundles.entrySet()) {
+				Long vulnId = e.getKey();
+				CandidateBundle bundle = e.getValue();
+				if (vulnId == null || bundle == null) {
 					continue;
 				}
 
-				Long vulnId = a.getVulnerability().getId();
-
-				VersionRangeMatcher.Verdict v = versionMatcher.verdict(
-						softwareVersion,
-						a.getVersionStartIncluding(),
-						a.getVersionStartExcluding(),
-						a.getVersionEndIncluding(),
-						a.getVersionEndExcluding()
-				);
-
-				BestVerdict prev = bestByVuln.get(vulnId);
-				BestVerdict next = BestVerdict.from(v);
-				if (prev == null || next.isBetterThan(prev)) {
-					bestByVuln.put(vulnId, next);
-				}
-			}
-
-			List<Long> vulnIds = bestByVuln.entrySet().stream()
-					.filter(e -> e.getValue().verdict != VersionRangeMatcher.Verdict.NO_MATCH)
-					.map(Map.Entry::getKey)
-					.distinct()
-					.toList();
-
-			if (vulnIds.isEmpty()) {
-				continue;
-			}
-
-			Map<Long, Vulnerability> vulnById = vulnerabilityRepository.findAllById(vulnIds).stream()
-					.collect(java.util.stream.Collectors.toMap(Vulnerability::getId, v -> v));
-
-			for (Long vulnId : vulnIds) {
 				pairsFound++;
 
-				BestVerdict bv = bestByVuln.get(vulnId);
-				if (bv == null || bv.verdict == VersionRangeMatcher.Verdict.NO_MATCH) {
+				CriteriaTreeLoader.LoadedCriteriaTree tree = criteriaTreeLoader.load(vulnId);
+
+				CriteriaEvaluator.EvalResult result;
+				if (tree != null && tree.hasRoots()) {
+					result = criteriaEvaluator.evaluate(tree, assetInstalls);
+				} else {
+					// old ingested data fallback
+					result = evaluateFlatFallback(bundle.rows(), assetInstalls, bundle.bestMethod());
+				}
+
+				if (result == null || !result.matched() || result.primarySoftwareInstallId() == null) {
 					continue;
 				}
 
-				AlertCertainty certainty = bv.toCertainty();
-				AlertUncertainReason reason = bv.toReason();
+				SoftwareInstall primaryInstall = installById.get(result.primarySoftwareInstallId());
+				if (primaryInstall == null) {
+					continue;
+				}
 
-				Optional<Alert> existing = alertRepository.findBySoftwareInstallIdAndVulnerabilityId(si.getId(), vulnId);
+				Vulnerability vulnerability = vulnerabilityCache.get(vulnId);
+				if (vulnerability == null) {
+					continue;
+				}
+
+				AlertCertainty certainty = result.certainty();
+				AlertUncertainReason reason = result.reason();
+				AlertMatchMethod method = result.method() != null ? result.method() : bundle.bestMethod();
+
+				Optional<Alert> existing = alertRepository.findBySoftwareInstallIdAndVulnerabilityId(primaryInstall.getId(), vulnId);
 				if (existing.isPresent()) {
 					Alert a = existing.get();
 
@@ -161,121 +166,9 @@ public class MatchingService {
 					alertRepository.save(a);
 					alertsTouched++;
 				} else {
-					Vulnerability v = vulnById.get(vulnId);
-					if (v == null) {
-						continue;
-					}
-
-					Alert a = new Alert(si, v, detectedAt, certainty, reason, method);
+					Alert a = new Alert(primaryInstall, vulnerability, detectedAt, certainty, reason, method);
 					alertRepository.save(a);
 					alertsInserted++;
-				}
-			}
-		}
-
-		// ---- Phase2: cpe_name exact + version range + OS-aware filter ----
-		var installsWithCpe = softwareInstallRepository.findByCpeNameIsNotNull();
-
-		List<String> cpes = installsWithCpe.stream()
-				.map(s -> normalize(s.getCpeName()))
-				.filter(Objects::nonNull)
-				.distinct()
-				.toList();
-
-		if (!cpes.isEmpty()) {
-			List<VulnerabilityAffectedCpe> affected = affectedCpeRepository.findByCpeNameIn(cpes);
-
-			Map<String, List<VulnerabilityAffectedCpe>> cpeToAffected = affected.stream()
-					.collect(java.util.stream.Collectors.groupingBy(VulnerabilityAffectedCpe::getCpeName));
-
-			for (var si : installsWithCpe) {
-				String cpe = normalize(si.getCpeName());
-				if (cpe == null) {
-					continue;
-				}
-
-				List<VulnerabilityAffectedCpe> list = cpeToAffected.getOrDefault(cpe, List.of());
-				if (list.isEmpty()) {
-					continue;
-				}
-
-				String softwareVersion = normalize(si.getVersion());
-				if (softwareVersion == null) {
-					softwareVersion = normalize(extractVersionFromCpe23(cpe));
-				}
-
-				Map<Long, BestVerdict> bestByVuln = new HashMap<>();
-
-				for (VulnerabilityAffectedCpe a : list) {
-					if (!isRelevantForAsset(a, si.getAsset())) {
-						continue;
-					}
-
-					Long vulnId = a.getVulnerability().getId();
-
-					VersionRangeMatcher.Verdict v = versionMatcher.verdict(
-							softwareVersion,
-							a.getVersionStartIncluding(),
-							a.getVersionStartExcluding(),
-							a.getVersionEndIncluding(),
-							a.getVersionEndExcluding()
-					);
-
-					BestVerdict prev = bestByVuln.get(vulnId);
-					BestVerdict next = BestVerdict.from(v);
-					if (prev == null || next.isBetterThan(prev)) {
-						bestByVuln.put(vulnId, next);
-					}
-				}
-
-				List<Long> vulnIds = bestByVuln.entrySet().stream()
-						.filter(e -> e.getValue().verdict != VersionRangeMatcher.Verdict.NO_MATCH)
-						.map(Map.Entry::getKey)
-						.distinct()
-						.toList();
-
-				if (vulnIds.isEmpty()) {
-					continue;
-				}
-
-				Map<Long, Vulnerability> vulnById = vulnerabilityRepository.findAllById(vulnIds).stream()
-						.collect(java.util.stream.Collectors.toMap(Vulnerability::getId, v -> v));
-
-				for (Long vulnId : vulnIds) {
-					pairsFound++;
-
-					BestVerdict bv = bestByVuln.get(vulnId);
-					if (bv == null || bv.verdict == VersionRangeMatcher.Verdict.NO_MATCH) {
-						continue;
-					}
-
-					AlertCertainty certainty = bv.toCertainty();
-					AlertUncertainReason reason = bv.toReason();
-
-					Optional<Alert> existing = alertRepository.findBySoftwareInstallIdAndVulnerabilityId(si.getId(), vulnId);
-					if (existing.isPresent()) {
-						Alert a = existing.get();
-
-						if (a.getStatus() == AlertStatus.CLOSED
-								&& a.getCloseReason() == CloseReason.AUTO_CLOSED_NO_LONGER_AFFECTED) {
-							a.reopen(detectedAt);
-						} else {
-							a.touchDetected(detectedAt);
-						}
-
-						a.updateMatchContext(certainty, reason, AlertMatchMethod.CPE_NAME);
-						alertRepository.save(a);
-						alertsTouched++;
-					} else {
-						Vulnerability v = vulnById.get(vulnId);
-						if (v == null) {
-							continue;
-						}
-
-						Alert a = new Alert(si, v, detectedAt, certainty, reason, AlertMatchMethod.CPE_NAME);
-						alertRepository.save(a);
-						alertsInserted++;
-					}
 				}
 			}
 		}
@@ -291,8 +184,111 @@ public class MatchingService {
 		return new MatchResult(pairsFound, alertsInserted, alertsTouched, autoClosed);
 	}
 
-	private boolean isRelevantForAsset(VulnerabilityAffectedCpe affected, Asset asset) {
-		if (affected == null) {
+	private void collectCandidatesForInstall(
+			SoftwareInstall si,
+			Map<Long, CandidateBundle> bundles
+	) {
+		if (si == null || bundles == null) {
+			return;
+		}
+
+		Long vid = si.getCpeVendorId();
+		Long pid = si.getCpeProductId();
+
+		if (vid != null && pid != null) {
+			List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findCandidatesByCanonical(vid, pid);
+			registerCandidateRows(rows, AlertMatchMethod.DICT_ID, bundles);
+		}
+
+		String vn = normalize(si.getNormalizedVendor());
+		String pn = normalize(si.getNormalizedProduct());
+		if (vn != null && pn != null) {
+			List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findCandidatesByNorm(vn, pn);
+			registerCandidateRows(rows, AlertMatchMethod.NORM, bundles);
+		}
+
+		String cpeName = normalize(si.getCpeName());
+		if (cpeName != null) {
+			List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findByCpeName(cpeName);
+			registerCandidateRows(rows, AlertMatchMethod.CPE_NAME, bundles);
+		}
+	}
+
+	private void registerCandidateRows(
+			List<VulnerabilityAffectedCpe> rows,
+			AlertMatchMethod method,
+			Map<Long, CandidateBundle> bundles
+	) {
+		if (rows == null || rows.isEmpty()) {
+			return;
+		}
+
+		for (VulnerabilityAffectedCpe row : rows) {
+			if (row == null || row.getVulnerability() == null || row.getVulnerability().getId() == null) {
+				continue;
+			}
+
+			Long vulnId = row.getVulnerability().getId();
+			CandidateBundle bundle = bundles.computeIfAbsent(vulnId, k -> new CandidateBundle());
+			bundle.addRow(row);
+			bundle.promoteMethod(method);
+		}
+	}
+
+	private CriteriaEvaluator.EvalResult evaluateFlatFallback(
+			List<VulnerabilityAffectedCpe> rows,
+			List<SoftwareInstall> installs,
+			AlertMatchMethod defaultMethod
+	) {
+		if (rows == null || rows.isEmpty() || installs == null || installs.isEmpty()) {
+			return CriteriaEvaluator.EvalResult.noMatch();
+		}
+
+		CriteriaEvaluator.EvalResult best = CriteriaEvaluator.EvalResult.noMatch();
+
+		for (SoftwareInstall si : installs) {
+			String softwareVersion = normalize(si.getVersion());
+			String cpeName = normalize(si.getCpeName());
+
+			if (softwareVersion == null && cpeName != null) {
+				softwareVersion = normalize(extractVersionFromCpe23(cpeName));
+			}
+
+			for (VulnerabilityAffectedCpe a : rows) {
+				if (!isRelevantForAsset(a, si)) {
+					continue;
+				}
+
+				VersionRangeMatcher.Verdict verdict = versionMatcher.verdict(
+						softwareVersion,
+						a.getVersionStartIncluding(),
+						a.getVersionStartExcluding(),
+						a.getVersionEndIncluding(),
+						a.getVersionEndExcluding()
+				);
+
+				if (verdict == VersionRangeMatcher.Verdict.NO_MATCH) {
+					continue;
+				}
+
+				BestVerdict bv = BestVerdict.from(verdict);
+
+				CriteriaEvaluator.EvalResult current = CriteriaEvaluator.EvalResult.matched(
+						bv.toCertainty(),
+						bv.toReason(),
+						si.getId(),
+						defaultMethod
+				);
+
+				best = better(best, current);
+			}
+		}
+
+		return best;
+	}
+
+	private boolean isRelevantForAsset(VulnerabilityAffectedCpe affected, SoftwareInstall install) {
+		if (affected == null || install == null) {
 			return false;
 		}
 
@@ -301,24 +297,21 @@ public class MatchingService {
 			return false;
 		}
 
-		// AVM 当面方針: application CPE のみ対象
 		if (!"a".equals(cpePart)) {
 			return false;
 		}
 
 		String targetSw = normalizeTargetSw(affected.getTargetSw());
 
-		// wildcard / omitted は共通ビルド扱い
 		if (targetSw == null || "*".equals(targetSw) || "-".equals(targetSw)) {
 			return true;
 		}
 
-		HostOsFamily host = detectHostOsFamily(asset);
-		if (host == HostOsFamily.UNKNOWN) {
+		if (install.getAsset() == null) {
 			return false;
 		}
 
-		return switch (host) {
+		return switch (detectHostOsFamily(install)) {
 			case WINDOWS -> targetSw.equals("windows");
 			case MACOS -> targetSw.equals("mac_os") || targetSw.equals("macos");
 			case LINUX -> targetSw.equals("linux");
@@ -326,24 +319,24 @@ public class MatchingService {
 		};
 	}
 
-	private HostOsFamily detectHostOsFamily(Asset asset) {
-		if (asset == null) {
+	private HostOsFamily detectHostOsFamily(SoftwareInstall install) {
+		if (install == null || install.getAsset() == null) {
 			return HostOsFamily.UNKNOWN;
 		}
 
-		String platform = normalize(asset.getPlatform());
+		String platform = normalize(install.getAsset().getPlatform());
 		HostOsFamily byPlatform = mapHostOs(platform);
 		if (byPlatform != HostOsFamily.UNKNOWN) {
 			return byPlatform;
 		}
 
-		String osName = normalize(asset.getOsName());
+		String osName = normalize(install.getAsset().getOsName());
 		HostOsFamily byOsName = mapHostOs(osName);
 		if (byOsName != HostOsFamily.UNKNOWN) {
 			return byOsName;
 		}
 
-		String osVersion = normalize(asset.getOsVersion());
+		String osVersion = normalize(install.getAsset().getOsVersion());
 		return mapHostOs(osVersion);
 	}
 
@@ -379,6 +372,53 @@ public class MatchingService {
 		}
 
 		return HostOsFamily.UNKNOWN;
+	}
+
+	private static long assetGroupKey(SoftwareInstall si) {
+		if (si != null && si.getAsset() != null && si.getAsset().getId() != null) {
+			return si.getAsset().getId();
+		}
+		return si != null && si.getId() != null ? -si.getId() : Long.MIN_VALUE;
+	}
+
+	private static CriteriaEvaluator.EvalResult better(
+			CriteriaEvaluator.EvalResult a,
+			CriteriaEvaluator.EvalResult b
+	) {
+		if (score(b) > score(a)) {
+			return b;
+		}
+		if (score(b) < score(a)) {
+			return a;
+		}
+
+		if (methodScore(b.method()) > methodScore(a.method())) {
+			return b;
+		}
+		if (methodScore(b.method()) < methodScore(a.method())) {
+			return a;
+		}
+
+		Long aId = a.primarySoftwareInstallId();
+		Long bId = b.primarySoftwareInstallId();
+
+		if (aId == null) return b;
+		if (bId == null) return a;
+
+		return (bId < aId) ? b : a;
+	}
+
+	private static int score(CriteriaEvaluator.EvalResult r) {
+		if (r == null || !r.matched()) return 0;
+		if (r.certainty() == AlertCertainty.CONFIRMED) return 2;
+		return 1;
+	}
+
+	private static int methodScore(AlertMatchMethod method) {
+		if (method == AlertMatchMethod.DICT_ID) return 3;
+		if (method == AlertMatchMethod.NORM) return 2;
+		if (method == AlertMatchMethod.CPE_NAME) return 1;
+		return 0;
 	}
 
 	private static String normalizePart(String raw) {
@@ -453,6 +493,34 @@ public class MatchingService {
 		UNKNOWN
 	}
 
+	private static final class CandidateBundle {
+		private final List<VulnerabilityAffectedCpe> rows = new ArrayList<>();
+		private AlertMatchMethod bestMethod;
+
+		void addRow(VulnerabilityAffectedCpe row) {
+			if (row != null) {
+				rows.add(row);
+			}
+		}
+
+		void promoteMethod(AlertMatchMethod method) {
+			if (method == null) {
+				return;
+			}
+			if (bestMethod == null || methodScore(method) > methodScore(bestMethod)) {
+				bestMethod = method;
+			}
+		}
+
+		List<VulnerabilityAffectedCpe> rows() {
+			return rows;
+		}
+
+		AlertMatchMethod bestMethod() {
+			return bestMethod;
+		}
+	}
+
 	private static final class BestVerdict {
 		private static final EnumSet<VersionRangeMatcher.Verdict> UNCONFIRMED =
 				EnumSet.of(
@@ -469,16 +537,6 @@ public class MatchingService {
 
 		static BestVerdict from(VersionRangeMatcher.Verdict v) {
 			return new BestVerdict(v == null ? VersionRangeMatcher.Verdict.NO_MATCH : v);
-		}
-
-		boolean isBetterThan(BestVerdict other) {
-			return score(this.verdict) > score(other.verdict);
-		}
-
-		private static int score(VersionRangeMatcher.Verdict v) {
-			if (v == VersionRangeMatcher.Verdict.MATCH) return 2;
-			if (UNCONFIRMED.contains(v)) return 1;
-			return 0;
 		}
 
 		AlertCertainty toCertainty() {

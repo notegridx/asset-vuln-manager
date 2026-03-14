@@ -63,17 +63,13 @@ public record NvdCveResponse(
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public record Node(
+			String operator,
+			Boolean negate,
 			List<CpeMatch> cpeMatch,
-			List<Node> children
+			List<Node> children,
+			List<Node> nodes
 	) {}
 
-	/**
-	 * NVD CVE API 2.0:
-	 * - criteria: "cpe:2.3:..."（バージョンは "*" のことも多い）
-	 * - versionStartIncluding / Excluding
-	 * - versionEndIncluding / Excluding
-	 * が入る場合がある
-	 */
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public record CpeMatch(
 			Boolean vulnerable,

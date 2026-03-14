@@ -3,7 +3,6 @@ package dev.notegridx.security.assetvulnmanager.service;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -23,7 +22,6 @@ public class AdminCveFeedSyncService {
         this.runRecorder = runRecorder;
     }
 
-    @Transactional
     public CveFeedSyncService.SyncResult runSync(
             NvdCveFeedClient.FeedKind kind,
             Integer year,
