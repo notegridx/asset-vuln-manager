@@ -681,13 +681,15 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
     vendor_norm VARCHAR(255),
     product_norm VARCHAR(255),
 
-    -- version range: NULLは使わず未指定は "" で運用
+    cpe_part VARCHAR(8),
+    target_sw VARCHAR(64),
+    target_hw VARCHAR(64),
+
     version_start_including VARCHAR(255) NOT NULL DEFAULT '',
     version_start_excluding VARCHAR(255) NOT NULL DEFAULT '',
     version_end_including   VARCHAR(255) NOT NULL DEFAULT '',
     version_end_excluding   VARCHAR(255) NOT NULL DEFAULT '',
 
-    -- 安定dedupe用
     dedupe_key CHAR(64),
 
     created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -704,85 +706,23 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
 
     ) ENGINE=InnoDB;
 
--- 既存DB向け: dedupe_key 列が未追加なら追加
-SET @ddl = IF (
-    EXISTS (
-        SELECT 1
-          FROM information_schema.columns
-         WHERE table_schema = DATABASE()
-           AND table_name = 'vulnerability_affected_cpes'
-           AND column_name = 'dedupe_key'
-    ),
-    'SELECT 1',
-    'ALTER TABLE vulnerability_affected_cpes ADD COLUMN dedupe_key CHAR(64) NULL'
-);
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+CREATE INDEX idx_vac_cpe
+    ON vulnerability_affected_cpes(cpe_name);
 
-SET @ddl = IF (
-    EXISTS (
-        SELECT 1
-          FROM information_schema.statistics
-         WHERE table_schema = DATABASE()
-           AND table_name = 'vulnerability_affected_cpes'
-           AND index_name = 'idx_vac_cpe'
-    ),
-    'SELECT 1',
-    'CREATE INDEX idx_vac_cpe ON vulnerability_affected_cpes(cpe_name)'
-);
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+CREATE INDEX idx_vac_vuln
+    ON vulnerability_affected_cpes(vulnerability_id);
 
-SET @ddl = IF (
-    EXISTS (
-        SELECT 1
-          FROM information_schema.statistics
-         WHERE table_schema = DATABASE()
-           AND table_name = 'vulnerability_affected_cpes'
-           AND index_name = 'idx_vac_vuln'
-    ),
-    'SELECT 1',
-    'CREATE INDEX idx_vac_vuln ON vulnerability_affected_cpes(vulnerability_id)'
-);
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+CREATE INDEX idx_vac_vendor_product_id
+    ON vulnerability_affected_cpes(cpe_vendor_id, cpe_product_id);
 
-SET @ddl = IF (
-    EXISTS (
-        SELECT 1
-          FROM information_schema.statistics
-         WHERE table_schema = DATABASE()
-           AND table_name = 'vulnerability_affected_cpes'
-           AND index_name = 'idx_vac_vendor_product_id'
-    ),
-    'SELECT 1',
-    'CREATE INDEX idx_vac_vendor_product_id ON vulnerability_affected_cpes(cpe_vendor_id, cpe_product_id)'
-);
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+CREATE INDEX idx_vac_vendor_product_norm
+    ON vulnerability_affected_cpes(vendor_norm, product_norm);
 
-SET @ddl = IF (
-    EXISTS (
-        SELECT 1
-          FROM information_schema.statistics
-         WHERE table_schema = DATABASE()
-           AND table_name = 'vulnerability_affected_cpes'
-           AND index_name = 'idx_vac_vendor_product_norm'
-    ),
-    'SELECT 1',
-    'CREATE INDEX idx_vac_vendor_product_norm ON vulnerability_affected_cpes(vendor_norm, product_norm)'
-);
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+CREATE INDEX idx_vac_target_sw
+    ON vulnerability_affected_cpes(target_sw);
 
--- dedupe_key unique
-SET @ddl = IF (
-    EXISTS (
-        SELECT 1
-          FROM information_schema.statistics
-         WHERE table_schema = DATABASE()
-           AND table_name = 'vulnerability_affected_cpes'
-           AND index_name = 'uq_vac_dedupe_key'
-    ),
-    'SELECT 1',
-    'CREATE UNIQUE INDEX uq_vac_dedupe_key ON vulnerability_affected_cpes(dedupe_key)'
-);
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+CREATE UNIQUE INDEX uq_vac_dedupe_key
+    ON vulnerability_affected_cpes(dedupe_key);
 
 -- =========================================================
 -- Alerts

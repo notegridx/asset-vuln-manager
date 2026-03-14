@@ -13,8 +13,8 @@ INSERT INTO software_installs (
     source_type, canonical_link_disabled
 ) VALUES
     (3015, 1, 'APPLICATION', 'MANUAL',
-     'Acme', 'Widget AutoClose', '20.0',
-     'Acme', 'Widget AutoClose', '20.0',
+     'Acme', 'Widget Old', '9.0',
+     'Acme', 'Widget Old', '9.0',
      'acme', 'widget',
      101, 1001,
      'UNKNOWN', FALSE);
@@ -23,6 +23,7 @@ INSERT INTO vulnerability_affected_cpes (
     id, vulnerability_id, cpe_name,
     cpe_vendor_id, cpe_product_id,
     vendor_norm, product_norm,
+    cpe_part, target_sw, target_hw,
     version_start_including, version_start_excluding,
     version_end_including, version_end_excluding,
     dedupe_key
@@ -30,6 +31,7 @@ INSERT INTO vulnerability_affected_cpes (
     (4015, 2015, 'cpe:2.3:a:acme:widget:*:*:*:*:*:*:*:*',
      101, 1001,
      'acme', 'widget',
+     'a', '*', '*',
      '1.0', '', '2.0', '',
      'case15');
 
@@ -48,5 +50,5 @@ INSERT INTO alerts (
         '2026-03-01 00:00:00.000000',
         NULL,
         1, 'Case Host 01', 'asset-case-host-01',
-        3015, 'Acme', 'Widget AutoClose', '20.0'
+        3015, 'Acme', 'Widget Old', '9.0'
     );

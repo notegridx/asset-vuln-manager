@@ -23,6 +23,7 @@ INSERT INTO vulnerability_affected_cpes (
     id, vulnerability_id, cpe_name,
     cpe_vendor_id, cpe_product_id,
     vendor_norm, product_norm,
+    cpe_part, target_sw, target_hw,
     version_start_including, version_start_excluding,
     version_end_including, version_end_excluding,
     dedupe_key
@@ -30,10 +31,12 @@ INSERT INTO vulnerability_affected_cpes (
       (4016, 2016, 'cpe:2.3:a:acme:widget:*:*:*:*:*:*:*:*',
        101, 1001,
        'acme', 'widget',
+       'a', '*', '*',
        '1.0', '', '2.0', '',
        'case16a'),
       (4017, 2016, 'cpe:2.3:a:acme:widget:*:*:*:*:*:*:*:*',
        101, 1001,
        'acme', 'widget',
+       'a', '*', '*',
        '10.0', '', '20.0', '',
        'case16b');

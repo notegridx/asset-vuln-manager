@@ -9,7 +9,9 @@ import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
 import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityAffectedCpe;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertMatchMethod;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertUncertainReason;
+import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
@@ -17,8 +19,6 @@ import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
-import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
-import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,6 +90,9 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "microsoft",
                 "edge",
+                "a",
+                "*",
+                "*",
                 "100.0.0",
                 "",
                 "130.0.0",
@@ -140,6 +143,9 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "microsoft",
                 "edge",
+                "a",
+                "*",
+                "*",
                 "100.0.0",
                 "",
                 "130.0.0",
@@ -190,6 +196,9 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "google",
                 "chrome",
+                "a",
+                "*",
+                "*",
                 "",
                 "",
                 "",
@@ -240,6 +249,9 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "microsoft",
                 "edge",
+                "a",
+                "*",
+                "*",
                 "100.0.0",
                 "",
                 "130.0.0",
@@ -288,6 +300,9 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "google",
                 "chrome",
+                "a",
+                "*",
+                "*",
                 "120.0.0",
                 "",
                 "130.0.0",
@@ -334,7 +349,6 @@ class MatchingServiceIntegrationTest {
         );
         vuln = vulnerabilityRepository.save(vuln);
 
-        // weaker candidate: no version constraint -> UNCONFIRMED
         affectedCpeRepository.save(new VulnerabilityAffectedCpe(
                 vuln,
                 "cpe:2.3:a:microsoft:edge:*:*:*:*:*:*:*:*",
@@ -342,13 +356,15 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "microsoft",
                 "edge",
+                "a",
+                "*",
+                "*",
                 "",
                 "",
                 "",
                 ""
         ));
 
-        // better candidate: in-range -> CONFIRMED
         affectedCpeRepository.save(new VulnerabilityAffectedCpe(
                 vuln,
                 "cpe:2.3:a:microsoft:edge:*:*:*:*:*:*:*:*",
@@ -356,6 +372,9 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "microsoft",
                 "edge",
+                "a",
+                "*",
+                "*",
                 "100.0.0",
                 "",
                 "130.0.0",
@@ -407,6 +426,9 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "google",
                 "chrome",
+                "a",
+                "*",
+                "*",
                 "",
                 "",
                 "145.0.7632.159",
@@ -478,6 +500,9 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "google",
                 "chrome",
+                "a",
+                "*",
+                "*",
                 "",
                 "",
                 "145.0.7632.159",
@@ -544,6 +569,9 @@ class MatchingServiceIntegrationTest {
                 product.getId(),
                 "google",
                 "chrome",
+                "a",
+                "*",
+                "*",
                 "",
                 "",
                 "145.0.7632.159",

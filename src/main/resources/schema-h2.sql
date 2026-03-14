@@ -457,13 +457,15 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
     vendor_norm VARCHAR(255),
     product_norm VARCHAR(255),
 
-    -- version range: NULLは使わず未指定は "" で運用
+    cpe_part VARCHAR(8),
+    target_sw VARCHAR(64),
+    target_hw VARCHAR(64),
+
     version_start_including VARCHAR(255) NOT NULL DEFAULT '',
     version_start_excluding VARCHAR(255) NOT NULL DEFAULT '',
     version_end_including   VARCHAR(255) NOT NULL DEFAULT '',
     version_end_excluding   VARCHAR(255) NOT NULL DEFAULT '',
 
-    -- 追加: 安定dedupe用
     dedupe_key CHAR(64),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -476,17 +478,7 @@ CREATE TABLE IF NOT EXISTS vulnerability_affected_cpes
     FOREIGN KEY (cpe_vendor_id) REFERENCES cpe_vendors(id),
 
     CONSTRAINT fk_vac_cpe_product
-    FOREIGN KEY (cpe_product_id) REFERENCES cpe_products(id),
-
-    -- 既存互換の複合UNIQUEは維持
-    CONSTRAINT uq_vac_dedupe UNIQUE (
-                                        vulnerability_id,
-                                        cpe_name,
-                                        version_start_including,
-                                        version_start_excluding,
-                                        version_end_including,
-                                        version_end_excluding
-                                    )
+    FOREIGN KEY (cpe_product_id) REFERENCES cpe_products(id)
     );
 
 CREATE INDEX IF NOT EXISTS idx_vac_cpe
@@ -501,7 +493,9 @@ CREATE INDEX IF NOT EXISTS idx_vac_vendor_product_id
 CREATE INDEX IF NOT EXISTS idx_vac_vendor_product_norm
     ON vulnerability_affected_cpes(vendor_norm, product_norm);
 
--- 追加: dedupe_key unique index
+CREATE INDEX IF NOT EXISTS idx_vac_target_sw
+    ON vulnerability_affected_cpes(target_sw);
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_vac_dedupe_key
     ON vulnerability_affected_cpes(dedupe_key);
 

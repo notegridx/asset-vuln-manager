@@ -38,6 +38,7 @@ INSERT INTO vulnerability_affected_cpes (
     id, vulnerability_id, cpe_name,
     cpe_vendor_id, cpe_product_id,
     vendor_norm, product_norm,
+    cpe_part, target_sw, target_hw,
     version_start_including, version_start_excluding,
     version_end_including, version_end_excluding,
     dedupe_key
@@ -45,5 +46,6 @@ INSERT INTO vulnerability_affected_cpes (
     (4020, 2020, 'cpe:2.3:a:mozilla:firefox:*:*:*:*:*:iphone_os:*:*',
      120, 1020,
      'mozilla', 'firefox',
+     'a', 'iphone_os', '*',
      '119.0', '', '121.0', '',
      'case20');

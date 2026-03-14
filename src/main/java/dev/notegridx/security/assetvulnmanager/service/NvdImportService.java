@@ -4,10 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,6 +131,9 @@ public class NvdImportService {
 						spec.productId(),
 						spec.vendorNorm(),
 						spec.productNorm(),
+						spec.cpePart(),
+						spec.targetSw(),
+						spec.targetHw(),
 						vsi, vse, vei, vee
 				));
 				affectedInserted++;
@@ -236,11 +236,20 @@ public class NvdImportService {
 				Long vendorId = null;
 				Long productId = null;
 
-				var vpOpt = cpeNameParser.parseVendorProduct(criteria);
-				if (vpOpt.isPresent()) {
-					var vp = vpOpt.get();
-					vendorNorm = normalizer.normalizeVendor(vp.vendor());
-					productNorm = normalizer.normalizeProduct(vp.product());
+				String cpePart = null;
+				String targetSw = null;
+				String targetHw = null;
+
+				var parsedOpt = cpeNameParser.parse(criteria);
+				if (parsedOpt.isPresent()) {
+					var parsed = parsedOpt.get();
+
+					cpePart = normalize(parsed.part());
+					targetSw = normalizeTargetSw(parsed.targetSw());
+					targetHw = normalizeTargetHw(parsed.targetHw());
+
+					vendorNorm = normalizer.normalizeVendor(parsed.vendor());
+					productNorm = normalizer.normalizeProduct(parsed.product());
 
 					if (vendorNorm != null && productNorm != null) {
 						vendorId = cpeVendorRepository.findByNameNorm(vendorNorm)
@@ -260,6 +269,9 @@ public class NvdImportService {
 						productId,
 						vendorNorm,
 						productNorm,
+						cpePart,
+						targetSw,
+						targetHw,
 						normalize(m.versionStartIncluding()),
 						normalize(m.versionStartExcluding()),
 						normalize(m.versionEndIncluding()),
@@ -279,6 +291,31 @@ public class NvdImportService {
 		return t.isEmpty() ? null : t;
 	}
 
+	private static String normalizeTargetSw(String raw) {
+		String s = normalize(raw);
+		if (s == null) {
+			return null;
+		}
+
+		String x = s.toLowerCase(Locale.ROOT);
+		return switch (x) {
+			case "windows", "microsoft_windows" -> "windows";
+			case "mac_os", "macos", "mac_os_x", "darwin" -> "mac_os";
+			case "linux", "gnu_linux" -> "linux";
+			case "iphone_os", "ios", "ipad_os", "android" -> x;
+			case "*", "-" -> x;
+			default -> x;
+		};
+	}
+
+	private static String normalizeTargetHw(String raw) {
+		String s = normalize(raw);
+		if (s == null) {
+			return null;
+		}
+		return s.toLowerCase(Locale.ROOT);
+	}
+
 	private static String nullToEmpty(String s) {
 		return (s == null) ? "" : s;
 	}
@@ -291,6 +328,9 @@ public class NvdImportService {
 			Long productId,
 			String vendorNorm,
 			String productNorm,
+			String cpePart,
+			String targetSw,
+			String targetHw,
 			String versionStartIncluding,
 			String versionStartExcluding,
 			String versionEndIncluding,

@@ -13,7 +13,6 @@ import dev.notegridx.security.assetvulnmanager.repository.CveSyncStateRepository
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -131,10 +130,8 @@ public class CveFeedSyncService {
 
         String feedName = feedName(kind);
 
-        // 1) META fetch (small)
         CveFeedMetaParser.FeedMeta meta = feedClient.fetchMeta(kind, metaParser);
 
-        // 2) compare with sync_state
         CveSyncState state = syncStateRepository.findByFeedName(feedName)
                 .orElseGet(() -> new CveSyncState(feedName));
 
@@ -145,18 +142,15 @@ public class CveFeedSyncService {
             return SyncResult.skipped(meta.sha256(), meta.lastModified(), meta.size());
         }
 
-        // 3) download json.gz -> temp file
         Path tmp = null;
         try {
             tmp = feedClient.downloadJsonGzToTempFile(kind);
             long bytes = Files.size(tmp);
             log.info("CVE feed downloaded to temp: kind={}, file={}, bytes={}, force={}, cap={}", kind, tmp, bytes, force, safeMax);
 
-            // 4) parse & upsert with chunked transactions
             try (InputStream in = Files.newInputStream(tmp)) {
                 ParseUpsertResult r = parseAndUpsertJsonGzChunked(in, safeMax);
 
-                // 5) update sync state
                 state.updateMeta(meta.sha256(), meta.lastModified(), meta.size(), now);
                 syncStateRepository.save(state);
 
@@ -196,10 +190,8 @@ public class CveFeedSyncService {
 
         String feedName = feedName(kind, year);
 
-        // 1) META fetch (small)
         CveFeedMetaParser.FeedMeta meta = feedClient.fetchMeta(kind, year, metaParser);
 
-        // 2) compare with sync_state
         CveSyncState state = syncStateRepository.findByFeedName(feedName)
                 .orElseGet(() -> new CveSyncState(feedName));
 
@@ -210,7 +202,6 @@ public class CveFeedSyncService {
             return SyncResult.skipped(meta.sha256(), meta.lastModified(), meta.size());
         }
 
-        // 3) download json.gz -> temp file
         Path tmp = null;
         try {
             tmp = feedClient.downloadJsonGzToTempFile(kind, year);
@@ -218,11 +209,9 @@ public class CveFeedSyncService {
             log.info("CVE feed downloaded to temp: kind={}, year={}, file={}, bytes={}, force={}, cap={}",
                     kind, year, tmp, bytes, force, safeMax);
 
-            // 4) parse & upsert with chunked transactions
             try (InputStream in = Files.newInputStream(tmp)) {
                 ParseUpsertResult r = parseAndUpsertJsonGzChunked(in, safeMax);
 
-                // 5) update sync state
                 state.updateMeta(meta.sha256(), meta.lastModified(), meta.size(), now);
                 syncStateRepository.save(state);
 
@@ -263,7 +252,6 @@ public class CveFeedSyncService {
         try (java.util.zip.GZIPInputStream gin = new java.util.zip.GZIPInputStream(jsonGzStream);
              JsonParser p = jsonFactory.createParser(gin)) {
 
-            // Find "vulnerabilities": [ ... ]
             while (p.nextToken() != null) {
                 if (p.currentToken() != JsonToken.FIELD_NAME) continue;
 
@@ -326,17 +314,6 @@ public class CveFeedSyncService {
         return new ParseUpsertResult(vulnUpserted[0], affectedInserted[0], parsed[0]);
     }
 
-    /**
-     * Parse one element of the "vulnerabilities" array.
-     * Expected shape (typical NVD 2.0 feed):
-     * {
-     * "cve": { "id": "...", "descriptions":[...], "metrics":{...}, "configurations":[...], ... },
-     * "published":"2024-..Z",
-     * "lastModified":"2024-..Z"
-     * }
-     * This parser is best-effort and tolerant.
-     * It consumes the END_OBJECT token of the item.
-     */
     private ParsedVulnerability parseOneVulnerabilityItem(JsonParser p) throws IOException {
         String cveId = null;
         String description = null;
@@ -465,15 +442,6 @@ public class CveFeedSyncService {
         return (en != null) ? en : any;
     }
 
-    /**
-     * metrics:
-     * {
-     * "cvssMetricV31":[{ "cvssData":{"version":"3.1","baseScore":7.5}, ... }],
-     * "cvssMetricV30":[...],
-     * "cvssMetricV2":[{ "cvssData":{"version":"2.0","baseScore":5.0}, ... }]
-     * }
-     * Pick the best available in order: V31 -> V30 -> V2
-     */
     private CvssPick parseMetricsPickBest(JsonParser p) throws IOException {
         CvssPick best = null;
 
@@ -647,9 +615,19 @@ public class CveFeedSyncService {
                 }
             }
 
-            if (vulnerable && norm(a.criteria) != null) {
-                out.add(a);
+            if (!vulnerable || norm(a.criteria) == null) {
+                continue;
             }
+
+            Optional<CpeNameParser.ParsedCpe23> parsedOpt = cpeNameParser.parse(a.criteria);
+            if (parsedOpt.isPresent()) {
+                CpeNameParser.ParsedCpe23 parsed = parsedOpt.get();
+                a.cpePart = normalizeCpePart(parsed.part());
+                a.targetSw = normalizeTargetSw(parsed.targetSw());
+                a.targetHw = normalizeTargetHw(parsed.targetHw());
+            }
+
+            out.add(a);
         }
     }
 
@@ -736,8 +714,6 @@ public class CveFeedSyncService {
         int pending = 0;
 
         Vulnerability managedV = v;
-
-        // same vulnerability + same criteria/range within this batch
         Set<String> seenNaturalKeys = new HashSet<>();
 
         for (ParsedAffectedCpe a : items) {
@@ -757,12 +733,10 @@ public class CveFeedSyncService {
 
             String naturalKey = managedV.getId() + "|" + criteria + "|" + vsi + "|" + vse + "|" + vei + "|" + vee;
 
-            // 1) skip duplicates inside current parsed batch
             if (!seenNaturalKeys.add(naturalKey)) {
                 continue;
             }
 
-            // 2) skip duplicates already stored in DB
             boolean exists = affectedCpeRepository
                     .existsByVulnerabilityIdAndCpeNameAndVersionStartIncludingAndVersionStartExcludingAndVersionEndIncludingAndVersionEndExcluding(
                             managedV.getId(),
@@ -780,12 +754,26 @@ public class CveFeedSyncService {
             Long productId = null;
             String vendorNorm = null;
             String productNorm = null;
+            String cpePart = normalizeCpePart(a.cpePart);
+            String targetSw = normalizeTargetSw(a.targetSw);
+            String targetHw = normalizeTargetHw(a.targetHw);
 
-            Optional<CpeNameParser.VendorProduct> vpOpt = cpeNameParser.parseVendorProduct(criteria);
-            if (vpOpt.isPresent()) {
-                CpeNameParser.VendorProduct vp = vpOpt.get();
-                vendorNorm = normalizer.normalizeVendor(vp.vendor());
-                productNorm = normalizer.normalizeProduct(vp.product());
+            Optional<CpeNameParser.ParsedCpe23> parsedOpt = cpeNameParser.parse(criteria);
+            if (parsedOpt.isPresent()) {
+                CpeNameParser.ParsedCpe23 parsed = parsedOpt.get();
+
+                if (cpePart == null) {
+                    cpePart = normalizeCpePart(parsed.part());
+                }
+                if (targetSw == null) {
+                    targetSw = normalizeTargetSw(parsed.targetSw());
+                }
+                if (targetHw == null) {
+                    targetHw = normalizeTargetHw(parsed.targetHw());
+                }
+
+                vendorNorm = normalizer.normalizeVendor(parsed.vendor());
+                productNorm = normalizer.normalizeProduct(parsed.product());
 
                 if (vendorNorm != null && productNorm != null) {
                     vendorId = cachedVendorId(vendorNorm);
@@ -811,6 +799,9 @@ public class CveFeedSyncService {
                     productId,
                     vendorNorm,
                     productNorm,
+                    cpePart,
+                    targetSw,
+                    targetHw,
                     vsi,
                     vse,
                     vei,
@@ -818,9 +809,17 @@ public class CveFeedSyncService {
             );
             row.setDedupeKey(dedupeKey);
 
-            affectedCpeRepository.save(row);
-            inserted++;
-            pending++;
+            try {
+                affectedCpeRepository.save(row);
+                inserted++;
+                pending++;
+            } catch (DataIntegrityViolationException ex) {
+                if (isDuplicateConstraint(ex)) {
+                    log.debug("Duplicate vulnerability_affected_cpes ignored. vulnerabilityId={}, cpeName={}", managedV.getId(), criteria);
+                    continue;
+                }
+                throw ex;
+            }
 
             if (pending >= FLUSH_EVERY) {
                 try {
@@ -962,6 +961,44 @@ public class CveFeedSyncService {
         }
     }
 
+    private static String normalizeCpePart(String raw) {
+        String s = norm(raw);
+        if (s == null) {
+            return null;
+        }
+
+        String x = s.toLowerCase(Locale.ROOT);
+        return switch (x) {
+            case "a", "o", "h" -> x;
+            default -> x;
+        };
+    }
+
+    private static String normalizeTargetSw(String raw) {
+        String s = norm(raw);
+        if (s == null) {
+            return null;
+        }
+
+        String x = s.toLowerCase(Locale.ROOT);
+        return switch (x) {
+            case "windows", "microsoft_windows" -> "windows";
+            case "mac_os", "macos", "mac_os_x", "darwin" -> "mac_os";
+            case "linux", "gnu_linux" -> "linux";
+            case "iphone_os", "ios", "ipad_os", "android" -> x;
+            case "*", "-" -> x;
+            default -> x;
+        };
+    }
+
+    private static String normalizeTargetHw(String raw) {
+        String s = norm(raw);
+        if (s == null) {
+            return null;
+        }
+        return s.toLowerCase(Locale.ROOT);
+    }
+
     private static String norm(String s) {
         if (s == null) return null;
         String t = s.trim();
@@ -991,21 +1028,20 @@ public class CveFeedSyncService {
 
     private static final class ParsedVulnerability {
         String cveId;
-
         String title;
         String description;
-
         String cvssVersion;
         BigDecimal cvssScore;
-
         LocalDateTime publishedAt;
         LocalDateTime lastModifiedAt;
-
         List<ParsedAffectedCpe> affected = new ArrayList<>();
     }
 
     private static final class ParsedAffectedCpe {
         String criteria;
+        String cpePart;
+        String targetSw;
+        String targetHw;
         String versionStartIncluding;
         String versionStartExcluding;
         String versionEndIncluding;

@@ -9,7 +9,6 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.AlertMatchMethod;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertUncertainReason;
 import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
-import dev.notegridx.security.assetvulnmanager.infra.nvd.CpeNameParser;
 import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
@@ -37,7 +36,6 @@ public class MatchingService {
 	private final AlertRepository alertRepository;
 	private final CanonicalBackfillService canonicalBackfillService;
 	private final EntityManager entityManager;
-	private final CpeNameParser cpeNameParser;
 
 	private final VersionRangeMatcher versionMatcher = new VersionRangeMatcher();
 
@@ -47,8 +45,7 @@ public class MatchingService {
 			VulnerabilityRepository vulnerabilityRepository,
 			AlertRepository alertRepository,
 			CanonicalBackfillService canonicalBackfillService,
-			EntityManager entityManager,
-			CpeNameParser cpeNameParser
+			EntityManager entityManager
 	) {
 		this.softwareInstallRepository = softwareInstallRepository;
 		this.affectedCpeRepository = affectedCpeRepository;
@@ -56,7 +53,6 @@ public class MatchingService {
 		this.alertRepository = alertRepository;
 		this.canonicalBackfillService = canonicalBackfillService;
 		this.entityManager = entityManager;
-		this.cpeNameParser = cpeNameParser;
 	}
 
 	@Transactional
@@ -300,26 +296,17 @@ public class MatchingService {
 			return false;
 		}
 
-		String criteria = normalize(affected.getCpeName());
-		if (criteria == null) {
+		String cpePart = normalizePart(affected.getCpePart());
+		if (cpePart == null) {
 			return false;
 		}
-
-		Optional<CpeNameParser.ParsedCpe23> parsedOpt = cpeNameParser.parse(criteria);
-
-		// parse できないときは既存挙動を極力維持して false negative を避ける
-		if (parsedOpt.isEmpty()) {
-			return true;
-		}
-
-		CpeNameParser.ParsedCpe23 parsed = parsedOpt.get();
 
 		// AVM 当面方針: application CPE のみ対象
-		if (!"a".equalsIgnoreCase(nullToEmpty(parsed.part()))) {
+		if (!"a".equals(cpePart)) {
 			return false;
 		}
 
-		String targetSw = normalizeTargetSw(parsed.targetSw());
+		String targetSw = normalizeTargetSw(affected.getTargetSw());
 
 		// wildcard / omitted は共通ビルド扱い
 		if (targetSw == null || "*".equals(targetSw) || "-".equals(targetSw)) {
@@ -328,7 +315,6 @@ public class MatchingService {
 
 		HostOsFamily host = detectHostOsFamily(asset);
 		if (host == HostOsFamily.UNKNOWN) {
-			// host OS が不明な場合は OS 固定 CPE を安易に通さない
 			return false;
 		}
 
@@ -395,6 +381,19 @@ public class MatchingService {
 		return HostOsFamily.UNKNOWN;
 	}
 
+	private static String normalizePart(String raw) {
+		String s = normalize(raw);
+		if (s == null) {
+			return null;
+		}
+
+		String x = s.toLowerCase();
+		return switch (x) {
+			case "a", "o", "h" -> x;
+			default -> x;
+		};
+	}
+
 	private static String normalizeTargetSw(String raw) {
 		String s = normalize(raw);
 		if (s == null) {
@@ -417,10 +416,6 @@ public class MatchingService {
 		if (s == null) return null;
 		String t = s.trim();
 		return t.isEmpty() ? null : t;
-	}
-
-	private static String nullToEmpty(String s) {
-		return s == null ? "" : s;
 	}
 
 	/**
