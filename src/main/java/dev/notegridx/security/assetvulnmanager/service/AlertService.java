@@ -13,6 +13,7 @@ import dev.notegridx.security.assetvulnmanager.domain.Alert;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
 import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 
 @Service
 public class AlertService {
@@ -63,7 +64,16 @@ public class AlertService {
         Alert alert = getRequired(alertId);
         if (alert.getStatus() == AlertStatus.CLOSED) return alert;
 
-        alert.close(reason, LocalDateTime.now());
+        alert.close(reason, DbTime.now());
+        return alertRepository.save(alert);
+    }
+
+    @Transactional
+    public Alert reopen(Long alertId) {
+        Alert alert = getRequired(alertId);
+        if (alert.getStatus() == AlertStatus.OPEN) return alert;
+
+        alert.reopen(DbTime.now());
         return alertRepository.save(alert);
     }
 
@@ -71,7 +81,7 @@ public class AlertService {
     public void detachForDeletedSoftware(List<Alert> alerts) {
         if (alerts == null || alerts.isEmpty()) return;
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DbTime.now();
 
         for (Alert alert : alerts) {
             alert.captureSoftwareSnapshot();

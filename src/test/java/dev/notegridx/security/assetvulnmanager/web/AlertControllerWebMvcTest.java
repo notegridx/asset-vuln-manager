@@ -207,4 +207,36 @@ class AlertControllerWebMvcTest {
                 .andExpect(model().attributeExists("closeReasons"));
     }
 
+    // =========================
+    // REOPEN
+    // =========================
+
+    @Test
+    @DisplayName("POST /alerts/{id}/reopen reopens alert")
+    void reopen_ok() throws Exception {
+
+        Alert alert = mock(Alert.class);
+        when(alert.getStatus()).thenReturn(AlertStatus.CLOSED);
+        when(alertService.reopen(1L)).thenReturn(alert);
+
+        mockMvc.perform(post("/alerts/1/reopen")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/alerts/1"));
+    }
+
+    @Test
+    @DisplayName("POST /alerts/{id}/reopen redirects even when already open")
+    void reopen_alreadyOpen_redirects() throws Exception {
+
+        Alert alert = mock(Alert.class);
+        when(alert.getStatus()).thenReturn(AlertStatus.OPEN);
+        when(alertService.reopen(1L)).thenReturn(alert);
+
+        mockMvc.perform(post("/alerts/1/reopen")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/alerts/1"));
+    }
+
 }

@@ -332,6 +332,12 @@ public class AlertController {
 		return "redirect:/alerts/" + id;
 	}
 
+	@PostMapping("/alerts/{id}/reopen")
+	public String reopen(@PathVariable Long id) {
+		alertService.reopen(id);
+		return "redirect:/alerts/" + id;
+	}
+
 	private static String normalizeSeverity(String severity) {
 		if (severity == null) return null;
 		try {

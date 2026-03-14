@@ -92,9 +92,19 @@
         </div>
 
         <div style="margin-top:14px;" th:if="${alert.status != null && alert.status.toString() == 'CLOSED'}">
-            <p class="muted" style="margin:0;">
-                This alert is already CLOSED.
-            </p>
+            <h3 style="margin:0 0 8px 0; font-size:16px;">Reopen this alert</h3>
+
+            <form th:action="@{/alerts/{id}/reopen(id=${alert.id})}" method="post">
+                <div class="actions" style="gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                    <div>
+                        <button type="submit">Reopen Alert</button>
+                    </div>
+                </div>
+
+                <p class="muted" style="margin-top:10px; font-size:12px;">
+                    This will set status back to OPEN and clear closedAt + closeReason.
+                </p>
+            </form>
         </div>
 
     </div>
