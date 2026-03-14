@@ -61,7 +61,7 @@
             <h3 style="margin:0 0 8px 0; font-size:16px;">Close this alert</h3>
 
             <form th:action="@{/alerts/{id}/close(id=${alert.id})}" method="post" th:object="${closeForm}">
-                <div class="actions" style="gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                <div class="actions" style="gap:10px; align-items:flex-end; flex-wrap:wrap;">
                     <div>
                         <label class="muted" style="display:block; font-size:12px; margin-bottom:6px;">Close reason</label>
                         <select th:field="*{closeReason}">
@@ -80,8 +80,8 @@
                         </div>
                     </div>
 
-                    <div style="padding-top:22px;">
-                        <button type="submit">Close Alert</button>
+                    <div>
+                        <button type="submit" class="btn btn-danger">Close Alert</button>
                     </div>
                 </div>
 
@@ -95,9 +95,9 @@
             <h3 style="margin:0 0 8px 0; font-size:16px;">Reopen this alert</h3>
 
             <form th:action="@{/alerts/{id}/reopen(id=${alert.id})}" method="post">
-                <div class="actions" style="gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                <div class="actions" style="gap:10px; align-items:flex-end; flex-wrap:wrap;">
                     <div>
-                        <button type="submit">Reopen Alert</button>
+                        <button type="submit" class="btn btn-primary">Reopen Alert</button>
                     </div>
                 </div>
 
