@@ -118,7 +118,18 @@ public class VersionRangeMatcher {
     private static String normalize(String s) {
         if (s == null) return null;
         String t = s.trim();
-        return t.isEmpty() ? null : t;
+        if (t.isEmpty()) return null;
+
+        // v1.2.3 / V1.2.3 のような先頭 prefix は比較上無視する
+        if (t.length() >= 2) {
+            char c0 = t.charAt(0);
+            char c1 = t.charAt(1);
+            if ((c0 == 'v' || c0 == 'V') && Character.isDigit(c1)) {
+                t = t.substring(1);
+            }
+        }
+
+        return t;
     }
 
     private sealed interface Token extends Comparable<Token> {
