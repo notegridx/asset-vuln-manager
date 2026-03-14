@@ -150,10 +150,13 @@
 
                         <!-- quick indicator: has any range -->
                         <span class="badge badge--unmapped"
-                              th:if="${c.versionStartIncluding != null or c.versionStartExcluding != null or c.versionEndIncluding != null or c.versionEndExcluding != null}"
+                              th:if="${(c.versionStartIncluding != null and !c.versionStartIncluding.isBlank())
+           or (c.versionStartExcluding != null and !c.versionStartExcluding.isBlank())
+           or (c.versionEndIncluding != null and !c.versionEndIncluding.isBlank())
+           or (c.versionEndExcluding != null and !c.versionEndExcluding.isBlank())}"
                               style="font-size:12px;">
-              has range
-            </span>
+  has range
+</span>
                     </div>
                 </td>
 
