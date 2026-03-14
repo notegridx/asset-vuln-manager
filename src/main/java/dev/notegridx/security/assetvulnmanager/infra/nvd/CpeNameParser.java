@@ -1,58 +1,86 @@
 package dev.notegridx.security.assetvulnmanager.infra.nvd;
 
-import java.util.Optional;
-
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 /**
- * Minimal CPE 2.3 URI parser for extracting vendor/product from criteria.
- * Example: cpe:2.3:a:microsoft:edge:*:*:*:*:*:*:*:*
+ * CPE 2.3 URI parser.
+ *
+ * Example:
+ * cpe:2.3:a:microsoft:edge:*:*:*:*:*:windows:*:*
+ *
+ * indices:
+ * 0=cpe
+ * 1=2.3
+ * 2=part
+ * 3=vendor
+ * 4=product
+ * 5=version
+ * 6=update
+ * 7=edition
+ * 8=language
+ * 9=sw_edition
+ * 10=target_sw
+ * 11=target_hw
+ * 12=other
  */
 @Component
 public class CpeNameParser {
 
     public Optional<VendorProduct> parseVendorProduct(String cpe23Uri) {
+        return parse(cpe23Uri).map(p -> new VendorProduct(p.vendor(), p.product()));
+    }
+
+    public Optional<ParsedCpe23> parse(String cpe23Uri) {
         if (cpe23Uri == null) return Optional.empty();
+
         String s = cpe23Uri.trim();
         if (s.isEmpty()) return Optional.empty();
         if (!s.startsWith("cpe:2.3:")) return Optional.empty();
 
-        // CPE 2.3: cpe:2.3:<part>:<vendor>:<product>:<version>:...
         String[] parts = s.split(":", -1);
-        // indices: 0=cpe,1=2.3,2=part,3=vendor,4=product
-        if (parts.length < 5) return Optional.empty();
+        if (parts.length < 13) return Optional.empty();
 
-        String vendor = unescape(parts[3]);
-        String product = unescape(parts[4]);
+        String part = normalizeNullable(unescape(parts[2]));
+        String vendor = normalizeNullable(unescape(parts[3]));
+        String product = normalizeNullable(unescape(parts[4]));
+        String version = normalizeNullable(unescape(parts[5]));
+        String targetSw = normalizeNullable(unescape(parts[10]));
+        String targetHw = normalizeNullable(unescape(parts[11]));
 
-        vendor = normalizeNullable(vendor);
-        product = normalizeNullable(product);
+        if (part == null || vendor == null || product == null) {
+            return Optional.empty();
+        }
 
-        if (vendor == null || product == null) return Optional.empty();
-        return Optional.of(new VendorProduct(vendor, product));
+        return Optional.of(new ParsedCpe23(
+                part,
+                vendor,
+                product,
+                version,
+                targetSw,
+                targetHw
+        ));
     }
 
     private static String normalizeNullable(String s) {
         if (s == null) return null;
         String t = s.trim();
-        if (t.isEmpty()) return null;
-        return t;
+        return t.isEmpty() ? null : t;
     }
 
     /**
-     * Very small unescape for CPE 2.3.
-     * CPE uses backslash escapes for some characters.
-     * For our purpose (vendor/product keying), we minimally handle "\:" and "\\"
+     * Minimal CPE 2.3 unescape.
      */
     private static String unescape(String s) {
         if (s == null || s.indexOf('\\') < 0) return s;
 
         StringBuilder sb = new StringBuilder(s.length());
         boolean esc = false;
+
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             if (esc) {
-                // keep the escaped char as-is (":", "\", etc.)
                 sb.append(c);
                 esc = false;
             } else if (c == '\\') {
@@ -61,9 +89,24 @@ public class CpeNameParser {
                 sb.append(c);
             }
         }
-        if (esc) sb.append('\\'); // trailing backslash, keep it
+
+        if (esc) {
+            sb.append('\\');
+        }
+
         return sb.toString();
     }
 
-    public record VendorProduct(String vendor, String product) {}
+    public record VendorProduct(String vendor, String product) {
+    }
+
+    public record ParsedCpe23(
+            String part,
+            String vendor,
+            String product,
+            String version,
+            String targetSw,
+            String targetHw
+    ) {
+    }
 }

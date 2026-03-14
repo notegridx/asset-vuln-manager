@@ -1,0 +1,49 @@
+UPDATE assets
+SET platform = 'windows',
+    os_name = 'Windows 11'
+WHERE id = 1;
+
+INSERT INTO cpe_vendors (
+    id, name_norm, display_name, source
+) VALUES
+    (110, 'microsoft', 'Microsoft', 'TEST');
+
+INSERT INTO cpe_products (
+    id, vendor_id, name_norm, display_name, source
+) VALUES
+    (1010, 110, 'edge', 'Edge', 'TEST');
+
+INSERT INTO vulnerabilities (
+    id, source, external_id, title, description,
+    severity, cvss_version, cvss_score
+) VALUES
+    (2019, 'NVD', 'CVE-2099-0019', 'CASE-19', 'edge mac only', 'CRITICAL', '3.1', 9.8);
+
+INSERT INTO software_installs (
+    id, asset_id, type, source,
+    vendor_raw, product_raw, version_raw,
+    vendor, product, version,
+    normalized_vendor, normalized_product,
+    cpe_vendor_id, cpe_product_id,
+    source_type, canonical_link_disabled
+) VALUES
+    (3019, 1, 'APPLICATION', 'MANUAL',
+     'Microsoft', 'Edge', '120.0.0',
+     'Microsoft', 'Edge', '120.0.0',
+     'microsoft', 'edge',
+     110, 1010,
+     'UNKNOWN', FALSE);
+
+INSERT INTO vulnerability_affected_cpes (
+    id, vulnerability_id, cpe_name,
+    cpe_vendor_id, cpe_product_id,
+    vendor_norm, product_norm,
+    version_start_including, version_start_excluding,
+    version_end_including, version_end_excluding,
+    dedupe_key
+) VALUES
+    (4019, 2019, 'cpe:2.3:a:microsoft:edge:*:*:*:*:*:mac_os:*:*',
+     110, 1010,
+     'microsoft', 'edge',
+     '119.0', '', '121.0', '',
+     'case19');

@@ -479,4 +479,64 @@ class MatchingServiceSqlDatasetIntegrationTest {
         assertThat(alert.getClosedAt()).isNull();
         assertThat(alertRepository.findAll()).hasSize(1);
     }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case18_dict_id_windows_target_sw_match.sql"
+    })
+    void case18_windowsTargetSw_match_generatesConfirmedAlert() {
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3018L, 2018L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case19_dict_id_mac_target_sw_no_match_on_windows.sql"
+    })
+    void case19_macTargetSw_onWindows_doesNotGenerateAlert() {
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isZero();
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3019L, 2019L);
+        assertThat(alert).isNull();
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case20_dict_id_iphone_os_no_match.sql"
+    })
+    void case20_iphoneOs_doesNotGenerateAlert() {
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isZero();
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3020L, 2020L);
+        assertThat(alert).isNull();
+    }
 }
