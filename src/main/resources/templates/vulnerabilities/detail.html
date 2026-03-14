@@ -129,14 +129,19 @@
             <thead>
             <tr>
                 <th style="width:90px;">ID</th>
-                <th>CPE (cpeName)</th>
+                <th style="min-width:360px;">CPE (cpeName)</th>
                 <th style="width:260px;">Range</th>
+                <th style="width:90px;">CPE Part</th>
+                <th style="width:120px;">Target SW</th>
+                <th style="width:120px;">Target HW</th>
+                <th style="width:140px;">Criteria Node ID</th>
+                <th style="width:120px;">Root Group No</th>
             </tr>
             </thead>
 
             <tbody>
             <tr th:if="${#lists.isEmpty(cpes)}">
-                <td colspan="3" class="muted">
+                <td colspan="8" class="muted">
                     No affected CPEs stored for this vulnerability.
                 </td>
             </tr>
@@ -148,19 +153,17 @@
                     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                         <code th:text="${c.cpeName}">cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*</code>
 
-                        <!-- quick indicator: has any range -->
                         <span class="badge badge--unmapped"
                               th:if="${(c.versionStartIncluding != null and !c.versionStartIncluding.isBlank())
            or (c.versionStartExcluding != null and !c.versionStartExcluding.isBlank())
            or (c.versionEndIncluding != null and !c.versionEndIncluding.isBlank())
            or (c.versionEndExcluding != null and !c.versionEndExcluding.isBlank())}"
                               style="font-size:12px;">
-  has range
-</span>
+                            has range
+                        </span>
                     </div>
                 </td>
 
-                <!-- Range (visible, compact, same style) -->
                 <td>
                     <div class="muted" style="font-size:12px; line-height:1.45;">
                         <div>
@@ -181,6 +184,24 @@
                         </div>
                     </div>
                 </td>
+
+                <td>
+                    <code th:text="${c.cpePart != null and !c.cpePart.isBlank() ? c.cpePart : '-'}">a</code>
+                </td>
+
+                <td>
+                    <span th:text="${c.targetSw != null and !c.targetSw.isBlank() ? c.targetSw : '-'}">windows</span>
+                </td>
+
+                <td>
+                    <span th:text="${c.targetHw != null and !c.targetHw.isBlank() ? c.targetHw : '-'}">x64</span>
+                </td>
+
+                <td>
+                    <code th:text="${c.criteriaNodeId != null ? c.criteriaNodeId : '-'}">1001</code>
+                </td>
+
+                <td th:text="${c.rootGroupNo != null ? c.rootGroupNo : '-'}">0</td>
             </tr>
             </tbody>
         </table>
