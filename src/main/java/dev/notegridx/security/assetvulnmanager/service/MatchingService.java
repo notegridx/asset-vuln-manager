@@ -15,6 +15,8 @@ import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedC
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
 import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 import jakarta.persistence.EntityManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +32,8 @@ import java.util.Optional;
 
 @Service
 public class MatchingService {
+
+	private static final Logger log = LoggerFactory.getLogger(MatchingService.class);
 
 	private final SoftwareInstallRepository softwareInstallRepository;
 	private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
@@ -130,7 +134,12 @@ public class MatchingService {
 					result = criteriaEvaluator.evaluate(tree, assetInstalls);
 				} else {
 					// old ingested data fallback
-					result = evaluateFlatFallback(bundle.rows(), assetInstalls, bundle.bestMethod());
+					result = evaluateFlatFallback(
+							vulnerabilityCache.get(vulnId),
+							bundle.rows(),
+							assetInstalls,
+							bundle.bestMethod()
+					);
 				}
 
 				if (result == null || !result.matched() || result.primarySoftwareInstallId() == null) {
@@ -236,6 +245,7 @@ public class MatchingService {
 	}
 
 	private CriteriaEvaluator.EvalResult evaluateFlatFallback(
+			Vulnerability vulnerability,
 			List<VulnerabilityAffectedCpe> rows,
 			List<SoftwareInstall> installs,
 			AlertMatchMethod defaultMethod
@@ -268,14 +278,37 @@ public class MatchingService {
 				);
 
 				if (verdict == VersionRangeMatcher.Verdict.NO_MATCH) {
+					logVersionEvaluation(
+							si,
+							vulnerability,
+							a,
+							defaultMethod,
+							softwareVersion,
+							verdict,
+							null,
+							null
+					);
 					continue;
 				}
 
 				BestVerdict bv = BestVerdict.from(verdict);
+				AlertCertainty certainty = bv.toCertainty();
+				AlertUncertainReason reason = bv.toReason();
+
+				logVersionEvaluation(
+						si,
+						vulnerability,
+						a,
+						defaultMethod,
+						softwareVersion,
+						verdict,
+						certainty,
+						reason
+				);
 
 				CriteriaEvaluator.EvalResult current = CriteriaEvaluator.EvalResult.matched(
-						bv.toCertainty(),
-						bv.toReason(),
+						certainty,
+						reason,
 						si.getId(),
 						defaultMethod
 				);
@@ -285,6 +318,43 @@ public class MatchingService {
 		}
 
 		return best;
+	}
+
+	private void logVersionEvaluation(
+			SoftwareInstall sw,
+			Vulnerability vuln,
+			VulnerabilityAffectedCpe cpe,
+			AlertMatchMethod matchedBy,
+			String softwareVersion,
+			VersionRangeMatcher.Verdict verdict,
+			AlertCertainty certainty,
+			AlertUncertainReason uncertainReason
+	) {
+		if (!log.isDebugEnabled()) {
+			return;
+		}
+
+		log.debug(
+				"version-eval swId={} assetId={} vulnId={} cve={} matchedBy={} " +
+						"swVersion='{}' cpe='{}' startInc='{}' startExc='{}' endInc='{}' endExc='{}' " +
+						"criteriaNodeId={} rootGroupNo={} verdict={} certainty={} uncertainReason={}",
+				sw != null ? sw.getId() : null,
+				(sw != null && sw.getAsset() != null) ? sw.getAsset().getId() : null,
+				vuln != null ? vuln.getId() : null,
+				vuln != null ? vuln.getExternalId() : null,
+				matchedBy,
+				softwareVersion,
+				cpe != null ? cpe.getCpeName() : null,
+				cpe != null ? cpe.getVersionStartIncluding() : null,
+				cpe != null ? cpe.getVersionStartExcluding() : null,
+				cpe != null ? cpe.getVersionEndIncluding() : null,
+				cpe != null ? cpe.getVersionEndExcluding() : null,
+				cpe != null ? cpe.getCriteriaNodeId() : null,
+				cpe != null ? cpe.getRootGroupNo() : null,
+				verdict,
+				certainty,
+				uncertainReason
+		);
 	}
 
 	private boolean isRelevantForAsset(VulnerabilityAffectedCpe affected, SoftwareInstall install) {

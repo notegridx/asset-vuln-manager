@@ -5,15 +5,21 @@ import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertMatchMethod;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertUncertainReason;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class CriteriaEvaluator {
+
+    private static final Logger log = LoggerFactory.getLogger(CriteriaEvaluator.class);
 
     private final VersionRangeMatcher versionMatcher = new VersionRangeMatcher();
 
@@ -26,9 +32,10 @@ public class CriteriaEvaluator {
         }
 
         EvalResult best = EvalResult.noMatch();
+        Set<String> emittedPredicateSummaries = new HashSet<>();
 
         for (CriteriaTreeLoader.CriteriaExpr root : tree.roots()) {
-            EvalResult r = evaluateExpr(root, installs);
+            EvalResult r = evaluateExpr(root, installs, emittedPredicateSummaries);
             best = better(best, r);
         }
 
@@ -37,7 +44,8 @@ public class CriteriaEvaluator {
 
     private EvalResult evaluateExpr(
             CriteriaTreeLoader.CriteriaExpr expr,
-            List<SoftwareInstall> installs
+            List<SoftwareInstall> installs,
+            Set<String> emittedPredicateSummaries
     ) {
         if (expr == null) {
             return EvalResult.noMatch();
@@ -49,11 +57,11 @@ public class CriteriaEvaluator {
         }
 
         if (expr instanceof CriteriaTreeLoader.CriteriaLeafExpr leaf) {
-            return evaluateLeaf(leaf, installs);
+            return evaluateLeaf(leaf, installs, emittedPredicateSummaries);
         }
 
         if (expr instanceof CriteriaTreeLoader.CriteriaOperatorExpr op) {
-            return evaluateOperator(op, installs);
+            return evaluateOperator(op, installs, emittedPredicateSummaries);
         }
 
         return EvalResult.noMatch();
@@ -61,7 +69,8 @@ public class CriteriaEvaluator {
 
     private EvalResult evaluateOperator(
             CriteriaTreeLoader.CriteriaOperatorExpr op,
-            List<SoftwareInstall> installs
+            List<SoftwareInstall> installs,
+            Set<String> emittedPredicateSummaries
     ) {
         if (op.children() == null || op.children().isEmpty()) {
             return EvalResult.noMatch();
@@ -74,8 +83,12 @@ public class CriteriaEvaluator {
             AlertMatchMethod bestMethod = null;
 
             for (CriteriaTreeLoader.CriteriaExpr child : op.children()) {
-                EvalResult r = evaluateExpr(child, installs);
+                EvalResult r = evaluateExpr(child, installs, emittedPredicateSummaries);
+
+                logOperatorChildResult(op, r);
+
                 if (!r.matched()) {
+                    logOperatorFinalResult(op, EvalResult.noMatch(), "short-circuit-no-match");
                     return EvalResult.noMatch();
                 }
 
@@ -93,25 +106,32 @@ public class CriteriaEvaluator {
                 bestPrimary = better(bestPrimary, r);
             }
 
-            return EvalResult.matched(
+            EvalResult finalResult = EvalResult.matched(
                     anyUnconfirmed ? AlertCertainty.UNCONFIRMED : AlertCertainty.CONFIRMED,
                     anyUnconfirmed ? firstReason : null,
                     bestPrimary.primarySoftwareInstallId(),
                     bestMethod
             );
+
+            logOperatorFinalResult(op, finalResult, "and-aggregate");
+            return finalResult;
         }
 
         EvalResult best = EvalResult.noMatch();
         for (CriteriaTreeLoader.CriteriaExpr child : op.children()) {
-            EvalResult r = evaluateExpr(child, installs);
+            EvalResult r = evaluateExpr(child, installs, emittedPredicateSummaries);
+            logOperatorChildResult(op, r);
             best = better(best, r);
         }
+
+        logOperatorFinalResult(op, best, "or-aggregate");
         return best;
     }
 
     private EvalResult evaluateLeaf(
             CriteriaTreeLoader.CriteriaLeafExpr leaf,
-            List<SoftwareInstall> installs
+            List<SoftwareInstall> installs,
+            Set<String> emittedPredicateSummaries
     ) {
         if (leaf.predicates() == null || leaf.predicates().isEmpty()) {
             return EvalResult.noMatch();
@@ -124,30 +144,37 @@ public class CriteriaEvaluator {
                 continue;
             }
 
+            PredicateCounters counters = new PredicateCounters();
+
             for (SoftwareInstall si : installs) {
-                EvalResult r = evaluatePredicate(predicate, si);
-                best = better(best, r);
+                PredicateEvalOutcome outcome = evaluatePredicate(predicate, si);
+                counters.record(outcome);
+                best = better(best, outcome.result());
             }
+
+            logPredicateSummary(predicate, counters, emittedPredicateSummaries);
         }
 
         return best;
     }
 
-    private EvalResult evaluatePredicate(
+    private PredicateEvalOutcome evaluatePredicate(
             CriteriaTreeLoader.CriteriaCpePredicate predicate,
             SoftwareInstall si
     ) {
         if (predicate == null || si == null) {
-            return EvalResult.noMatch();
+            return PredicateEvalOutcome.noMatch(PredicateEvalStatus.SKIPPED_OTHER, EvalResult.noMatch());
         }
 
         AlertMatchMethod method = resolveIdentityMatch(predicate, si);
         if (method == null) {
-            return EvalResult.noMatch();
+            logPredicateSkip(predicate, si, "identity-miss");
+            return PredicateEvalOutcome.noMatch(PredicateEvalStatus.IDENTITY_MISS, EvalResult.noMatch());
         }
 
         if (!isRelevantForAsset(predicate, si.getAsset())) {
-            return EvalResult.noMatch();
+            logPredicateSkip(predicate, si, "target-sw-miss");
+            return PredicateEvalOutcome.noMatch(PredicateEvalStatus.TARGET_SW_MISS, EvalResult.noMatch());
         }
 
         String softwareVersion = normalize(si.getVersion());
@@ -164,15 +191,236 @@ public class CriteriaEvaluator {
         );
 
         if (verdict == VersionRangeMatcher.Verdict.NO_MATCH) {
-            return EvalResult.noMatch();
+            logPredicateVersionEvaluation(
+                    predicate,
+                    si,
+                    method,
+                    softwareVersion,
+                    verdict,
+                    null,
+                    null
+            );
+            return PredicateEvalOutcome.noMatch(PredicateEvalStatus.VERSION_NO_MATCH, EvalResult.noMatch());
         }
 
         BestVerdict bv = BestVerdict.from(verdict);
-        return EvalResult.matched(
-                bv.toCertainty(),
-                bv.toReason(),
+        AlertCertainty certainty = bv.toCertainty();
+        AlertUncertainReason reason = bv.toReason();
+
+        logPredicateVersionEvaluation(
+                predicate,
+                si,
+                method,
+                softwareVersion,
+                verdict,
+                certainty,
+                reason
+        );
+
+        EvalResult result = EvalResult.matched(
+                certainty,
+                reason,
                 si.getId(),
                 method
+        );
+
+        if (certainty == AlertCertainty.UNCONFIRMED) {
+            return PredicateEvalOutcome.matched(PredicateEvalStatus.UNCONFIRMED, result);
+        }
+
+        return PredicateEvalOutcome.matched(PredicateEvalStatus.MATCH, result);
+    }
+
+    private void logPredicateSkip(
+            CriteriaTreeLoader.CriteriaCpePredicate predicate,
+            SoftwareInstall si,
+            String reason
+    ) {
+        if (!log.isDebugEnabled()) {
+            return;
+        }
+
+        if ("identity-miss".equals(reason) && !isVendorNearHit(predicate, si)) {
+            return;
+        }
+
+        log.debug(
+                "criteria-predicate-skip swId={} assetId={} reason={} " +
+                        "installVendorNorm='{}' installProductNorm='{}' installCpeName='{}' " +
+                        "predicateVendorNorm='{}' predicateProductNorm='{}' predicateCpeName='{}' " +
+                        "predicatePart='{}' predicateTargetSw='{}'",
+                si != null ? si.getId() : null,
+                (si != null && si.getAsset() != null) ? si.getAsset().getId() : null,
+                reason,
+                si != null ? si.getNormalizedVendor() : null,
+                si != null ? si.getNormalizedProduct() : null,
+                si != null ? si.getCpeName() : null,
+                predicate != null ? predicate.vendorNorm() : null,
+                predicate != null ? predicate.productNorm() : null,
+                predicate != null ? predicate.cpeName() : null,
+                predicate != null ? predicate.cpePart() : null,
+                predicate != null ? predicate.targetSw() : null
+        );
+    }
+
+    private boolean isVendorNearHit(
+            CriteriaTreeLoader.CriteriaCpePredicate predicate,
+            SoftwareInstall si
+    ) {
+        if (predicate == null || si == null) {
+            return false;
+        }
+
+        String predicateVendorNorm = normalize(predicate.vendorNorm());
+        String installVendorNorm = normalize(si.getNormalizedVendor());
+
+        return predicateVendorNorm != null
+                && installVendorNorm != null
+                && Objects.equals(predicateVendorNorm, installVendorNorm);
+    }
+
+    private void logPredicateVersionEvaluation(
+            CriteriaTreeLoader.CriteriaCpePredicate predicate,
+            SoftwareInstall si,
+            AlertMatchMethod method,
+            String softwareVersion,
+            VersionRangeMatcher.Verdict verdict,
+            AlertCertainty certainty,
+            AlertUncertainReason uncertainReason
+    ) {
+        if (!log.isDebugEnabled()) {
+            return;
+        }
+
+        log.debug(
+                "criteria-version-eval swId={} assetId={} matchedBy={} " +
+                        "softwareVersion='{}' installCpeName='{}' " +
+                        "predicateCpeName='{}' vendorNorm='{}' productNorm='{}' " +
+                        "cpeVendorId={} cpeProductId={} cpePart='{}' targetSw='{}' targetHw='{}' " +
+                        "startInc='{}' startExc='{}' endInc='{}' endExc='{}' " +
+                        "verdict={} certainty={} uncertainReason={}",
+                si != null ? si.getId() : null,
+                (si != null && si.getAsset() != null) ? si.getAsset().getId() : null,
+                method,
+                softwareVersion,
+                si != null ? si.getCpeName() : null,
+                predicate != null ? predicate.cpeName() : null,
+                predicate != null ? predicate.vendorNorm() : null,
+                predicate != null ? predicate.productNorm() : null,
+                predicate != null ? predicate.cpeVendorId() : null,
+                predicate != null ? predicate.cpeProductId() : null,
+                predicate != null ? predicate.cpePart() : null,
+                predicate != null ? predicate.targetSw() : null,
+                predicate != null ? predicate.targetHw() : null,
+                predicate != null ? predicate.versionStartIncluding() : null,
+                predicate != null ? predicate.versionStartExcluding() : null,
+                predicate != null ? predicate.versionEndIncluding() : null,
+                predicate != null ? predicate.versionEndExcluding() : null,
+                verdict,
+                certainty,
+                uncertainReason
+        );
+    }
+
+    private void logPredicateSummary(
+            CriteriaTreeLoader.CriteriaCpePredicate predicate,
+            PredicateCounters counters,
+            Set<String> emittedPredicateSummaries
+    ) {
+        if (!counters.hasAnySignal()) {
+            return;
+        }
+
+        String summaryKey = buildPredicateSummaryKey(predicate, counters);
+        if (!emittedPredicateSummaries.add(summaryKey)) {
+            return;
+        }
+
+        log.info(
+                "criteria-predicate-summary vendorNorm='{}' productNorm='{}' " +
+                        "targetSw='{}' targetHw='{}' " +
+                        "startInc='{}' startExc='{}' endInc='{}' endExc='{}' " +
+                        "checked={} identityHits={} targetSwMiss={} noMatch={} unconfirmed={} match={} cpe='{}'",
+                predicate != null ? predicate.vendorNorm() : null,
+                predicate != null ? predicate.productNorm() : null,
+                predicate != null ? predicate.targetSw() : null,
+                predicate != null ? predicate.targetHw() : null,
+                predicate != null ? predicate.versionStartIncluding() : null,
+                predicate != null ? predicate.versionStartExcluding() : null,
+                predicate != null ? predicate.versionEndIncluding() : null,
+                predicate != null ? predicate.versionEndExcluding() : null,
+                counters.checked,
+                counters.identityHits,
+                counters.targetSwMiss,
+                counters.noMatch,
+                counters.unconfirmed,
+                counters.match,
+                predicate != null ? predicate.cpeName() : null
+        );
+    }
+
+    private String buildPredicateSummaryKey(
+            CriteriaTreeLoader.CriteriaCpePredicate predicate,
+            PredicateCounters counters
+    ) {
+        return String.join("|",
+                String.valueOf(predicate != null ? predicate.vendorNorm() : null),
+                String.valueOf(predicate != null ? predicate.productNorm() : null),
+                String.valueOf(predicate != null ? predicate.targetSw() : null),
+                String.valueOf(predicate != null ? predicate.targetHw() : null),
+                String.valueOf(predicate != null ? predicate.versionStartIncluding() : null),
+                String.valueOf(predicate != null ? predicate.versionStartExcluding() : null),
+                String.valueOf(predicate != null ? predicate.versionEndIncluding() : null),
+                String.valueOf(predicate != null ? predicate.versionEndExcluding() : null),
+                String.valueOf(counters.checked),
+                String.valueOf(counters.identityHits),
+                String.valueOf(counters.targetSwMiss),
+                String.valueOf(counters.noMatch),
+                String.valueOf(counters.unconfirmed),
+                String.valueOf(counters.match)
+        );
+    }
+
+    private void logOperatorChildResult(
+            CriteriaTreeLoader.CriteriaOperatorExpr op,
+            EvalResult childResult
+    ) {
+        if (!log.isDebugEnabled()) {
+            return;
+        }
+
+        log.debug(
+                "criteria-op-child operator={} negate={} childMatched={} childCertainty={} childReason={} childSwId={} childMethod={}",
+                op != null ? op.operator() : null,
+                op != null && op.negate(),
+                childResult != null && childResult.matched(),
+                childResult != null ? childResult.certainty() : null,
+                childResult != null ? childResult.reason() : null,
+                childResult != null ? childResult.primarySoftwareInstallId() : null,
+                childResult != null ? childResult.method() : null
+        );
+    }
+
+    private void logOperatorFinalResult(
+            CriteriaTreeLoader.CriteriaOperatorExpr op,
+            EvalResult result,
+            String phase
+    ) {
+        if (!log.isDebugEnabled()) {
+            return;
+        }
+
+        log.debug(
+                "criteria-op-result phase={} operator={} negate={} childCount={} matched={} certainty={} reason={} primarySwId={} method={}",
+                phase,
+                op != null ? op.operator() : null,
+                op != null && op.negate(),
+                (op != null && op.children() != null) ? op.children().size() : 0,
+                result != null && result.matched(),
+                result != null ? result.certainty() : null,
+                result != null ? result.reason() : null,
+                result != null ? result.primarySoftwareInstallId() : null,
+                result != null ? result.method() : null
         );
     }
 
@@ -421,6 +669,78 @@ public class CriteriaEvaluator {
         MACOS,
         LINUX,
         UNKNOWN
+    }
+
+    private enum PredicateEvalStatus {
+        IDENTITY_MISS,
+        TARGET_SW_MISS,
+        VERSION_NO_MATCH,
+        UNCONFIRMED,
+        MATCH,
+        SKIPPED_OTHER
+    }
+
+    private record PredicateEvalOutcome(
+            PredicateEvalStatus status,
+            EvalResult result
+    ) {
+        static PredicateEvalOutcome noMatch(PredicateEvalStatus status, EvalResult result) {
+            return new PredicateEvalOutcome(status, result);
+        }
+
+        static PredicateEvalOutcome matched(PredicateEvalStatus status, EvalResult result) {
+            return new PredicateEvalOutcome(status, result);
+        }
+    }
+
+    private static final class PredicateCounters {
+        int checked;
+        int identityHits;
+        int targetSwMiss;
+        int noMatch;
+        int unconfirmed;
+        int match;
+
+        void record(PredicateEvalOutcome outcome) {
+            checked++;
+
+            if (outcome == null || outcome.status() == null) {
+                return;
+            }
+
+            switch (outcome.status()) {
+                case IDENTITY_MISS -> {
+                    // no-op
+                }
+                case TARGET_SW_MISS -> {
+                    identityHits++;
+                    targetSwMiss++;
+                }
+                case VERSION_NO_MATCH -> {
+                    identityHits++;
+                    noMatch++;
+                }
+                case UNCONFIRMED -> {
+                    identityHits++;
+                    unconfirmed++;
+                }
+                case MATCH -> {
+                    identityHits++;
+                    match++;
+                }
+                case SKIPPED_OTHER -> {
+                    // no-op
+                }
+            }
+        }
+
+        boolean hasAnySignal() {
+            return identityHits > 0
+                    || targetSwMiss > 0
+                    || noMatch > 0
+                    || unconfirmed > 0
+                    || match > 0;
+        }
     }
 
     private static final class BestVerdict {

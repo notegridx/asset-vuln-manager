@@ -29,6 +29,8 @@ logging:
     dev.notegridx.security.assetvulnmanager: info
     dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService: info
     dev.notegridx.security.assetvulnmanager.service.TokenMatchingService: info
+    dev.notegridx.security.assetvulnmanager.service.MatchingService: info
+    dev.notegridx.security.assetvulnmanager.service.CriteriaEvaluator: info
 
 app:
 
