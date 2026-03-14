@@ -131,8 +131,14 @@ public class KevSyncService {
         state.updateMeta(fetched.etag(), fetched.lastModified(), sha256, size, now);
         stateRepo.save(state);
 
-        return new SyncResult(false, total, updated, missing, slice.size(), sha256);
-    }
+        return new SyncResult(
+                false,
+                total,
+                slice.size(),
+                updated,
+                missing,
+                sha256
+        );    }
 
     /**
      * 既存Repositoryに依存せず、まずは findBySourceAndExternalId を使う素朴実装ではなく、
