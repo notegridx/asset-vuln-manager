@@ -1,6 +1,5 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
-import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminInventoryReadService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedQuickAddService;
@@ -14,8 +13,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Locale;
 
 @Controller
 public class AdminInventoryController {
@@ -51,38 +48,18 @@ public class AdminInventoryController {
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             Model model
     ) {
-        boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
+        var view = adminInventoryReadService.findUnresolvedMappings(
+                status,
+                runId,
+                activeOnly,
+                activeOnlyPresent
+        );
 
-        List<UnresolvedMapping> list = active
-                ? unresolvedMappingRepository.findAllActive()
-                : unresolvedMappingRepository.findAll();
-
-        // Status filter:
-        // null/blank => NEW
-        // ALL => no filtering
-        String effectiveStatus = (status == null || status.isBlank())
-                ? "NEW"
-                : status.trim().toUpperCase(Locale.ROOT);
-
-        if (!"ALL".equals(effectiveStatus)) {
-            list.removeIf(m -> m.getStatus() == null || !m.getStatus().equalsIgnoreCase(effectiveStatus));
-        }
-
-        // NOTE:
-        // runId filtering is not implemented in the current code base.
-        // runId is preserved only as UI state.
-        list.sort((a, b) -> {
-            if (a.getId() == null && b.getId() == null) return 0;
-            if (a.getId() == null) return 1;
-            if (b.getId() == null) return -1;
-            return Long.compare(b.getId(), a.getId());
-        });
-
-        model.addAttribute("mappings", list);
-        model.addAttribute("status", effectiveStatus);
-        model.addAttribute("runId", runId);
-        model.addAttribute("activeOnly", active);
-        model.addAttribute("activeOnlyPresent", activeOnlyPresent);
+        model.addAttribute("mappings", view.mappings());
+        model.addAttribute("status", view.status());
+        model.addAttribute("runId", view.runId());
+        model.addAttribute("activeOnly", view.activeOnly());
+        model.addAttribute("activeOnlyPresent", view.activeOnlyPresent());
 
         return "admin/unresolved";
     }

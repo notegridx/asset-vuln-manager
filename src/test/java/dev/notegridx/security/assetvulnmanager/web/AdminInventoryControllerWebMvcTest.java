@@ -1,6 +1,7 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
+import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminInventoryReadService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedQuickAddService;
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -43,7 +45,6 @@ class AdminInventoryControllerWebMvcTest {
     @Test
     @DisplayName("GET /admin/import-runs returns import run list")
     void importRuns_ok() throws Exception {
-
         ImportRun run1 = mock(ImportRun.class);
         ImportRun run2 = mock(ImportRun.class);
 
@@ -55,5 +56,32 @@ class AdminInventoryControllerWebMvcTest {
                 .andExpect(model().attributeExists("runs"));
 
         verify(adminInventoryReadService).findImportRuns();
+    }
+
+    @Test
+    @DisplayName("GET /admin/unresolved uses read service and returns unresolved page")
+    void unresolved_ok() throws Exception {
+        UnresolvedMapping mapping1 = mock(UnresolvedMapping.class);
+        UnresolvedMapping mapping2 = mock(UnresolvedMapping.class);
+
+        when(adminInventoryReadService.findUnresolvedMappings(null, null, null, null))
+                .thenReturn(new AdminInventoryReadService.UnresolvedListView(
+                        List.of(mapping1, mapping2),
+                        "NEW",
+                        null,
+                        true,
+                        null
+                ));
+
+        mockMvc.perform(get("/admin/unresolved"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/unresolved"))
+                .andExpect(model().attributeExists("mappings"))
+                .andExpect(model().attribute("status", "NEW"))
+                .andExpect(model().attribute("runId", nullValue()))
+                .andExpect(model().attribute("activeOnly", true))
+                .andExpect(model().attribute("activeOnlyPresent", nullValue()));
+
+        verify(adminInventoryReadService).findUnresolvedMappings(null, null, null, null);
     }
 }
