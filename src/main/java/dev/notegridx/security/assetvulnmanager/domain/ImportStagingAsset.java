@@ -22,11 +22,11 @@ public class ImportStagingAsset {
     @Column(name = "row_no", nullable = false)
     private int rowNo;
 
-    // invalid行も保存してPreviewで見せるためEnullable=true にする
+    // invalid行も保存してPreviewで見せるため nullable=true にする
     @Column(name = "external_key", length = 128)
     private String externalKey;
 
-    // invalid行も保存してPreviewで見せるためEnullable=true にする
+    // invalid行も保存してPreviewで見せるため nullable=true にする
     @Column(length = 255)
     private String name;
 
@@ -38,7 +38,7 @@ public class ImportStagingAsset {
     @Lob
     private String note;
 
-    // source は fill で忁E入れるEEOT NULLのままでOKEE
+    // source は fill で補正を入れるので NOT NULL のままでOK
     @Column(nullable = false)
     private String source = "JSON_UPLOAD";
 
@@ -60,11 +60,17 @@ public class ImportStagingAsset {
     @Column(name = "hardware_model", length = 255)
     private String hardwareModel;
 
+    @Column(name = "hardware_version", length = 255)
+    private String hardwareVersion;
+
     @Column(name = "computer_name", length = 255)
     private String computerName;
 
     @Column(name = "local_hostname", length = 255)
     private String localHostname;
+
+    @Column(name = "hostname", length = 255)
+    private String hostname;
 
     @Column(name = "cpu_brand", length = 255)
     private String cpuBrand;
@@ -75,8 +81,26 @@ public class ImportStagingAsset {
     @Column(name = "cpu_logical_cores")
     private Integer cpuLogicalCores;
 
+    @Column(name = "cpu_sockets")
+    private Integer cpuSockets;
+
+    @Column(name = "physical_memory")
+    private Long physicalMemory;
+
     @Column(name = "arch", length = 64)
     private String arch;
+
+    @Column(name = "board_vendor", length = 255)
+    private String boardVendor;
+
+    @Column(name = "board_model", length = 255)
+    private String boardModel;
+
+    @Column(name = "board_version", length = 255)
+    private String boardVersion;
+
+    @Column(name = "board_serial", length = 255)
+    private String boardSerial;
 
     @Column(name = "os_name", length = 255)
     private String osName;
@@ -131,12 +155,20 @@ public class ImportStagingAsset {
             String serialNumber,
             String hardwareVendor,
             String hardwareModel,
+            String hardwareVersion,
             String computerName,
             String localHostname,
+            String hostname,
             String cpuBrand,
             Integer cpuPhysicalCores,
             Integer cpuLogicalCores,
+            Integer cpuSockets,
+            Long physicalMemory,
             String arch,
+            String boardVendor,
+            String boardModel,
+            String boardVersion,
+            String boardSerial,
             String osName,
             String osBuild,
             Integer osMajor,
@@ -158,13 +190,22 @@ public class ImportStagingAsset {
         this.serialNumber = serialNumber;
         this.hardwareVendor = hardwareVendor;
         this.hardwareModel = hardwareModel;
+        this.hardwareVersion = hardwareVersion;
         this.computerName = computerName;
         this.localHostname = localHostname;
+        this.hostname = hostname;
 
         this.cpuBrand = cpuBrand;
         this.cpuPhysicalCores = cpuPhysicalCores;
         this.cpuLogicalCores = cpuLogicalCores;
+        this.cpuSockets = cpuSockets;
+        this.physicalMemory = physicalMemory;
         this.arch = arch;
+
+        this.boardVendor = boardVendor;
+        this.boardModel = boardModel;
+        this.boardVersion = boardVersion;
+        this.boardSerial = boardSerial;
 
         this.osName = osName;
         this.osBuild = osBuild;

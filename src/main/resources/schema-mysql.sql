@@ -48,14 +48,23 @@ CREATE TABLE IF NOT EXISTS assets
 
     hardware_vendor VARCHAR(255),
     hardware_model VARCHAR(255),
+    hardware_version VARCHAR(255),
 
     computer_name VARCHAR(255),
     local_hostname VARCHAR(255),
+    hostname VARCHAR(255),
 
     cpu_brand VARCHAR(255),
     cpu_physical_cores INT,
     cpu_logical_cores INT,
+    cpu_sockets INT,
+    physical_memory BIGINT,
     arch VARCHAR(64),
+
+    board_vendor VARCHAR(255),
+    board_model VARCHAR(255),
+    board_version VARCHAR(255),
+    board_serial VARCHAR(255),
 
     os_name VARCHAR(128),
     os_build VARCHAR(128),
@@ -509,14 +518,23 @@ CREATE TABLE IF NOT EXISTS import_staging_assets
 
     hardware_vendor VARCHAR(255),
     hardware_model VARCHAR(255),
+    hardware_version VARCHAR(255),
 
     computer_name VARCHAR(255),
     local_hostname VARCHAR(255),
+    hostname VARCHAR(255),
 
     cpu_brand VARCHAR(255),
     cpu_physical_cores INT,
     cpu_logical_cores INT,
+    cpu_sockets INT,
+    physical_memory BIGINT,
     arch VARCHAR(64),
+
+    board_vendor VARCHAR(255),
+    board_model VARCHAR(255),
+    board_version VARCHAR(255),
+    board_serial VARCHAR(255),
 
     os_name VARCHAR(128),
     os_build VARCHAR(128),

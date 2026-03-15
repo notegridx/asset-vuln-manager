@@ -78,12 +78,12 @@ class CsvImportServiceTest {
     }
 
     @Test
-    @DisplayName("importAssetsCsv(commit) inserts asset and normalizes external_key to uppercase")
+    @DisplayName("importAssetsCsv(commit) inserts asset and stores extended inventory fields")
     void importAssetsCsv_commit_insertsAsset() throws Exception {
         String csv = """
-                external_key,name,asset_type,owner,note,platform,os_version
-                host-01,Host One,SERVER,Alice,Primary server,windows,11
-                """;
+            external_key,name,asset_type,owner,note,platform,os_version,system_uuid,serial_number,hardware_vendor,hardware_model,hardware_version,computer_name,local_hostname,hostname,cpu_brand,cpu_physical_cores,cpu_logical_cores,cpu_sockets,physical_memory,arch,board_vendor,board_model,board_version,board_serial,os_name,os_build,os_major,os_minor,os_patch
+            host-01,Host One,SERVER,Alice,Primary server,windows,11,uuid-001,sn-001,Dell,OptiPlex,Gen2,HOST-001,host-001,host-001.example.local,Intel Core,4,8,1,17179869184,x64,Dell,Board-A,1.0,board-001,Windows,22631,11,0,1
+            """;
 
         ImportResult result = csvImportService.importAssetsCsv(
                 bytes(csv),
@@ -104,6 +104,31 @@ class CsvImportServiceTest {
         assertThat(asset.getOwner()).isEqualTo("Alice");
         assertThat(asset.getPlatform()).isEqualTo("windows");
         assertThat(asset.getOsVersion()).isEqualTo("11");
+
+        assertThat(asset.getSystemUuid()).isEqualTo("uuid-001");
+        assertThat(asset.getSerialNumber()).isEqualTo("sn-001");
+        assertThat(asset.getHardwareVendor()).isEqualTo("Dell");
+        assertThat(asset.getHardwareModel()).isEqualTo("OptiPlex");
+        assertThat(asset.getHardwareVersion()).isEqualTo("Gen2");
+        assertThat(asset.getComputerName()).isEqualTo("HOST-001");
+        assertThat(asset.getLocalHostname()).isEqualTo("host-001");
+        assertThat(asset.getHostname()).isEqualTo("host-001.example.local");
+        assertThat(asset.getCpuBrand()).isEqualTo("Intel Core");
+        assertThat(asset.getCpuPhysicalCores()).isEqualTo(4);
+        assertThat(asset.getCpuLogicalCores()).isEqualTo(8);
+        assertThat(asset.getCpuSockets()).isEqualTo(1);
+        assertThat(asset.getPhysicalMemory()).isEqualTo(17179869184L);
+        assertThat(asset.getArch()).isEqualTo("x64");
+        assertThat(asset.getBoardVendor()).isEqualTo("Dell");
+        assertThat(asset.getBoardModel()).isEqualTo("Board-A");
+        assertThat(asset.getBoardVersion()).isEqualTo("1.0");
+        assertThat(asset.getBoardSerial()).isEqualTo("board-001");
+        assertThat(asset.getOsName()).isEqualTo("Windows");
+        assertThat(asset.getOsBuild()).isEqualTo("22631");
+        assertThat(asset.getOsMajor()).isEqualTo(11);
+        assertThat(asset.getOsMinor()).isEqualTo(0);
+        assertThat(asset.getOsPatch()).isEqualTo(1);
+
         assertThat(asset.getSource()).isEqualTo("CSV");
         assertThat(asset.getLastSeenAt()).isNotNull();
 
@@ -120,23 +145,45 @@ class CsvImportServiceTest {
     }
 
     @Test
-    @DisplayName("importAssetsCsv(commit) updates existing asset basic fields but keeps existing name")
+    @DisplayName("importAssetsCsv(commit) updates existing asset inventory fields but keeps existing name")
     void importAssetsCsv_commit_updatesExistingAsset_butKeepsName() throws Exception {
         Asset asset = new Asset("Original Name");
         asset.updateDetails("HOST-01", "SERVER", "Alice", "old");
-        asset.setPlatform("windows");
-        asset.setOsVersion("10");
+        asset.updateInventory(
+                "windows",
+                "10",
+                "uuid-old",
+                "sn-old",
+                "Dell",
+                "Old Model",
+                "Old HW",
+                "OLD-HOST",
+                "old-host",
+                "old-host.local",
+                "Old CPU",
+                2,
+                4,
+                1,
+                8589934592L,
+                "x64",
+                "Old Board Vendor",
+                "Old Board Model",
+                "Old Board Ver",
+                "old-board-sn",
+                "Windows",
+                "19045",
+                10,
+                0,
+                0
+        );
         assetRepository.save(asset);
 
         String csv = """
-                external_key,name,asset_type,owner,note,platform,os_version
-                host-01,New Name,WORKSTATION,Bob,new note,linux,22.04
-                """;
+            external_key,name,asset_type,owner,note,platform,os_version,system_uuid,serial_number,hardware_vendor,hardware_model,hardware_version,computer_name,local_hostname,hostname,cpu_brand,cpu_physical_cores,cpu_logical_cores,cpu_sockets,physical_memory,arch,board_vendor,board_model,board_version,board_serial,os_name,os_build,os_major,os_minor,os_patch
+            host-01,New Name,WORKSTATION,Bob,new note,linux,22.04,uuid-new,sn-new,Lenovo,ThinkCentre,HW-2,NEW-HOST,new-host,new-host.example.local,Intel Xeon,8,16,2,34359738368,x86_64,Lenovo,Board-B,2.0,board-002,Ubuntu,24.04,24,4,0
+            """;
 
-        ImportResult result = csvImportService.importAssetsCsv(
-                bytes(csv),
-                true
-        );
+        ImportResult result = csvImportService.importAssetsCsv(bytes(csv), true);
 
         assertThat(result.ok()).isEqualTo(1);
         assertThat(result.inserted()).isEqualTo(0);
@@ -144,12 +191,37 @@ class CsvImportServiceTest {
         assertThat(assetRepository.count()).isEqualTo(1);
 
         Asset reloaded = assetRepository.findByExternalKey("HOST-01").orElseThrow();
-        assertThat(reloaded.getName()).isEqualTo("Original Name"); // current behavior
+        assertThat(reloaded.getName()).isEqualTo("Original Name");
         assertThat(reloaded.getAssetType()).isEqualTo("WORKSTATION");
         assertThat(reloaded.getOwner()).isEqualTo("Bob");
         assertThat(reloaded.getNote()).isEqualTo("new note");
         assertThat(reloaded.getPlatform()).isEqualTo("linux");
         assertThat(reloaded.getOsVersion()).isEqualTo("22.04");
+
+        assertThat(reloaded.getSystemUuid()).isEqualTo("uuid-new");
+        assertThat(reloaded.getSerialNumber()).isEqualTo("sn-new");
+        assertThat(reloaded.getHardwareVendor()).isEqualTo("Lenovo");
+        assertThat(reloaded.getHardwareModel()).isEqualTo("ThinkCentre");
+        assertThat(reloaded.getHardwareVersion()).isEqualTo("HW-2");
+        assertThat(reloaded.getComputerName()).isEqualTo("NEW-HOST");
+        assertThat(reloaded.getLocalHostname()).isEqualTo("new-host");
+        assertThat(reloaded.getHostname()).isEqualTo("new-host.example.local");
+        assertThat(reloaded.getCpuBrand()).isEqualTo("Intel Xeon");
+        assertThat(reloaded.getCpuPhysicalCores()).isEqualTo(8);
+        assertThat(reloaded.getCpuLogicalCores()).isEqualTo(16);
+        assertThat(reloaded.getCpuSockets()).isEqualTo(2);
+        assertThat(reloaded.getPhysicalMemory()).isEqualTo(34359738368L);
+        assertThat(reloaded.getArch()).isEqualTo("x86_64");
+        assertThat(reloaded.getBoardVendor()).isEqualTo("Lenovo");
+        assertThat(reloaded.getBoardModel()).isEqualTo("Board-B");
+        assertThat(reloaded.getBoardVersion()).isEqualTo("2.0");
+        assertThat(reloaded.getBoardSerial()).isEqualTo("board-002");
+        assertThat(reloaded.getOsName()).isEqualTo("Ubuntu");
+        assertThat(reloaded.getOsBuild()).isEqualTo("24.04");
+        assertThat(reloaded.getOsMajor()).isEqualTo(24);
+        assertThat(reloaded.getOsMinor()).isEqualTo(4);
+        assertThat(reloaded.getOsPatch()).isEqualTo(0);
+
         assertThat(reloaded.getSource()).isEqualTo("CSV");
     }
 

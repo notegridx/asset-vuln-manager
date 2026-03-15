@@ -60,7 +60,17 @@ public class CsvImportService {
 
     // =========================================================
     // Assets CSV
-    // columns: external_key,name,asset_type,owner,note,platform,os_version
+    // required: external_key,name
+    // optional:
+    // asset_type,owner,note,
+    // platform,os_version,
+    // system_uuid,serial_number,
+    // hardware_vendor,hardware_model,hardware_version,
+    // computer_name,local_hostname,hostname,
+    // cpu_brand,cpu_physical_cores,cpu_logical_cores,cpu_sockets,physical_memory,
+    // arch,
+    // board_vendor,board_model,board_version,board_serial,
+    // os_name,os_build,os_major,os_minor,os_patch
     // =========================================================
     public ImportResult importAssetsCsv(InputStream in, boolean commit) throws IOException {
         List<ImportError> errors = new ArrayList<>();
@@ -106,9 +116,40 @@ public class CsvImportService {
                 String assetType = normalizeNullable(get(cols, idx, "asset_type"));
                 String owner = normalizeNullable(get(cols, idx, "owner"));
                 String note = normalizeNullable(get(cols, idx, "note"));
-                // optional
-                String platform = get(cols, idx, "platform");
-                String osVersion = get(cols, idx, "os_version");
+
+                // optional inventory fields
+                String platform = normalizeNullable(get(cols, idx, "platform"));
+                String osVersion = normalizeNullable(get(cols, idx, "os_version"));
+
+                String systemUuid = normalizeNullable(get(cols, idx, "system_uuid"));
+                String serialNumber = normalizeNullable(get(cols, idx, "serial_number"));
+
+                String hardwareVendor = normalizeNullable(get(cols, idx, "hardware_vendor"));
+                String hardwareModel = normalizeNullable(get(cols, idx, "hardware_model"));
+                String hardwareVersion = normalizeNullable(get(cols, idx, "hardware_version"));
+
+                String computerName = normalizeNullable(get(cols, idx, "computer_name"));
+                String localHostname = normalizeNullable(get(cols, idx, "local_hostname"));
+                String hostname = normalizeNullable(get(cols, idx, "hostname"));
+
+                String cpuBrand = normalizeNullable(get(cols, idx, "cpu_brand"));
+                Integer cpuPhysicalCores = parseIntegerNullable(get(cols, idx, "cpu_physical_cores"));
+                Integer cpuLogicalCores = parseIntegerNullable(get(cols, idx, "cpu_logical_cores"));
+                Integer cpuSockets = parseIntegerNullable(get(cols, idx, "cpu_sockets"));
+                Long physicalMemory = parseLongNullable(get(cols, idx, "physical_memory"));
+
+                String arch = normalizeNullable(get(cols, idx, "arch"));
+
+                String boardVendor = normalizeNullable(get(cols, idx, "board_vendor"));
+                String boardModel = normalizeNullable(get(cols, idx, "board_model"));
+                String boardVersion = normalizeNullable(get(cols, idx, "board_version"));
+                String boardSerial = normalizeNullable(get(cols, idx, "board_serial"));
+
+                String osName = normalizeNullable(get(cols, idx, "os_name"));
+                String osBuild = normalizeNullable(get(cols, idx, "os_build"));
+                Integer osMajor = parseIntegerNullable(get(cols, idx, "os_major"));
+                Integer osMinor = parseIntegerNullable(get(cols, idx, "os_minor"));
+                Integer osPatch = parseIntegerNullable(get(cols, idx, "os_patch"));
 
                 if (externalKey == null) {
                     errors.add(new ImportError(lineNo, "INVALID_EXTERNAL_KEY",
@@ -145,12 +186,36 @@ public class CsvImportService {
                         }
 
                         a.updateDetails(externalKey, assetType, owner, note);
-                        // optional fields
-                        a.setPlatform(platform);
-                        a.setOsVersion(osVersion);
 
+                        a.updateInventory(
+                                platform,
+                                osVersion,
+                                systemUuid,
+                                serialNumber,
+                                hardwareVendor,
+                                hardwareModel,
+                                hardwareVersion,
+                                computerName,
+                                localHostname,
+                                hostname,
+                                cpuBrand,
+                                cpuPhysicalCores,
+                                cpuLogicalCores,
+                                cpuSockets,
+                                physicalMemory,
+                                arch,
+                                boardVendor,
+                                boardModel,
+                                boardVersion,
+                                boardSerial,
+                                osName,
+                                osBuild,
+                                osMajor,
+                                osMinor,
+                                osPatch
+                        );
 
-                        // ingestion metadata（Asset側に markSeen(String) を実装している前提）
+                        // ingestion metadata
                         a.markSeen(SOURCE_CSV);
 
                         assetRepository.save(a);
@@ -521,5 +586,25 @@ public class CsvImportService {
         }
         out.add(cur.toString());
         return out;
+    }
+
+    private static Integer parseIntegerNullable(String s) {
+        String v = normalizeNullable(s);
+        if (v == null) return null;
+        try {
+            return Integer.valueOf(v);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Long parseLongNullable(String s) {
+        String v = normalizeNullable(s);
+        if (v == null) return null;
+        try {
+            return Long.valueOf(v);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

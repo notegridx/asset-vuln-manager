@@ -98,12 +98,20 @@ public class CsvStagedImportService {
                     normNullable(r.get("serial_number")),
                     normNullable(r.get("hardware_vendor")),
                     normNullable(r.get("hardware_model")),
+                    normNullable(r.get("hardware_version")),
                     normNullable(r.get("computer_name")),
                     normNullable(r.get("local_hostname")),
+                    normNullable(r.get("hostname")),
                     normNullable(r.get("cpu_brand")),
                     parseIntNullable(r.get("cpu_physical_cores")),
                     parseIntNullable(r.get("cpu_logical_cores")),
+                    parseIntNullable(r.get("cpu_sockets")),
+                    parseLongNullable(r.get("physical_memory")),
                     normNullable(r.get("arch")),
+                    normNullable(r.get("board_vendor")),
+                    normNullable(r.get("board_model")),
+                    normNullable(r.get("board_version")),
+                    normNullable(r.get("board_serial")),
                     normNullable(r.get("os_name")),
                     normNullable(r.get("os_build")),
                     parseIntNullable(r.get("os_major")),
@@ -230,11 +238,11 @@ public class CsvStagedImportService {
             Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
             if (asset == null) {
                 asset = new Asset(name);
-                asset.updateDetails(externalKey, r.getAssetType(), r.getOwner(), r.getNote());
             } else {
-                asset.updateName(name);
-                asset.updateDetails(externalKey, r.getAssetType(), r.getOwner(), r.getNote());
+                // 既存方針に合わせて name は更新しない
             }
+
+            asset.updateDetails(externalKey, r.getAssetType(), r.getOwner(), r.getNote());
 
             asset.updateInventory(
                     r.getPlatform(),
@@ -243,12 +251,20 @@ public class CsvStagedImportService {
                     r.getSerialNumber(),
                     r.getHardwareVendor(),
                     r.getHardwareModel(),
+                    r.getHardwareVersion(),
                     r.getComputerName(),
                     r.getLocalHostname(),
+                    r.getHostname(),
                     r.getCpuBrand(),
                     r.getCpuPhysicalCores(),
                     r.getCpuLogicalCores(),
+                    r.getCpuSockets(),
+                    r.getPhysicalMemory(),
                     r.getArch(),
+                    r.getBoardVendor(),
+                    r.getBoardModel(),
+                    r.getBoardVersion(),
+                    r.getBoardSerial(),
                     r.getOsName(),
                     r.getOsBuild(),
                     r.getOsMajor(),
@@ -506,6 +522,16 @@ public class CsvStagedImportService {
             } catch (DateTimeParseException ex2) {
                 return null;
             }
+        }
+    }
+
+    private static Long parseLongNullable(String s) {
+        String t = normNullable(s);
+        if (t == null) return null;
+        try {
+            return Long.valueOf(t);
+        } catch (NumberFormatException ex) {
+            return null;
         }
     }
 }

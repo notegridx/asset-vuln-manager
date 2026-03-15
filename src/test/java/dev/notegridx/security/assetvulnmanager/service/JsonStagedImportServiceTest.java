@@ -204,12 +204,20 @@ class JsonStagedImportServiceTest {
         when(row.getSerialNumber()).thenReturn("sn-001");
         when(row.getHardwareVendor()).thenReturn("Dell");
         when(row.getHardwareModel()).thenReturn("OptiPlex");
+        when(row.getHardwareVersion()).thenReturn("Gen2");
         when(row.getComputerName()).thenReturn("HOST-001");
         when(row.getLocalHostname()).thenReturn("host-001.local");
+        when(row.getHostname()).thenReturn("host-001.example.local");
         when(row.getCpuBrand()).thenReturn("Intel");
         when(row.getCpuPhysicalCores()).thenReturn(4);
         when(row.getCpuLogicalCores()).thenReturn(8);
+        when(row.getCpuSockets()).thenReturn(1);
+        when(row.getPhysicalMemory()).thenReturn(17179869184L);
         when(row.getArch()).thenReturn("x64");
+        when(row.getBoardVendor()).thenReturn("Dell");
+        when(row.getBoardModel()).thenReturn("Board-A");
+        when(row.getBoardVersion()).thenReturn("1.0");
+        when(row.getBoardSerial()).thenReturn("board-001");
         when(row.getOsName()).thenReturn("Windows");
         when(row.getOsBuild()).thenReturn("22631");
         when(row.getOsMajor()).thenReturn(11);
@@ -219,6 +227,9 @@ class JsonStagedImportServiceTest {
 
         when(stagingAssetRepository.findByImportRunIdOrderByRowNoAsc(1L)).thenReturn(List.of(row));
         when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.empty());
+        when(importRunRepository.findById(1L))
+                .thenReturn(Optional.of(ImportRun.newStaged("JSON_UPLOAD", "JSON_ASSETS", "assets.json", "ABC")));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(i -> i.getArgument(0));
 
         service.importAssets(1L);
 
@@ -230,11 +241,33 @@ class JsonStagedImportServiceTest {
         assertThat(saved.getExternalKey()).isEqualTo("asset-001");
         assertThat(saved.getAssetType()).isEqualTo("SERVER");
         assertThat(saved.getOwner()).isEqualTo("user1");
-        assertThat(saved.getSource()).isEqualTo("JSON_UPLOAD");
+        assertThat(saved.getNote()).isEqualTo("imported");
         assertThat(saved.getPlatform()).isEqualTo("windows");
         assertThat(saved.getOsVersion()).isEqualTo("11");
         assertThat(saved.getSystemUuid()).isEqualTo("uuid-001");
+        assertThat(saved.getSerialNumber()).isEqualTo("sn-001");
+        assertThat(saved.getHardwareVendor()).isEqualTo("Dell");
+        assertThat(saved.getHardwareModel()).isEqualTo("OptiPlex");
+        assertThat(saved.getHardwareVersion()).isEqualTo("Gen2");
+        assertThat(saved.getComputerName()).isEqualTo("HOST-001");
+        assertThat(saved.getLocalHostname()).isEqualTo("host-001.local");
+        assertThat(saved.getHostname()).isEqualTo("host-001.example.local");
+        assertThat(saved.getCpuBrand()).isEqualTo("Intel");
+        assertThat(saved.getCpuPhysicalCores()).isEqualTo(4);
+        assertThat(saved.getCpuLogicalCores()).isEqualTo(8);
+        assertThat(saved.getCpuSockets()).isEqualTo(1);
+        assertThat(saved.getPhysicalMemory()).isEqualTo(17179869184L);
         assertThat(saved.getArch()).isEqualTo("x64");
+        assertThat(saved.getBoardVendor()).isEqualTo("Dell");
+        assertThat(saved.getBoardModel()).isEqualTo("Board-A");
+        assertThat(saved.getBoardVersion()).isEqualTo("1.0");
+        assertThat(saved.getBoardSerial()).isEqualTo("board-001");
+        assertThat(saved.getOsName()).isEqualTo("Windows");
+        assertThat(saved.getOsBuild()).isEqualTo("22631");
+        assertThat(saved.getOsMajor()).isEqualTo(11);
+        assertThat(saved.getOsMinor()).isEqualTo(0);
+        assertThat(saved.getOsPatch()).isEqualTo(1);
+        assertThat(saved.getSource()).isEqualTo("JSON_UPLOAD");
         assertThat(saved.getLastSeenAt()).isEqualTo(LocalDateTime.of(2026, 3, 8, 6, 0));
     }
 
@@ -1023,6 +1056,75 @@ class JsonStagedImportServiceTest {
         verify(softwareInstallRepository).save(existing);
     }
 
+    @Test
+    void stageAssets_mapsExtendedInventoryFields() {
+        String json = """
+            [
+              {
+                "externalKey":"asset-001",
+                "name":"Host 001",
+                "assetType":"SERVER",
+                "owner":"user1",
+                "note":"imported",
+                "source":"JSON_UPLOAD",
+                "platform":"windows",
+                "osVersion":"11",
+                "systemUuid":"uuid-001",
+                "serialNumber":"sn-001",
+                "hardwareVendor":"Dell",
+                "hardwareModel":"OptiPlex",
+                "hardwareVersion":"Gen2",
+                "computerName":"HOST-001",
+                "localHostname":"host-001.local",
+                "hostname":"host-001.example.local",
+                "cpuBrand":"Intel",
+                "cpuPhysicalCores":4,
+                "cpuLogicalCores":8,
+                "cpuSockets":1,
+                "physicalMemory":17179869184,
+                "arch":"x64",
+                "boardVendor":"Dell",
+                "boardModel":"Board-A",
+                "boardVersion":"1.0",
+                "boardSerial":"board-001",
+                "osName":"Windows",
+                "osBuild":"22631",
+                "osMajor":11,
+                "osMinor":0,
+                "osPatch":1,
+                "lastSeenAt":"2026-03-08T06:00:00"
+              }
+            ]
+            """;
+
+        ImportRun run = service.stageAssets(
+                "assets.json",
+                json.getBytes(StandardCharsets.UTF_8)
+        );
+
+        ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
+        verify(stagingAssetRepository).saveAll(captor.capture());
+
+        @SuppressWarnings("unchecked")
+        List<ImportStagingAsset> rows = captor.getValue();
+        assertThat(rows).hasSize(1);
+
+        ImportStagingAsset row = rows.get(0);
+        assertThat(row.isValid()).isTrue();
+        assertThat(row.getExternalKey()).isEqualTo("asset-001");
+        assertThat(row.getName()).isEqualTo("Host 001");
+        assertThat(row.getHardwareVersion()).isEqualTo("Gen2");
+        assertThat(row.getHostname()).isEqualTo("host-001.example.local");
+        assertThat(row.getCpuSockets()).isEqualTo(1);
+        assertThat(row.getPhysicalMemory()).isEqualTo(17179869184L);
+        assertThat(row.getBoardVendor()).isEqualTo("Dell");
+        assertThat(row.getBoardModel()).isEqualTo("Board-A");
+        assertThat(row.getBoardVersion()).isEqualTo("1.0");
+        assertThat(row.getBoardSerial()).isEqualTo("board-001");
+
+        assertThat(run.getValidRows()).isEqualTo(1);
+        assertThat(run.getInvalidRows()).isEqualTo(0);
+    }
 
 
 

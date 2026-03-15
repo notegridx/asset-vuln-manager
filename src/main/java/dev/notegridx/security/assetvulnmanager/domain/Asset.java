@@ -55,11 +55,17 @@ public class Asset {
     @Column(name = "hardware_model", length = 255)
     private String hardwareModel;
 
+    @Column(name = "hardware_version", length = 255)
+    private String hardwareVersion;
+
     @Column(name = "computer_name", length = 255)
     private String computerName;
 
     @Column(name = "local_hostname", length = 255)
     private String localHostname;
+
+    @Column(name = "hostname", length = 255)
+    private String hostname;
 
     @Column(name = "cpu_brand", length = 255)
     private String cpuBrand;
@@ -70,8 +76,26 @@ public class Asset {
     @Column(name = "cpu_logical_cores")
     private Integer cpuLogicalCores;
 
+    @Column(name = "cpu_sockets")
+    private Integer cpuSockets;
+
+    @Column(name = "physical_memory")
+    private Long physicalMemory;
+
     @Column(name = "arch", length = 64)
     private String arch;
+
+    @Column(name = "board_vendor", length = 255)
+    private String boardVendor;
+
+    @Column(name = "board_model", length = 255)
+    private String boardModel;
+
+    @Column(name = "board_version", length = 255)
+    private String boardVersion;
+
+    @Column(name = "board_serial", length = 255)
+    private String boardSerial;
 
     @Column(name = "os_name", length = 255)
     private String osName;
@@ -157,12 +181,20 @@ public class Asset {
             String serialNumber,
             String hardwareVendor,
             String hardwareModel,
+            String hardwareVersion,
             String computerName,
             String localHostname,
+            String hostname,
             String cpuBrand,
             Integer cpuPhysicalCores,
             Integer cpuLogicalCores,
+            Integer cpuSockets,
+            Long physicalMemory,
             String arch,
+            String boardVendor,
+            String boardModel,
+            String boardVersion,
+            String boardSerial,
             String osName,
             String osBuild,
             Integer osMajor,
@@ -176,13 +208,22 @@ public class Asset {
         this.serialNumber = normalizeNullable(serialNumber);
         this.hardwareVendor = normalizeNullable(hardwareVendor);
         this.hardwareModel = normalizeNullable(hardwareModel);
+        this.hardwareVersion = normalizeNullable(hardwareVersion);
         this.computerName = normalizeNullable(computerName);
         this.localHostname = normalizeNullable(localHostname);
+        this.hostname = normalizeNullable(hostname);
 
         this.cpuBrand = normalizeNullable(cpuBrand);
         this.cpuPhysicalCores = cpuPhysicalCores;
         this.cpuLogicalCores = cpuLogicalCores;
+        this.cpuSockets = cpuSockets;
+        this.physicalMemory = physicalMemory;
         this.arch = normalizeNullable(arch);
+
+        this.boardVendor = normalizeNullable(boardVendor);
+        this.boardModel = normalizeNullable(boardModel);
+        this.boardVersion = normalizeNullable(boardVersion);
+        this.boardSerial = normalizeNullable(boardSerial);
 
         this.osName = normalizeNullable(osName);
         this.osBuild = normalizeNullable(osBuild);
@@ -214,7 +255,7 @@ public class Asset {
         this.createdAt = now;
         this.updatedAt = now;
         if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
-        // lastSeenAt は null 許容EE回観測まで未設定でもOKEE
+        // lastSeenAt は null 許容。初回観測まで未設定でもOK
     }
 
     @PreUpdate

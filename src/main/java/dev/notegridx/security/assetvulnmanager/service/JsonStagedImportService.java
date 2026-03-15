@@ -65,7 +65,10 @@ public class JsonStagedImportService {
     }
 
     public static class AssetJsonRow {
+
+        @JsonAlias("external_key")
         public String externalKey;
+
         public String name;
 
         @JsonAlias("asset_type")
@@ -91,11 +94,16 @@ public class JsonStagedImportService {
         @JsonAlias("hardware_model")
         public String hardwareModel;
 
+        @JsonAlias("hardware_version")
+        public String hardwareVersion;
+
         @JsonAlias("computer_name")
         public String computerName;
 
         @JsonAlias("local_hostname")
         public String localHostname;
+
+        public String hostname;
 
         @JsonAlias("cpu_brand")
         public String cpuBrand;
@@ -106,7 +114,25 @@ public class JsonStagedImportService {
         @JsonAlias("cpu_logical_cores")
         public Integer cpuLogicalCores;
 
+        @JsonAlias("cpu_sockets")
+        public Integer cpuSockets;
+
+        @JsonAlias("physical_memory")
+        public Long physicalMemory;
+
         public String arch;
+
+        @JsonAlias("board_vendor")
+        public String boardVendor;
+
+        @JsonAlias("board_model")
+        public String boardModel;
+
+        @JsonAlias("board_version")
+        public String boardVersion;
+
+        @JsonAlias("board_serial")
+        public String boardSerial;
 
         @JsonAlias("os_name")
         public String osName;
@@ -215,12 +241,20 @@ public class JsonStagedImportService {
                     normNullable(r.serialNumber),
                     normNullable(r.hardwareVendor),
                     normNullable(r.hardwareModel),
+                    normNullable(r.hardwareVersion),
                     normNullable(r.computerName),
                     normNullable(r.localHostname),
+                    normNullable(r.hostname),
                     normNullable(r.cpuBrand),
                     r.cpuPhysicalCores,
                     r.cpuLogicalCores,
+                    r.cpuSockets,
+                    r.physicalMemory,
                     normNullable(r.arch),
+                    normNullable(r.boardVendor),
+                    normNullable(r.boardModel),
+                    normNullable(r.boardVersion),
+                    normNullable(r.boardSerial),
                     normNullable(r.osName),
                     normNullable(r.osBuild),
                     r.osMajor,
@@ -359,12 +393,20 @@ public class JsonStagedImportService {
                     r.getSerialNumber(),
                     r.getHardwareVendor(),
                     r.getHardwareModel(),
+                    r.getHardwareVersion(),
                     r.getComputerName(),
                     r.getLocalHostname(),
+                    r.getHostname(),
                     r.getCpuBrand(),
                     r.getCpuPhysicalCores(),
                     r.getCpuLogicalCores(),
+                    r.getCpuSockets(),
+                    r.getPhysicalMemory(),
                     r.getArch(),
+                    r.getBoardVendor(),
+                    r.getBoardModel(),
+                    r.getBoardVersion(),
+                    r.getBoardSerial(),
                     r.getOsName(),
                     r.getOsBuild(),
                     r.getOsMajor(),
