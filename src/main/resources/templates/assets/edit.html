@@ -16,7 +16,6 @@
           method="post"
           style="margin-top:12px;">
 
-        <!-- External Key -->
         <div class="field">
             <label>External Key</label>
             <input type="text" th:field="*{externalKey}" placeholder="e.g. ASSET-001">
@@ -61,6 +60,129 @@
         <div class="field">
             <label>OS Version</label>
             <input type="text" th:field="*{osVersion}" placeholder="e.g. 11.0.22631"/>
+        </div>
+
+        <hr style="margin:20px 0; border:none; border-top:1px solid rgba(255,255,255,0.08);">
+
+        <div class="field">
+            <label>System UUID</label>
+            <input type="text" th:field="*{systemUuid}">
+        </div>
+
+        <div class="field">
+            <label>Serial Number</label>
+            <input type="text" th:field="*{serialNumber}">
+        </div>
+
+        <div class="field">
+            <label>Hardware Vendor</label>
+            <input type="text" th:field="*{hardwareVendor}">
+        </div>
+
+        <div class="field">
+            <label>Hardware Model</label>
+            <input type="text" th:field="*{hardwareModel}">
+        </div>
+
+        <div class="field">
+            <label>Hardware Version</label>
+            <input type="text" th:field="*{hardwareVersion}">
+        </div>
+
+        <div class="field">
+            <label>Computer Name</label>
+            <input type="text" th:field="*{computerName}">
+        </div>
+
+        <div class="field">
+            <label>Local Hostname</label>
+            <input type="text" th:field="*{localHostname}">
+        </div>
+
+        <div class="field">
+            <label>Hostname</label>
+            <input type="text" th:field="*{hostname}">
+        </div>
+
+        <hr style="margin:20px 0; border:none; border-top:1px solid rgba(255,255,255,0.08);">
+
+        <div class="field">
+            <label>CPU Brand</label>
+            <input type="text" th:field="*{cpuBrand}">
+        </div>
+
+        <div class="field">
+            <label>CPU Physical Cores</label>
+            <input type="number" th:field="*{cpuPhysicalCores}">
+        </div>
+
+        <div class="field">
+            <label>CPU Logical Cores</label>
+            <input type="number" th:field="*{cpuLogicalCores}">
+        </div>
+
+        <div class="field">
+            <label>CPU Sockets</label>
+            <input type="number" th:field="*{cpuSockets}">
+        </div>
+
+        <div class="field">
+            <label>Physical Memory</label>
+            <input type="number" th:field="*{physicalMemory}">
+        </div>
+
+        <div class="field">
+            <label>Architecture</label>
+            <input type="text" th:field="*{arch}">
+        </div>
+
+        <hr style="margin:20px 0; border:none; border-top:1px solid rgba(255,255,255,0.08);">
+
+        <div class="field">
+            <label>Board Vendor</label>
+            <input type="text" th:field="*{boardVendor}">
+        </div>
+
+        <div class="field">
+            <label>Board Model</label>
+            <input type="text" th:field="*{boardModel}">
+        </div>
+
+        <div class="field">
+            <label>Board Version</label>
+            <input type="text" th:field="*{boardVersion}">
+        </div>
+
+        <div class="field">
+            <label>Board Serial</label>
+            <input type="text" th:field="*{boardSerial}">
+        </div>
+
+        <hr style="margin:20px 0; border:none; border-top:1px solid rgba(255,255,255,0.08);">
+
+        <div class="field">
+            <label>OS Name</label>
+            <input type="text" th:field="*{osName}">
+        </div>
+
+        <div class="field">
+            <label>OS Build</label>
+            <input type="text" th:field="*{osBuild}">
+        </div>
+
+        <div class="field">
+            <label>OS Major</label>
+            <input type="number" th:field="*{osMajor}">
+        </div>
+
+        <div class="field">
+            <label>OS Minor</label>
+            <input type="number" th:field="*{osMinor}">
+        </div>
+
+        <div class="field">
+            <label>OS Patch</label>
+            <input type="number" th:field="*{osPatch}">
         </div>
 
         <div class="actions" style="margin-top:14px;">

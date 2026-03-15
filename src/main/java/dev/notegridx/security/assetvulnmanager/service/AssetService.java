@@ -69,10 +69,7 @@ public class AssetService {
 
         Asset asset = getRequired(id);
 
-        // name も編集対象にする
         asset.updateName(name);
-
-        // 既存の詳細更新を流用
         asset.updateDetails(externalKey, assetType, owner, note);
 
         return assetRepository.save(asset);
@@ -87,18 +84,65 @@ public class AssetService {
                         String note,
                         String source,
                         String platform,
-                        String osVersion) {
+                        String osVersion,
+                        String systemUuid,
+                        String serialNumber,
+                        String hardwareVendor,
+                        String hardwareModel,
+                        String hardwareVersion,
+                        String computerName,
+                        String localHostname,
+                        String hostname,
+                        String cpuBrand,
+                        Integer cpuPhysicalCores,
+                        Integer cpuLogicalCores,
+                        Integer cpuSockets,
+                        Long physicalMemory,
+                        String arch,
+                        String boardVendor,
+                        String boardModel,
+                        String boardVersion,
+                        String boardSerial,
+                        String osName,
+                        String osBuild,
+                        Integer osMajor,
+                        Integer osMinor,
+                        Integer osPatch) {
 
         Asset asset = getRequired(id);
 
         asset.updateName(name);
         asset.updateDetails(externalKey, assetType, owner, note);
-
         asset.setSource(source);
-        asset.setPlatform(platform);
-        asset.setOsVersion(osVersion);
+
+        asset.updateInventory(
+                platform,
+                osVersion,
+                systemUuid,
+                serialNumber,
+                hardwareVendor,
+                hardwareModel,
+                hardwareVersion,
+                computerName,
+                localHostname,
+                hostname,
+                cpuBrand,
+                cpuPhysicalCores,
+                cpuLogicalCores,
+                cpuSockets,
+                physicalMemory,
+                arch,
+                boardVendor,
+                boardModel,
+                boardVersion,
+                boardSerial,
+                osName,
+                osBuild,
+                osMajor,
+                osMinor,
+                osPatch
+        );
 
         return assetRepository.save(asset);
     }
-
 }
