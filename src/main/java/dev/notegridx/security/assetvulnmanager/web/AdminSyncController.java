@@ -1,37 +1,27 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.notegridx.security.assetvulnmanager.domain.AdminRun;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
-import dev.notegridx.security.assetvulnmanager.repository.AdminRunRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminCveDeltaUpdateService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
+import dev.notegridx.security.assetvulnmanager.service.AdminRunReadService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
-
 @Controller
 public class AdminSyncController {
 
 	private final AdminCveDeltaUpdateService deltaUpdateService;
-	private final AdminRunRepository adminRunRepository;
-	private final ObjectMapper objectMapper;
+	private final AdminRunReadService adminRunReadService;
 
 	public AdminSyncController(
 			AdminCveDeltaUpdateService deltaUpdateService,
-			AdminRunRepository adminRunRepository,
-			ObjectMapper objectMapper
+			AdminRunReadService adminRunReadService
 	) {
 		this.deltaUpdateService = deltaUpdateService;
-		this.adminRunRepository = adminRunRepository;
-		this.objectMapper = objectMapper;
+		this.adminRunReadService = adminRunReadService;
 	}
 
 	@GetMapping("/admin/sync")
@@ -61,34 +51,20 @@ public class AdminSyncController {
 	}
 
 	private void loadLastRun(Model model) {
-		Optional<AdminRun> opt = adminRunRepository
-				.findTop1ByJobTypeOrderByStartedAtDescIdDesc(AdminJobType.CVE_DELTA_UPDATE);
+		AdminRunReadService.LastRunView last = adminRunReadService.findLastRun(
+				AdminJobType.CVE_DELTA_UPDATE,
+				AdminRunReadService.ParseErrorStyle.SIMPLE_CLASS_NAME
+		);
 
-		if (opt.isEmpty()) {
+		if (last == null) {
 			model.addAttribute("lastRun", null);
 			model.addAttribute("lastParams", null);
 			model.addAttribute("lastResult", null);
 			return;
 		}
 
-		AdminRun r = opt.get();
-		model.addAttribute("lastRun", r);
-		model.addAttribute("lastParams", parseJsonToMap(r.getParamsJson()));
-		model.addAttribute("lastResult", parseJsonToMap(r.getResultJson()));
-	}
-
-	private Map<String, Object> parseJsonToMap(String json) {
-		if (json == null || json.isBlank()) return null;
-		try {
-			return objectMapper.readValue(
-					json,
-					new TypeReference<LinkedHashMap<String, Object>>() {
-					}
-			);
-		} catch (Exception e) {
-			Map<String, Object> m = new LinkedHashMap<>();
-			m.put("_parseError", e.getClass().getSimpleName());
-			return m;
-		}
+		model.addAttribute("lastRun", last.run());
+		model.addAttribute("lastParams", last.params());
+		model.addAttribute("lastResult", last.result());
 	}
 }
