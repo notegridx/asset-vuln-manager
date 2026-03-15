@@ -1,9 +1,8 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
-import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
-import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
+import dev.notegridx.security.assetvulnmanager.service.AdminInventoryReadService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedQuickAddService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedResolutionService;
 import org.springframework.stereotype.Controller;
@@ -21,18 +20,18 @@ import java.util.Locale;
 @Controller
 public class AdminInventoryController {
 
-    private final ImportRunRepository importRunRepository;
+    private final AdminInventoryReadService adminInventoryReadService;
     private final UnresolvedMappingRepository unresolvedMappingRepository;
     private final UnresolvedResolutionService unresolvedResolutionService;
     private final UnresolvedQuickAddService unresolvedQuickAddService;
 
     public AdminInventoryController(
-            ImportRunRepository importRunRepository,
+            AdminInventoryReadService adminInventoryReadService,
             UnresolvedMappingRepository unresolvedMappingRepository,
             UnresolvedResolutionService unresolvedResolutionService,
             UnresolvedQuickAddService unresolvedQuickAddService
     ) {
-        this.importRunRepository = importRunRepository;
+        this.adminInventoryReadService = adminInventoryReadService;
         this.unresolvedMappingRepository = unresolvedMappingRepository;
         this.unresolvedResolutionService = unresolvedResolutionService;
         this.unresolvedQuickAddService = unresolvedQuickAddService;
@@ -40,15 +39,7 @@ public class AdminInventoryController {
 
     @GetMapping("/admin/import-runs")
     public String importRuns(Model model) {
-        List<ImportRun> runs = importRunRepository.findAll();
-        runs.sort((a, b) -> {
-            if (a.getId() == null && b.getId() == null) return 0;
-            if (a.getId() == null) return 1;
-            if (b.getId() == null) return -1;
-            return Long.compare(b.getId(), a.getId());
-        });
-
-        model.addAttribute("runs", runs);
+        model.addAttribute("runs", adminInventoryReadService.findImportRuns());
         return "admin/import_runs";
     }
 
@@ -66,7 +57,9 @@ public class AdminInventoryController {
                 ? unresolvedMappingRepository.findAllActive()
                 : unresolvedMappingRepository.findAll();
 
-        // status filter (null/blank => NEW, ALL => no filter)
+        // Status filter:
+        // null/blank => NEW
+        // ALL => no filtering
         String effectiveStatus = (status == null || status.isBlank())
                 ? "NEW"
                 : status.trim().toUpperCase(Locale.ROOT);
@@ -75,8 +68,9 @@ public class AdminInventoryController {
             list.removeIf(m -> m.getStatus() == null || !m.getStatus().equalsIgnoreCase(effectiveStatus));
         }
 
-        // NOTE: runId filtering is not implemented in the current code base.
-        // Keep runId as "UI state" only (passes through).
+        // NOTE:
+        // runId filtering is not implemented in the current code base.
+        // runId is preserved only as UI state.
         list.sort((a, b) -> {
             if (a.getId() == null && b.getId() == null) return 0;
             if (a.getId() == null) return 1;
@@ -105,7 +99,7 @@ public class AdminInventoryController {
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
-            // ここは未送信でも redirectQuery が activeOnly を必ず付けるので実害なし
+            // Even if not sent, redirectQuery always includes activeOnly
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             RedirectAttributes ra
     ) {
@@ -143,20 +137,22 @@ public class AdminInventoryController {
     }
 
     /**
-     * checkbox の仕様：
-     * - checked の時だけ activeOnly=true が飛ぶ
-     * - unchecked の時は activeOnly 自体が飛ばない
-     * <p>
-     * そこで、form側で activeOnlyPresent=1 を常に送るようにして、
-     * 「Filter押下の結果 activeOnly が無い」= unchecked と判断する。
+     * Checkbox behavior:
+     *
+     * - When checked, activeOnly=true is sent.
+     * - When unchecked, activeOnly is not sent at all.
+     *
+     * To distinguish this, the form always sends activeOnlyPresent=1.
+     * If activeOnlyPresent exists but activeOnly is missing,
+     * it means the checkbox was unchecked.
      */
     private static boolean effectiveActiveOnly(Boolean activeOnly, String activeOnlyPresent) {
-        // 初回アクセス（activeOnlyPresent が無い）ではデフォルト true
+        // Initial access (no activeOnlyPresent): default true
         if (activeOnlyPresent == null) {
             return (activeOnly == null) ? true : activeOnly;
         }
-        // Filter 押下（activeOnlyPresent がある）では
-        // activeOnly が null なら unchecked 扱い（false）
+
+        // After filter submit: missing activeOnly means unchecked
         return Boolean.TRUE.equals(activeOnly);
     }
 
@@ -173,11 +169,11 @@ public class AdminInventoryController {
             first = false;
         }
 
-        // redirect 後も状態がブレないように常に明示
+        // Always explicitly include activeOnly to avoid state drift
         sb.append(first ? "?" : "&").append("activeOnly=").append(activeOnly);
         first = false;
 
-        // Filterフォームの設計に合わせて、付けておくと次のGETでも判定が安定する
+        // Including this keeps filter state stable after redirect
         if (includeActiveOnlyPresent) {
             sb.append(first ? "?" : "&").append("activeOnlyPresent=1");
         }
