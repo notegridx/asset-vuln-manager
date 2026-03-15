@@ -71,6 +71,8 @@ public class MatchingService {
 	@Transactional
 	public MatchResult matchAndUpsertAlerts() {
 
+		long startedAtNs = System.nanoTime();
+
 		LocalDateTime runStartedAt = DbTime.now();
 		LocalDateTime detectedAt = runStartedAt;
 
@@ -271,6 +273,16 @@ public class MatchingService {
 				runStartedAt,
 				CloseReason.AUTO_CLOSED_NO_LONGER_AFFECTED,
 				DbTime.now()
+		);
+
+		long elapsedMs = (System.nanoTime() - startedAtNs) / 1_000_000;
+		log.info(
+				"Generate Alerts finished in {} ms (pairsFound={}, alertsInserted={}, alertsTouched={}, alertsAutoClosed={})",
+				elapsedMs,
+				pairsFound,
+				alertsInserted,
+				alertsTouched,
+				autoClosed
 		);
 
 		return new MatchResult(pairsFound, alertsInserted, alertsTouched, autoClosed);
