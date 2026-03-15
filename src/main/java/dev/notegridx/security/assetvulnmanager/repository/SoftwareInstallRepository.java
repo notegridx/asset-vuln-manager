@@ -10,6 +10,13 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall, Long> {
+
+    @EntityGraph(attributePaths = {"asset"})
+    @Query("""
+            select s from SoftwareInstall s
+            order by s.id asc
+            """)
+    List<SoftwareInstall> findAllWithAsset();
     List<SoftwareInstall> findByAssetIdOrderByIdAsc(Long assetId);
 
     long deleteByAssetId(Long assetId);

@@ -28,7 +28,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
 @Service
 public class MatchingService {
@@ -76,7 +75,7 @@ public class MatchingService {
 		int alertsInserted = 0;
 		int alertsTouched = 0;
 
-		List<SoftwareInstall> installsAll = softwareInstallRepository.findAll();
+		List<SoftwareInstall> installsAll = softwareInstallRepository.findAllWithAsset();
 
 		Map<Long, List<SoftwareInstall>> installsByAssetKey = new LinkedHashMap<>();
 		Map<Long, Map<Long, CandidateBundle>> candidateBundlesByAssetKey = new LinkedHashMap<>();
@@ -109,6 +108,26 @@ public class MatchingService {
 					.forEach(v -> vulnerabilityCache.put(v.getId(), v));
 		}
 
+		Map<String, Alert> existingAlertMap = new HashMap<>();
+		List<Long> installIds = installsAll.stream()
+				.map(SoftwareInstall::getId)
+				.filter(Objects::nonNull)
+				.toList();
+		if (!installIds.isEmpty()) {
+			for (Alert alert : alertRepository.findBySoftwareInstallIdIn(installIds)) {
+				if (alert == null
+						|| alert.getSoftwareInstall() == null
+						|| alert.getSoftwareInstall().getId() == null
+						|| alert.getVulnerability() == null
+						|| alert.getVulnerability().getId() == null) {
+					continue;
+				}
+				existingAlertMap.put(alertKey(alert.getSoftwareInstall().getId(), alert.getVulnerability().getId()), alert);
+			}
+		}
+
+		Map<Long, CriteriaTreeLoader.LoadedCriteriaTree> criteriaTreeCache = new HashMap<>();
+
 		for (Map.Entry<Long, List<SoftwareInstall>> assetEntry : installsByAssetKey.entrySet()) {
 			Long assetKey = assetEntry.getKey();
 			List<SoftwareInstall> assetInstalls = assetEntry.getValue();
@@ -127,7 +146,7 @@ public class MatchingService {
 
 				pairsFound++;
 
-				CriteriaTreeLoader.LoadedCriteriaTree tree = criteriaTreeLoader.load(vulnId);
+				CriteriaTreeLoader.LoadedCriteriaTree tree = criteriaTreeCache.computeIfAbsent(vulnId, criteriaTreeLoader::load);
 
 				CriteriaEvaluator.EvalResult result;
 				if (tree != null && tree.hasRoots()) {
@@ -160,9 +179,9 @@ public class MatchingService {
 				AlertUncertainReason reason = result.reason();
 				AlertMatchMethod method = result.method() != null ? result.method() : bundle.bestMethod();
 
-				Optional<Alert> existing = alertRepository.findBySoftwareInstallIdAndVulnerabilityId(primaryInstall.getId(), vulnId);
-				if (existing.isPresent()) {
-					Alert a = existing.get();
+				Alert existing = existingAlertMap.get(alertKey(primaryInstall.getId(), vulnId));
+				if (existing != null) {
+					Alert a = existing;
 
 					if (a.getStatus() == AlertStatus.CLOSED
 							&& a.getCloseReason() == CloseReason.AUTO_CLOSED_NO_LONGER_AFFECTED) {
@@ -177,6 +196,7 @@ public class MatchingService {
 				} else {
 					Alert a = new Alert(primaryInstall, vulnerability, detectedAt, certainty, reason, method);
 					alertRepository.save(a);
+					existingAlertMap.put(alertKey(primaryInstall.getId(), vulnId), a);
 					alertsInserted++;
 				}
 			}
@@ -191,6 +211,10 @@ public class MatchingService {
 		);
 
 		return new MatchResult(pairsFound, alertsInserted, alertsTouched, autoClosed);
+	}
+
+	private static String alertKey(Long softwareInstallId, Long vulnerabilityId) {
+		return softwareInstallId + ":" + vulnerabilityId;
 	}
 
 	private void collectCandidatesForInstall(
