@@ -26,7 +26,11 @@ public class AdminSyncController {
 
 	@GetMapping("/admin/sync")
 	public String view(Model model) {
-		loadLastRun(model);
+		adminRunReadService.bindLastRun(
+				model,
+				AdminJobType.CVE_DELTA_UPDATE,
+				AdminRunReadService.ParseErrorStyle.SIMPLE_CLASS_NAME
+		);
 		return "admin/sync";
 	}
 
@@ -46,25 +50,11 @@ public class AdminSyncController {
 		model.addAttribute("daysBack", daysBack);
 		model.addAttribute("maxResults", maxResults);
 
-		loadLastRun(model);
-		return "admin/sync";
-	}
-
-	private void loadLastRun(Model model) {
-		AdminRunReadService.LastRunView last = adminRunReadService.findLastRun(
+		adminRunReadService.bindLastRun(
+				model,
 				AdminJobType.CVE_DELTA_UPDATE,
 				AdminRunReadService.ParseErrorStyle.SIMPLE_CLASS_NAME
 		);
-
-		if (last == null) {
-			model.addAttribute("lastRun", null);
-			model.addAttribute("lastParams", null);
-			model.addAttribute("lastResult", null);
-			return;
-		}
-
-		model.addAttribute("lastRun", last.run());
-		model.addAttribute("lastParams", last.params());
-		model.addAttribute("lastResult", last.result());
+		return "admin/sync";
 	}
 }

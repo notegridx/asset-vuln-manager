@@ -6,6 +6,7 @@ import dev.notegridx.security.assetvulnmanager.domain.AdminRun;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.repository.AdminRunRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.ui.Model;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,6 +60,25 @@ public class AdminRunReadService {
         );
     }
 
+    public void bindLastRun(
+            Model model,
+            AdminJobType jobType,
+            ParseErrorStyle parseErrorStyle
+    ) {
+        LastRunView last = findLastRun(jobType, parseErrorStyle);
+
+        if (last == null) {
+            model.addAttribute("lastRun", null);
+            model.addAttribute("lastParams", null);
+            model.addAttribute("lastResult", null);
+            return;
+        }
+
+        model.addAttribute("lastRun", last.run());
+        model.addAttribute("lastParams", last.params());
+        model.addAttribute("lastResult", last.result());
+    }
+
     public List<AdminRunRow> findRecentRuns(int limit) {
         int safeLimit = Math.max(1, limit);
 
@@ -97,12 +117,12 @@ public class AdminRunReadService {
     }
 
     /**
-     * Parses JSON into a "friendly map" for kv-pills.
+     * Parses JSON into a friendly key-value map for UI display.
      *
      * Rules:
-     * - If JSON is an object: return key->value (scalar as String, complex as compact JSON string)
-     * - If JSON is non-object (array/scalar): store it under "_raw"
-     * - On parse error: store raw under "_raw" and error under "_parseError"
+     * - If JSON is an object: return key -> friendly value
+     * - If JSON is non-object: return {_raw=...}
+     * - On parse error: return {_raw=..., _parseError=...}
      */
     private Map<String, Object> parseJsonToFriendlyMap(String json) {
         if (json == null || json.isBlank()) {
@@ -128,7 +148,6 @@ public class AdminRunReadService {
                 return out.isEmpty() ? null : out;
             }
 
-            // non-object JSON -> keep as raw
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("_raw", raw);
             return out;
@@ -142,20 +161,11 @@ public class AdminRunReadService {
     }
 
     private Object friendlyValue(Object v) {
-        if (v == null) {
-            return "null";
-        }
-        if (v instanceof String s) {
-            return s;
-        }
-        if (v instanceof Number n) {
-            return n.toString();
-        }
-        if (v instanceof Boolean b) {
-            return b.toString();
-        }
+        if (v == null) return "null";
+        if (v instanceof String s) return s;
+        if (v instanceof Number n) return n.toString();
+        if (v instanceof Boolean b) return b.toString();
 
-        // For nested object/array, render as compact JSON string so it still fits in a pill.
         try {
             return objectMapper.writeValueAsString(v);
         } catch (Exception ignore) {

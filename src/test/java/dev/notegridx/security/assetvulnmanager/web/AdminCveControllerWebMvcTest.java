@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -43,16 +44,18 @@ class AdminCveControllerWebMvcTest {
     @DisplayName("GET /admin/cve/sync returns page with defaults and last run")
     void view_returnsPageWithDefaultsAndLastRun() throws Exception {
         AdminRun run = mock(AdminRun.class);
-        AdminRunReadService.LastRunView lastRunView = new AdminRunReadService.LastRunView(
-                run,
-                Map.of("kind", "MODIFIED"),
-                Map.of("vulnerabilitiesParsed", 10)
-        );
 
-        when(adminRunReadService.findLastRun(
-                AdminJobType.CVE_FEED_SYNC,
-                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
-        )).thenReturn(lastRunView);
+        doAnswer(invocation -> {
+            var model = invocation.getArgument(0, org.springframework.ui.Model.class);
+            model.addAttribute("lastRun", run);
+            model.addAttribute("lastParams", Map.of("kind", "MODIFIED"));
+            model.addAttribute("lastResult", Map.of("vulnerabilitiesParsed", 10));
+            return null;
+        }).when(adminRunReadService).bindLastRun(
+                any(),
+                eq(AdminJobType.CVE_FEED_SYNC),
+                eq(AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW)
+        );
 
         mockMvc.perform(get("/admin/cve/sync"))
                 .andExpect(status().isOk())
@@ -65,9 +68,10 @@ class AdminCveControllerWebMvcTest {
                 .andExpect(model().attribute("lastParams", Map.of("kind", "MODIFIED")))
                 .andExpect(model().attribute("lastResult", Map.of("vulnerabilitiesParsed", 10)));
 
-        verify(adminRunReadService).findLastRun(
-                AdminJobType.CVE_FEED_SYNC,
-                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
+        verify(adminRunReadService).bindLastRun(
+                any(),
+                eq(AdminJobType.CVE_FEED_SYNC),
+                eq(AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW)
         );
         verifyNoInteractions(adminCveFeedSyncService);
     }
@@ -75,54 +79,62 @@ class AdminCveControllerWebMvcTest {
     @Test
     @DisplayName("POST /admin/cve/sync with YEAR and missing year returns validation error")
     void run_yearWithoutYear_returnsValidationError() throws Exception {
-        when(adminRunReadService.findLastRun(
-                AdminJobType.CVE_FEED_SYNC,
-                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
-        )).thenReturn(null);
+        doAnswer(invocation -> {
+            var model = invocation.getArgument(0, org.springframework.ui.Model.class);
+            model.addAttribute("lastRun", null);
+            model.addAttribute("lastParams", null);
+            model.addAttribute("lastResult", null);
+            return null;
+        }).when(adminRunReadService).bindLastRun(
+                any(),
+                eq(AdminJobType.CVE_FEED_SYNC),
+                eq(AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW)
+        );
 
         mockMvc.perform(post("/admin/cve/sync")
                         .with(csrf())
                         .param("kind", "YEAR")
-                        .param("force", "true")
-                        .param("maxItems", "123"))
+                        .param("force", "false")
+                        .param("maxItems", "100"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/cve_sync"))
                 .andExpect(model().attribute("kind", "YEAR"))
                 .andExpect(model().attribute("year", nullValue()))
-                .andExpect(model().attribute("force", true))
-                .andExpect(model().attribute("maxItems", 123))
+                .andExpect(model().attribute("force", false))
+                .andExpect(model().attribute("maxItems", 100))
                 .andExpect(model().attribute("error", "Year is required when selecting YEAR feed."))
                 .andExpect(model().attribute("lastRun", nullValue()))
                 .andExpect(model().attribute("lastParams", nullValue()))
                 .andExpect(model().attribute("lastResult", nullValue()));
 
-        verify(adminRunReadService).findLastRun(
-                AdminJobType.CVE_FEED_SYNC,
-                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
-        );
         verifyNoInteractions(adminCveFeedSyncService);
+        verify(adminRunReadService).bindLastRun(
+                any(),
+                eq(AdminJobType.CVE_FEED_SYNC),
+                eq(AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW)
+        );
     }
 
     @Test
-    @DisplayName("POST /admin/cve/sync runs sync and returns result")
-    void run_validRequest_returnsResult() throws Exception {
+    @DisplayName("POST /admin/cve/sync runs feed sync and shows result")
+    void run_success_returnsResult() throws Exception {
+        CveFeedSyncService.SyncResult result = mock(CveFeedSyncService.SyncResult.class);
         AdminRun run = mock(AdminRun.class);
-        AdminRunReadService.LastRunView lastRunView = new AdminRunReadService.LastRunView(
-                run,
-                Map.of("kind", "RECENT"),
-                Map.of("vulnerabilitiesParsed", 20)
-        );
-
-        CveFeedSyncService.SyncResult result =
-                CveFeedSyncService.SyncResult.executed(11, 22, 33, "sha256", "last-modified", 44L);
 
         when(adminCveFeedSyncService.runSync(NvdCveFeedClient.FeedKind.RECENT, null, true, 500))
                 .thenReturn(result);
 
-        when(adminRunReadService.findLastRun(
-                AdminJobType.CVE_FEED_SYNC,
-                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
-        )).thenReturn(lastRunView);
+        doAnswer(invocation -> {
+            var model = invocation.getArgument(0, org.springframework.ui.Model.class);
+            model.addAttribute("lastRun", run);
+            model.addAttribute("lastParams", Map.of("kind", "RECENT"));
+            model.addAttribute("lastResult", Map.of("vulnerabilitiesParsed", 20));
+            return null;
+        }).when(adminRunReadService).bindLastRun(
+                any(),
+                eq(AdminJobType.CVE_FEED_SYNC),
+                eq(AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW)
+        );
 
         mockMvc.perform(post("/admin/cve/sync")
                         .with(csrf())
@@ -141,9 +153,10 @@ class AdminCveControllerWebMvcTest {
                 .andExpect(model().attribute("lastResult", Map.of("vulnerabilitiesParsed", 20)));
 
         verify(adminCveFeedSyncService).runSync(NvdCveFeedClient.FeedKind.RECENT, null, true, 500);
-        verify(adminRunReadService).findLastRun(
-                AdminJobType.CVE_FEED_SYNC,
-                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
+        verify(adminRunReadService).bindLastRun(
+                any(),
+                eq(AdminJobType.CVE_FEED_SYNC),
+                eq(AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW)
         );
     }
 
@@ -153,10 +166,17 @@ class AdminCveControllerWebMvcTest {
         when(adminCveFeedSyncService.runSync(NvdCveFeedClient.FeedKind.MODIFIED, null, false, 100))
                 .thenThrow(new AdminJobAlreadyRunningException("CVE feed sync is already running."));
 
-        when(adminRunReadService.findLastRun(
-                AdminJobType.CVE_FEED_SYNC,
-                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
-        )).thenReturn(null);
+        doAnswer(invocation -> {
+            var model = invocation.getArgument(0, org.springframework.ui.Model.class);
+            model.addAttribute("lastRun", null);
+            model.addAttribute("lastParams", null);
+            model.addAttribute("lastResult", null);
+            return null;
+        }).when(adminRunReadService).bindLastRun(
+                any(),
+                eq(AdminJobType.CVE_FEED_SYNC),
+                eq(AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW)
+        );
 
         mockMvc.perform(post("/admin/cve/sync")
                         .with(csrf())
@@ -175,9 +195,10 @@ class AdminCveControllerWebMvcTest {
                 .andExpect(model().attribute("lastResult", nullValue()));
 
         verify(adminCveFeedSyncService).runSync(NvdCveFeedClient.FeedKind.MODIFIED, null, false, 100);
-        verify(adminRunReadService).findLastRun(
-                AdminJobType.CVE_FEED_SYNC,
-                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
+        verify(adminRunReadService).bindLastRun(
+                any(),
+                eq(AdminJobType.CVE_FEED_SYNC),
+                eq(AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW)
         );
     }
 }

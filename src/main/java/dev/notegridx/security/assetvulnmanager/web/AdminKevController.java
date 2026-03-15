@@ -27,7 +27,11 @@ public class AdminKevController {
 
     @GetMapping("/admin/kev/sync")
     public String page(Model model) {
-        bindLastRun(model);
+        adminRunReadService.bindLastRun(
+                model,
+                AdminJobType.KEV_SYNC,
+                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
+        );
 
         model.addAttribute("force", false);
         model.addAttribute("maxItems", 50000);
@@ -48,29 +52,15 @@ public class AdminKevController {
             model.addAttribute("error", ex.getMessage());
         }
 
-        bindLastRun(model);
+        adminRunReadService.bindLastRun(
+                model,
+                AdminJobType.KEV_SYNC,
+                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
+        );
 
         model.addAttribute("force", force);
         model.addAttribute("maxItems", maxItems);
 
         return "admin/kev_sync";
-    }
-
-    private void bindLastRun(Model model) {
-        AdminRunReadService.LastRunView last = adminRunReadService.findLastRun(
-                AdminJobType.KEV_SYNC,
-                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
-        );
-
-        if (last == null) {
-            model.addAttribute("lastRun", null);
-            model.addAttribute("lastParams", null);
-            model.addAttribute("lastResult", null);
-            return;
-        }
-
-        model.addAttribute("lastRun", last.run());
-        model.addAttribute("lastParams", last.params());
-        model.addAttribute("lastResult", last.result());
     }
 }

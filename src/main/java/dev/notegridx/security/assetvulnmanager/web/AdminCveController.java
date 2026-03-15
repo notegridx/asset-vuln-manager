@@ -29,7 +29,11 @@ public class AdminCveController {
 
     @GetMapping("/admin/cve/sync")
     public String view(Model model) {
-        bindLastRun(model);
+        adminRunReadService.bindLastRun(
+                model,
+                AdminJobType.CVE_FEED_SYNC,
+                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
+        );
 
         model.addAttribute("kind", NvdCveFeedClient.FeedKind.MODIFIED.name());
         model.addAttribute("year", null);
@@ -61,7 +65,11 @@ public class AdminCveController {
         model.addAttribute("maxItems", maxItems);
 
         if (k == NvdCveFeedClient.FeedKind.YEAR && year == null) {
-            bindLastRun(model);
+            adminRunReadService.bindLastRun(
+                    model,
+                    AdminJobType.CVE_FEED_SYNC,
+                    AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
+            );
             model.addAttribute("error", "Year is required when selecting YEAR feed.");
             return "admin/cve_sync";
         }
@@ -73,25 +81,11 @@ public class AdminCveController {
             model.addAttribute("error", ex.getMessage());
         }
 
-        bindLastRun(model);
-        return "admin/cve_sync";
-    }
-
-    private void bindLastRun(Model model) {
-        AdminRunReadService.LastRunView last = adminRunReadService.findLastRun(
+        adminRunReadService.bindLastRun(
+                model,
                 AdminJobType.CVE_FEED_SYNC,
                 AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
         );
-
-        if (last == null) {
-            model.addAttribute("lastRun", null);
-            model.addAttribute("lastParams", null);
-            model.addAttribute("lastResult", null);
-            return;
-        }
-
-        model.addAttribute("lastRun", last.run());
-        model.addAttribute("lastParams", last.params());
-        model.addAttribute("lastResult", last.result());
+        return "admin/cve_sync";
     }
 }
