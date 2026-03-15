@@ -28,6 +28,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Service
 public class MatchingService {
@@ -81,6 +83,10 @@ public class MatchingService {
 		Map<Long, Map<Long, CandidateBundle>> candidateBundlesByAssetKey = new LinkedHashMap<>();
 		Map<Long, SoftwareInstall> installById = new HashMap<>();
 
+		Set<Long> canonicalVendorIds = new LinkedHashSet<>();
+		Set<String> vendorNorms = new LinkedHashSet<>();
+		Set<String> cpeNames = new LinkedHashSet<>();
+
 		for (SoftwareInstall si : installsAll) {
 			if (si == null || si.getId() == null) {
 				continue;
@@ -91,9 +97,39 @@ public class MatchingService {
 			candidateBundlesByAssetKey.computeIfAbsent(assetKey, k -> new LinkedHashMap<>());
 			installById.put(si.getId(), si);
 
-			collectCandidatesForInstall(
+			if (si.getCpeVendorId() != null && si.getCpeProductId() != null) {
+				canonicalVendorIds.add(si.getCpeVendorId());
+			}
+
+			String vn = normalize(si.getNormalizedVendor());
+			String pn = normalize(si.getNormalizedProduct());
+			if (vn != null && pn != null) {
+				vendorNorms.add(vn);
+			}
+
+			String cpeName = normalize(si.getCpeName());
+			if (cpeName != null) {
+				cpeNames.add(cpeName);
+			}
+		}
+
+		Map<String, List<VulnerabilityAffectedCpe>> canonicalCandidateMap = preloadCanonicalCandidates(canonicalVendorIds);
+		Map<String, List<VulnerabilityAffectedCpe>> normCandidateMap = preloadNormCandidates(vendorNorms);
+		Map<String, List<VulnerabilityAffectedCpe>> cpeNameCandidateMap = preloadCpeNameCandidates(cpeNames);
+
+		for (SoftwareInstall si : installsAll) {
+			if (si == null || si.getId() == null) {
+				continue;
+			}
+
+			long assetKey = assetGroupKey(si);
+			Map<Long, CandidateBundle> bundles = candidateBundlesByAssetKey.get(assetKey);
+			collectCandidatesForInstallFromPreloadedMaps(
 					si,
-					candidateBundlesByAssetKey.get(assetKey)
+					bundles,
+					canonicalCandidateMap,
+					normCandidateMap,
+					cpeNameCandidateMap
 			);
 		}
 
@@ -217,9 +253,12 @@ public class MatchingService {
 		return softwareInstallId + ":" + vulnerabilityId;
 	}
 
-	private void collectCandidatesForInstall(
+	private void collectCandidatesForInstallFromPreloadedMaps(
 			SoftwareInstall si,
-			Map<Long, CandidateBundle> bundles
+			Map<Long, CandidateBundle> bundles,
+			Map<String, List<VulnerabilityAffectedCpe>> canonicalCandidateMap,
+			Map<String, List<VulnerabilityAffectedCpe>> normCandidateMap,
+			Map<String, List<VulnerabilityAffectedCpe>> cpeNameCandidateMap
 	) {
 		if (si == null || bundles == null) {
 			return;
@@ -227,24 +266,100 @@ public class MatchingService {
 
 		Long vid = si.getCpeVendorId();
 		Long pid = si.getCpeProductId();
-
 		if (vid != null && pid != null) {
-			List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findCandidatesByCanonical(vid, pid);
-			registerCandidateRows(rows, AlertMatchMethod.DICT_ID, bundles);
+			registerCandidateRows(
+					canonicalCandidateMap.getOrDefault(canonicalKey(vid, pid), List.of()),
+					AlertMatchMethod.DICT_ID,
+					bundles
+			);
 		}
 
 		String vn = normalize(si.getNormalizedVendor());
 		String pn = normalize(si.getNormalizedProduct());
 		if (vn != null && pn != null) {
-			List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findCandidatesByNorm(vn, pn);
-			registerCandidateRows(rows, AlertMatchMethod.NORM, bundles);
+			registerCandidateRows(
+					normCandidateMap.getOrDefault(normKey(vn, pn), List.of()),
+					AlertMatchMethod.NORM,
+					bundles
+			);
 		}
 
 		String cpeName = normalize(si.getCpeName());
 		if (cpeName != null) {
-			List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findByCpeName(cpeName);
-			registerCandidateRows(rows, AlertMatchMethod.CPE_NAME, bundles);
+			registerCandidateRows(
+					cpeNameCandidateMap.getOrDefault(cpeName, List.of()),
+					AlertMatchMethod.CPE_NAME,
+					bundles
+			);
 		}
+	}
+
+	private Map<String, List<VulnerabilityAffectedCpe>> preloadCanonicalCandidates(Set<Long> canonicalVendorIds) {
+		Map<String, List<VulnerabilityAffectedCpe>> out = new HashMap<>();
+		if (canonicalVendorIds == null || canonicalVendorIds.isEmpty()) {
+			return out;
+		}
+
+		List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findAllByCanonicalVendorIds(new ArrayList<>(canonicalVendorIds));
+		for (VulnerabilityAffectedCpe row : rows) {
+			if (row == null || row.getCpeVendorId() == null || row.getCpeProductId() == null) {
+				continue;
+			}
+			out.computeIfAbsent(canonicalKey(row.getCpeVendorId(), row.getCpeProductId()), k -> new ArrayList<>())
+					.add(row);
+		}
+		return out;
+	}
+
+	private Map<String, List<VulnerabilityAffectedCpe>> preloadNormCandidates(Set<String> vendorNorms) {
+		Map<String, List<VulnerabilityAffectedCpe>> out = new HashMap<>();
+		if (vendorNorms == null || vendorNorms.isEmpty()) {
+			return out;
+		}
+
+		List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findAllByVendorNormIn(new ArrayList<>(vendorNorms));
+		for (VulnerabilityAffectedCpe row : rows) {
+			if (row == null) {
+				continue;
+			}
+			String vendorNorm = normalize(row.getVendorNorm());
+			String productNorm = normalize(row.getProductNorm());
+			if (vendorNorm == null || productNorm == null) {
+				continue;
+			}
+			out.computeIfAbsent(normKey(vendorNorm, productNorm), k -> new ArrayList<>())
+					.add(row);
+		}
+		return out;
+	}
+
+	private Map<String, List<VulnerabilityAffectedCpe>> preloadCpeNameCandidates(Set<String> cpeNames) {
+		Map<String, List<VulnerabilityAffectedCpe>> out = new HashMap<>();
+		if (cpeNames == null || cpeNames.isEmpty()) {
+			return out;
+		}
+
+		List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findByCpeNameIn(new ArrayList<>(cpeNames));
+		for (VulnerabilityAffectedCpe row : rows) {
+			if (row == null) {
+				continue;
+			}
+			String cpeName = normalize(row.getCpeName());
+			if (cpeName == null) {
+				continue;
+			}
+			out.computeIfAbsent(cpeName, k -> new ArrayList<>())
+					.add(row);
+		}
+		return out;
+	}
+
+	private static String canonicalKey(Long vendorId, Long productId) {
+		return vendorId + ":" + productId;
+	}
+
+	private static String normKey(String vendorNorm, String productNorm) {
+		return vendorNorm + ":" + productNorm;
 	}
 
 	private void registerCandidateRows(
