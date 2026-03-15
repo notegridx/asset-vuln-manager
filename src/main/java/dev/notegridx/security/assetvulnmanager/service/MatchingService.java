@@ -87,8 +87,8 @@ public class MatchingService {
 		Map<Long, Map<Long, CandidateBundle>> candidateBundlesByAssetKey = new LinkedHashMap<>();
 		Map<Long, SoftwareInstall> installById = new HashMap<>();
 
-		Set<Long> canonicalVendorIds = new LinkedHashSet<>();
-		Set<String> vendorNorms = new LinkedHashSet<>();
+		Set<String> canonicalPairs = new LinkedHashSet<>();
+		Set<String> normPairs = new LinkedHashSet<>();
 		Set<String> cpeNames = new LinkedHashSet<>();
 
 		for (SoftwareInstall si : installsAll) {
@@ -101,14 +101,16 @@ public class MatchingService {
 			candidateBundlesByAssetKey.computeIfAbsent(assetKey, k -> new LinkedHashMap<>());
 			installById.put(si.getId(), si);
 
-			if (si.getCpeVendorId() != null && si.getCpeProductId() != null) {
-				canonicalVendorIds.add(si.getCpeVendorId());
+			Long vendorId = si.getCpeVendorId();
+			Long productId = si.getCpeProductId();
+			if (vendorId != null && productId != null) {
+				canonicalPairs.add(canonicalKey(vendorId, productId));
 			}
 
-			String vn = normalize(si.getNormalizedVendor());
-			String pn = normalize(si.getNormalizedProduct());
-			if (vn != null && pn != null) {
-				vendorNorms.add(vn);
+			String vendorNorm = normalize(si.getNormalizedVendor());
+			String productNorm = normalize(si.getNormalizedProduct());
+			if (vendorNorm != null && productNorm != null) {
+				normPairs.add(normKey(vendorNorm, productNorm));
 			}
 
 			String cpeName = normalize(si.getCpeName());
@@ -121,8 +123,8 @@ public class MatchingService {
 			installIndexByAssetKey.put(e.getKey(), AssetInstallIndex.from(e.getValue()));
 		}
 
-		Map<String, List<VulnerabilityAffectedCpe>> canonicalCandidateMap = preloadCanonicalCandidates(canonicalVendorIds);
-		Map<String, List<VulnerabilityAffectedCpe>> normCandidateMap = preloadNormCandidates(vendorNorms);
+		Map<String, List<VulnerabilityAffectedCpe>> canonicalCandidateMap = preloadCanonicalCandidates(canonicalPairs);
+		Map<String, List<VulnerabilityAffectedCpe>> normCandidateMap = preloadNormCandidates(normPairs);
 		Map<String, List<VulnerabilityAffectedCpe>> cpeNameCandidateMap = preloadCpeNameCandidates(cpeNames);
 
 		for (SoftwareInstall si : installsAll) {
@@ -333,14 +335,37 @@ public class MatchingService {
 		}
 	}
 
-	private Map<String, List<VulnerabilityAffectedCpe>> preloadCanonicalCandidates(Set<Long> canonicalVendorIds) {
+	private Map<String, List<VulnerabilityAffectedCpe>> preloadCanonicalCandidates(Set<String> canonicalPairs) {
 		Map<String, List<VulnerabilityAffectedCpe>> out = new HashMap<>();
-		if (canonicalVendorIds == null || canonicalVendorIds.isEmpty()) {
+		if (canonicalPairs == null || canonicalPairs.isEmpty()) {
 			return out;
 		}
 
-		List<VulnerabilityAffectedCpe> rows =
-				affectedCpeRepository.findAllByCanonicalVendorIds(new ArrayList<>(canonicalVendorIds));
+		List<VulnerabilityAffectedCpeRepository.CanonicalPair> queryPairs = new ArrayList<>();
+		for (String pairKey : canonicalPairs) {
+			if (pairKey == null || pairKey.isBlank()) {
+				continue;
+			}
+
+			int sep = pairKey.indexOf(':');
+			if (sep <= 0 || sep >= pairKey.length() - 1) {
+				continue;
+			}
+
+			try {
+				Long vendorId = Long.parseLong(pairKey.substring(0, sep));
+				Long productId = Long.parseLong(pairKey.substring(sep + 1));
+				queryPairs.add(new VulnerabilityAffectedCpeRepository.CanonicalPair(vendorId, productId));
+			} catch (NumberFormatException ignore) {
+				// ignore malformed pair
+			}
+		}
+
+		if (queryPairs.isEmpty()) {
+			return out;
+		}
+
+		List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findAllByCanonicalPairs(queryPairs);
 		for (VulnerabilityAffectedCpe row : rows) {
 			if (row == null || row.getCpeVendorId() == null || row.getCpeProductId() == null) {
 				continue;
@@ -351,14 +376,37 @@ public class MatchingService {
 		return out;
 	}
 
-	private Map<String, List<VulnerabilityAffectedCpe>> preloadNormCandidates(Set<String> vendorNorms) {
+	private Map<String, List<VulnerabilityAffectedCpe>> preloadNormCandidates(Set<String> normPairs) {
 		Map<String, List<VulnerabilityAffectedCpe>> out = new HashMap<>();
-		if (vendorNorms == null || vendorNorms.isEmpty()) {
+		if (normPairs == null || normPairs.isEmpty()) {
 			return out;
 		}
 
-		List<VulnerabilityAffectedCpe> rows =
-				affectedCpeRepository.findAllByVendorNormIn(new ArrayList<>(vendorNorms));
+		List<VulnerabilityAffectedCpeRepository.NormPair> queryPairs = new ArrayList<>();
+		for (String pairKey : normPairs) {
+			if (pairKey == null || pairKey.isBlank()) {
+				continue;
+			}
+
+			int sep = pairKey.indexOf(':');
+			if (sep <= 0 || sep >= pairKey.length() - 1) {
+				continue;
+			}
+
+			String vendorNorm = normalize(pairKey.substring(0, sep));
+			String productNorm = normalize(pairKey.substring(sep + 1));
+			if (vendorNorm == null || productNorm == null) {
+				continue;
+			}
+
+			queryPairs.add(new VulnerabilityAffectedCpeRepository.NormPair(vendorNorm, productNorm));
+		}
+
+		if (queryPairs.isEmpty()) {
+			return out;
+		}
+
+		List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findAllByNormPairs(queryPairs);
 		for (VulnerabilityAffectedCpe row : rows) {
 			if (row == null) {
 				continue;

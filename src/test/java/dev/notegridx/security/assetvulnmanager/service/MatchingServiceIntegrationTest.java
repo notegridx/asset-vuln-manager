@@ -1349,4 +1349,63 @@ class MatchingServiceIntegrationTest {
         assertNoAlert(swB.getId(), vuln.getId());
         assertThat(alertRepository.findAll()).hasSize(1);
     }
+
+    @Test
+    @DisplayName("matchAndUpsertAlerts does not create alert when only same-vendor different-product canonical row exists")
+    void matchAndUpsertAlerts_doesNotCreateAlert_forSameVendorDifferentProductCanonicalRow() {
+        CpeVendor vendor = cpeVendorRepository.save(new CpeVendor("vendor_exact_pair", "Vendor Exact Pair"));
+        CpeProduct appA = cpeProductRepository.save(new CpeProduct(vendor, "appa_exact_pair", "AppA Exact Pair"));
+        CpeProduct appB = cpeProductRepository.save(new CpeProduct(vendor, "appb_exact_pair", "AppB Exact Pair"));
+
+        Asset asset = assetRepository.save(new Asset("Host-ExactPair-01"));
+
+        SoftwareInstall sw = new SoftwareInstall(asset, "AppA Exact Pair");
+        sw.updateDetails("Vendor Exact Pair", "AppA Exact Pair", "10.5", null);
+        sw.linkCanonical(vendor.getId(), appA.getId());
+        sw = softwareInstallRepository.save(sw);
+
+        Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-9001");
+        vuln.applyNvdDetails(
+                "Exact pair canonical preload regression",
+                "Should not match when only same-vendor different-product affected row exists",
+                "3.1",
+                new BigDecimal("7.5"),
+                null,
+                null
+        );
+        vuln = vulnerabilityRepository.save(vuln);
+
+        // Intentionally register only AppB as affected.
+        // With broad vendor-only preload, this could be loaded for AppA as well and cause a false positive.
+        affectedCpeRepository.save(new VulnerabilityAffectedCpe(
+                vuln,
+                "cpe:2.3:a:vendor_exact_pair:appb_exact_pair:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                appB.getId(),
+                "vendor_exact_pair",
+                "appb_exact_pair",
+                "a",
+                "*",
+                "*",
+                "10.0",
+                "",
+                "11.0",
+                ""
+        ));
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isZero();
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = alertRepository
+                .findBySoftwareInstallIdAndVulnerabilityId(sw.getId(), vuln.getId())
+                .orElse(null);
+
+        assertThat(alert).isNull();
+        assertThat(alertRepository.findAll()).isEmpty();
+    }
 }

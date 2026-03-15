@@ -818,6 +818,71 @@ class MatchingServiceSqlDatasetIntegrationTest {
         assertThat(alertRepository.findAll()).hasSize(1);
     }
 
+    @Test
+    @Sql(
+            scripts = {
+                    "/sql/matching/cleanup.sql",
+                    "/sql/matching/common-master.sql"
+            },
+            statements = {
+                    "UPDATE assets SET platform = 'windows', os_name = 'Windows 11' WHERE id = 1",
+
+                    "INSERT INTO vulnerabilities (" +
+                            "id, source, external_id, title, description, severity, cvss_version, cvss_score" +
+                            ") VALUES (" +
+                            "2901, 'NVD', 'CVE-2099-9901', 'CASE-NORM-EXACT-PAIR', 'norm exact pair should not false positive', 'HIGH', '3.1', 8.0" +
+                            ")",
+
+                    "INSERT INTO software_installs (" +
+                            "id, asset_id, type, source, " +
+                            "vendor_raw, product_raw, version_raw, " +
+                            "vendor, product, version, " +
+                            "normalized_vendor, normalized_product, " +
+                            "cpe_vendor_id, cpe_product_id, " +
+                            "source_type, canonical_link_disabled" +
+                            ") VALUES (" +
+                            "3901, 1, 'APPLICATION', 'MANUAL', " +
+                            "'Acme', 'Widget', '10.5', " +
+                            "'Acme', 'Widget', '10.5', " +
+                            "'acme', 'widget', " +
+                            "NULL, NULL, " +
+                            "'UNKNOWN', FALSE" +
+                            ")",
+
+                    // Intentionally affected only for same vendor but different product_norm.
+                    "INSERT INTO vulnerability_affected_cpes (" +
+                            "id, vulnerability_id, cpe_name, " +
+                            "cpe_vendor_id, cpe_product_id, " +
+                            "vendor_norm, product_norm, " +
+                            "cpe_part, target_sw, target_hw, " +
+                            "version_start_including, version_start_excluding, " +
+                            "version_end_including, version_end_excluding, " +
+                            "dedupe_key" +
+                            ") VALUES (" +
+                            "4901, 2901, 'cpe:2.3:a:acme:otherwidget:*:*:*:*:*:*:*:*', " +
+                            "101, 1002, " +
+                            "'acme', 'otherwidget', " +
+                            "'a', '*', '*', " +
+                            "'10.0', '', '11.0', '', " +
+                            "'case-norm-exact-pair'" +
+                            ")"
+            }
+    )
+    void caseNormExactPair_sameVendorDifferentProduct_doesNotGenerateAlert() {
+        assertSeedPresent(3901L, 2901L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isZero();
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        assertNoAlert(3901L, 2901L);
+        assertThat(alertRepository.findAll()).isEmpty();
+    }
+
     private void assertNoAlert(long softwareInstallId, long vulnerabilityId) {
         assertThat(findAlert(softwareInstallId, vulnerabilityId)).isNull();
     }
