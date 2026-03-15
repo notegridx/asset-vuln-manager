@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = AssetController.class)
-@ActiveProfiles("test")
+@ActiveProfiles("mysqltest")
 @WithMockUser(username = "test", roles = "ADMIN")
 class AssetControllerWebMvcTest {
 

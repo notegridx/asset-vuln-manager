@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(controllers = AdminUsersController.class)
-@ActiveProfiles("test")
+@ActiveProfiles("mysqltest")
 @Import(AdminUsersControllerWebMvcTest.MethodSecurityTestConfig.class)
 @WithMockUser(username = "admin", roles = "ADMIN")
 class AdminUsersControllerWebMvcTest {

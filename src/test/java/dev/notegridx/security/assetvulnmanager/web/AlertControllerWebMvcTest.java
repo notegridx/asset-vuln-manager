@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = AlertController.class)
-@ActiveProfiles("test")
+@ActiveProfiles("mysqltest")
 @WithMockUser(username = "test", roles = "ADMIN")
 class AlertControllerWebMvcTest {
 
