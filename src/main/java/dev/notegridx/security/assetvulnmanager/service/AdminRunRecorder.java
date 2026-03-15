@@ -1,12 +1,8 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.notegridx.security.assetvulnmanager.domain.AdminRun;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
-import dev.notegridx.security.assetvulnmanager.repository.AdminRunRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,37 +18,24 @@ public class AdminRunRecorder {
         T get() throws Exception;
     }
 
-    private final AdminRunRepository repository;
-    private final ObjectMapper objectMapper;
+    private final AdminRunWriteService adminRunWriteService;
 
     private final ConcurrentMap<AdminJobType, AtomicBoolean> runningMap = new ConcurrentHashMap<>();
 
-    public AdminRunRecorder(AdminRunRepository repository, ObjectMapper objectMapper) {
-        this.repository = repository;
-        this.objectMapper = objectMapper;
+    public AdminRunRecorder(AdminRunWriteService adminRunWriteService) {
+        this.adminRunWriteService = adminRunWriteService;
     }
 
-    @Transactional
     public AdminRun start(AdminJobType jobType, Map<String, Object> params) {
-        String json = toJson(params);
-        AdminRun run = AdminRun.start(jobType, json);
-        return repository.save(run);
+        return adminRunWriteService.start(jobType, params);
     }
 
-    @Transactional
     public void success(AdminRun run, Map<String, Object> result) {
-        run.markSuccess(toJson(result));
-        repository.save(run);
+        adminRunWriteService.success(run, result);
     }
 
-    @Transactional
     public void failed(AdminRun run, Exception ex) {
-        String msg = ex.getMessage();
-        if (msg != null && msg.length() > 2000) {
-            msg = msg.substring(0, 2000);
-        }
-        run.markFailed(msg);
-        repository.save(run);
+        adminRunWriteService.failed(run, ex);
     }
 
     public <T> T runExclusive(
@@ -84,15 +67,6 @@ public class AdminRunRecorder {
 
         } finally {
             running.set(false);
-        }
-    }
-
-    private String toJson(Object o) {
-        if (o == null) return null;
-        try {
-            return objectMapper.writeValueAsString(o);
-        } catch (JsonProcessingException e) {
-            return "{\"error\":\"json-serialize-failed\"}";
         }
     }
 }
