@@ -152,7 +152,7 @@
             EEE03154-0166-4159-ACCA-00F55F875C24
         </span>
 
-            <b>Type</b>
+            <b>Asset Type</b>
             <span th:text="${asset.assetType != null && !#strings.isEmpty(asset.assetType) ? asset.assetType : '-'}">endpoint</span>
 
             <b>Owner</b>
@@ -167,8 +167,10 @@
             <b>Platform</b>
             <span th:text="${asset.platform != null && !#strings.isEmpty(asset.platform) ? asset.platform : '-'}">windows</span>
 
-            <b>Architecture</b>
-            <span th:text="${asset.arch != null && !#strings.isEmpty(asset.arch) ? asset.arch : '-'}">x64</span>
+            <b>OS Version</b>
+            <span th:text="${asset.osVersion != null && !#strings.isEmpty(asset.osVersion) ? asset.osVersion : '-'}">
+            Microsoft Windows 11 Pro 10.0.26200
+        </span>
 
             <b>System UUID</b>
             <span style="overflow-wrap:anywhere;"
@@ -192,6 +194,11 @@
             model
         </span>
 
+            <b>Hardware Version</b>
+            <span th:text="${asset.hardwareVersion != null && !#strings.isEmpty(asset.hardwareVersion) ? asset.hardwareVersion : '-'}">
+            version
+        </span>
+
             <b>Computer Name</b>
             <span th:text="${asset.computerName != null && !#strings.isEmpty(asset.computerName) ? asset.computerName : '-'}">
             computer-name
@@ -199,31 +206,12 @@
 
             <b>Local Hostname</b>
             <span th:text="${asset.localHostname != null && !#strings.isEmpty(asset.localHostname) ? asset.localHostname : '-'}">
+            local-hostname
+        </span>
+
+            <b>Hostname</b>
+            <span th:text="${asset.hostname != null && !#strings.isEmpty(asset.hostname) ? asset.hostname : '-'}">
             hostname
-        </span>
-
-            <b>OS Name</b>
-            <span th:text="${asset.osName != null && !#strings.isEmpty(asset.osName) ? asset.osName : '-'}">
-            Microsoft Windows
-        </span>
-
-            <b>OS Version</b>
-            <span th:text="${asset.osVersion != null && !#strings.isEmpty(asset.osVersion) ? asset.osVersion : '-'}">
-            Microsoft Windows 11 Pro 10.0.26200
-        </span>
-
-            <b>OS Build</b>
-            <span th:text="${asset.osBuild != null && !#strings.isEmpty(asset.osBuild) ? asset.osBuild : '-'}">
-            26200
-        </span>
-
-            <b>OS Version Parts</b>
-            <span th:text="${(asset.osMajor != null || asset.osMinor != null || asset.osPatch != null)
-            ? ((asset.osMajor != null ? asset.osMajor : '-') + '.' +
-               (asset.osMinor != null ? asset.osMinor : '-') + '.' +
-               (asset.osPatch != null ? asset.osPatch : '-'))
-            : '-'}">
-            11.0.0
         </span>
 
             <b>CPU Brand</b>
@@ -231,16 +219,72 @@
             Intel
         </span>
 
-            <b>CPU Cores</b>
-            <span th:text="${(asset.cpuPhysicalCores != null || asset.cpuLogicalCores != null)
-            ? ('physical=' + (asset.cpuPhysicalCores != null ? asset.cpuPhysicalCores : '-') +
-               ', logical=' + (asset.cpuLogicalCores != null ? asset.cpuLogicalCores : '-'))
-            : '-'}">
-            physical=4, logical=8
+            <b>CPU Physical Cores</b>
+            <span th:text="${asset.cpuPhysicalCores != null ? asset.cpuPhysicalCores : '-'}">4</span>
+
+            <b>CPU Logical Cores</b>
+            <span th:text="${asset.cpuLogicalCores != null ? asset.cpuLogicalCores : '-'}">8</span>
+
+            <b>CPU Sockets</b>
+            <span th:text="${asset.cpuSockets != null ? asset.cpuSockets : '-'}">1</span>
+
+            <b>Physical Memory</b>
+            <span th:text="${asset.physicalMemory != null ? asset.physicalMemory : '-'}">17179869184</span>
+
+            <b>Architecture</b>
+            <span th:text="${asset.arch != null && !#strings.isEmpty(asset.arch) ? asset.arch : '-'}">x64</span>
+
+            <b>Board Vendor</b>
+            <span th:text="${asset.boardVendor != null && !#strings.isEmpty(asset.boardVendor) ? asset.boardVendor : '-'}">
+            vendor
         </span>
+
+            <b>Board Model</b>
+            <span th:text="${asset.boardModel != null && !#strings.isEmpty(asset.boardModel) ? asset.boardModel : '-'}">
+            model
+        </span>
+
+            <b>Board Version</b>
+            <span th:text="${asset.boardVersion != null && !#strings.isEmpty(asset.boardVersion) ? asset.boardVersion : '-'}">
+            version
+        </span>
+
+            <b>Board Serial</b>
+            <span th:text="${asset.boardSerial != null && !#strings.isEmpty(asset.boardSerial) ? asset.boardSerial : '-'}">
+            serial
+        </span>
+
+            <b>OS Name</b>
+            <span th:text="${asset.osName != null && !#strings.isEmpty(asset.osName) ? asset.osName : '-'}">
+            Microsoft Windows
+        </span>
+
+            <b>OS Build</b>
+            <span th:text="${asset.osBuild != null && !#strings.isEmpty(asset.osBuild) ? asset.osBuild : '-'}">
+            26200
+        </span>
+
+            <b>OS Major</b>
+            <span th:text="${asset.osMajor != null ? asset.osMajor : '-'}">11</span>
+
+            <b>OS Minor</b>
+            <span th:text="${asset.osMinor != null ? asset.osMinor : '-'}">0</span>
+
+            <b>OS Patch</b>
+            <span th:text="${asset.osPatch != null ? asset.osPatch : '-'}">0</span>
 
             <b>Last Seen</b>
             <span th:text="${asset.lastSeenAt != null ? #temporals.format(asset.lastSeenAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
+            2026-03-08 16:44:02
+        </span>
+
+            <b>Created At</b>
+            <span th:text="${asset.createdAt != null ? #temporals.format(asset.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
+            2026-03-08 16:44:02
+        </span>
+
+            <b>Updated At</b>
+            <span th:text="${asset.updatedAt != null ? #temporals.format(asset.updatedAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
             2026-03-08 16:44:02
         </span>
         </div>
