@@ -790,6 +790,34 @@ class MatchingServiceSqlDatasetIntegrationTest {
         assertThat(alertRepository.findAll()).hasSize(1);
     }
 
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case31_dict_id_criteria_leaf_match_with_extra_candidate_install.sql"
+    })
+    void case31_dictId_criteriaLeafMatchWithExtraCandidateInstall_generatesSingleAlertForPrimaryInstall() {
+        assertSeedPresent(3035L, 2031L);
+        assertSeedPresent(3036L, 2031L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3035L, 2031L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+
+        assertNoAlert(3036L, 2031L);
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
     private void assertNoAlert(long softwareInstallId, long vulnerabilityId) {
         assertThat(findAlert(softwareInstallId, vulnerabilityId)).isNull();
     }

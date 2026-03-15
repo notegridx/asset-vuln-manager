@@ -1244,4 +1244,109 @@ class MatchingServiceIntegrationTest {
 
         assertNoAlert(swB.getId(), vuln.getId());
     }
+
+    @Test
+    @DisplayName("criteria leaf match still selects the correct install when the same asset has extra candidate installs")
+    void matchAndUpsertAlerts_criteriaLeafMatch_ignoresExtraCandidateInstallInSameAsset() {
+        CpeVendor vendor = saveVendor("vendor31", "Vendor31");
+        CpeProduct appA = saveProduct(vendor, "appa31", "AppA31");
+        CpeProduct appB = saveProduct(vendor, "appb31", "AppB31");
+
+        Asset asset = saveAsset("Host-31", "windows");
+
+        SoftwareInstall swA = saveSoftwareCanonical(
+                asset,
+                "Vendor31",
+                "AppA31",
+                "10.5",
+                vendor.getId(),
+                appA.getId()
+        );
+
+        SoftwareInstall swB = saveSoftwareCanonical(
+                asset,
+                "Vendor31",
+                "AppB31",
+                "10.5",
+                vendor.getId(),
+                appB.getId()
+        );
+
+        Vulnerability vuln = saveVulnerability("CVE-2099-0031", "CASE-31", new BigDecimal("8.1"));
+
+        VulnerabilityCriteriaNode root = saveOperatorNode(vuln, null, 0, 0, CriteriaOperator.OR);
+        VulnerabilityCriteriaNode leafA = saveLeafNode(vuln, root.getId(), 0, 0);
+
+        saveCriteriaCpe(
+                leafA,
+                vuln,
+                "cpe:2.3:a:vendor31:appa31:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                appA.getId(),
+                "vendor31",
+                "appa31",
+                "a",
+                "*",
+                "*",
+                "10.0",
+                "",
+                "11.0",
+                ""
+        );
+
+        // Flat candidate rows intentionally include both installs so that the asset-level
+        // candidate bundle contains extra rows. Criteria should still pick only swA.
+        saveAffectedFlat(
+                vuln,
+                "cpe:2.3:a:vendor31:appa31:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                appA.getId(),
+                "vendor31",
+                "appa31",
+                "a",
+                "*",
+                "*",
+                "10.0",
+                "",
+                "11.0",
+                "",
+                leafA.getId(),
+                0
+        );
+
+        saveAffectedFlat(
+                vuln,
+                "cpe:2.3:a:vendor31:appb31:*:*:*:*:*:*:*:*",
+                vendor.getId(),
+                appB.getId(),
+                "vendor31",
+                "appb31",
+                "a",
+                "*",
+                "*",
+                "10.0",
+                "",
+                "11.0",
+                "",
+                leafA.getId(),
+                0
+        );
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(swA.getId(), vuln.getId());
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+
+        assertNoAlert(swB.getId(), vuln.getId());
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
 }

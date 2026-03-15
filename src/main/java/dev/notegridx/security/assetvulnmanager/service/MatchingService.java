@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Collection;
 
 @Service
 public class MatchingService {
@@ -82,6 +81,7 @@ public class MatchingService {
 		List<SoftwareInstall> installsAll = softwareInstallRepository.findAllWithAsset();
 
 		Map<Long, List<SoftwareInstall>> installsByAssetKey = new LinkedHashMap<>();
+		Map<Long, AssetInstallIndex> installIndexByAssetKey = new LinkedHashMap<>();
 		Map<Long, Map<Long, CandidateBundle>> candidateBundlesByAssetKey = new LinkedHashMap<>();
 		Map<Long, SoftwareInstall> installById = new HashMap<>();
 
@@ -115,6 +115,10 @@ public class MatchingService {
 			}
 		}
 
+		for (Map.Entry<Long, List<SoftwareInstall>> e : installsByAssetKey.entrySet()) {
+			installIndexByAssetKey.put(e.getKey(), AssetInstallIndex.from(e.getValue()));
+		}
+
 		Map<String, List<VulnerabilityAffectedCpe>> canonicalCandidateMap = preloadCanonicalCandidates(canonicalVendorIds);
 		Map<String, List<VulnerabilityAffectedCpe>> normCandidateMap = preloadNormCandidates(vendorNorms);
 		Map<String, List<VulnerabilityAffectedCpe>> cpeNameCandidateMap = preloadCpeNameCandidates(cpeNames);
@@ -135,7 +139,6 @@ public class MatchingService {
 			);
 		}
 
-		// --- optimized: load candidate vulnerabilities only once across all assets ---
 		Set<Long> candidateVulnIdSet = new LinkedHashSet<>();
 		for (Map<Long, CandidateBundle> perAsset : candidateBundlesByAssetKey.values()) {
 			if (perAsset == null || perAsset.isEmpty()) {
@@ -180,6 +183,12 @@ public class MatchingService {
 		for (Map.Entry<Long, List<SoftwareInstall>> assetEntry : installsByAssetKey.entrySet()) {
 			Long assetKey = assetEntry.getKey();
 			List<SoftwareInstall> assetInstalls = assetEntry.getValue();
+			AssetInstallIndex assetInstallIndex =
+					installIndexByAssetKey.getOrDefault(assetKey, AssetInstallIndex.empty());
+
+			if (assetInstalls == null || assetInstalls.isEmpty()) {
+				continue;
+			}
 
 			Map<Long, CandidateBundle> bundles = candidateBundlesByAssetKey.getOrDefault(assetKey, Map.of());
 			if (bundles.isEmpty()) {
@@ -200,7 +209,7 @@ public class MatchingService {
 
 				CriteriaEvaluator.EvalResult result;
 				if (tree != null && tree.hasRoots()) {
-					result = criteriaEvaluator.evaluate(tree, assetInstalls);
+					result = criteriaEvaluator.evaluate(tree, assetInstallIndex);
 				} else {
 					result = evaluateFlatFallback(
 							vulnerabilityCache.get(vulnId),

@@ -30,12 +30,22 @@ public class CriteriaEvaluator {
         if (tree == null || !tree.hasRoots() || installs == null || installs.isEmpty()) {
             return EvalResult.noMatch();
         }
+        return evaluate(tree, AssetInstallIndex.from(installs));
+    }
+
+    public EvalResult evaluate(
+            CriteriaTreeLoader.LoadedCriteriaTree tree,
+            AssetInstallIndex installIndex
+    ) {
+        if (tree == null || !tree.hasRoots() || installIndex == null || installIndex.isEmpty()) {
+            return EvalResult.noMatch();
+        }
 
         EvalResult best = EvalResult.noMatch();
         Set<String> emittedPredicateSummaries = log.isDebugEnabled() ? new HashSet<>() : null;
 
         for (CriteriaTreeLoader.CriteriaExpr root : tree.roots()) {
-            EvalResult r = evaluateExpr(root, installs, emittedPredicateSummaries);
+            EvalResult r = evaluateExpr(root, installIndex, emittedPredicateSummaries);
             best = better(best, r);
         }
 
@@ -44,7 +54,7 @@ public class CriteriaEvaluator {
 
     private EvalResult evaluateExpr(
             CriteriaTreeLoader.CriteriaExpr expr,
-            List<SoftwareInstall> installs,
+            AssetInstallIndex installIndex,
             Set<String> emittedPredicateSummaries
     ) {
         if (expr == null) {
@@ -57,11 +67,11 @@ public class CriteriaEvaluator {
         }
 
         if (expr instanceof CriteriaTreeLoader.CriteriaLeafExpr leaf) {
-            return evaluateLeaf(leaf, installs, emittedPredicateSummaries);
+            return evaluateLeaf(leaf, installIndex, emittedPredicateSummaries);
         }
 
         if (expr instanceof CriteriaTreeLoader.CriteriaOperatorExpr op) {
-            return evaluateOperator(op, installs, emittedPredicateSummaries);
+            return evaluateOperator(op, installIndex, emittedPredicateSummaries);
         }
 
         return EvalResult.noMatch();
@@ -69,7 +79,7 @@ public class CriteriaEvaluator {
 
     private EvalResult evaluateOperator(
             CriteriaTreeLoader.CriteriaOperatorExpr op,
-            List<SoftwareInstall> installs,
+            AssetInstallIndex installIndex,
             Set<String> emittedPredicateSummaries
     ) {
         if (op.children() == null || op.children().isEmpty()) {
@@ -83,7 +93,7 @@ public class CriteriaEvaluator {
             AlertMatchMethod bestMethod = null;
 
             for (CriteriaTreeLoader.CriteriaExpr child : op.children()) {
-                EvalResult r = evaluateExpr(child, installs, emittedPredicateSummaries);
+                EvalResult r = evaluateExpr(child, installIndex, emittedPredicateSummaries);
 
                 logOperatorChildResult(op, r);
 
@@ -119,7 +129,7 @@ public class CriteriaEvaluator {
 
         EvalResult best = EvalResult.noMatch();
         for (CriteriaTreeLoader.CriteriaExpr child : op.children()) {
-            EvalResult r = evaluateExpr(child, installs, emittedPredicateSummaries);
+            EvalResult r = evaluateExpr(child, installIndex, emittedPredicateSummaries);
             logOperatorChildResult(op, r);
             best = better(best, r);
         }
@@ -130,7 +140,7 @@ public class CriteriaEvaluator {
 
     private EvalResult evaluateLeaf(
             CriteriaTreeLoader.CriteriaLeafExpr leaf,
-            List<SoftwareInstall> installs,
+            AssetInstallIndex installIndex,
             Set<String> emittedPredicateSummaries
     ) {
         if (leaf.predicates() == null || leaf.predicates().isEmpty()) {
@@ -145,8 +155,14 @@ public class CriteriaEvaluator {
             }
 
             PredicateCounters counters = new PredicateCounters();
+            List<SoftwareInstall> candidates = installIndex.findCandidates(predicate);
 
-            for (SoftwareInstall si : installs) {
+            if (candidates.isEmpty()) {
+                logPredicateSummary(predicate, counters, emittedPredicateSummaries);
+                continue;
+            }
+
+            for (SoftwareInstall si : candidates) {
                 PredicateEvalOutcome outcome = evaluatePredicate(predicate, si);
                 counters.record(outcome);
                 best = better(best, outcome.result());
