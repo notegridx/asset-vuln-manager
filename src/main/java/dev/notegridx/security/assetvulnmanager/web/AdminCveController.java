@@ -1,8 +1,10 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient;
 import dev.notegridx.security.assetvulnmanager.service.AdminCveFeedSyncService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
+import dev.notegridx.security.assetvulnmanager.service.AdminRunReadService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,13 +17,25 @@ import java.io.IOException;
 public class AdminCveController {
 
     private final AdminCveFeedSyncService adminCveFeedSyncService;
+    private final AdminRunReadService adminRunReadService;
 
-    public AdminCveController(AdminCveFeedSyncService adminCveFeedSyncService) {
+    public AdminCveController(
+            AdminCveFeedSyncService adminCveFeedSyncService,
+            AdminRunReadService adminRunReadService
+    ) {
         this.adminCveFeedSyncService = adminCveFeedSyncService;
+        this.adminRunReadService = adminRunReadService;
     }
 
     @GetMapping("/admin/cve/sync")
-    public String view() {
+    public String view(Model model) {
+        bindLastRun(model);
+
+        model.addAttribute("kind", NvdCveFeedClient.FeedKind.MODIFIED.name());
+        model.addAttribute("year", null);
+        model.addAttribute("force", false);
+        model.addAttribute("maxItems", 2_000_000);
+
         return "admin/cve_sync";
     }
 
@@ -47,6 +61,7 @@ public class AdminCveController {
         model.addAttribute("maxItems", maxItems);
 
         if (k == NvdCveFeedClient.FeedKind.YEAR && year == null) {
+            bindLastRun(model);
             model.addAttribute("error", "Year is required when selecting YEAR feed.");
             return "admin/cve_sync";
         }
@@ -58,6 +73,25 @@ public class AdminCveController {
             model.addAttribute("error", ex.getMessage());
         }
 
+        bindLastRun(model);
         return "admin/cve_sync";
+    }
+
+    private void bindLastRun(Model model) {
+        AdminRunReadService.LastRunView last = adminRunReadService.findLastRun(
+                AdminJobType.CVE_FEED_SYNC,
+                AdminRunReadService.ParseErrorStyle.MESSAGE_AND_RAW
+        );
+
+        if (last == null) {
+            model.addAttribute("lastRun", null);
+            model.addAttribute("lastParams", null);
+            model.addAttribute("lastResult", null);
+            return;
+        }
+
+        model.addAttribute("lastRun", last.run());
+        model.addAttribute("lastParams", last.params());
+        model.addAttribute("lastResult", last.result());
     }
 }

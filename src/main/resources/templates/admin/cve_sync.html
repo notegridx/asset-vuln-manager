@@ -172,6 +172,77 @@
     </div>
   </div>
 
+  <!-- Last Run -->
+  <div th:if="${lastRun != null}"
+       class="card"
+       style="padding:12px; margin:12px 0;">
+
+    <div class="actions" style="margin:0; align-items:flex-end;">
+      <h2 style="margin:0;">Last run</h2>
+      <div class="muted" style="font-size:12px;">
+        Most recent CVE feed sync execution.
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:12px;">
+      <table style="margin-top:0;">
+        <tbody>
+        <tr>
+          <td style="width:180px;">started</td>
+          <td th:text="${#temporals.format(lastRun.startedAt,'yyyy-MM-dd HH:mm:ss')}">-</td>
+        </tr>
+
+        <tr>
+          <td>status</td>
+          <td>
+            <span class="badge"
+                  th:text="${lastRun.status}">SUCCESS</span>
+          </td>
+        </tr>
+
+        <tr th:if="${lastParams != null}">
+          <td>parameters</td>
+          <td>
+            <div class="kv-pills">
+              <div th:each="e : ${lastParams.entrySet()}"
+                   th:if="${e.key != '_raw' and e.key != '_parseError'}"
+                   class="kv-pill">
+                <span class="k" th:text="${e.key}">key</span>
+                <code class="v" th:text="${e.value}">value</code>
+              </div>
+            </div>
+
+            <div th:if="${lastParams.containsKey('_parseError')}"
+                 class="muted" style="font-size:12px; margin-top:6px;">
+              JSON parse error: <span th:text="${lastParams.get('_parseError')}">Error</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr th:if="${lastResult != null}">
+          <td>result</td>
+          <td>
+            <div class="kv-pills">
+              <div th:each="e : ${lastResult.entrySet()}"
+                   th:if="${e.key != '_raw' and e.key != '_parseError'}"
+                   class="kv-pill">
+                <span class="k" th:text="${e.key}">key</span>
+                <code class="v" th:text="${e.value}">value</code>
+              </div>
+            </div>
+
+            <div th:if="${lastResult.containsKey('_parseError')}"
+                 class="muted" style="font-size:12px; margin-top:6px;">
+              JSON parse error: <span th:text="${lastResult.get('_parseError')}">Error</span>
+            </div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
   <!-- Script (unchanged logic) -->
   <script>
     (function () {
