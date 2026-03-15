@@ -17,6 +17,7 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
 import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 
 public interface AlertRepository extends JpaRepository<Alert, Long> {
+
     long deleteBySoftwareInstallId(Long softwareInstallId);
 
     long deleteBySoftwareInstallIdIn(Collection<Long> softwareInstallIds);
@@ -53,6 +54,17 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
     List<Alert> findBySoftwareInstallIdIn(Collection<Long> ids);
 
+    @Query("""
+            select a
+            from Alert a
+            where a.softwareInstall.id in :softwareInstallIds
+              and a.vulnerability.id in :vulnerabilityIds
+            """)
+    List<Alert> findBySoftwareInstallIdInAndVulnerabilityIdIn(
+            @Param("softwareInstallIds") List<Long> softwareInstallIds,
+            @Param("vulnerabilityIds") List<Long> vulnerabilityIds
+    );
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
         update Alert a
@@ -71,10 +83,10 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     );
 
     @Query("""
-                select a.softwareInstall.id, count(a)
-                from Alert a
-                where a.softwareInstall.id in :ids
-                group by a.softwareInstall.id
+            select a.softwareInstall.id, count(a)
+            from Alert a
+            where a.softwareInstall.id in :ids
+            group by a.softwareInstall.id
             """)
     List<Object[]> countBySoftwareInstallIds(@Param("ids") List<Long> ids);
 

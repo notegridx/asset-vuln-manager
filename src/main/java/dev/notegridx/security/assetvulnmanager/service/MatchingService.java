@@ -25,16 +25,18 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.Collection;
 
 @Service
 public class MatchingService {
 
 	private static final Logger log = LoggerFactory.getLogger(MatchingService.class);
+	private static final int WRITE_FLUSH_INTERVAL = 200;
 
 	private final SoftwareInstallRepository softwareInstallRepository;
 	private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
@@ -133,24 +135,31 @@ public class MatchingService {
 			);
 		}
 
-		Map<Long, Vulnerability> vulnerabilityCache = new HashMap<>();
+		// --- optimized: load candidate vulnerabilities only once across all assets ---
+		Set<Long> candidateVulnIdSet = new LinkedHashSet<>();
 		for (Map<Long, CandidateBundle> perAsset : candidateBundlesByAssetKey.values()) {
 			if (perAsset == null || perAsset.isEmpty()) {
 				continue;
 			}
+			candidateVulnIdSet.addAll(perAsset.keySet());
+		}
 
-			List<Long> vulnIds = new ArrayList<>(perAsset.keySet());
-			vulnerabilityRepository.findAllById(vulnIds)
+		Map<Long, Vulnerability> vulnerabilityCache = new HashMap<>();
+		if (!candidateVulnIdSet.isEmpty()) {
+			vulnerabilityRepository.findAllById(candidateVulnIdSet)
 					.forEach(v -> vulnerabilityCache.put(v.getId(), v));
 		}
+
+		List<Long> candidateVulnIds = new ArrayList<>(candidateVulnIdSet);
 
 		Map<String, Alert> existingAlertMap = new HashMap<>();
 		List<Long> installIds = installsAll.stream()
 				.map(SoftwareInstall::getId)
 				.filter(Objects::nonNull)
 				.toList();
-		if (!installIds.isEmpty()) {
-			for (Alert alert : alertRepository.findBySoftwareInstallIdIn(installIds)) {
+
+		if (!installIds.isEmpty() && !candidateVulnIds.isEmpty()) {
+			for (Alert alert : alertRepository.findBySoftwareInstallIdInAndVulnerabilityIdIn(installIds, candidateVulnIds)) {
 				if (alert == null
 						|| alert.getSoftwareInstall() == null
 						|| alert.getSoftwareInstall().getId() == null
@@ -158,11 +167,15 @@ public class MatchingService {
 						|| alert.getVulnerability().getId() == null) {
 					continue;
 				}
-				existingAlertMap.put(alertKey(alert.getSoftwareInstall().getId(), alert.getVulnerability().getId()), alert);
+				existingAlertMap.put(
+						alertKey(alert.getSoftwareInstall().getId(), alert.getVulnerability().getId()),
+						alert
+				);
 			}
 		}
 
 		Map<Long, CriteriaTreeLoader.LoadedCriteriaTree> criteriaTreeCache = new HashMap<>();
+		List<Alert> pendingSaves = new ArrayList<>(WRITE_FLUSH_INTERVAL);
 
 		for (Map.Entry<Long, List<SoftwareInstall>> assetEntry : installsByAssetKey.entrySet()) {
 			Long assetKey = assetEntry.getKey();
@@ -182,13 +195,13 @@ public class MatchingService {
 
 				pairsFound++;
 
-				CriteriaTreeLoader.LoadedCriteriaTree tree = criteriaTreeCache.computeIfAbsent(vulnId, criteriaTreeLoader::load);
+				CriteriaTreeLoader.LoadedCriteriaTree tree =
+						criteriaTreeCache.computeIfAbsent(vulnId, criteriaTreeLoader::load);
 
 				CriteriaEvaluator.EvalResult result;
 				if (tree != null && tree.hasRoots()) {
 					result = criteriaEvaluator.evaluate(tree, assetInstalls);
 				} else {
-					// old ingested data fallback
 					result = evaluateFlatFallback(
 							vulnerabilityCache.get(vulnId),
 							bundle.rows(),
@@ -215,7 +228,9 @@ public class MatchingService {
 				AlertUncertainReason reason = result.reason();
 				AlertMatchMethod method = result.method() != null ? result.method() : bundle.bestMethod();
 
-				Alert existing = existingAlertMap.get(alertKey(primaryInstall.getId(), vulnId));
+				String key = alertKey(primaryInstall.getId(), vulnId);
+				Alert existing = existingAlertMap.get(key);
+
 				if (existing != null) {
 					Alert a = existing;
 
@@ -227,17 +242,20 @@ public class MatchingService {
 					}
 
 					a.updateMatchContext(certainty, reason, method);
-					alertRepository.save(a);
+					pendingSaves.add(a);
 					alertsTouched++;
 				} else {
 					Alert a = new Alert(primaryInstall, vulnerability, detectedAt, certainty, reason, method);
-					alertRepository.save(a);
-					existingAlertMap.put(alertKey(primaryInstall.getId(), vulnId), a);
+					pendingSaves.add(a);
+					existingAlertMap.put(key, a);
 					alertsInserted++;
 				}
+
+				flushPendingAlertsIfNeeded(pendingSaves, existingAlertMap);
 			}
 		}
 
+		flushPendingAlerts(pendingSaves, existingAlertMap);
 		entityManager.flush();
 
 		int autoClosed = alertRepository.closeStaleOpenAlerts(
@@ -300,7 +318,8 @@ public class MatchingService {
 			return out;
 		}
 
-		List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findAllByCanonicalVendorIds(new ArrayList<>(canonicalVendorIds));
+		List<VulnerabilityAffectedCpe> rows =
+				affectedCpeRepository.findAllByCanonicalVendorIds(new ArrayList<>(canonicalVendorIds));
 		for (VulnerabilityAffectedCpe row : rows) {
 			if (row == null || row.getCpeVendorId() == null || row.getCpeProductId() == null) {
 				continue;
@@ -317,7 +336,8 @@ public class MatchingService {
 			return out;
 		}
 
-		List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findAllByVendorNormIn(new ArrayList<>(vendorNorms));
+		List<VulnerabilityAffectedCpe> rows =
+				affectedCpeRepository.findAllByVendorNormIn(new ArrayList<>(vendorNorms));
 		for (VulnerabilityAffectedCpe row : rows) {
 			if (row == null) {
 				continue;
@@ -339,7 +359,8 @@ public class MatchingService {
 			return out;
 		}
 
-		List<VulnerabilityAffectedCpe> rows = affectedCpeRepository.findByCpeNameIn(new ArrayList<>(cpeNames));
+		List<VulnerabilityAffectedCpe> rows =
+				affectedCpeRepository.findByCpeNameIn(new ArrayList<>(cpeNames));
 		for (VulnerabilityAffectedCpe row : rows) {
 			if (row == null) {
 				continue;
@@ -667,9 +688,6 @@ public class MatchingService {
 		return t.isEmpty() ? null : t;
 	}
 
-	/**
-	 * cpe:2.3:a:vendor:product:version:update:... の version を抜く。
-	 */
 	private static String extractVersionFromCpe23(String cpe23) {
 		if (cpe23 == null) return null;
 
@@ -690,6 +708,48 @@ public class MatchingService {
 		}
 
 		return v;
+	}
+
+	private void flushPendingAlerts(
+			List<Alert> pendingSaves,
+			Map<String, Alert> existingAlertMap
+	) {
+		if (pendingSaves == null || pendingSaves.isEmpty()) {
+			return;
+		}
+
+		List<Alert> saved = alertRepository.saveAll(pendingSaves);
+		entityManager.flush();
+		entityManager.clear();
+
+		for (Alert alert : saved) {
+			if (alert == null
+					|| alert.getSoftwareInstall() == null
+					|| alert.getSoftwareInstall().getId() == null
+					|| alert.getVulnerability() == null
+					|| alert.getVulnerability().getId() == null) {
+				continue;
+			}
+
+			existingAlertMap.put(
+					alertKey(alert.getSoftwareInstall().getId(), alert.getVulnerability().getId()),
+					alert
+			);
+		}
+
+		pendingSaves.clear();
+	}
+
+	private void flushPendingAlertsIfNeeded(
+			List<Alert> pendingSaves,
+			Map<String, Alert> existingAlertMap
+	) {
+		if (pendingSaves == null || pendingSaves.isEmpty()) {
+			return;
+		}
+		if (pendingSaves.size() >= WRITE_FLUSH_INTERVAL) {
+			flushPendingAlerts(pendingSaves, existingAlertMap);
+		}
 	}
 
 	public record MatchResult(int pairsFound, int alertsInserted, int alertsTouched, int alertsAutoClosed) {
