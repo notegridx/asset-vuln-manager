@@ -32,7 +32,7 @@ public class CriteriaEvaluator {
         }
 
         EvalResult best = EvalResult.noMatch();
-        Set<String> emittedPredicateSummaries = new HashSet<>();
+        Set<String> emittedPredicateSummaries = log.isDebugEnabled() ? new HashSet<>() : null;
 
         for (CriteriaTreeLoader.CriteriaExpr root : tree.roots()) {
             EvalResult r = evaluateExpr(root, installs, emittedPredicateSummaries);
@@ -327,7 +327,15 @@ public class CriteriaEvaluator {
             PredicateCounters counters,
             Set<String> emittedPredicateSummaries
     ) {
+        if (!log.isDebugEnabled()) {
+            return;
+        }
+
         if (!counters.hasAnySignal()) {
+            return;
+        }
+
+        if (emittedPredicateSummaries == null) {
             return;
         }
 
@@ -336,7 +344,7 @@ public class CriteriaEvaluator {
             return;
         }
 
-        log.info(
+        log.debug(
                 "criteria-predicate-summary vendorNorm='{}' productNorm='{}' " +
                         "targetSw='{}' targetHw='{}' " +
                         "startInc='{}' startExc='{}' endInc='{}' endExc='{}' " +
