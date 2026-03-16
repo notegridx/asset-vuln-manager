@@ -88,10 +88,39 @@ public class AssetController {
                     form.getName(),
                     form.getAssetType(),
                     form.getOwner(),
-                    form.getNote()
+                    form.getNote(),
+                    form.getSource(),
+                    form.getPlatform(),
+                    form.getOsVersion(),
+                    form.getSystemUuid(),
+                    form.getSerialNumber(),
+                    form.getHardwareVendor(),
+                    form.getHardwareModel(),
+                    form.getHardwareVersion(),
+                    form.getComputerName(),
+                    form.getLocalHostname(),
+                    form.getHostname(),
+                    form.getCpuBrand(),
+                    form.getCpuPhysicalCores(),
+                    form.getCpuLogicalCores(),
+                    form.getCpuSockets(),
+                    form.getPhysicalMemory(),
+                    form.getArch(),
+                    form.getBoardVendor(),
+                    form.getBoardModel(),
+                    form.getBoardVersion(),
+                    form.getBoardSerial(),
+                    form.getOsName(),
+                    form.getOsBuild(),
+                    form.getOsMajor(),
+                    form.getOsMinor(),
+                    form.getOsPatch()
             );
         } catch (DataIntegrityViolationException e) {
             bindingResult.rejectValue("externalKey", "duplicate", "External Key is already used.");
+            return "assets/new";
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("invalid", e.getMessage());
             return "assets/new";
         }
 
