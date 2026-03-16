@@ -6,6 +6,7 @@ import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.service.AssetService;
 import dev.notegridx.security.assetvulnmanager.service.SoftwareInstallService;
+import dev.notegridx.security.assetvulnmanager.web.form.SoftwareInstallForm;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -204,10 +205,13 @@ class AssetControllerWebMvcTest {
 
         verify(softwareInstallService).addToAsset(
                 same(asset),
-                eq("Microsoft"),
-                eq("Visual Studio Code"),
-                eq("1.99.0"),
-                eq("")
+                argThat((SoftwareInstallForm form) ->
+                        form != null
+                                && "Microsoft".equals(form.getVendor())
+                                && "Visual Studio Code".equals(form.getProduct())
+                                && "1.99.0".equals(form.getVersion())
+                                && "".equals(form.getCpeName())
+                )
         );
     }
 
