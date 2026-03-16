@@ -244,62 +244,61 @@
         <div class="table-wrap" style="margin-top:12px;">
             <table style="margin-top:0; width:100%; table-layout:fixed;">
                 <colgroup>
-                    <col style="width:7%;">
-                    <col style="width:9%;">
-                    <col style="width:18%;">
-                    <col style="width:11%;">
-                    <col style="width:7%;">
-                    <col style="width:20%;">
-                    <col style="width:10%;">
                     <col style="width:8%;">
+                    <col style="width:8%;">
+                    <col style="width:21%;">
+                    <col style="width:12%;">
+                    <col style="width:8%;">
+                    <col style="width:22%;">
+                    <col style="width:11%;">
                     <col style="width:10%;">
                 </colgroup>
                 <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Source</th>
+                    <th>Vendor</th>
                     <th>Software</th>
                     <th>Version</th>
                     <th>Score</th>
                     <th>Matched CPE</th>
                     <th>Reason</th>
                     <th>Last Seen</th>
-                    <th>Review</th>
                 </tr>
                 </thead>
 
                 <tbody>
                 <tr th:if="${#lists.isEmpty(unresolvedSuggestions)}">
-                    <td colspan="9" class="muted">
+                    <td colspan="8" class="muted">
                         No unresolved software candidates found for this vulnerability.
                     </td>
                 </tr>
 
                 <tr th:each="s : ${unresolvedSuggestions}">
-                    <td th:text="${s.unresolvedId()}">1</td>
+                    <td>
+                        <a th:href="@{/admin/unresolved(id=${s.unresolvedId()})}"
+                           th:text="${s.unresolvedId()}">1</a>
+                    </td>
 
                     <td style="overflow-wrap:anywhere; word-break:break-word;"
-                        th:text="${s.source() != null ? s.source() : '-'}">MANUAL</td>
+                        th:text="${s.vendorRaw() != null ? s.vendorRaw() : '-'}">Adobe</td>
 
                     <td style="overflow-wrap:anywhere; word-break:break-word;">
                         <div>
                             <b style="overflow-wrap:anywhere; word-break:break-word;"
                                th:text="${s.productRaw() != null ? s.productRaw() : '-'}">Product</b>
                         </div>
-                        <div class="muted" style="font-size:12px; overflow-wrap:anywhere; word-break:break-word;"
-                             th:text="${s.vendorRaw() != null ? s.vendorRaw() : '-'}">Vendor</div>
                     </td>
 
                     <td style="overflow-wrap:anywhere; word-break:break-word;"
                         th:text="${s.versionRaw() != null && !s.versionRaw().isBlank() ? s.versionRaw() : '-'}">-</td>
 
                     <td>
-                        <span class="badge"
-                              th:classappend="${s.score() >= 90 ? ' badge--sev-critical'
-                    : (s.score() >= 70 ? ' badge--sev-high'
-                    : (s.score() >= 50 ? ' badge--sev-medium'
-                    : ' badge--sev-low'))}"
-                              th:text="${s.score()}">75</span>
+            <span class="badge"
+                  th:classappend="${s.score() >= 90 ? ' badge--sev-critical'
+                : (s.score() >= 70 ? ' badge--sev-high'
+                : (s.score() >= 50 ? ' badge--sev-medium'
+                : ' badge--sev-low'))}"
+                  th:text="${s.score()}">75</span>
                     </td>
 
                     <td style="overflow-wrap:anywhere; word-break:break-word;">
@@ -314,17 +313,10 @@
                     </td>
 
                     <td class="muted" style="font-size:12px; overflow-wrap:anywhere; word-break:break-word;"
-                        th:text="${s.reasons()}">vendor exact, product exact</td>
+                        th:text="${s.reasons()}">vendor exact, score=50</td>
 
                     <td style="overflow-wrap:anywhere; word-break:break-word;"
                         th:text="${s.lastSeenAt() != null ? s.lastSeenAt() : '-'}">-</td>
-
-                    <td>
-                        <a class="btn btn-soft"
-                           th:href="@{/admin/unresolved(id=${s.unresolvedId()})}">
-                            Review unresolved
-                        </a>
-                    </td>
                 </tr>
                 </tbody>
             </table>
