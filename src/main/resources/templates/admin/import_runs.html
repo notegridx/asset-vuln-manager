@@ -42,8 +42,14 @@
           <td>
             <span class="mono" th:text="${r.kind}">CSV_SOFTWARE</span>
           </td>
-          <td class="mono" th:text="${r.startedAt}">2026-02-23T10:00:00</td>
-          <td class="mono" th:text="${r.finishedAt}">2026-02-23T10:01:00</td>
+          <td class="mono"
+              th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).shortFormat(r.startedAt)}">
+            2026-02-23 10:00
+          </td>
+          <td class="mono"
+              th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).shortFormat(r.finishedAt)}">
+            2026-02-23 10:01
+          </td>
 
           <td class="mono" style="text-align:right;" th:text="${r.assetsUpserted}">0</td>
           <td class="mono" style="text-align:right;" th:text="${r.softwareUpserted}">0</td>

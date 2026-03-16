@@ -51,9 +51,16 @@
         </div>
 
         <div class="muted" style="margin-top:12px;">
-            <div th:text="'firstSeenAt: ' + ${alert.firstSeenAt}">firstSeenAt</div>
-            <div th:text="'lastSeenAt: ' + ${alert.lastSeenAt}">lastSeenAt</div>
-            <div th:if="${alert.closedAt != null}" th:text="'closedAt: ' + ${alert.closedAt}">closedAt</div>
+            <div th:text="'firstSeenAt: ' + ${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(alert.firstSeenAt)}">
+                firstSeenAt
+            </div>
+            <div th:text="'lastSeenAt: ' + ${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(alert.lastSeenAt)}">
+                lastSeenAt
+            </div>
+            <div th:if="${alert.closedAt != null}"
+                 th:text="'closedAt: ' + ${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(alert.closedAt)}">
+                closedAt
+            </div>
             <div th:if="${alert.closeReason != null}" th:text="'closeReason: ' + ${alert.closeReason}">closeReason</div>
         </div>
 
