@@ -56,10 +56,10 @@
             </span>
 
             <b>Published</b>
-            <span th:text="${v.publishedAt != null ? v.publishedAt : '-'}">-</span>
+            <span th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(v.publishedAt)}">-</span>
 
             <b>Last Modified</b>
-            <span th:text="${v.lastModifiedAt != null ? v.lastModifiedAt : '-'}">-</span>
+            <span th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(v.lastModifiedAt)}">-</span>
         </div>
     </div>
 
@@ -85,8 +85,7 @@
             <span th:text="${v.kevRansomwareUse != null ? v.kevRansomwareUse : '-'}">-</span>
 
             <b>KEV Updated</b>
-            <span th:text="${v.kevUpdatedAt != null ? v.kevUpdatedAt : '-'}">-</span>
-        </div>
+            <span th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(v.kevUpdatedAt)}">-</span>        </div>
     </div>
 
     <!-- Description -->

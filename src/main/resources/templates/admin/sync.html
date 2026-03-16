@@ -49,11 +49,11 @@
                 <tbody>
                 <tr>
                     <td>startedAt</td>
-                    <td th:text="${lastRun.startedAt}">-</td>
+                    <td th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(lastRun.startedAt)}">-</td>
                 </tr>
                 <tr>
                     <td>finishedAt</td>
-                    <td th:text="${lastRun.finishedAt}">-</td>
+                    <td th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(lastRun.finishedAt)}">-</td>
                 </tr>
                 <tr>
                     <td>durationMs</td>

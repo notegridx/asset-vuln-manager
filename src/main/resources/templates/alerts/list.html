@@ -134,7 +134,7 @@
             <div class="muted text-12 mt-8"
                  th:if="${a.status != null && a.status.toString() == 'CLOSED'}">
               <div th:text="'closeReason: ' + ${a.closeReason != null ? a.closeReason : '-'}">closeReason</div>
-              <div th:text="'closedAt: ' + ${a.closedAt != null ? a.closedAt : '-'}">closedAt</div>
+              <div th:text="'closedAt: ' + ${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).shortFormat(a.closedAt)}">closedAt</div>
             </div>
           </td>
 

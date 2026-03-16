@@ -104,10 +104,16 @@
       <div class="v" th:text="${software.type != null ? software.type : '-'}">APPLICATION</div>
 
       <div class="k">Last Seen</div>
-      <div class="v" th:text="${software.lastSeenAt != null ? software.lastSeenAt : '-'}">2026-02-26T00:00</div>
+      <div class="v"
+           th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.lastSeenAt)}">
+        2026-02-26 00:00:00
+      </div>
 
       <div class="k">Installed At</div>
-      <div class="v" th:text="${software.installedAt != null ? software.installedAt : '-'}">2026-02-01T00:00</div>
+      <div class="v"
+           th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.installedAt)}">
+        2026-02-01 00:00:00
+      </div>
 
       <div class="k">Install Location</div>
       <div class="v" th:text="${software.installLocation != null && !software.installLocation.isBlank() ? software.installLocation : '-'}">/Applications</div>
@@ -143,10 +149,16 @@
       <div class="v" th:text="${software.purl != null && !software.purl.isBlank() ? software.purl : '-'}">pkg:...</div>
 
       <div class="k">Created At</div>
-      <div class="v" th:text="${software.createdAt != null ? software.createdAt : '-'}">createdAt</div>
+      <div class="v"
+           th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.createdAt)}">
+        createdAt
+      </div>
 
       <div class="k">Updated At</div>
-      <div class="v" th:text="${software.updatedAt != null ? software.updatedAt : '-'}">updatedAt</div>
+      <div class="v"
+           th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.updatedAt)}">
+        updatedAt
+      </div>
 
     </div>
   </div>
