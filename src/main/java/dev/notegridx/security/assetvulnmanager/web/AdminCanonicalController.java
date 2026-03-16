@@ -27,10 +27,15 @@ import java.util.Objects;
 @Controller
 public class AdminCanonicalController {
 
+    private static final long STATS_CACHE_MILLIS = 30_000L;
+
     private final AssetRepository assetRepo;
     private final SoftwareInstallRepository softwareRepo;
     private final CanonicalCpeLinkingService linker;
     private final AdminCanonicalBackfillService adminCanonicalBackfillService;
+
+    private volatile CanonicalCpeLinkingService.MappingStats cachedStats;
+    private volatile long cachedStatsAtMillis;
 
     public AdminCanonicalController(
             AssetRepository assetRepo,
@@ -91,34 +96,45 @@ public class AdminCanonicalController {
         List<Asset> assets = assetRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
         model.addAttribute("assets", assets);
 
-        // ===== Global stats: ignore asset/filter/q/page/size and count entire software_installs =====
-        List<SoftwareInstall> allSoftware = softwareRepo.findAll();
-        var stats = linker.stats(allSoftware);
-        model.addAttribute("stats", stats);
-
-        // ===== Filter base rows first =====
-        List<SoftwareInstall> base = softwareRepo.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
-                .filter(s -> assetId == null || (s.getAsset() != null && Objects.equals(s.getAsset().getId(), assetId)))
-                .filter(s -> keyword == null || containsKeyword(s, keyword))
-                .toList();
-
-        List<Row> analyzed = base.stream()
-                .map(s -> Row.from(s, linker.analyze(s)))
-                .toList();
-
-        List<Row> filteredRows = analyzed.stream()
-                .filter(r -> matchesFilter(r, filter))
-                .toList();
+        // Global stats are still whole-table stats, but cached briefly
+        // to avoid recomputing them on every page transition.
+        model.addAttribute("stats", getCachedStats());
 
         Pageable pageable = PageRequest.of(safePage, safeSize);
-        int fromIndex = Math.min((int) pageable.getOffset(), filteredRows.size());
-        int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredRows.size());
+        Page<Row> rowPage;
 
-        Page<Row> rowPage = new PageImpl<>(
-                filteredRows.subList(fromIndex, toIndex),
-                pageable,
-                filteredRows.size()
-        );
+        if (isSqlPageableFilter(filter)) {
+            Page<SoftwareInstall> softwarePage =
+                    softwareRepo.findCanonicalSqlPage(assetId, keyword, filter.name(), pageable);
+
+            List<Row> rows = softwarePage.getContent().stream()
+                    .map(s -> Row.from(s, linker.analyze(s)))
+                    .toList();
+
+            rowPage = new PageImpl<>(rows, pageable, softwarePage.getTotalElements());
+        } else {
+            List<SoftwareInstall> base = softwareRepo.findCanonicalBaseRows(assetId, keyword);
+
+            List<Row> analyzed = base.stream()
+                    .map(s -> Row.from(s, linker.analyze(s)))
+                    .toList();
+
+            List<Row> filteredRows = analyzed.stream()
+                    .filter(r -> matchesFilter(r, filter))
+                    .toList();
+
+            int fromIndex = Math.min((int) pageable.getOffset(), filteredRows.size());
+            int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredRows.size());
+
+            rowPage = new PageImpl<>(
+                    filteredRows.subList(fromIndex, toIndex),
+                    pageable,
+                    filteredRows.size()
+            );
+        }
+
+        int pageRowStart = rowPage.getNumberOfElements() == 0 ? 0 : (int) pageable.getOffset() + 1;
+        int pageRowEnd = rowPage.getNumberOfElements() == 0 ? 0 : (int) pageable.getOffset() + rowPage.getNumberOfElements();
 
         model.addAttribute("rows", rowPage.getContent());
         model.addAttribute("rowPage", rowPage);
@@ -130,9 +146,9 @@ public class AdminCanonicalController {
         model.addAttribute("size", safeSize);
         model.addAttribute("sizeOptions", List.of(50, 100, 200, 500));
 
-        model.addAttribute("totalFilteredRows", filteredRows.size());
-        model.addAttribute("pageRowStart", filteredRows.isEmpty() ? 0 : fromIndex + 1);
-        model.addAttribute("pageRowEnd", toIndex);
+        model.addAttribute("totalFilteredRows", rowPage.getTotalElements());
+        model.addAttribute("pageRowStart", pageRowStart);
+        model.addAttribute("pageRowEnd", pageRowEnd);
 
         String currentQuery = buildCurrentQuery(assetId, filter.name(), q, safePage, safeSize);
         model.addAttribute("currentQuery", currentQuery);
@@ -154,6 +170,7 @@ public class AdminCanonicalController {
     ) {
         try {
             var result = adminCanonicalBackfillService.runBackfill(maxRows, relink);
+            invalidateStatsCache();
             ra.addFlashAttribute("backfillResult", result);
         } catch (AdminJobAlreadyRunningException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
@@ -177,6 +194,7 @@ public class AdminCanonicalController {
 
         s.setCanonicalLinkDisabled(disabled);
         softwareRepo.save(s);
+        invalidateStatsCache();
 
         ra.addFlashAttribute(
                 "success",
@@ -186,6 +204,41 @@ public class AdminCanonicalController {
         );
 
         return safeRedirectOrDefault(redirect, "/admin/canonical");
+    }
+
+    private CanonicalCpeLinkingService.MappingStats getCachedStats() {
+        long now = System.currentTimeMillis();
+        CanonicalCpeLinkingService.MappingStats local = cachedStats;
+
+        if (local != null && (now - cachedStatsAtMillis) < STATS_CACHE_MILLIS) {
+            return local;
+        }
+
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            local = cachedStats;
+
+            if (local != null && (now - cachedStatsAtMillis) < STATS_CACHE_MILLIS) {
+                return local;
+            }
+
+            CanonicalCpeLinkingService.MappingStats refreshed = linker.stats(softwareRepo.findAll());
+            cachedStats = refreshed;
+            cachedStatsAtMillis = now;
+            return refreshed;
+        }
+    }
+
+    private void invalidateStatsCache() {
+        cachedStats = null;
+        cachedStatsAtMillis = 0L;
+    }
+
+    private static boolean isSqlPageableFilter(Filter filter) {
+        return switch (filter) {
+            case all, fullyLinked, vendorOnlyLinked, notLinked -> true;
+            default -> false;
+        };
     }
 
     private static String safeRedirectOrDefault(String redirect, String fallback) {

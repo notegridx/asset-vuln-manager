@@ -78,6 +78,57 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
     );
 
     // =========================================================
+    // /admin/canonical optimized reads
+    // - SQL-pageable filters only: all / fullyLinked / vendorOnlyLinked / notLinked
+    // =========================================================
+
+    @EntityGraph(attributePaths = {"asset"})
+    @Query("""
+            select s from SoftwareInstall s
+            where (:assetId is null or s.asset.id = :assetId)
+              and (
+                    :q is null or :q = ''
+                    or lower(coalesce(s.vendorRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.productRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.versionRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedVendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedProduct, '')) like lower(concat('%', :q, '%'))
+                  )
+              and (
+                    :linkState = 'all'
+                    or (:linkState = 'fullyLinked' and s.cpeVendorId is not null and s.cpeProductId is not null)
+                    or (:linkState = 'vendorOnlyLinked' and s.cpeVendorId is not null and s.cpeProductId is null)
+                    or (:linkState = 'notLinked' and s.cpeVendorId is null and s.cpeProductId is null)
+                  )
+            order by s.id desc
+            """)
+    Page<SoftwareInstall> findCanonicalSqlPage(
+            @Param("assetId") Long assetId,
+            @Param("q") String q,
+            @Param("linkState") String linkState,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"asset"})
+    @Query("""
+            select s from SoftwareInstall s
+            where (:assetId is null or s.asset.id = :assetId)
+              and (
+                    :q is null or :q = ''
+                    or lower(coalesce(s.vendorRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.productRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.versionRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedVendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedProduct, '')) like lower(concat('%', :q, '%'))
+                  )
+            order by s.id desc
+            """)
+    List<SoftwareInstall> findCanonicalBaseRows(
+            @Param("assetId") Long assetId,
+            @Param("q") String q
+    );
+
+    // =========================================================
     // Bulk apply canonical IDs from Unresolved queue (normalized match)
     // =========================================================
 
