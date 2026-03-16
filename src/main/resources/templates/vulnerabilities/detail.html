@@ -114,7 +114,7 @@
                 <span class="muted" style="margin:0 4px;">|</span>
 
                 <div class="muted" style="font-size:12px;">
-                    Imported from NVD configurations → criteria (vulnerable=true). Stored in <code>vulnerability_affected_cpes</code>.
+                    Imported from NVD configurations / criteria (vulnerable=true). Stored in <code>vulnerability_affected_cpes</code>.
                 </div>
             </div>
 
@@ -244,14 +244,15 @@
         <div class="table-wrap" style="margin-top:12px;">
             <table style="margin-top:0; width:100%; table-layout:fixed;">
                 <colgroup>
-                    <col style="width:8%;">
-                    <col style="width:10%;">
+                    <col style="width:7%;">
+                    <col style="width:9%;">
+                    <col style="width:18%;">
+                    <col style="width:11%;">
+                    <col style="width:7%;">
                     <col style="width:20%;">
-                    <col style="width:12%;">
-                    <col style="width:8%;">
-                    <col style="width:24%;">
                     <col style="width:10%;">
                     <col style="width:8%;">
+                    <col style="width:10%;">
                 </colgroup>
                 <thead>
                 <tr>
@@ -263,12 +264,13 @@
                     <th>Matched CPE</th>
                     <th>Reason</th>
                     <th>Last Seen</th>
+                    <th>Review</th>
                 </tr>
                 </thead>
 
                 <tbody>
                 <tr th:if="${#lists.isEmpty(unresolvedSuggestions)}">
-                    <td colspan="8" class="muted">
+                    <td colspan="9" class="muted">
                         No unresolved software candidates found for this vulnerability.
                     </td>
                 </tr>
@@ -316,6 +318,13 @@
 
                     <td style="overflow-wrap:anywhere; word-break:break-word;"
                         th:text="${s.lastSeenAt() != null ? s.lastSeenAt() : '-'}">-</td>
+
+                    <td>
+                        <a class="btn btn-soft"
+                           th:href="@{/admin/unresolved(id=${s.unresolvedId()})}">
+                            Review unresolved
+                        </a>
+                    </td>
                 </tr>
                 </tbody>
             </table>

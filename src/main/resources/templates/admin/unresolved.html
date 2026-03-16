@@ -46,6 +46,14 @@
         margin-top: 12px;
     }
 
+    .um-id-scope {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
     /* =========================================================
        2) Shared small utilities
        ========================================================= */
@@ -339,6 +347,7 @@
         <form class="um-filterbar" method="get" th:action="@{/admin/unresolved}">
             <!-- unchecked 判定用: Controller の effectiveActiveOnly() と整合 -->
             <input type="hidden" name="activeOnlyPresent" value="1"/>
+            <input th:if="${id != null}" type="hidden" name="id" th:value="${id}"/>
 
             <div class="um-filterbar__left">
                 <div class="um-stack-6">
@@ -374,6 +383,14 @@
                 </div>
             </div>
         </form>
+
+        <div th:if="${id != null}" class="um-id-scope">
+            <span class="pill" th:text="'Reviewing unresolved ID: ' + ${id}">Reviewing unresolved ID: 1</span>
+            <a class="btn btn-soft"
+               th:href="@{/admin/unresolved(status='NEW', activeOnly=true, activeOnlyPresent='1')}">
+                Clear ID Filter
+            </a>
+        </div>
     </div>
 
     <div class="card um-card--hint">
@@ -440,6 +457,7 @@
                             <!-- UI state passthrough -->
                             <input type="hidden" name="status" th:value="${status}"/>
                             <input type="hidden" name="runId" th:value="${runId}"/>
+                            <input type="hidden" name="id" th:value="${id}"/>
                             <input type="hidden" name="activeOnlyPresent" value="1"/>
                             <input type="hidden" name="activeOnly" th:value="${activeOnly}"/>
 

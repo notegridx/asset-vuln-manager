@@ -46,13 +46,15 @@ public class AdminInventoryController {
             @RequestParam(name = "runId", required = false) Long runId,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
+            @RequestParam(name = "id", required = false) Long id,
             Model model
     ) {
         var view = adminInventoryReadService.findUnresolvedMappings(
                 status,
                 runId,
                 activeOnly,
-                activeOnlyPresent
+                activeOnlyPresent,
+                id
         );
 
         model.addAttribute("mappings", view.mappings());
@@ -60,6 +62,7 @@ public class AdminInventoryController {
         model.addAttribute("runId", view.runId());
         model.addAttribute("activeOnly", view.activeOnly());
         model.addAttribute("activeOnlyPresent", view.activeOnlyPresent());
+        model.addAttribute("id", view.id());
 
         return "admin/unresolved";
     }
@@ -76,8 +79,8 @@ public class AdminInventoryController {
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
-            // Even if not sent, redirectQuery always includes activeOnly
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
+            @RequestParam(name = "id", required = false) Long id,
             RedirectAttributes ra
     ) {
         Long mappingId = parseLong(mappingIdRaw);
@@ -88,11 +91,11 @@ public class AdminInventoryController {
 
         if (mappingId == null) {
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
         }
         if (vendorId == null) {
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates (chips).");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
         }
 
         try {
@@ -101,7 +104,7 @@ public class AdminInventoryController {
                     "Applied: mappingId=" + result.mappingId()
                             + " vendorId=" + result.vendorId()
                             + (result.productId() == null ? "" : (" productId=" + result.productId()))
-                            + " → affectedSoftware=" + result.affectedSoftwareRows()
+                            + " affectedSoftware=" + result.affectedSoftwareRows()
                             + " status=" + result.status()
                             + " | vendorAlias=" + result.vendorAliasOutcome()
                             + " productAlias=" + result.productAliasOutcome()
@@ -110,7 +113,7 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", "Apply failed: " + safeMsg(e));
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
     }
 
     /**
@@ -133,7 +136,13 @@ public class AdminInventoryController {
         return Boolean.TRUE.equals(activeOnly);
     }
 
-    private static String redirectQuery(String status, Long runId, boolean activeOnly, boolean includeActiveOnlyPresent) {
+    private static String redirectQuery(
+            String status,
+            Long runId,
+            boolean activeOnly,
+            boolean includeActiveOnlyPresent,
+            Long id
+    ) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
 
@@ -143,6 +152,10 @@ public class AdminInventoryController {
         }
         if (runId != null) {
             sb.append(first ? "?" : "&").append("runId=").append(runId);
+            first = false;
+        }
+        if (id != null) {
+            sb.append(first ? "?" : "&").append("id=").append(id);
             first = false;
         }
 
@@ -192,6 +205,7 @@ public class AdminInventoryController {
             @RequestParam(name = "runId", required = false) Long runId,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
+            @RequestParam(name = "id", required = false) Long id,
             RedirectAttributes ra
     ) {
         Long mappingId = parseLong(mappingIdRaw);
@@ -202,11 +216,11 @@ public class AdminInventoryController {
 
         if (mappingId == null) {
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
         }
         if (vendorId == null) {
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
         }
 
         try {
@@ -216,7 +230,7 @@ public class AdminInventoryController {
                     "QuickAdd+Applied: mappingId=" + result.apply().mappingId()
                             + " vendorId=" + result.apply().vendorId()
                             + (result.apply().productId() == null ? "" : (" productId=" + result.apply().productId()))
-                            + " → affectedSoftware=" + result.apply().affectedSoftwareRows()
+                            + " affectedSoftware=" + result.apply().affectedSoftwareRows()
                             + " status=" + result.apply().status()
                             + " | vendorAlias=" + result.vendorAliasOutcome()
                             + " productAlias=" + result.productAliasOutcome()
@@ -225,6 +239,6 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", "QuickAdd failed: " + safeMsg(e));
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
     }
 }

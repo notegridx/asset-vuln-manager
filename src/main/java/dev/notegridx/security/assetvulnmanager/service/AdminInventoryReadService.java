@@ -42,9 +42,31 @@ public class AdminInventoryReadService {
             String status,
             Long runId,
             Boolean activeOnly,
-            String activeOnlyPresent
+            String activeOnlyPresent,
+            Long id
     ) {
         boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
+
+        // ID review mode:
+        // if id is specified, show only that mapping and bypass list filters.
+        if (id != null) {
+            List<UnresolvedMapping> list = unresolvedMappingRepository.findById(id)
+                    .map(List::of)
+                    .orElseGet(List::of);
+
+            String effectiveStatus = (status == null || status.isBlank())
+                    ? "ALL"
+                    : status.trim().toUpperCase(Locale.ROOT);
+
+            return new UnresolvedListView(
+                    list,
+                    effectiveStatus,
+                    runId,
+                    active,
+                    activeOnlyPresent,
+                    id
+            );
+        }
 
         List<UnresolvedMapping> list = new ArrayList<>(
                 active
@@ -78,7 +100,8 @@ public class AdminInventoryReadService {
                 effectiveStatus,
                 runId,
                 active,
-                activeOnlyPresent
+                activeOnlyPresent,
+                null
         );
     }
 
@@ -107,7 +130,8 @@ public class AdminInventoryReadService {
             String status,
             Long runId,
             boolean activeOnly,
-            String activeOnlyPresent
+            String activeOnlyPresent,
+            Long id
     ) {
     }
 }
