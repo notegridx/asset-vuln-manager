@@ -39,21 +39,21 @@
         <div class="kv">
             <b>Severity</b>
             <span>
-        <span class="badge"
-              th:classappend="${v.severity != null ?
-                (v.severity.name() == 'CRITICAL' ? ' badge--sev-critical' :
-                 (v.severity.name() == 'HIGH' ? ' badge--sev-high' :
-                  (v.severity.name() == 'MEDIUM' ? ' badge--sev-medium' :
-                   (v.severity.name() == 'LOW' ? ' badge--sev-low' :
-                    ' badge--sev-none'))))
-                : ' badge--sev-none'}"
-              th:text="${v.severity != null ? v.severity : 'NONE'}">HIGH</span>
-      </span>
+                <span class="badge"
+                      th:classappend="${v.severity != null ?
+                        (v.severity.name() == 'CRITICAL' ? ' badge--sev-critical' :
+                         (v.severity.name() == 'HIGH' ? ' badge--sev-high' :
+                          (v.severity.name() == 'MEDIUM' ? ' badge--sev-medium' :
+                           (v.severity.name() == 'LOW' ? ' badge--sev-low' :
+                            ' badge--sev-none'))))
+                        : ' badge--sev-none'}"
+                      th:text="${v.severity != null ? v.severity : 'NONE'}">HIGH</span>
+            </span>
 
             <b>CVSS</b>
             <span th:text="${(v.cvssVersion != null ? v.cvssVersion : '-') + ' / ' + (v.cvssScore != null ? v.cvssScore : '-')}">
-        3.1 / 7.5
-      </span>
+                3.1 / 7.5
+            </span>
 
             <b>Published</b>
             <span th:text="${v.publishedAt != null ? v.publishedAt : '-'}">-</span>
@@ -122,89 +122,204 @@
                 <!-- reserved -->
             </div>
         </div>
+
+        <div class="table-wrap" style="margin-top:12px;">
+            <table style="margin-top:0; width:100%; table-layout:fixed;">
+                <colgroup>
+                    <col style="width:7%;">
+                    <col style="width:34%;">
+                    <col style="width:19%;">
+                    <col style="width:8%;">
+                    <col style="width:8%;">
+                    <col style="width:8%;">
+                    <col style="width:10%;">
+                    <col style="width:6%;">
+                </colgroup>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>CPE (cpeName)</th>
+                    <th>Range</th>
+                    <th>CPE Part</th>
+                    <th>Target SW</th>
+                    <th>Target HW</th>
+                    <th>Criteria Node ID</th>
+                    <th>Root Group No</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr th:if="${#lists.isEmpty(cpes)}">
+                    <td colspan="8" class="muted">
+                        No affected CPEs stored for this vulnerability.
+                    </td>
+                </tr>
+
+                <tr th:each="c : ${cpes}">
+                    <td th:text="${c.id}">1</td>
+
+                    <td style="overflow-wrap:anywhere; word-break:break-word;">
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <code style="white-space:normal; overflow-wrap:anywhere; word-break:break-word;"
+                                  th:text="${c.cpeName}">cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*</code>
+
+                            <span class="badge badge--unmapped"
+                                  th:if="${(c.versionStartIncluding != null and !c.versionStartIncluding.isBlank())
+                   or (c.versionStartExcluding != null and !c.versionStartExcluding.isBlank())
+                   or (c.versionEndIncluding != null and !c.versionEndIncluding.isBlank())
+                   or (c.versionEndExcluding != null and !c.versionEndExcluding.isBlank())}"
+                                  style="font-size:12px;">
+                                has range
+                            </span>
+                        </div>
+                    </td>
+
+                    <td style="overflow-wrap:anywhere; word-break:break-word;">
+                        <div class="muted" style="font-size:12px; line-height:1.45;">
+                            <div>
+                                <b class="muted" style="font-weight:600;">Start (incl)</b>
+                                <span th:text="${c.versionStartIncluding != null ? c.versionStartIncluding : '-'}">-</span>
+                            </div>
+                            <div>
+                                <b class="muted" style="font-weight:600;">Start (excl)</b>
+                                <span th:text="${c.versionStartExcluding != null ? c.versionStartExcluding : '-'}">-</span>
+                            </div>
+                            <div style="margin-top:6px;">
+                                <b class="muted" style="font-weight:600;">End (incl)</b>
+                                <span th:text="${c.versionEndIncluding != null ? c.versionEndIncluding : '-'}">-</span>
+                            </div>
+                            <div>
+                                <b class="muted" style="font-weight:600;">End (excl)</b>
+                                <span th:text="${c.versionEndExcluding != null ? c.versionEndExcluding : '-'}">-</span>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                        <code style="white-space:normal; overflow-wrap:anywhere; word-break:break-word;"
+                              th:text="${c.cpePart != null and !c.cpePart.isBlank() ? c.cpePart : '-'}">a</code>
+                    </td>
+
+                    <td>
+                        <span style="overflow-wrap:anywhere; word-break:break-word;"
+                              th:text="${c.targetSw != null and !c.targetSw.isBlank() ? c.targetSw : '-'}">windows</span>
+                    </td>
+
+                    <td>
+                        <span style="overflow-wrap:anywhere; word-break:break-word;"
+                              th:text="${c.targetHw != null and !c.targetHw.isBlank() ? c.targetHw : '-'}">x64</span>
+                    </td>
+
+                    <td>
+                        <code style="white-space:normal; overflow-wrap:anywhere; word-break:break-word;"
+                              th:text="${c.criteriaNodeId != null ? c.criteriaNodeId : '-'}">1001</code>
+                    </td>
+
+                    <td th:text="${c.rootGroupNo != null ? c.rootGroupNo : '-'}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <div class="table-wrap">
-        <table style="margin-top:0;">
-            <thead>
-            <tr>
-                <th style="width:90px;">ID</th>
-                <th style="min-width:360px;">CPE (cpeName)</th>
-                <th style="width:260px;">Range</th>
-                <th style="width:90px;">CPE Part</th>
-                <th style="width:120px;">Target SW</th>
-                <th style="width:120px;">Target HW</th>
-                <th style="width:140px;">Criteria Node ID</th>
-                <th style="width:120px;">Root Group No</th>
-            </tr>
-            </thead>
+    <!-- Potential unresolved software candidates -->
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="toolbar"
+             style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
 
-            <tbody>
-            <tr th:if="${#lists.isEmpty(cpes)}">
-                <td colspan="8" class="muted">
-                    No affected CPEs stored for this vulnerability.
-                </td>
-            </tr>
+            <div class="toolbar__left" style="display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+                <div class="actions" style="gap:10px; margin:0; justify-content:flex-start; align-items:center;">
+                    <h2 style="margin:0; font-size:18px;">Potential Unresolved Software Candidates</h2>
+                    <span class="pill" th:text="'count: ' + ${#lists.size(unresolvedSuggestions)}">count: 0</span>
+                </div>
 
-            <tr th:each="c : ${cpes}">
-                <td th:text="${c.id}">1</td>
+                <span class="muted" style="margin:0 4px;">|</span>
 
-                <td>
-                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <code th:text="${c.cpeName}">cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*</code>
+                <div class="muted" style="font-size:12px;">
+                    Suggested only. These are not matched alerts and not linked automatically.
+                </div>
+            </div>
+        </div>
 
-                        <span class="badge badge--unmapped"
-                              th:if="${(c.versionStartIncluding != null and !c.versionStartIncluding.isBlank())
-           or (c.versionStartExcluding != null and !c.versionStartExcluding.isBlank())
-           or (c.versionEndIncluding != null and !c.versionEndIncluding.isBlank())
-           or (c.versionEndExcluding != null and !c.versionEndExcluding.isBlank())}"
-                              style="font-size:12px;">
-                            has range
-                        </span>
-                    </div>
-                </td>
+        <div class="table-wrap" style="margin-top:12px;">
+            <table style="margin-top:0; width:100%; table-layout:fixed;">
+                <colgroup>
+                    <col style="width:8%;">
+                    <col style="width:10%;">
+                    <col style="width:20%;">
+                    <col style="width:12%;">
+                    <col style="width:8%;">
+                    <col style="width:24%;">
+                    <col style="width:10%;">
+                    <col style="width:8%;">
+                </colgroup>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Source</th>
+                    <th>Software</th>
+                    <th>Version</th>
+                    <th>Score</th>
+                    <th>Matched CPE</th>
+                    <th>Reason</th>
+                    <th>Last Seen</th>
+                </tr>
+                </thead>
 
-                <td>
-                    <div class="muted" style="font-size:12px; line-height:1.45;">
+                <tbody>
+                <tr th:if="${#lists.isEmpty(unresolvedSuggestions)}">
+                    <td colspan="8" class="muted">
+                        No unresolved software candidates found for this vulnerability.
+                    </td>
+                </tr>
+
+                <tr th:each="s : ${unresolvedSuggestions}">
+                    <td th:text="${s.unresolvedId()}">1</td>
+
+                    <td style="overflow-wrap:anywhere; word-break:break-word;"
+                        th:text="${s.source() != null ? s.source() : '-'}">MANUAL</td>
+
+                    <td style="overflow-wrap:anywhere; word-break:break-word;">
                         <div>
-                            <b class="muted" style="font-weight:600;">Start (incl)</b>
-                            <span th:text="${c.versionStartIncluding != null ? c.versionStartIncluding : '-'}">-</span>
+                            <b style="overflow-wrap:anywhere; word-break:break-word;"
+                               th:text="${s.productRaw() != null ? s.productRaw() : '-'}">Product</b>
                         </div>
+                        <div class="muted" style="font-size:12px; overflow-wrap:anywhere; word-break:break-word;"
+                             th:text="${s.vendorRaw() != null ? s.vendorRaw() : '-'}">Vendor</div>
+                    </td>
+
+                    <td style="overflow-wrap:anywhere; word-break:break-word;"
+                        th:text="${s.versionRaw() != null && !s.versionRaw().isBlank() ? s.versionRaw() : '-'}">-</td>
+
+                    <td>
+                        <span class="badge"
+                              th:classappend="${s.score() >= 90 ? ' badge--sev-critical'
+                    : (s.score() >= 70 ? ' badge--sev-high'
+                    : (s.score() >= 50 ? ' badge--sev-medium'
+                    : ' badge--sev-low'))}"
+                              th:text="${s.score()}">75</span>
+                    </td>
+
+                    <td style="overflow-wrap:anywhere; word-break:break-word;">
                         <div>
-                            <b class="muted" style="font-weight:600;">Start (excl)</b>
-                            <span th:text="${c.versionStartExcluding != null ? c.versionStartExcluding : '-'}">-</span>
+                            <code style="white-space:normal; overflow-wrap:anywhere; word-break:break-word;"
+                                  th:text="${s.matchedCpeName()}">cpe:2.3:a:vendor:product:*:*:*:*:*:*:*:*</code>
                         </div>
-                        <div style="margin-top:6px;">
-                            <b class="muted" style="font-weight:600;">End (incl)</b>
-                            <span th:text="${c.versionEndIncluding != null ? c.versionEndIncluding : '-'}">-</span>
+                        <div class="muted" style="font-size:12px; overflow-wrap:anywhere; word-break:break-word;"
+                             th:text="${(s.matchedVendorNorm() != null ? s.matchedVendorNorm() : '-') + ' / ' + (s.matchedProductNorm() != null ? s.matchedProductNorm() : '-')}">
+                            vendor / product
                         </div>
-                        <div>
-                            <b class="muted" style="font-weight:600;">End (excl)</b>
-                            <span th:text="${c.versionEndExcluding != null ? c.versionEndExcluding : '-'}">-</span>
-                        </div>
-                    </div>
-                </td>
+                    </td>
 
-                <td>
-                    <code th:text="${c.cpePart != null and !c.cpePart.isBlank() ? c.cpePart : '-'}">a</code>
-                </td>
+                    <td class="muted" style="font-size:12px; overflow-wrap:anywhere; word-break:break-word;"
+                        th:text="${s.reasons()}">vendor exact, product exact</td>
 
-                <td>
-                    <span th:text="${c.targetSw != null and !c.targetSw.isBlank() ? c.targetSw : '-'}">windows</span>
-                </td>
-
-                <td>
-                    <span th:text="${c.targetHw != null and !c.targetHw.isBlank() ? c.targetHw : '-'}">x64</span>
-                </td>
-
-                <td>
-                    <code th:text="${c.criteriaNodeId != null ? c.criteriaNodeId : '-'}">1001</code>
-                </td>
-
-                <td th:text="${c.rootGroupNo != null ? c.rootGroupNo : '-'}">0</td>
-            </tr>
-            </tbody>
-        </table>
+                    <td style="overflow-wrap:anywhere; word-break:break-word;"
+                        th:text="${s.lastSeenAt() != null ? s.lastSeenAt() : '-'}">-</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
 </main>
