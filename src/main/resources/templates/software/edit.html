@@ -27,195 +27,135 @@
       </div>
     </div>
 
-    <details class="card sw-edit-section" open>
-      <summary class="sw-edit-summary">
-        <span>Basic</span>
-      </summary>
-      <div class="sw-edit-body">
-        <div class="field">
-          <label>Type</label>
-          <select th:field="*{type}">
-            <option value="">APPLICATION</option>
-            <option value="APPLICATION">APPLICATION</option>
-            <option value="OPERATING_SYSTEM">OPERATING_SYSTEM</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label>Source</label>
-          <input type="text" th:field="*{source}" placeholder="e.g. MANUAL / JSON_UPLOAD / CSV_UPLOAD">
-        </div>
-
-        <div class="field">
-          <label>Source Type</label>
-          <input type="text" th:field="*{sourceType}" placeholder="e.g. OSQUERY_PROGRAMS / JSON_UPLOAD / WINGET">
-        </div>
-
-        <div class="field">
-          <label>Vendor</label>
-          <input id="vendor" type="text" th:field="*{vendor}" list="vendor-suggest" placeholder="e.g. microsoft">
-          <datalist id="vendor-suggest"></datalist>
-          <div class="error" th:if="${#fields.hasErrors('vendor')}" th:errors="*{vendor}">Vendor error</div>
-        </div>
-
-        <div class="field">
-          <label>Product *</label>
-          <input id="product" type="text" th:field="*{product}" list="product-suggest" placeholder="e.g. edge">
-          <datalist id="product-suggest"></datalist>
-          <div class="error" th:if="${#fields.hasErrors('product')}" th:errors="*{product}">Product error</div>
-        </div>
-
-        <div class="field">
-          <label>Version</label>
-          <input type="text" th:field="*{version}" placeholder="e.g. 120.0.2210.61">
-          <div class="error" th:if="${#fields.hasErrors('version')}" th:errors="*{version}">Version error</div>
-        </div>
-
-        <div class="field">
-          <label>CPE (cpeName)</label>
-          <input type="text" th:field="*{cpeName}" placeholder="cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*">
-          <div class="error" th:if="${#fields.hasErrors('cpeName')}" th:errors="*{cpeName}">CPE error</div>
-        </div>
-      </div>
-    </details>
-
-    <details class="card sw-edit-section">
-      <summary class="sw-edit-summary">
-        <span>Raw / Troubleshooting</span>
-      </summary>
-      <div class="sw-edit-body">
-        <div class="field">
-          <label>Vendor Raw</label>
-          <input type="text" th:field="*{vendorRaw}" placeholder="raw vendor from inventory source">
-        </div>
-
-        <div class="field">
-          <label>Product Raw</label>
-          <input type="text" th:field="*{productRaw}" placeholder="raw product from inventory source">
-        </div>
-
-        <div class="field">
-          <label>Version Raw</label>
-          <input type="text" th:field="*{versionRaw}" placeholder="raw version from inventory source">
-        </div>
-
-        <div class="field">
-          <label>Last Seen At</label>
-          <input type="datetime-local" th:field="*{lastSeenAt}">
-        </div>
-
-        <div class="field">
-          <label>Installed At</label>
-          <input type="datetime-local" th:field="*{installedAt}">
-        </div>
-      </div>
-    </details>
-
-    <details class="card sw-edit-section">
-      <summary class="sw-edit-summary">
-        <span>Import / Metadata</span>
-      </summary>
-      <div class="sw-edit-body">
-        <div class="field">
-          <label>Install Location</label>
-          <input type="text" th:field="*{installLocation}" placeholder="e.g. C:\Program Files\App">
-        </div>
-
-        <div class="field">
-          <label>Package Identifier</label>
-          <input type="text" th:field="*{packageIdentifier}" placeholder="e.g. com.microsoft.Edge">
-        </div>
-
-        <div class="field">
-          <label>Architecture</label>
-          <input type="text" th:field="*{arch}" placeholder="e.g. x64 / arm64">
-        </div>
-
-        <div class="field">
-          <label>Publisher</label>
-          <input type="text" th:field="*{publisher}" placeholder="e.g. Microsoft Corporation">
-        </div>
-
-        <div class="field">
-          <label>Bundle ID</label>
-          <input type="text" th:field="*{bundleId}" placeholder="e.g. com.apple.Safari">
-        </div>
-
-        <div class="field">
-          <label>Package Manager</label>
-          <input type="text" th:field="*{packageManager}" placeholder="e.g. winget / brew / apt">
-        </div>
-
-        <div class="field">
-          <label>Install Source</label>
-          <input type="text" th:field="*{installSource}" placeholder="e.g. STORE / MSI / PKG">
-        </div>
-
-        <div class="field">
-          <label>Edition</label>
-          <input type="text" th:field="*{edition}" placeholder="e.g. Professional">
-        </div>
-
-        <div class="field">
-          <label>Channel</label>
-          <input type="text" th:field="*{channel}" placeholder="e.g. stable / beta / dev">
-        </div>
-
-        <div class="field">
-          <label>Release</label>
-          <input type="text" th:field="*{release}" placeholder="e.g. 24H2">
-        </div>
-
-        <div class="field">
-          <label>PURL</label>
-          <input type="text" th:field="*{purl}" placeholder="pkg:...">
-        </div>
-      </div>
-    </details>
-
-    <div class="actions" style="margin-top:14px;">
-      <button type="submit" class="btn btn-primary">Save</button>
-      <a class="btn btn-ghost" th:href="@{/assets/{id}(id=${assetId})}">Cancel</a>
+    <div class="field">
+      <label>Type</label>
+      <select th:field="*{type}">
+        <option value="">APPLICATION</option>
+        <option value="APPLICATION">APPLICATION</option>
+        <option value="OPERATING_SYSTEM">OPERATING_SYSTEM</option>
+      </select>
     </div>
 
-    <style>
-      .sw-edit-section {
-          margin: 12px 0;
-          padding: 0;
-          overflow: hidden;
-      }
+    <div class="field">
+      <label>Source</label>
+      <input type="text" th:field="*{source}" placeholder="e.g. MANUAL / JSON_UPLOAD / CSV_UPLOAD">
+    </div>
 
-      .sw-edit-summary {
-          list-style: none;
-          cursor: pointer;
-          padding: 12px 14px;
-          font-weight: 600;
-          user-select: none;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-      }
+    <div class="field">
+      <label>Source Type</label>
+      <input type="text" th:field="*{sourceType}" placeholder="e.g. OSQUERY_PROGRAMS / JSON_UPLOAD / WINGET">
+    </div>
 
-      .sw-edit-summary::-webkit-details-marker {
-          display: none;
-      }
+    <div class="field">
+      <label>Vendor</label>
+      <input id="vendor" type="text" th:field="*{vendor}" list="vendor-suggest" placeholder="e.g. microsoft">
+      <datalist id="vendor-suggest"></datalist>
+      <div class="error" th:if="${#fields.hasErrors('vendor')}" th:errors="*{vendor}">Vendor error</div>
+    </div>
 
-      .sw-edit-summary::after {
-          content: "▾";
-          font-size: 12px;
-          opacity: 0.8;
-          transition: transform 0.15s ease;
-      }
+    <div class="field">
+      <label>Product *</label>
+      <input id="product" type="text" th:field="*{product}" list="product-suggest" placeholder="e.g. edge">
+      <datalist id="product-suggest"></datalist>
+      <div class="error" th:if="${#fields.hasErrors('product')}" th:errors="*{product}">Product error</div>
+    </div>
 
-      details:not([open]) > .sw-edit-summary::after {
-          transform: rotate(-90deg);
-      }
+    <div class="field">
+      <label>Version</label>
+      <input type="text" th:field="*{version}" placeholder="e.g. 120.0.2210.61">
+      <div class="error" th:if="${#fields.hasErrors('version')}" th:errors="*{version}">Version error</div>
+    </div>
 
-      .sw-edit-body {
-          padding: 0 12px 12px 12px;
-          border-top: 1px solid rgba(255,255,255,0.06);
-      }
-    </style>
+    <div class="field">
+      <label>CPE (cpeName)</label>
+      <input type="text" th:field="*{cpeName}" placeholder="cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*">
+      <div class="error" th:if="${#fields.hasErrors('cpeName')}" th:errors="*{cpeName}">CPE error</div>
+    </div>
+
+    <div class="field">
+      <label>Vendor Raw</label>
+      <input type="text" th:field="*{vendorRaw}" placeholder="raw vendor from inventory source">
+    </div>
+
+    <div class="field">
+      <label>Product Raw</label>
+      <input type="text" th:field="*{productRaw}" placeholder="raw product from inventory source">
+    </div>
+
+    <div class="field">
+      <label>Version Raw</label>
+      <input type="text" th:field="*{versionRaw}" placeholder="raw version from inventory source">
+    </div>
+
+    <div class="field">
+      <label>Last Seen At</label>
+      <input type="datetime-local" th:field="*{lastSeenAt}">
+    </div>
+
+    <div class="field">
+      <label>Installed At</label>
+      <input type="datetime-local" th:field="*{installedAt}">
+    </div>
+
+    <div class="field">
+      <label>Install Location</label>
+      <input type="text" th:field="*{installLocation}" placeholder="e.g. C:\Program Files\App">
+    </div>
+
+    <div class="field">
+      <label>Package Identifier</label>
+      <input type="text" th:field="*{packageIdentifier}" placeholder="e.g. com.microsoft.Edge">
+    </div>
+
+    <div class="field">
+      <label>Architecture</label>
+      <input type="text" th:field="*{arch}" placeholder="e.g. x64 / arm64">
+    </div>
+
+    <div class="field">
+      <label>Publisher</label>
+      <input type="text" th:field="*{publisher}" placeholder="e.g. Microsoft Corporation">
+    </div>
+
+    <div class="field">
+      <label>Bundle ID</label>
+      <input type="text" th:field="*{bundleId}" placeholder="e.g. com.apple.Safari">
+    </div>
+
+    <div class="field">
+      <label>Package Manager</label>
+      <input type="text" th:field="*{packageManager}" placeholder="e.g. winget / brew / apt">
+    </div>
+
+    <div class="field">
+      <label>Install Source</label>
+      <input type="text" th:field="*{installSource}" placeholder="e.g. STORE / MSI / PKG">
+    </div>
+
+    <div class="field">
+      <label>Edition</label>
+      <input type="text" th:field="*{edition}" placeholder="e.g. Professional">
+    </div>
+
+    <div class="field">
+      <label>Channel</label>
+      <input type="text" th:field="*{channel}" placeholder="e.g. stable / beta / dev">
+    </div>
+
+    <div class="field">
+      <label>Release</label>
+      <input type="text" th:field="*{release}" placeholder="e.g. 24H2">
+    </div>
+
+    <div class="field">
+      <label>PURL</label>
+      <input type="text" th:field="*{purl}" placeholder="pkg:...">
+    </div>
+
+    <div class="actions" style="margin-top:14px;">
+      <a class="btn btn-ghost" th:href="@{/assets/{id}(id=${assetId})}">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
 
     <script>
       (function () {

@@ -44,29 +44,27 @@
 
 <script>
   (function () {
-    // Close any open <details> when clicking outside
+    // Close open NAV dropdowns when clicking outside
     document.addEventListener('click', function (e) {
-      if (e.target.closest('details')) return;
-      document.querySelectorAll('details[open]').forEach(function (d) {
+      if (e.target.closest('details.nav-admin')) return;
+      document.querySelectorAll('details.nav-admin[open]').forEach(function (d) {
         d.removeAttribute('open');
       });
     });
 
-    // Close on Escape key (nice UX)
+    // Close NAV dropdowns on Escape
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
-      document.querySelectorAll('details[open]').forEach(function (d) {
+      document.querySelectorAll('details.nav-admin[open]').forEach(function (d) {
         d.removeAttribute('open');
       });
     });
 
-    // Close other <details> ONLY for nav dropdowns
+    // Keep only one NAV dropdown open at a time
     document.addEventListener('toggle', function (e) {
       var d = e.target;
       if (!(d instanceof HTMLDetailsElement)) return;
       if (!d.open) return;
-
-      // only scope to nav dropdowns
       if (!d.classList.contains('nav-admin')) return;
 
       document.querySelectorAll('details.nav-admin[open]').forEach(function (other) {
