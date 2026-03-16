@@ -3,7 +3,6 @@
 
 <head th:replace="~{layout/base :: head('Review Product Mapping')}"></head>
 
-
 <style>
     /* ===== admin/canonical: visual cleanup only ===== */
 
@@ -77,13 +76,9 @@
 
     .canon-filter-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr 180px;
         gap: 12px;
         align-items: end;
-    }
-
-    .canon-limit {
-        width: 90px;
     }
 
     .canon-asset-cell,
@@ -92,14 +87,12 @@
         overflow-wrap: anywhere;
     }
 
-    /* Result cell itself must stay as a normal table cell */
     td.canon-result {
         display: table-cell;
         white-space: normal;
         vertical-align: top;
     }
 
-    /* only inner wrappers should be flex */
     td.canon-result .canon-result-main,
     td.canon-result .canon-result-sub {
         display: flex;
@@ -136,152 +129,6 @@
         font-size: 12px;
         border-radius: 10px;
     }
-
-    @media (max-width: 980px) {
-        .canon-filter-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .badge--disabled {
-        background: #6b1f1f;
-        color: #fff;
-        border: 1px solid #c34a4a;
-        font-weight: 600;
-    }
-    /* ===== admin/canonical: visual cleanup only ===== */
-
-    .canon-card {
-        padding: 12px;
-        margin: 12px 0;
-    }
-
-    .canon-card--flash {
-        padding: 10px;
-        margin: 12px 0;
-        border: 1px solid var(--line);
-    }
-
-    .canon-page-header {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-    }
-
-    .canon-header-right {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .canon-actions-between {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .canon-inline-actions {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .canon-inline-actions--tight {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .canon-help {
-        font-size: 12px;
-    }
-
-    .canon-help.mt-6 {
-        margin-top: 6px;
-    }
-
-    .canon-section-top {
-        margin-top: 12px;
-    }
-
-    .canon-table-top {
-        margin-top: 12px;
-    }
-
-    .canon-table-no-top {
-        margin-top: 0;
-    }
-
-    .canon-filter-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 12px;
-        align-items: end;
-    }
-
-    .canon-limit {
-        width: 90px;
-    }
-
-    .canon-asset-cell,
-    .canon-raw-cell,
-    .canon-normalized-cell {
-        overflow-wrap: anywhere;
-    }
-
-    /* Result cell itself must stay as a normal table cell */
-    td.canon-result {
-        display: table-cell;
-        white-space: normal;
-        vertical-align: top;
-    }
-
-    /* only inner wrappers should be flex */
-    td.canon-result .canon-result-main,
-    td.canon-result .canon-result-sub {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    td.canon-result .canon-result-sub {
-        margin-top: 6px;
-    }
-
-    .canon-result-main,
-    .canon-result-sub {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .canon-result-sub {
-        margin-top: 6px;
-    }
-
-    .canon-action-col {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        align-items: flex-start;
-    }
-
-    .canon-btn-sm {
-        padding: 6px 10px;
-        font-size: 12px;
-        border-radius: 10px;
-    }
-
-    /* ===== Stats cards ===== */
 
     .canon-stats-grid {
         display: grid;
@@ -370,6 +217,30 @@
         transform: translateY(0);
     }
 
+    .canon-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .canon-pagination__left,
+    .canon-pagination__right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .badge--disabled {
+        background: #6b1f1f;
+        color: #fff;
+        border: 1px solid #c34a4a;
+        font-weight: 600;
+    }
+
     @media (max-width: 1180px) {
         .canon-stats-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -394,20 +265,12 @@
             max-width: none;
         }
     }
-
-    .badge--disabled {
-        background: #6b1f1f;
-        color: #fff;
-        border: 1px solid #c34a4a;
-        font-weight: 600;
-    }
 </style>
 
 <body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
 
 <main>
 
-    <!-- Page Header (unified) -->
     <div class="page-header canon-page-header">
         <div class="page-header__left">
             <h1>Review Product Mapping</h1>
@@ -416,10 +279,8 @@
                 <b>Dictionary resolution stats are counted only for “Not linked” rows.</b>
             </div>
         </div>
-
     </div>
 
-    <!-- flash messages -->
     <div th:if="${success}" class="card canon-card--flash">
         <span class="badge badge--status-open">OK</span>
         <span class="mono" th:text="${success}">success</span>
@@ -429,7 +290,6 @@
         <span class="mono" th:text="${error}">error</span>
     </div>
 
-    <!-- Linking -->
     <div class="card canon-card">
         <div class="actions canon-actions-between" style="margin:0;">
             <div>
@@ -457,7 +317,6 @@
         </div>
     </div>
 
-    <!-- Filters -->
     <div class="card canon-card">
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Filters</h2>
@@ -469,6 +328,8 @@
         </div>
 
         <form method="get" th:action="@{/admin/canonical}" class="canon-section-top">
+            <input type="hidden" name="page" value="0">
+
             <div class="grid canon-filter-grid">
 
                 <div class="field">
@@ -485,8 +346,7 @@
                         <option value="linkedValid" th:selected="${filter == 'linkedValid'}">linkedValid</option>
                         <option value="linkedStale" th:selected="${filter == 'linkedStale'}">linkedStale</option>
 
-                        <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">fullyResolvable
-                        </option>
+                        <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">fullyResolvable</option>
                         <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">
                             vendorResolvableOnly
                         </option>
@@ -507,11 +367,23 @@
                     <label>keyword</label>
                     <input type="text" name="q" placeholder="vendor/product/version/normalized..." th:value="${q}">
                 </div>
+
+                <div class="field">
+                    <label>Rows per page</label>
+                    <select name="size">
+                        <option th:each="opt : ${sizeOptions}"
+                                th:value="${opt}"
+                                th:text="${opt}"
+                                th:selected="${size == opt}">
+                            50
+                        </option>
+                    </select>
+                </div>
             </div>
 
             <div class="actions canon-section-top" style="justify-content:space-between; align-items:center;">
                 <div class="muted canon-help">
-                    limit=<input type="number" name="limit" class="canon-limit" th:value="${limit}">
+                    Default is 50 rows. Change rows per page with the selector.
                 </div>
                 <div class="actions" style="margin:0;">
                     <button class="btn btn-primary" type="submit">Apply</button>
@@ -521,7 +393,6 @@
         </form>
     </div>
 
-    <!-- Stats -->
     <div th:if="${stats != null}" class="card canon-card">
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Stats</h2>
@@ -536,7 +407,7 @@
                 <div class="canon-stat-label">total</div>
                 <div class="canon-stat-value" th:text="${stats.total}">0</div>
                 <div class="canon-stat-tooltip">
-                    Rows currently loaded (after asset/keyword filter, before filter selection).
+                    Rows currently loaded across all software rows.
                 </div>
             </div>
 
@@ -615,12 +486,19 @@
         </div>
     </div>
 
-    <!-- Table -->
     <div class="card canon-card">
-        <div class="actions" style="margin:0; align-items:flex-end;">
-            <h2 style="margin:0;">Entries</h2>
+        <div class="actions" style="margin:0; align-items:flex-end; justify-content:space-between;">
+            <div>
+                <h2 style="margin:0;">Entries</h2>
+                <div class="muted canon-help">
+                    Result badge = mapping stage/quality, and V/P shows SQL link completeness.
+                </div>
+            </div>
             <div class="muted canon-help">
-                Result badge = mapping stage/quality, and V/P shows SQL link completeness.
+                Showing <span th:text="${pageRowStart}">0</span> -
+                <span th:text="${pageRowEnd}">0</span>
+                of
+                <span th:text="${totalFilteredRows}">0</span>
             </div>
         </div>
 
@@ -650,7 +528,6 @@
                         <div th:text="${r.assetName}">Asset</div>
                     </td>
 
-                    <!-- Raw -->
                     <td class="muted" style="font-size:12px; overflow-wrap:anywhere;">
                         <div class="truncate-1"
                              th:attr="title=${r.vendor != null ? r.vendor : '-'}"
@@ -671,7 +548,6 @@
                         </div>
                     </td>
 
-                    <!-- Normalized -->
                     <td class="canon-normalized-cell">
                         <div class="muted canon-help">
                             v: <span th:text="${r.normalizedVendor != null ? r.normalizedVendor : '-'}">-</span>
@@ -681,14 +557,13 @@
                         </div>
                     </td>
 
-                    <!-- Result -->
                     <td class="canon-result" th:with="res=${r.analysis.resolve}">
                         <div class="canon-result-main">
-<span th:if="${r.canonicalLinkDisabled}"
-      class="badge badge--disabled"
-      title="Run Linking will not create auto product link for this software row">
-    LINK DISABLED
-</span>
+                            <span th:if="${r.canonicalLinkDisabled}"
+                                  class="badge badge--disabled"
+                                  title="Run Linking will not create auto product link for this software row">
+                                LINK DISABLED
+                            </span>
                         </div>
 
                         <div class="canon-result-sub">
@@ -744,7 +619,6 @@
                         </div>
                     </td>
 
-                    <!-- Action -->
                     <td>
                         <div class="canon-action-col">
                             <a class="btn btn-ghost canon-btn-sm"
@@ -770,6 +644,49 @@
 
                 </tbody>
             </table>
+        </div>
+
+        <div class="canon-pagination">
+            <div class="canon-pagination__left muted canon-help">
+                Page
+                <span th:text="${rowPage.totalPages == 0 ? 0 : rowPage.number + 1}">1</span>
+                /
+                <span th:text="${rowPage.totalPages}">1</span>
+            </div>
+
+            <div class="canon-pagination__right">
+                <a class="btn btn-ghost"
+                   th:if="${rowPage.hasPrevious()}"
+                   th:href="@{/admin/canonical(
+                        asset=${asset},
+                        filter=${filter},
+                        q=${q},
+                        page=${rowPage.number - 1},
+                        size=${size}
+                   )}">
+                    Previous page
+                </a>
+
+                <span class="btn btn-ghost" th:if="${!rowPage.hasPrevious()}" aria-disabled="true">
+                    Previous page
+                </span>
+
+                <a class="btn btn-ghost"
+                   th:if="${rowPage.hasNext()}"
+                   th:href="@{/admin/canonical(
+                        asset=${asset},
+                        filter=${filter},
+                        q=${q},
+                        page=${rowPage.number + 1},
+                        size=${size}
+                   )}">
+                    Next page
+                </a>
+
+                <span class="btn btn-ghost" th:if="${!rowPage.hasNext()}" aria-disabled="true">
+                    Next page
+                </span>
+            </div>
         </div>
 
         <div class="muted canon-help" style="margin-top:10px;">

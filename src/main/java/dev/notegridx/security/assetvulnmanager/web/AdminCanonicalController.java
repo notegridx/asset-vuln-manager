@@ -7,6 +7,10 @@ import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallReposit
 import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -75,44 +79,62 @@ public class AdminCanonicalController {
             @RequestParam(name = "asset", required = false) Long assetId,
             @RequestParam(name = "filter", required = false, defaultValue = "all") String filterRaw,
             @RequestParam(name = "q", required = false) String q,
-            @RequestParam(name = "limit", required = false, defaultValue = "200") Integer limit,
+            @RequestParam(name = "page", required = false, defaultValue = "0") Integer page,
+            @RequestParam(name = "size", required = false, defaultValue = "50") Integer size,
             Model model
     ) {
-        int safeLimit = clamp(limit == null ? 200 : limit, 1, 2000);
+        int safePage = Math.max(page == null ? 0 : page, 0);
+        int safeSize = normalizePageSize(size);
         Filter filter = Filter.parse(filterRaw);
         String keyword = normalizeKeyword(q);
 
         List<Asset> assets = assetRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
         model.addAttribute("assets", assets);
 
-        // ===== Global stats: ignore asset/filter/q/limit and count entire software_installs =====
+        // ===== Global stats: ignore asset/filter/q/page/size and count entire software_installs =====
         List<SoftwareInstall> allSoftware = softwareRepo.findAll();
         var stats = linker.stats(allSoftware);
         model.addAttribute("stats", stats);
 
-        // ===== Page rows: current view only =====
+        // ===== Filter base rows first =====
         List<SoftwareInstall> base = softwareRepo.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
                 .filter(s -> assetId == null || (s.getAsset() != null && Objects.equals(s.getAsset().getId(), assetId)))
                 .filter(s -> keyword == null || containsKeyword(s, keyword))
-                .limit(safeLimit)
                 .toList();
 
         List<Row> analyzed = base.stream()
                 .map(s -> Row.from(s, linker.analyze(s)))
                 .toList();
 
-        List<Row> rows = analyzed.stream()
+        List<Row> filteredRows = analyzed.stream()
                 .filter(r -> matchesFilter(r, filter))
                 .toList();
 
-        model.addAttribute("rows", rows);
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+        int fromIndex = Math.min((int) pageable.getOffset(), filteredRows.size());
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredRows.size());
+
+        Page<Row> rowPage = new PageImpl<>(
+                filteredRows.subList(fromIndex, toIndex),
+                pageable,
+                filteredRows.size()
+        );
+
+        model.addAttribute("rows", rowPage.getContent());
+        model.addAttribute("rowPage", rowPage);
 
         model.addAttribute("asset", assetId);
         model.addAttribute("filter", filter.name());
         model.addAttribute("q", q);
-        model.addAttribute("limit", safeLimit);
+        model.addAttribute("page", safePage);
+        model.addAttribute("size", safeSize);
+        model.addAttribute("sizeOptions", List.of(50, 100, 200, 500));
 
-        String currentQuery = buildCurrentQuery(assetId, filter.name(), q, safeLimit);
+        model.addAttribute("totalFilteredRows", filteredRows.size());
+        model.addAttribute("pageRowStart", filteredRows.isEmpty() ? 0 : fromIndex + 1);
+        model.addAttribute("pageRowEnd", toIndex);
+
+        String currentQuery = buildCurrentQuery(assetId, filter.name(), q, safePage, safeSize);
         model.addAttribute("currentQuery", currentQuery);
 
         return "admin/canonical";
@@ -120,8 +142,8 @@ public class AdminCanonicalController {
 
     /**
      * Run Linking (Run Canonical Backfill)
-     * - relink=false: 未リンクのみ
-     * - relink=true : 既リンクも含めて再リンク（forceRebuild）
+     * - relink=false: not linked only
+     * - relink=true : include already linked rows (force rebuild)
      */
     @PostMapping("/admin/canonical/link")
     public String runLinking(
@@ -246,19 +268,22 @@ public class AdminCanonicalController {
         return t.toLowerCase();
     }
 
-    private static int clamp(int v, int min, int max) {
-        if (v < min) return min;
-        if (v > max) return max;
-        return v;
+    private static int normalizePageSize(Integer size) {
+        int v = size == null ? 50 : size;
+        if (v <= 50) return 50;
+        if (v <= 100) return 100;
+        if (v <= 200) return 200;
+        return 500;
     }
 
-    private static String buildCurrentQuery(Long assetId, String filter, String q, Integer limit) {
+    private static String buildCurrentQuery(Long assetId, String filter, String q, Integer page, Integer size) {
         StringBuilder sb = new StringBuilder();
 
         appendQueryParam(sb, "asset", assetId);
         appendQueryParam(sb, "filter", safeParam(filter));
         appendQueryParam(sb, "q", safeParam(q));
-        appendQueryParam(sb, "limit", limit);
+        appendQueryParam(sb, "page", page);
+        appendQueryParam(sb, "size", size);
 
         return sb.isEmpty() ? "" : "?" + sb;
     }
