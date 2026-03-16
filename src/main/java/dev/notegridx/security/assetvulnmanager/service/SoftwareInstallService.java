@@ -65,22 +65,52 @@ public class SoftwareInstallService {
     }
 
     @Transactional
-    public SoftwareInstall addToAsset(
-            Asset asset,
-            String vendor,
-            String product,
-            String version,
-            String cpeName
-    ) {
-        SoftwareDictionaryValidator.Resolve r;
-        if (dictMode == DictMode.STRICT) {
-            r = dictValidator.resolveOrThrow(vendor, product);
-        } else {
-            r = dictValidator.resolve(vendor, product);
+    public SoftwareInstall addToAsset(Asset asset, SoftwareInstallForm form) {
+        if (asset == null) {
+            throw new IllegalArgumentException("asset is required");
         }
 
-        SoftwareInstall si = new SoftwareInstall(asset, product);
-        si.updateDetails(vendor, product, version, cpeName);
+        SoftwareDictionaryValidator.Resolve r;
+        if (dictMode == DictMode.STRICT) {
+            r = dictValidator.resolveOrThrow(form.getVendor(), form.getProduct());
+        } else {
+            r = dictValidator.resolve(form.getVendor(), form.getProduct());
+        }
+
+        SoftwareInstall si = new SoftwareInstall(asset, form.getProduct());
+
+        si.updateDetails(
+                form.getVendor(),
+                form.getProduct(),
+                form.getVersion(),
+                form.getCpeName()
+        );
+
+        si.setType(parseSoftwareType(form.getType()));
+        si.setSource(form.getSource());
+
+        si.captureRaw(
+                form.getVendorRaw(),
+                form.getProductRaw(),
+                form.getVersionRaw()
+        );
+
+        si.updateImportExtended(
+                form.getInstallLocation(),
+                parseLocalDateTime(form.getInstalledAt()),
+                form.getPackageIdentifier(),
+                form.getArch(),
+                form.getSourceType(),
+                parseLocalDateTime(form.getLastSeenAt()),
+                form.getPublisher(),
+                form.getBundleId(),
+                form.getPackageManager(),
+                form.getInstallSource(),
+                form.getEdition(),
+                form.getChannel(),
+                form.getRelease(),
+                form.getPurl()
+        );
 
         if (r.hit()) {
             si.linkCanonical(r.vendorId(), r.productId());

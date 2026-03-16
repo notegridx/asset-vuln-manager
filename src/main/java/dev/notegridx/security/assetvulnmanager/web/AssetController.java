@@ -171,13 +171,7 @@ public class AssetController {
         }
 
         try {
-            softwareInstallService.addToAsset(
-                    asset,
-                    form.getVendor(),
-                    form.getProduct(),
-                    form.getVersion(),
-                    form.getCpeName()
-            );
+            softwareInstallService.addToAsset(asset, form);
 
         } catch (DictionaryValidationException e) {
             bindingResult.rejectValue(
@@ -188,8 +182,13 @@ public class AssetController {
             model.addAttribute("asset", asset);
             return "assets/software_new";
 
+        } catch (IllegalArgumentException e) {
+            bindingResult.reject("invalid", e.getMessage());
+            model.addAttribute("asset", asset);
+            return "assets/software_new";
+
         } catch (DataIntegrityViolationException e) {
-            bindingResult.reject("duplicate", "This software is already registered for this asset");
+            bindingResult.reject("duplicate", "This software is already registered for this asset.");
             model.addAttribute("asset", asset);
             return "assets/software_new";
         }

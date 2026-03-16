@@ -6,137 +6,287 @@
 <body th:replace="~{layout/base :: layout('Add Software', 'assets', ~{::main})}">
 <main>
   <div class="actions">
-    <h1 style="margin: 0;">Add Software</h1>
-    <a th:href="@{/assets/{id}(id=${asset.id})}"><- Back</a>
+    <h1 style="margin:0;">Add Software</h1>
+    <a class="btn btn-ghost btn-sm"
+       th:href="@{/assets/{id}(id=${asset.id})}">
+      Back
+    </a>
   </div>
 
   <p class="muted">
-    Asset: <b th:text="${asset.name}">AssetName</b>
-    (ID: <span th:text="${asset.id}">1</span>)
+    Add a new software install for this asset.
   </p>
-
-  <!-- グローバルエラー表示（duplicateなど） -->
-  <div class="error"
-       th:if="${#fields.hasGlobalErrors()}"
-       th:each="err : ${#fields.globalErrors()}"
-       th:text="${err}">
-    Global error
-  </div>
 
   <form th:action="@{/assets/{id}/software(id=${asset.id})}"
         th:object="${softwareInstallForm}"
         method="post">
+    th:object="${softwareInstallForm}"
+        method="post">
 
-    <!-- Vendor -->
-    <div class="field">
-      <label>Vendor</label>
-      <input type="text" th:field="*{vendor}" list="vendor-suggest" placeholder="e.g. microsoft" />
-      <datalist id="vendor-suggest"></datalist>
-      <div class="error"
-           th:if="${#fields.hasErrors('vendor')}"
-           th:errors="*{vendor}">
-        Vendor error
+    <div th:if="${#fields.hasGlobalErrors()}" class="card" style="padding:12px; margin:12px 0;">
+      <div class="error" th:each="err : ${#fields.globalErrors()}" th:text="${err}">
+        Error
       </div>
     </div>
 
-    <!-- Product -->
-    <div class="field">
-      <label>Product *</label>
-      <input type="text" th:field="*{product}" list="product-suggest" placeholder="e.g. edge" />
-      <datalist id="product-suggest"></datalist>
-      <div class="error"
-           th:if="${#fields.hasErrors('product')}"
-           th:errors="*{product}">
-        Product error
+    <details class="card sw-edit-section" open>
+      <summary class="sw-edit-summary">
+        <span>Basic</span>
+      </summary>
+      <div class="sw-edit-body">
+        <div class="field">
+          <label>Type</label>
+          <select th:field="*{type}">
+            <option value="">APPLICATION</option>
+            <option value="APPLICATION">APPLICATION</option>
+            <option value="OPERATING_SYSTEM">OPERATING_SYSTEM</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Source</label>
+          <input type="text" th:field="*{source}" placeholder="e.g. MANUAL / JSON_UPLOAD / CSV_UPLOAD">
+        </div>
+
+        <div class="field">
+          <label>Source Type</label>
+          <input type="text" th:field="*{sourceType}" placeholder="e.g. OSQUERY_PROGRAMS / JSON_UPLOAD / WINGET">
+        </div>
+
+        <div class="field">
+          <label>Vendor</label>
+          <input id="vendor" type="text" th:field="*{vendor}" list="vendor-suggest" placeholder="e.g. microsoft">
+          <datalist id="vendor-suggest"></datalist>
+          <div class="error" th:if="${#fields.hasErrors('vendor')}" th:errors="*{vendor}">Vendor error</div>
+        </div>
+
+        <div class="field">
+          <label>Product *</label>
+          <input id="product" type="text" th:field="*{product}" list="product-suggest" placeholder="e.g. edge">
+          <datalist id="product-suggest"></datalist>
+          <div class="error" th:if="${#fields.hasErrors('product')}" th:errors="*{product}">Product error</div>
+        </div>
+
+        <div class="field">
+          <label>Version</label>
+          <input type="text" th:field="*{version}" placeholder="e.g. 120.0.2210.61">
+          <div class="error" th:if="${#fields.hasErrors('version')}" th:errors="*{version}">Version error</div>
+        </div>
+
+        <div class="field">
+          <label>CPE (cpeName)</label>
+          <input type="text" th:field="*{cpeName}" placeholder="cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*">
+          <div class="error" th:if="${#fields.hasErrors('cpeName')}" th:errors="*{cpeName}">CPE error</div>
+        </div>
       </div>
+    </details>
+
+    <details class="card sw-edit-section">
+      <summary class="sw-edit-summary">
+        <span>Raw / Troubleshooting</span>
+      </summary>
+      <div class="sw-edit-body">
+        <div class="field">
+          <label>Vendor Raw</label>
+          <input type="text" th:field="*{vendorRaw}" placeholder="raw vendor from inventory source">
+        </div>
+
+        <div class="field">
+          <label>Product Raw</label>
+          <input type="text" th:field="*{productRaw}" placeholder="raw product from inventory source">
+        </div>
+
+        <div class="field">
+          <label>Version Raw</label>
+          <input type="text" th:field="*{versionRaw}" placeholder="raw version from inventory source">
+        </div>
+
+        <div class="field">
+          <label>Last Seen At</label>
+          <input type="datetime-local" th:field="*{lastSeenAt}">
+        </div>
+
+        <div class="field">
+          <label>Installed At</label>
+          <input type="datetime-local" th:field="*{installedAt}">
+        </div>
+      </div>
+    </details>
+
+    <details class="card sw-edit-section">
+      <summary class="sw-edit-summary">
+        <span>Import / Metadata</span>
+      </summary>
+      <div class="sw-edit-body">
+        <div class="field">
+          <label>Install Location</label>
+          <input type="text" th:field="*{installLocation}" placeholder="e.g. C:\Program Files\App">
+        </div>
+
+        <div class="field">
+          <label>Package Identifier</label>
+          <input type="text" th:field="*{packageIdentifier}" placeholder="e.g. com.microsoft.Edge">
+        </div>
+
+        <div class="field">
+          <label>Architecture</label>
+          <input type="text" th:field="*{arch}" placeholder="e.g. x64 / arm64">
+        </div>
+
+        <div class="field">
+          <label>Publisher</label>
+          <input type="text" th:field="*{publisher}" placeholder="e.g. Microsoft Corporation">
+        </div>
+
+        <div class="field">
+          <label>Bundle ID</label>
+          <input type="text" th:field="*{bundleId}" placeholder="e.g. com.apple.Safari">
+        </div>
+
+        <div class="field">
+          <label>Package Manager</label>
+          <input type="text" th:field="*{packageManager}" placeholder="e.g. winget / brew / apt">
+        </div>
+
+        <div class="field">
+          <label>Install Source</label>
+          <input type="text" th:field="*{installSource}" placeholder="e.g. STORE / MSI / PKG">
+        </div>
+
+        <div class="field">
+          <label>Edition</label>
+          <input type="text" th:field="*{edition}" placeholder="e.g. Professional">
+        </div>
+
+        <div class="field">
+          <label>Channel</label>
+          <input type="text" th:field="*{channel}" placeholder="e.g. stable / beta / dev">
+        </div>
+
+        <div class="field">
+          <label>Release</label>
+          <input type="text" th:field="*{release}" placeholder="e.g. 24H2">
+        </div>
+
+        <div class="field">
+          <label>PURL</label>
+          <input type="text" th:field="*{purl}" placeholder="pkg:...">
+        </div>
+      </div>
+    </details>
+
+    <div class="actions" style="margin-top:14px;">
+      <button type="submit" class="btn btn-primary">Create</button>
+      <a class="btn btn-ghost" th:href="@{/assets/{id}(id=${asset.id})}">Cancel</a>
     </div>
 
-    <!-- Version -->
-    <div class="field">
-      <label>Version</label>
-      <input type="text" th:field="*{version}" placeholder="e.g. 120.0.2210.61" />
-    </div>
+    <style>
+      .sw-edit-section {
+          margin: 12px 0;
+          padding: 0;
+          overflow: hidden;
+      }
 
-    <!-- CPE -->
-    <div class="field">
-      <label>CPE</label>
-      <input type="text"
-             th:field="*{cpeName}"
-             placeholder="cpe:2.3:... (optional)" />
-    </div>
+      .sw-edit-summary {
+          list-style: none;
+          cursor: pointer;
+          padding: 12px 14px;
+          font-weight: 600;
+          user-select: none;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+      }
 
-    <div class="actions" style="margin-top: 14px;">
-      <button type="submit">Create</button>
-      <a th:href="@{/assets/{id}(id=${asset.id})}">Cancel</a>
-    </div>
+      .sw-edit-summary::-webkit-details-marker {
+          display: none;
+      }
+
+      .sw-edit-summary::after {
+          content: "▾";
+          font-size: 12px;
+          opacity: 0.8;
+          transition: transform 0.15s ease;
+      }
+
+      details:not([open]) > .sw-edit-summary::after {
+          transform: rotate(-90deg);
+      }
+
+      .sw-edit-body {
+          padding: 0 12px 12px 12px;
+          border-top: 1px solid rgba(255,255,255,0.06);
+      }
+    </style>
+
+    <script>
+      (function () {
+          const vendorEl = document.getElementById('vendor');
+          const productEl = document.getElementById('product');
+          const vendorList = document.getElementById('vendor-suggest');
+          const productList = document.getElementById('product-suggest');
+
+          if (vendorEl && productEl && vendorList && productList) {
+              function debounce(fn, wait) {
+                  let t = null;
+                  return function (...args) {
+                      clearTimeout(t);
+                      t = setTimeout(() => fn.apply(this, args), wait);
+                  };
+              }
+
+              function setOptions(datalist, items) {
+                  datalist.innerHTML = '';
+                  for (const it of items) {
+                      const opt = document.createElement('option');
+                      opt.value = it.value;
+                      opt.label = it.label || it.value;
+                      datalist.appendChild(opt);
+                  }
+              }
+
+              async function fetchJson(url) {
+                  try {
+                      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                      if (!res.ok) return [];
+                      return await res.json();
+                  } catch (e) {
+                      return [];
+                  }
+              }
+
+              const updateVendors = debounce(async () => {
+                  const q = vendorEl.value || '';
+                  if (q.length < 2) {
+                      vendorList.innerHTML = '';
+                      return;
+                  }
+                  const items = await fetchJson(`/api/dict/vendors?q=${encodeURIComponent(q)}`);
+                  setOptions(vendorList, items);
+              }, 200);
+
+              const updateProducts = debounce(async () => {
+                  const vendor = vendorEl.value || '';
+                  const q = productEl.value || '';
+                  if (!vendor || q.length < 2) {
+                      productList.innerHTML = '';
+                      return;
+                  }
+                  const items = await fetchJson(`/api/dict/products?vendor=${encodeURIComponent(vendor)}&q=${encodeURIComponent(q)}`);
+                  setOptions(productList, items);
+              }, 200);
+
+              vendorEl.addEventListener('input', function () {
+                  updateVendors();
+                  productList.innerHTML = '';
+              });
+
+              productEl.addEventListener('input', updateProducts);
+          }
+      })();
+    </script>
 
   </form>
-
-  <script>
-    (function () {
-      // th:field により id="vendor" / id="product" が自動生成される想定
-      const vendorEl = document.getElementById('vendor');
-      const productEl = document.getElementById('product');
-      const vendorList = document.getElementById('vendor-suggest');
-      const productList = document.getElementById('product-suggest');
-
-      if (!vendorEl || !productEl || !vendorList || !productList) return;
-
-      function debounce(fn, wait) {
-        let t = null;
-        return function (...args) {
-          clearTimeout(t);
-          t = setTimeout(() => fn.apply(this, args), wait);
-        };
-      }
-
-      function setOptions(datalist, items) {
-        datalist.innerHTML = '';
-        for (const it of items) {
-          const opt = document.createElement('option');
-          opt.value = it.value;
-          // label はブラウザ依存（出る環境では候補表示に補助的に効く）
-          opt.label = it.label || it.value;
-          datalist.appendChild(opt);
-        }
-      }
-
-      async function fetchJson(url) {
-        try {
-          const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
-          if (!res.ok) return [];
-          return await res.json();
-        } catch (e) {
-          return [];
-        }
-      }
-
-      const updateVendors = debounce(async () => {
-        const q = vendorEl.value || '';
-        if (q.length < 2) { vendorList.innerHTML = ''; return; }
-        const items = await fetchJson(`/api/dict/vendors?q=${encodeURIComponent(q)}`);
-        setOptions(vendorList, items);
-      }, 200);
-
-      const updateProducts = debounce(async () => {
-        const vendor = vendorEl.value || '';
-        const q = productEl.value || '';
-        if (!vendor || q.length < 2) { productList.innerHTML = ''; return; }
-        const items = await fetchJson(`/api/dict/products?vendor=${encodeURIComponent(vendor)}&q=${encodeURIComponent(q)}`);
-        setOptions(productList, items);
-      }, 200);
-
-      vendorEl.addEventListener('input', () => {
-        updateVendors();
-        // vendor が変わったら product候補はリセット（vendor配下が変わるため）
-        productList.innerHTML = '';
-      });
-
-      productEl.addEventListener('input', updateProducts);
-    })();
-  </script>
-
 </main>
 </body>
-
 </html>
