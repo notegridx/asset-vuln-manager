@@ -21,8 +21,26 @@
                 <label>Search</label>
                 <input type="text"
                        name="q"
-                       placeholder="CVE / keyword"
+                       placeholder="CVE / CPE"
                        th:value="${q}"
+                       data-auto-submit="search">
+            </div>
+
+            <div class="field minw-180">
+                <label>Vendor</label>
+                <input type="text"
+                       name="vendor"
+                       placeholder="e.g. microsoft"
+                       th:value="${vendor}"
+                       data-auto-submit="search">
+            </div>
+
+            <div class="field minw-180">
+                <label>Product</label>
+                <input type="text"
+                       name="product"
+                       placeholder="e.g. edge"
+                       th:value="${product}"
                        data-auto-submit="search">
             </div>
 
@@ -174,7 +192,6 @@
             </thead>
             <tbody>
             <tr th:if="${vulns.totalElements == 0}">
-                <td colspan="6" class="muted cell-empty">No results.</td>
                 <td colspan="7" class="muted cell-empty">No results.</td>
             </tr>
 
