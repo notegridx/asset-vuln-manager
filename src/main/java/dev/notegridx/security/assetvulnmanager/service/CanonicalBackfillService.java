@@ -17,8 +17,10 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -75,11 +77,11 @@ public class CanonicalBackfillService {
 
         int scanned = 0;
 
-        // 旧互換の戻り値用
+        // backward-compatible result fields
         int linked = 0;
         int missed = 0;
 
-        // 詳細ログ用
+        // detailed logging
         int fullyLinked = 0;
         int vendorOnly = 0;
         int pureMiss = 0;
@@ -88,8 +90,11 @@ public class CanonicalBackfillService {
                 ? softwareRepo.findAll()
                 : softwareRepo.findNeedsCanonicalLink();
 
-        // 同一 backfill 実行中の unresolved upsert を dedupe
+        // Dedupe unresolved upsert within the same backfill run
         Set<String> unresolvedSeen = new HashSet<>();
+
+        // Cache resolve results within the same run
+        Map<String, CachedResolveResult> resolveCache = new HashMap<>();
 
         for (int offset = 0; offset < all.size() && scanned < safeMax; offset += TX_CHUNK) {
             int to = Math.min(all.size(), offset + TX_CHUNK);
@@ -100,11 +105,11 @@ public class CanonicalBackfillService {
             int[] result = chunkTx.execute(status -> {
                 int processedInChunk = 0;
 
-                // 旧互換の戻り値用
+                // backward-compatible result fields
                 int _linked = 0;
                 int _missed = 0;
 
-                // 詳細ログ用
+                // detailed logging
                 int _fullyLinked = 0;
                 int _vendorOnly = 0;
                 int _pureMiss = 0;
@@ -118,7 +123,7 @@ public class CanonicalBackfillService {
                         continue;
                     }
 
-                    var res = linker.resolve(s);
+                    CachedResolveResult res = resolveWithCache(resolveCache, s);
 
                     String vendorIn = coalesceNullable(s.getVendorRaw(), s.getVendor());
                     String productIn = coalesceNullable(s.getProductRaw(), s.getProduct());
@@ -131,7 +136,7 @@ public class CanonicalBackfillService {
                         _linked++;
                         _fullyLinked++;
                     } else if (res.vendorId() != null) {
-                        // vendor-only を埋める（product は unresolved）
+                        // Fill vendor-only; product stays unresolved
                         s.linkCanonical(res.vendorId(), null);
 
                         _linked++;
@@ -198,12 +203,12 @@ public class CanonicalBackfillService {
     }
 
     /**
-     * import直後など、特定の SoftwareInstall だけを対象に canonical link を試す。
-     * - hit: software_install に cpe_vendor_id / cpe_product_id をセット
-     * - vendor-only: cpe_vendor_id のみセット（product は unresolved）
-     * - miss: unresolved_mappings に upsert（候補IDも埋める）
+     * Try canonical linking only for the given SoftwareInstall IDs, e.g. right after import.
+     * - hit: set cpe_vendor_id / cpe_product_id on software_install
+     * - vendor-only: set only cpe_vendor_id (product stays unresolved)
+     * - miss: upsert into unresolved_mappings (and fill candidate IDs)
      *
-     * forceRebuild=false の場合、完全リンク済み（vendor+product両方埋まっている）はスキップ。
+     * When forceRebuild=false, fully linked rows are skipped.
      */
     public BackfillResult backfillForSoftwareIds(List<Long> softwareIds, boolean forceRebuild) {
         if (softwareIds == null || softwareIds.isEmpty()) {
@@ -223,17 +228,20 @@ public class CanonicalBackfillService {
 
         int scanned = 0;
 
-        // 旧互換の戻り値用
+        // backward-compatible result fields
         int linked = 0;
         int missed = 0;
 
-        // 詳細ログ用
+        // detailed logging
         int fullyLinked = 0;
         int vendorOnly = 0;
         int pureMiss = 0;
 
-        // 同一 backfill 実行中の unresolved upsert を dedupe
+        // Dedupe unresolved upsert within the same backfill run
         Set<String> unresolvedSeen = new HashSet<>();
+
+        // Cache resolve results within the same run
+        Map<String, CachedResolveResult> resolveCache = new HashMap<>();
 
         for (int offset = 0; offset < ids.size(); offset += TX_CHUNK) {
             int to = Math.min(ids.size(), offset + TX_CHUNK);
@@ -242,11 +250,11 @@ public class CanonicalBackfillService {
             int[] result = chunkTx.execute(status -> {
                 int processedInChunk = 0;
 
-                // 旧互換の戻り値用
+                // backward-compatible result fields
                 int _linked = 0;
                 int _missed = 0;
 
-                // 詳細ログ用
+                // detailed logging
                 int _fullyLinked = 0;
                 int _vendorOnly = 0;
                 int _pureMiss = 0;
@@ -262,7 +270,7 @@ public class CanonicalBackfillService {
                         continue;
                     }
 
-                    var res = linker.resolve(s);
+                    CachedResolveResult res = resolveWithCache(resolveCache, s);
 
                     String vendorIn = coalesceNullable(s.getVendorRaw(), s.getVendor());
                     String productIn = coalesceNullable(s.getProductRaw(), s.getProduct());
@@ -337,8 +345,28 @@ public class CanonicalBackfillService {
     public record BackfillResult(int scanned, int linked, int missed, boolean forceRebuild) {
     }
 
+    private CachedResolveResult resolveWithCache(Map<String, CachedResolveResult> resolveCache, SoftwareInstall s) {
+        String key = buildResolveCacheKey(s);
+        return resolveCache.computeIfAbsent(key, k -> {
+            var res = linker.resolve(s);
+            return new CachedResolveResult(res.hit(), res.vendorId(), res.productId());
+        });
+    }
+
+    private String buildResolveCacheKey(SoftwareInstall s) {
+        return safePart(s.getSource()) + "\u0000"
+                + safePart(s.getVendorRaw()) + "\u0000"
+                + safePart(s.getVendor()) + "\u0000"
+                + safePart(s.getProductRaw()) + "\u0000"
+                + safePart(s.getProduct()) + "\u0000"
+                + safePart(s.getVersionRaw()) + "\u0000"
+                + safePart(s.getVersion()) + "\u0000"
+                + safePart(s.getNormalizedVendor()) + "\u0000"
+                + safePart(s.getNormalizedProduct());
+    }
+
     // =========================================================
-    // UnresolvedMapping upsert（候補IDも埋める）
+    // UnresolvedMapping upsert (including candidate IDs)
     // =========================================================
     private void upsertUnresolvedMapping(String source, String vendorRaw, String productRaw, String versionRaw) {
         String v = normalizeNullable(vendorRaw);
@@ -486,5 +514,12 @@ public class CanonicalBackfillService {
         String x = normalizeNullable(a);
         if (x != null) return x;
         return normalizeNullable(b);
+    }
+
+    private static String safePart(String s) {
+        return s == null ? "" : s;
+    }
+
+    private record CachedResolveResult(boolean hit, Long vendorId, Long productId) {
     }
 }

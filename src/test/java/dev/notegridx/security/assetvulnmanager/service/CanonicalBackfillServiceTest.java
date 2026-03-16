@@ -157,4 +157,82 @@ class CanonicalBackfillServiceTest {
         s.setSource("JSON_UPLOAD");
         return s;
     }
+
+    @Test
+    @DisplayName("backfill caches resolve results within a single run for identical software keys")
+    void backfill_cachesResolveResultsWithinSingleRun() {
+        SoftwareInstall s1 = software("Google LLC", "Google Chrome", "145.0.7632.159");
+        SoftwareInstall s2 = software("Google LLC", "Google Chrome", "145.0.7632.159");
+
+        when(softwareRepo.findNeedsCanonicalLink()).thenReturn(List.of(s1, s2));
+        when(linker.resolve(any(SoftwareInstall.class)))
+                .thenReturn(CanonicalCpeLinkingService.ResolveResult.vendorOnly(
+                        97L,
+                        "google",
+                        "chrome",
+                        "product unresolved",
+                        false
+                ));
+
+        when(unresolvedMappingRepository.findTopByVendorRawAndProductRaw("Google LLC", "Google Chrome"))
+                .thenReturn(Optional.empty());
+
+        CanonicalBackfillService.BackfillResult result = service.backfill(100, false);
+
+        assertThat(result.scanned()).isEqualTo(2);
+        assertThat(result.linked()).isEqualTo(2);
+        assertThat(result.missed()).isEqualTo(2);
+        assertThat(result.forceRebuild()).isFalse();
+
+        verify(linker, times(1)).resolve(any(SoftwareInstall.class));
+        verify(unresolvedMappingRepository, times(1))
+                .findTopByVendorRawAndProductRaw("Google LLC", "Google Chrome");
+        verify(unresolvedMappingRepository, times(1))
+                .save(any(UnresolvedMapping.class));
+
+        assertThat(s1.getCpeVendorId()).isEqualTo(97L);
+        assertThat(s1.getCpeProductId()).isNull();
+        assertThat(s2.getCpeVendorId()).isEqualTo(97L);
+        assertThat(s2.getCpeProductId()).isNull();
+    }
+
+    @Test
+    @DisplayName("backfillForSoftwareIds caches resolve results within a single run for identical software keys")
+    void backfillForSoftwareIds_cachesResolveResultsWithinSingleRun() {
+        SoftwareInstall s1 = software("Google LLC", "Google Chrome", "145.0.7632.159");
+        SoftwareInstall s2 = software("Google LLC", "Google Chrome", "145.0.7632.159");
+
+        when(softwareRepo.findAllById(List.of(10L, 11L))).thenReturn(List.of(s1, s2));
+        when(linker.resolve(any(SoftwareInstall.class)))
+                .thenReturn(CanonicalCpeLinkingService.ResolveResult.vendorOnly(
+                        97L,
+                        "google",
+                        "chrome",
+                        "product unresolved",
+                        false
+                ));
+
+        when(unresolvedMappingRepository.findTopByVendorRawAndProductRaw("Google LLC", "Google Chrome"))
+                .thenReturn(Optional.empty());
+
+        CanonicalBackfillService.BackfillResult result =
+                service.backfillForSoftwareIds(List.of(10L, 11L), false);
+
+        assertThat(result.scanned()).isEqualTo(2);
+        assertThat(result.linked()).isEqualTo(2);
+        assertThat(result.missed()).isEqualTo(2);
+        assertThat(result.forceRebuild()).isFalse();
+
+        verify(softwareRepo).findAllById(List.of(10L, 11L));
+        verify(linker, times(1)).resolve(any(SoftwareInstall.class));
+        verify(unresolvedMappingRepository, times(1))
+                .findTopByVendorRawAndProductRaw("Google LLC", "Google Chrome");
+        verify(unresolvedMappingRepository, times(1))
+                .save(any(UnresolvedMapping.class));
+
+        assertThat(s1.getCpeVendorId()).isEqualTo(97L);
+        assertThat(s1.getCpeProductId()).isNull();
+        assertThat(s2.getCpeVendorId()).isEqualTo(97L);
+        assertThat(s2.getCpeProductId()).isNull();
+    }
 }

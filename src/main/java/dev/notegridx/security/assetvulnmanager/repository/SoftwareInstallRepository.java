@@ -3,7 +3,10 @@ package dev.notegridx.security.assetvulnmanager.repository;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.*;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -17,6 +20,7 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             order by s.id asc
             """)
     List<SoftwareInstall> findAllWithAsset();
+
     List<SoftwareInstall> findByAssetIdOrderByIdAsc(Long assetId);
 
     long deleteByAssetId(Long assetId);
@@ -140,7 +144,7 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
 
     /**
      * canonical link (cpeVendorId/cpeProductId) が未設定で、
-     * normalizedVendor/normalizedProduct がある程度揃っているものを拾う
+     * normalizedVendor/normalizedProduct がある程度揃っているものを拾う。
      */
     @Query("""
             select s from SoftwareInstall s
@@ -156,6 +160,34 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             order by s.id desc
             """)
     List<SoftwareInstall> findNeedsCanonicalLink();
+
+    /**
+     * Same scope as findNeedsCanonicalLink(), but returns only IDs and supports paging.
+     * This avoids loading the full SoftwareInstall list into memory during backfill.
+     */
+    @Query("""
+            select s.id from SoftwareInstall s
+            where (
+                    (s.normalizedVendor is not null and s.normalizedVendor <> '')
+                    and (s.cpeVendorId is null)
+                  )
+               or (
+                    (s.normalizedVendor is not null and s.normalizedVendor <> '')
+                    and (s.normalizedProduct is not null and s.normalizedProduct <> '')
+                    and (s.cpeProductId is null)
+                  )
+            order by s.id desc
+            """)
+    Page<Long> findNeedsCanonicalLinkIds(Pageable pageable);
+
+    /**
+     * Full rebuild path: page through all IDs only.
+     */
+    @Query("""
+            select s.id from SoftwareInstall s
+            order by s.id desc
+            """)
+    Page<Long> findAllIds(Pageable pageable);
 
     @Query("select s.id from SoftwareInstall s where s.importRunId = :runId")
     List<Long> findIdsByImportRunId(@Param("runId") Long runId);
