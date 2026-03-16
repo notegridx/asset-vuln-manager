@@ -15,7 +15,6 @@ public final class UiDateTime {
     }
 
     /**
-     * 詳細表示向け:
      * 2026-03-16 17:22:29
      */
     public static String format(LocalDateTime value) {
@@ -26,7 +25,6 @@ public final class UiDateTime {
     }
 
     /**
-     * 一覧表示向け:
      * 2026-03-16 17:22
      */
     public static String shortFormat(LocalDateTime value) {

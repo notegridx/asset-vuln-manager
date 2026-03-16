@@ -73,7 +73,9 @@
                 <td th:text="${a.owner != null ? a.owner : '-'}">owner</td>
                 <td th:text="${a.platform != null ? a.platform : '-'}">windows</td>
                 <td th:text="${a.osVersion != null ? a.osVersion : '-'}">11.0.22631</td>
-                <td th:text="${a.updatedAt}">2026-02-16T08:00</td>
+                <td th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).shortFormat(a.updatedAt)}">
+                    2026-02-16 08:00
+                </td>
 
                 <td>
                     <div sec:authorize="hasAnyRole('ADMIN','OPERATOR')"

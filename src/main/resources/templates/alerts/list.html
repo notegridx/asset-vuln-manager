@@ -138,7 +138,7 @@
             </div>
           </td>
 
-          <td th:text="${a.lastSeenAt}">2026-02-20T10:00</td>
+          <td th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).shortFormat(a.lastSeenAt)}">-</td>
         </tr>
         </tbody>
       </table>

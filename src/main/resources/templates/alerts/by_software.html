@@ -86,7 +86,7 @@
           / NONE <span th:text="${r.none}"></span>
         </td>
 
-        <td th:text="${r.lastSeenAt}"></td>
+        <td th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).shortFormat(r.lastSeenAt)}">-</td>
 
         <td>
           <a class="btn btn-ghost btn-sm"
