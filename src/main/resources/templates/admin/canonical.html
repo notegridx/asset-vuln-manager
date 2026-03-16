@@ -360,7 +360,15 @@
 
                 <div class="field">
                     <label>asset</label>
-                    <input type="number" name="asset" placeholder="assetId" th:value="${asset}">
+                    <select name="asset">
+                        <option value="">All Assets</option>
+                        <option th:each="a : ${assets}"
+                                th:value="${a.id}"
+                                th:text="${a.name + ' (#' + a.id + ')'}"
+                                th:selected="${asset != null and asset == a.id}">
+                            Asset
+                        </option>
+                    </select>
                 </div>
 
                 <div class="field">
@@ -383,7 +391,7 @@
 
             <div class="actions canon-section-top" style="justify-content:space-between; align-items:center;">
                 <div class="muted canon-help">
-                    Default is 50 rows. Change rows per page with the selector.
+                    Asset Name is a partial match. Default is 50 rows.
                 </div>
                 <div class="actions" style="margin:0;">
                     <button class="btn btn-primary" type="submit">Apply</button>
@@ -659,6 +667,7 @@
                    th:if="${rowPage.hasPrevious()}"
                    th:href="@{/admin/canonical(
                         asset=${asset},
+                        assetName=${assetName},
                         filter=${filter},
                         q=${q},
                         page=${rowPage.number - 1},
@@ -675,6 +684,7 @@
                    th:if="${rowPage.hasNext()}"
                    th:href="@{/admin/canonical(
                         asset=${asset},
+                        assetName=${assetName},
                         filter=${filter},
                         q=${q},
                         page=${rowPage.number + 1},

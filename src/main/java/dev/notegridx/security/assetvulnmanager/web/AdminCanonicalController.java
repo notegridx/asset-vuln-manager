@@ -22,12 +22,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Objects;
 
 @Controller
 public class AdminCanonicalController {
 
     private static final long STATS_CACHE_MILLIS = 30_000L;
+    private static final String UNUSED_ASSET_NAME = null;
 
     private final AssetRepository assetRepo;
     private final SoftwareInstallRepository softwareRepo;
@@ -52,21 +52,17 @@ public class AdminCanonicalController {
     public enum Filter {
         all,
 
-        // SQL link (IDs)
         fullyLinked,
         vendorOnlyLinked,
         notLinked,
 
-        // Fully linked quality
         linkedValid,
         linkedStale,
 
-        // Dictionary (ONLY for notLinked)
         fullyResolvable,
         vendorResolvableOnly,
         unresolvable,
 
-        // Other
         needsNormalization;
 
         static Filter parse(String s) {
@@ -95,9 +91,6 @@ public class AdminCanonicalController {
 
         List<Asset> assets = assetRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
         model.addAttribute("assets", assets);
-
-        // Global stats are still whole-table stats, but cached briefly
-        // to avoid recomputing them on every page transition.
         model.addAttribute("stats", getCachedStats());
 
         Pageable pageable = PageRequest.of(safePage, safeSize);
@@ -105,7 +98,13 @@ public class AdminCanonicalController {
 
         if (isSqlPageableFilter(filter)) {
             Page<SoftwareInstall> softwarePage =
-                    softwareRepo.findCanonicalSqlPage(assetId, keyword, filter.name(), pageable);
+                    softwareRepo.findCanonicalSqlPage(
+                            assetId,
+                            UNUSED_ASSET_NAME,
+                            keyword,
+                            filter.name(),
+                            pageable
+                    );
 
             List<Row> rows = softwarePage.getContent().stream()
                     .map(s -> Row.from(s, linker.analyze(s)))
@@ -113,7 +112,8 @@ public class AdminCanonicalController {
 
             rowPage = new PageImpl<>(rows, pageable, softwarePage.getTotalElements());
         } else {
-            List<SoftwareInstall> base = softwareRepo.findCanonicalBaseRows(assetId, keyword);
+            List<SoftwareInstall> base =
+                    softwareRepo.findCanonicalBaseRows(assetId, UNUSED_ASSET_NAME, keyword);
 
             List<Row> analyzed = base.stream()
                     .map(s -> Row.from(s, linker.analyze(s)))
@@ -156,11 +156,6 @@ public class AdminCanonicalController {
         return "admin/canonical";
     }
 
-    /**
-     * Run Linking (Run Canonical Backfill)
-     * - relink=false: not linked only
-     * - relink=true : include already linked rows (force rebuild)
-     */
     @PostMapping("/admin/canonical/link")
     public String runLinking(
             @RequestParam(name = "relink", defaultValue = "false") boolean relink,
@@ -256,18 +251,14 @@ public class AdminCanonicalController {
         var a = r.analysis;
         return switch (f) {
             case all -> true;
-
             case fullyLinked -> a.fullyLinkedSql();
             case vendorOnlyLinked -> a.vendorOnlyLinkedSql();
             case notLinked -> a.notLinkedSql();
-
             case linkedValid -> a.result() == CanonicalCpeLinkingService.ItemResult.LINKED;
             case linkedStale -> a.result() == CanonicalCpeLinkingService.ItemResult.STALE;
-
             case fullyResolvable -> a.dictFullyResolvable();
             case vendorResolvableOnly -> a.dictVendorResolvableOnly();
             case unresolvable -> a.dictUnresolvable();
-
             case needsNormalization -> a.needsNormalization();
         };
     }
@@ -300,20 +291,6 @@ public class AdminCanonicalController {
         }
     }
 
-    private static boolean containsKeyword(SoftwareInstall s, String keywordLower) {
-        String hay = (safe(s.getVendorRaw()) + " " +
-                safe(s.getProductRaw()) + " " +
-                safe(s.getVersionRaw()) + " " +
-                safe(s.getNormalizedVendor()) + " " +
-                safe(s.getNormalizedProduct()))
-                .toLowerCase();
-        return hay.contains(keywordLower);
-    }
-
-    private static String safe(String s) {
-        return s == null ? "" : s;
-    }
-
     private static String normalizeKeyword(String q) {
         if (q == null) return null;
         String t = q.trim();
@@ -329,7 +306,13 @@ public class AdminCanonicalController {
         return 500;
     }
 
-    private static String buildCurrentQuery(Long assetId, String filter, String q, Integer page, Integer size) {
+    private static String buildCurrentQuery(
+            Long assetId,
+            String filter,
+            String q,
+            Integer page,
+            Integer size
+    ) {
         StringBuilder sb = new StringBuilder();
 
         appendQueryParam(sb, "asset", assetId);

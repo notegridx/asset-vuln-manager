@@ -1,5 +1,6 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
@@ -8,19 +9,25 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,8 +60,13 @@ class AdminCanonicalControllerWebMvcTest {
     @Test
     @DisplayName("GET /admin/canonical uses default page=0 and size=50")
     void view_usesDefaultPagination() throws Exception {
+        CanonicalCpeLinkingService.MappingStats stats = mock(CanonicalCpeLinkingService.MappingStats.class);
+
         when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of());
+        when(softwareRepo.findAll()).thenReturn(List.of());
+        when(linker.stats(anyList())).thenReturn(stats);
         when(softwareRepo.findCanonicalSqlPage(
+                eq(null),
                 eq(null),
                 eq(null),
                 eq("all"),
@@ -81,17 +93,23 @@ class AdminCanonicalControllerWebMvcTest {
         verify(softwareRepo).findCanonicalSqlPage(
                 eq(null),
                 eq(null),
+                eq(null),
                 eq("all"),
                 eq(PageRequest.of(0, 50))
         );
-        verify(softwareRepo, never()).findCanonicalBaseRows(any(), any());
+        verify(softwareRepo, never()).findCanonicalBaseRows(any(), any(), any());
     }
 
     @Test
     @DisplayName("GET /admin/canonical accepts custom page and size")
     void view_acceptsCustomPageAndSize() throws Exception {
+        CanonicalCpeLinkingService.MappingStats stats = mock(CanonicalCpeLinkingService.MappingStats.class);
+
         when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of());
+        when(softwareRepo.findAll()).thenReturn(List.of());
+        when(linker.stats(anyList())).thenReturn(stats);
         when(softwareRepo.findCanonicalSqlPage(
+                eq(null),
                 eq(null),
                 eq("chrome"),
                 eq("notLinked"),
@@ -115,18 +133,23 @@ class AdminCanonicalControllerWebMvcTest {
         verify(assetRepo).findAll(any(Sort.class));
         verify(softwareRepo).findCanonicalSqlPage(
                 eq(null),
+                eq(null),
                 eq("chrome"),
                 eq("notLinked"),
                 eq(PageRequest.of(1, 200))
         );
-        verify(softwareRepo, never()).findCanonicalBaseRows(any(), any());
+        verify(softwareRepo, never()).findCanonicalBaseRows(any(), any(), any());
     }
 
     @Test
     @DisplayName("GET /admin/canonical uses base-row path for non-SQL filter")
     void view_nonSqlFilter_usesBaseRowsPath() throws Exception {
+        CanonicalCpeLinkingService.MappingStats stats = mock(CanonicalCpeLinkingService.MappingStats.class);
+
         when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of());
-        when(softwareRepo.findCanonicalBaseRows(eq(null), eq("chrome"))).thenReturn(List.of());
+        when(softwareRepo.findAll()).thenReturn(List.of());
+        when(linker.stats(anyList())).thenReturn(stats);
+        when(softwareRepo.findCanonicalBaseRows(eq(null), eq(null), eq("chrome"))).thenReturn(List.of());
 
         mockMvc.perform(get("/admin/canonical")
                         .param("filter", "linkedValid")
@@ -138,7 +161,48 @@ class AdminCanonicalControllerWebMvcTest {
                 .andExpect(model().attributeExists("rowPage"));
 
         verify(assetRepo).findAll(any(Sort.class));
-        verify(softwareRepo).findCanonicalBaseRows(eq(null), eq("chrome"));
-        verify(softwareRepo, never()).findCanonicalSqlPage(any(), any(), any(), any());
+        verify(softwareRepo).findCanonicalBaseRows(eq(null), eq(null), eq("chrome"));
+        verify(softwareRepo, never()).findCanonicalSqlPage(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("GET /admin/canonical filters by asset id and exposes assets for selector")
+    void view_filtersByAssetId_andExposesAssetsForSelector() throws Exception {
+        Asset asset1 = new Asset("Alpha");
+        ReflectionTestUtils.setField(asset1, "id", 1L);
+
+        Asset asset2 = new Asset("Beta");
+        ReflectionTestUtils.setField(asset2, "id", 2L);
+
+        CanonicalCpeLinkingService.MappingStats stats = mock(CanonicalCpeLinkingService.MappingStats.class);
+
+        when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of(asset1, asset2));
+        when(softwareRepo.findAll()).thenReturn(List.of());
+        when(linker.stats(anyList())).thenReturn(stats);
+
+        when(softwareRepo.findCanonicalSqlPage(
+                eq(2L),
+                isNull(),
+                isNull(),
+                eq("all"),
+                any(Pageable.class)
+        )).thenReturn(Page.empty());
+
+        mockMvc.perform(get("/admin/canonical")
+                        .param("asset", "2"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/canonical"))
+                .andExpect(model().attribute("asset", 2L))
+                .andExpect(model().attributeExists("assets"))
+                .andExpect(content().string(containsString("Alpha")))
+                .andExpect(content().string(containsString("Beta")));
+
+        verify(softwareRepo).findCanonicalSqlPage(
+                eq(2L),
+                isNull(),
+                isNull(),
+                eq("all"),
+                any(Pageable.class)
+        );
     }
 }

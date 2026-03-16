@@ -86,6 +86,7 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
     @Query("""
             select s from SoftwareInstall s
             where (:assetId is null or s.asset.id = :assetId)
+              and (:assetName is null or lower(coalesce(s.asset.name, '')) like lower(concat('%', :assetName, '%')))
               and (
                     :q is null or :q = ''
                     or lower(coalesce(s.vendorRaw, '')) like lower(concat('%', :q, '%'))
@@ -104,6 +105,7 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             """)
     Page<SoftwareInstall> findCanonicalSqlPage(
             @Param("assetId") Long assetId,
+            @Param("assetName") String assetName,
             @Param("q") String q,
             @Param("linkState") String linkState,
             Pageable pageable
@@ -113,6 +115,7 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
     @Query("""
             select s from SoftwareInstall s
             where (:assetId is null or s.asset.id = :assetId)
+              and (:assetName is null or lower(coalesce(s.asset.name, '')) like lower(concat('%', :assetName, '%')))
               and (
                     :q is null or :q = ''
                     or lower(coalesce(s.vendorRaw, '')) like lower(concat('%', :q, '%'))
@@ -125,6 +128,7 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             """)
     List<SoftwareInstall> findCanonicalBaseRows(
             @Param("assetId") Long assetId,
+            @Param("assetName") String assetName,
             @Param("q") String q
     );
 
