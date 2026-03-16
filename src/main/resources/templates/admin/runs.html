@@ -13,7 +13,19 @@
 
     <div class="card">
         <div class="table-wrap">
-            <table class="table table--fixed">                <thead>
+            <table class="table table--fixed">
+
+                <colgroup>
+                    <col style="width:6%;">
+                    <col style="width:18%;">
+                    <col style="width:10%;">
+                    <col style="width:16%;">
+                    <col style="width:16%;">
+                    <col style="width:8%;">
+                    <col style="width:26%;">
+                </colgroup>
+
+                <thead>
                 <tr>
                     <th class="col-id">ID</th>
                     <th class="col-job">Job</th>
@@ -55,7 +67,7 @@
                         <span th:if="${row.run.durationMs == null}" class="muted">-</span>
                     </td>
 
-                    <td class="cell-break" style="min-width: 380px;">
+                    <td class="cell-break">
 
                         <!-- =========================
                              params (collapsed by default)
