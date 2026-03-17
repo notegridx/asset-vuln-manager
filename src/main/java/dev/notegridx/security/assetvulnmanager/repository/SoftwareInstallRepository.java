@@ -77,6 +77,45 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             Pageable pageable
     );
 
+    /**
+     * Paged search for /software list with SQL-level link status filtering.
+     * This avoids loading the full software inventory into memory before paging.
+     *
+     * Supported linkStatus values:
+     * - null / ALL       : no link filter
+     * - LINKED           : both cpeVendorId and cpeProductId are present
+     * - NOT_LINKED       : either cpeVendorId or cpeProductId is missing
+     */
+    @EntityGraph(attributePaths = {"asset"})
+    @Query("""
+            select s from SoftwareInstall s
+            where (:assetId is null or s.asset.id = :assetId)
+              and (
+                    :q is null or :q = ''
+                    or lower(coalesce(s.vendorRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.vendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedVendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.productRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.product, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedProduct, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.versionRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.version, '')) like lower(concat('%', :q, '%'))
+                  )
+              and (
+                    :linkStatus is null
+                    or :linkStatus = 'ALL'
+                    or (:linkStatus = 'LINKED' and s.cpeVendorId is not null and s.cpeProductId is not null)
+                    or (:linkStatus = 'NOT_LINKED' and (s.cpeVendorId is null or s.cpeProductId is null))
+                  )
+            order by s.id desc
+            """)
+    Page<SoftwareInstall> searchPaged(
+            @Param("assetId") Long assetId,
+            @Param("q") String q,
+            @Param("linkStatus") String linkStatus,
+            Pageable pageable
+    );
+
     // =========================================================
     // /admin/canonical optimized reads
     // - SQL-pageable filters only: all / fullyLinked / vendorOnlyLinked / notLinked
@@ -198,8 +237,9 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
     );
 
     /**
-     * canonical link (cpeVendorId/cpeProductId) が未設定で、
-     * normalizedVendor/normalizedProduct がある程度揃っているものを拾う。
+     * Select rows that still need canonical linking.
+     * Rows are included when normalized vendor/product data exists
+     * but canonical vendor/product IDs are still missing.
      */
     @Query("""
             select s from SoftwareInstall s

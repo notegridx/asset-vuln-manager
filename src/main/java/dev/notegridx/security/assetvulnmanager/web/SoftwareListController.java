@@ -67,40 +67,55 @@ public class SoftwareListController {
         String keyword = normalizeKeyword(q);
         String effectiveLinkStatus = normalizeLinkStatus(linkStatus);
 
-        // Exact filter for LINKED / NOT_LINKED:
-        // base filter -> analyze -> linkStatus filter -> manual paging
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+
+        // Base filter (asset + keyword)
         List<SoftwareInstall> baseRows = softwareInstallRepository.findAll(Sort.by(Sort.Direction.DESC, "id"))
                 .stream()
                 .filter(s -> assetId == null || (s.getAsset() != null && Objects.equals(s.getAsset().getId(), assetId)))
                 .filter(s -> keyword == null || containsKeyword(s, keyword))
                 .toList();
 
-        Map<Long, CanonicalCpeLinkingService.Analysis> allAnalysisMap = new HashMap<>();
-        for (SoftwareInstall si : baseRows) {
-            try {
-                allAnalysisMap.put(si.getId(), canonicalCpeLinkingService.analyze(si));
-            } catch (Exception e) {
-                // 画面表示を壊さない（分析だけ落として残りは表示）
-                log.warn("Canonical analyze failed: softwareInstallId={} msg={}", si.getId(), e.getMessage());
+        List<SoftwareInstall> rows;
+        Page<SoftwareInstall> result;
+
+        // If linkStatus = ALL, skip full dataset analysis and paginate first
+        if ("ALL".equals(effectiveLinkStatus)) {
+            int fromIndex = Math.min((int) pageable.getOffset(), baseRows.size());
+            int toIndex = Math.min(fromIndex + pageable.getPageSize(), baseRows.size());
+            rows = baseRows.subList(fromIndex, toIndex);
+            result = new PageImpl<>(rows, pageable, baseRows.size());
+        } else {
+
+            // Perform canonical analysis only when strict LINKED / NOT_LINKED filtering is required
+            Map<Long, CanonicalCpeLinkingService.Analysis> allAnalysisMap = new HashMap<>();
+
+            for (SoftwareInstall si : baseRows) {
+                try {
+                    allAnalysisMap.put(si.getId(), canonicalCpeLinkingService.analyze(si));
+                } catch (Exception e) {
+                    // Do not break the page if analysis fails
+                    log.warn("Canonical analyze failed: softwareInstallId={} msg={}", si.getId(), e.getMessage());
+                }
             }
+
+            List<SoftwareInstall> filteredRows = baseRows.stream()
+                    .filter(si -> matchesLinkStatus(allAnalysisMap.get(si.getId()), effectiveLinkStatus))
+                    .toList();
+
+            int fromIndex = Math.min((int) pageable.getOffset(), filteredRows.size());
+            int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredRows.size());
+            rows = filteredRows.subList(fromIndex, toIndex);
+            result = new PageImpl<>(rows, pageable, filteredRows.size());
         }
-
-        List<SoftwareInstall> filteredRows = baseRows.stream()
-                .filter(si -> matchesLinkStatus(allAnalysisMap.get(si.getId()), effectiveLinkStatus))
-                .toList();
-
-        Pageable pageable = PageRequest.of(safePage, safeSize);
-        int fromIndex = Math.min((int) pageable.getOffset(), filteredRows.size());
-        int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredRows.size());
-        List<SoftwareInstall> rows = filteredRows.subList(fromIndex, toIndex);
-        Page<SoftwareInstall> result = new PageImpl<>(rows, pageable, filteredRows.size());
 
         List<Long> ids = rows.stream()
                 .map(SoftwareInstall::getId)
                 .toList();
 
-        // --- alerts count (bulk) ---
+        // Bulk alert count lookup
         Map<Long, Long> alertCountMap = new HashMap<>();
+
         if (!ids.isEmpty()) {
             for (Object[] row : alertRepository.countBySoftwareInstallIds(ids)) {
                 Long softwareId = (Long) row[0];
@@ -108,31 +123,42 @@ public class SoftwareListController {
                 alertCountMap.put(softwareId, count);
             }
         }
+
         model.addAttribute("alertCountMap", alertCountMap);
 
-        // --- mapping analysis (page rows only) ---
+        // Run canonical analysis only for rows displayed on the current page
         Map<Long, CanonicalCpeLinkingService.Analysis> cpeAnalysisMap = new HashMap<>();
+
         for (SoftwareInstall si : rows) {
-            CanonicalCpeLinkingService.Analysis a = allAnalysisMap.get(si.getId());
-            if (a != null) {
-                cpeAnalysisMap.put(si.getId(), a);
+            try {
+                CanonicalCpeLinkingService.Analysis a = canonicalCpeLinkingService.analyze(si);
+
+                if (a != null) {
+                    cpeAnalysisMap.put(si.getId(), a);
+                }
+
+            } catch (Exception e) {
+                log.warn("Canonical analyze failed: softwareInstallId={} msg={}", si.getId(), e.getMessage());
             }
         }
+
         model.addAttribute("cpeAnalysisMap", cpeAnalysisMap);
 
-        // テンプレの呼び名揺れ対策（どちらでも参照できるように同じMapを載せる）
+        // Support legacy template naming
         model.addAttribute("linkAnalysisMap", cpeAnalysisMap);
 
-        // --- page summary stats (based on analyze()) ---
+        // Compute summary statistics for the page
         CanonicalCpeLinkingService.MappingStats pageLinkStats = null;
+
         try {
             pageLinkStats = canonicalCpeLinkingService.stats(rows);
         } catch (Exception e) {
             log.warn("Canonical stats failed: msg={}", e.getMessage());
         }
+
         model.addAttribute("pageLinkStats", pageLinkStats);
 
-        // --- canonical vendor/product label maps ---
+        // Resolve canonical vendor labels
         List<Long> vendorIds = rows.stream()
                 .map(SoftwareInstall::getCpeVendorId)
                 .filter(Objects::nonNull)
@@ -146,12 +172,14 @@ public class SoftwareListController {
                 .toList();
 
         Map<Long, String> vendorNameMap = new HashMap<>();
+
         for (CpeVendor v : cpeVendorRepository.findAllById(vendorIds)) {
             String label = firstNonBlank(v.getDisplayName(), v.getNameNorm(), "#" + v.getId());
             vendorNameMap.put(v.getId(), label);
         }
 
         Map<Long, String> productNameMap = new HashMap<>();
+
         for (CpeProduct p : cpeProductRepository.findAllById(productIds)) {
             String label = firstNonBlank(p.getDisplayName(), p.getNameNorm(), "#" + p.getId());
             productNameMap.put(p.getId(), label);
@@ -162,24 +190,26 @@ public class SoftwareListController {
 
         model.addAttribute("page", result);
 
-        // filter state（画面にエコーするのは元のq）
+        // Preserve filter state
         model.addAttribute("assetId", assetId);
         model.addAttribute("q", q == null ? "" : q);
         model.addAttribute("linkStatus", effectiveLinkStatus);
 
-        // asset dropdown
+        // Populate asset dropdown
         model.addAttribute("assets", assetRepository.findAll());
 
-        // counts
+        // Total install count
         model.addAttribute("totalInstalls", softwareInstallRepository.count());
 
         return "software/list";
     }
 
     private static boolean matchesLinkStatus(CanonicalCpeLinkingService.Analysis a, String linkStatus) {
+
         if ("ALL".equals(linkStatus)) {
             return true;
         }
+
         if (a == null) {
             return false;
         }
@@ -199,21 +229,30 @@ public class SoftwareListController {
     }
 
     private static String normalizeLinkStatus(String linkStatus) {
+
         if (linkStatus == null) return "ALL";
+
         String t = linkStatus.trim().toUpperCase();
+
         if (t.isEmpty()) return "ALL";
+
         if ("LINKED".equals(t)) return "LINKED";
         if ("NOT_LINKED".equals(t)) return "NOT_LINKED";
+
         return "ALL";
     }
 
     private static String normalizeKeyword(String q) {
+
         if (q == null) return null;
+
         String t = q.trim();
+
         return t.isEmpty() ? null : t;
     }
 
     private static boolean containsKeyword(SoftwareInstall s, String keyword) {
+
         String q = keyword.toLowerCase();
 
         return contains(s.getVendorRaw(), q)
@@ -227,18 +266,23 @@ public class SoftwareListController {
     }
 
     private static boolean contains(String value, String keywordLower) {
+
         return value != null && value.toLowerCase().contains(keywordLower);
     }
 
     private static int clamp(int v, int min, int max) {
+
         if (v < min) return min;
         if (v > max) return max;
+
         return v;
     }
 
     private static String firstNonBlank(String a, String b, String fallback) {
+
         if (a != null && !a.isBlank()) return a;
         if (b != null && !b.isBlank()) return b;
+
         return fallback;
     }
 }
