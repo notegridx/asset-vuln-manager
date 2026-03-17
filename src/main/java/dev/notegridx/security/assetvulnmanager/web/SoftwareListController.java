@@ -14,7 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -69,32 +68,38 @@ public class SoftwareListController {
 
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
-        // Base filter (asset + keyword)
-        List<SoftwareInstall> baseRows = softwareInstallRepository.findAll(Sort.by(Sort.Direction.DESC, "id"))
-                .stream()
-                .filter(s -> assetId == null || (s.getAsset() != null && Objects.equals(s.getAsset().getId(), assetId)))
-                .filter(s -> keyword == null || containsKeyword(s, keyword))
-                .toList();
-
         List<SoftwareInstall> rows;
         Page<SoftwareInstall> result;
 
-        // If linkStatus = ALL, skip full dataset analysis and paginate first
+        // Fast path:
+        // ALL / LINKED / NOT_LINKED are filtered and paged in DB first.
         if ("ALL".equals(effectiveLinkStatus)) {
-            int fromIndex = Math.min((int) pageable.getOffset(), baseRows.size());
-            int toIndex = Math.min(fromIndex + pageable.getPageSize(), baseRows.size());
-            rows = baseRows.subList(fromIndex, toIndex);
-            result = new PageImpl<>(rows, pageable, baseRows.size());
-        } else {
+            result = softwareInstallRepository.searchPagedBase(assetId, keyword, pageable);
+            rows = result.getContent();
 
-            // Perform canonical analysis only when strict LINKED / NOT_LINKED filtering is required
+        } else if ("LINKED".equals(effectiveLinkStatus)) {
+            result = softwareInstallRepository.searchPagedLinked(assetId, keyword, pageable);
+            rows = result.getContent();
+
+        } else if ("NOT_LINKED".equals(effectiveLinkStatus)) {
+            result = softwareInstallRepository.searchPagedNotLinked(assetId, keyword, pageable);
+            rows = result.getContent();
+
+        } else {
+            // Fallback path:
+            // keep existing in-memory analysis flow for any future non-DB-filterable statuses
+            List<SoftwareInstall> baseRows = softwareInstallRepository.searchPagedBase(
+                    assetId,
+                    keyword,
+                    PageRequest.of(0, Integer.MAX_VALUE)
+            ).getContent();
+
             Map<Long, CanonicalCpeLinkingService.Analysis> allAnalysisMap = new HashMap<>();
 
             for (SoftwareInstall si : baseRows) {
                 try {
                     allAnalysisMap.put(si.getId(), canonicalCpeLinkingService.analyze(si));
                 } catch (Exception e) {
-                    // Do not break the page if analysis fails
                     log.warn("Canonical analyze failed: softwareInstallId={} msg={}", si.getId(), e.getMessage());
                 }
             }
@@ -249,25 +254,6 @@ public class SoftwareListController {
         String t = q.trim();
 
         return t.isEmpty() ? null : t;
-    }
-
-    private static boolean containsKeyword(SoftwareInstall s, String keyword) {
-
-        String q = keyword.toLowerCase();
-
-        return contains(s.getVendorRaw(), q)
-                || contains(s.getVendor(), q)
-                || contains(s.getNormalizedVendor(), q)
-                || contains(s.getProductRaw(), q)
-                || contains(s.getProduct(), q)
-                || contains(s.getNormalizedProduct(), q)
-                || contains(s.getVersionRaw(), q)
-                || contains(s.getVersion(), q);
-    }
-
-    private static boolean contains(String value, String keywordLower) {
-
-        return value != null && value.toLowerCase().contains(keywordLower);
     }
 
     private static int clamp(int v, int min, int max) {

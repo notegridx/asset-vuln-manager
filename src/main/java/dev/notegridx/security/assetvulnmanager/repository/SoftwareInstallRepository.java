@@ -286,4 +286,70 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
 
     @Query("select s.id from SoftwareInstall s where s.importRunId = :runId")
     List<Long> findIdsByImportRunId(@Param("runId") Long runId);
+
+    @EntityGraph(attributePaths = {"asset"})
+    @Query("""
+            select s
+            from SoftwareInstall s
+            where (:assetId is null or s.asset.id = :assetId)
+              and (
+                    :q is null or :q = ''
+                    or lower(coalesce(s.vendorRaw, s.vendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.productRaw, s.product, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.versionRaw, s.version, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedVendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedProduct, '')) like lower(concat('%', :q, '%'))
+                 )
+            order by s.id desc
+            """)
+    Page<SoftwareInstall> searchPagedBase(
+            @Param("assetId") Long assetId,
+            @Param("q") String q,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"asset"})
+    @Query("""
+            select s
+            from SoftwareInstall s
+            where (:assetId is null or s.asset.id = :assetId)
+              and (
+                    :q is null or :q = ''
+                    or lower(coalesce(s.vendorRaw, s.vendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.productRaw, s.product, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.versionRaw, s.version, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedVendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedProduct, '')) like lower(concat('%', :q, '%'))
+                 )
+              and s.cpeVendorId is not null
+              and s.cpeProductId is not null
+            order by s.id desc
+            """)
+    Page<SoftwareInstall> searchPagedLinked(
+            @Param("assetId") Long assetId,
+            @Param("q") String q,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"asset"})
+    @Query("""
+            select s
+            from SoftwareInstall s
+            where (:assetId is null or s.asset.id = :assetId)
+              and (
+                    :q is null or :q = ''
+                    or lower(coalesce(s.vendorRaw, s.vendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.productRaw, s.product, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.versionRaw, s.version, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedVendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedProduct, '')) like lower(concat('%', :q, '%'))
+                 )
+              and (s.cpeVendorId is null or s.cpeProductId is null)
+            order by s.id desc
+            """)
+    Page<SoftwareInstall> searchPagedNotLinked(
+            @Param("assetId") Long assetId,
+            @Param("q") String q,
+            Pageable pageable
+    );
 }
