@@ -60,7 +60,10 @@ public class SecurityConfig {
                         .requestMatchers("/account/change-password").authenticated()
 
                         // admin only: user management
-                        .requestMatchers("/admin/users/**").hasRole("ADMIN")
+                        .requestMatchers(
+                                "/admin/users/**",
+                                "/admin/settings/**"
+                        ).hasRole("ADMIN")
 
                         // operator + admin: operational actions
                         .requestMatchers(

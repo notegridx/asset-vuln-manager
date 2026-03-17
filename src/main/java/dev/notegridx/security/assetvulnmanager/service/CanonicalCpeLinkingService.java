@@ -6,6 +6,7 @@ import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+import dev.notegridx.security.assetvulnmanager.repository.SystemSettingRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
+
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_AUTOLINK_SKIP_DISABLED_ROW;
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_AUTOLINK_USE_SYNONYM;
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_AUTOLINK_USE_TOKEN_FALLBACK;
 
 @Slf4j
 @Service
@@ -25,6 +30,7 @@ public class CanonicalCpeLinkingService {
     private final VendorProductNormalizer normalizer;
     private final SynonymService synonymService;
     private final TokenMatchingService tokenMatchingService;
+    private final SystemSettingRepository systemSettingRepository;
 
     public CanonicalCpeLinkingService(
             SoftwareInstallRepository softwareRepo,
@@ -32,7 +38,8 @@ public class CanonicalCpeLinkingService {
             CpeProductRepository productRepo,
             VendorProductNormalizer normalizer,
             SynonymService synonymService,
-            TokenMatchingService tokenMatchingService
+            TokenMatchingService tokenMatchingService,
+            SystemSettingRepository systemSettingRepository
     ) {
         this.softwareRepo = softwareRepo;
         this.vendorRepo = vendorRepo;
@@ -40,6 +47,7 @@ public class CanonicalCpeLinkingService {
         this.normalizer = normalizer;
         this.synonymService = synonymService;
         this.tokenMatchingService = tokenMatchingService;
+        this.systemSettingRepository = systemSettingRepository;
     }
 
     // ------------------------------------------------------------
@@ -56,11 +64,11 @@ public class CanonicalCpeLinkingService {
         int fullyLinkedSql = 0;
         int notLinkedSql = 0;
 
-        // fully linked quality
+        // Fully linked quality
         int linkedValid = 0;
         int linkedStale = 0;
 
-        // dictionary resolution (ONLY for notLinkedSql)
+        // Dictionary resolution (ONLY for notLinkedSql)
         int fullyResolvable = 0;
         int vendorResolvableOnly = 0;
         int unresolvable = 0;
@@ -157,14 +165,14 @@ public class CanonicalCpeLinkingService {
 
         // Not fully linked:
         if (r.hit()) {
-            // RESOLVED = vendor+product fully resolvable (even if vendor is already linked, this is still actionable)
+            // RESOLVED = vendor+product fully resolvable
             return Analysis.resolved(r, null,
                     vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
                     dictFullyResolvable, dictVendorOnlyResolvable, dictUnresolvable);
         }
 
         // UNRESOLVED
-        // vendor-only のときは理由を少し補強（UIで見たとき納得感が出る）
+        // When only vendor is already linked, add slightly richer reason text for UI clarity.
         String reason = r.reason();
         if (vendorOnlyLinked) {
             reason = (reason == null || reason.isBlank())
@@ -182,10 +190,10 @@ public class CanonicalCpeLinkingService {
     }
 
     public enum ItemResult {
-        LINKED,      // fully linked and IDs are valid
-        RESOLVED,    // not fully linked, but dictionary can fully resolve vendor+product
-        STALE,       // fully linked, but referenced dictionary rows missing
-        UNRESOLVED   // otherwise
+        LINKED,      // Fully linked and IDs are valid
+        RESOLVED,    // Not fully linked, but dictionary can fully resolve vendor+product
+        STALE,       // Fully linked, but referenced dictionary rows are missing
+        UNRESOLVED   // Otherwise
     }
 
     public record MappingStats(
@@ -196,11 +204,11 @@ public class CanonicalCpeLinkingService {
             int vendorOnlyLinkedSql,
             int notLinkedSql,
 
-            // fully linked quality
+            // Fully linked quality
             int linkedValid,
             int linkedStale,
 
-            // dictionary resolution (ONLY for notLinkedSql)
+            // Dictionary resolution (ONLY for notLinkedSql)
             int fullyResolvable,
             int vendorResolvableOnly,
             int unresolvable,
@@ -221,7 +229,7 @@ public class CanonicalCpeLinkingService {
             boolean vendorOnlyLinkedSql,
             boolean notLinkedSql,
 
-            // dictionary buckets (ONLY meaningful when notLinkedSql=true)
+            // Dictionary buckets (ONLY meaningful when notLinkedSql=true)
             boolean dictFullyResolvable,
             boolean dictVendorResolvableOnly,
             boolean dictUnresolvable
@@ -264,9 +272,10 @@ public class CanonicalCpeLinkingService {
     }
 
     // ------------------------------------------------------------
-    // resolve (string -> dictionary lookup)
-    //  - exact vendor/product (after synonym)
-    //  - fallback: product token matching within vendor
+    // Resolve (string -> dictionary lookup)
+    //  - Exact vendor/product lookup
+    //  - Optional synonym normalization
+    //  - Optional product token matching fallback within vendor
     // ------------------------------------------------------------
 
     @Transactional(readOnly = true)
@@ -276,12 +285,19 @@ public class CanonicalCpeLinkingService {
 
         boolean needsNorm = (s.getNormalizedProduct() == null || s.getNormalizedProduct().isBlank());
 
+        if (getBool(KEY_CANONICAL_AUTOLINK_SKIP_DISABLED_ROW, true) && s.isCanonicalLinkDisabled()) {
+            return ResolveResult.miss("canonical link is disabled for this row", needsNorm, null, v0, p0);
+        }
+
         if (p0 == null) {
             return ResolveResult.miss("product is blank after normalize", needsNorm, null, null, null);
         }
 
-        String v1 = synonymService.canonicalVendorOrSame(v0);
-        String p1 = synonymService.canonicalProductOrSame(v1, p0);
+        boolean useSynonym = getBool(KEY_CANONICAL_AUTOLINK_USE_SYNONYM, true);
+        boolean useTokenFallback = getBool(KEY_CANONICAL_AUTOLINK_USE_TOKEN_FALLBACK, true);
+
+        String v1 = useSynonym ? synonymService.canonicalVendorOrSame(v0) : v0;
+        String p1 = useSynonym ? synonymService.canonicalProductOrSame(v1, p0) : p0;
 
         if (v1 == null || v1.isBlank()) {
             return ResolveResult.miss("vendor missing (cannot lookup cpe_products)", needsNorm, null, null, p1);
@@ -297,6 +313,14 @@ public class CanonicalCpeLinkingService {
         CpeProduct prod = productRepo.findByVendorIdAndNameNorm(vendorId, p1).orElse(null);
         if (prod != null) {
             return ResolveResult.hit(vendorId, prod.getId(), v1, p1, needsNorm);
+        }
+
+        if (!useTokenFallback) {
+            return ResolveResult.vendorOnly(
+                    vendorId, v1, p1,
+                    "product not found (token fallback disabled): " + v1 + ":" + p1,
+                    needsNorm
+            );
         }
 
         if (shouldSkipTokenMatching(s.getProduct(), p1)) {
@@ -375,7 +399,8 @@ public class CanonicalCpeLinkingService {
     private static final Pattern NAMESPACE_DOT = Pattern.compile("(?i)[a-z]\\.[a-z]"); // letter.dot.letter
 
     /**
-     * WindowsのOS/Store/AppX系・GUID系は token matching の誤爆が多いので対象外にする。
+     * Skip token matching for Windows OS / Store / AppX style identifiers and GUID-like values,
+     * because they tend to produce noisy or misleading matches.
      */
     private boolean shouldSkipTokenMatching(String productRaw, String productNorm) {
         String pr = (productRaw == null) ? "" : productRaw.trim();
@@ -396,6 +421,13 @@ public class CanonicalCpeLinkingService {
         if (pr.contains(".") && !pr.contains(" ")) return true;
 
         return false;
+    }
+
+    private boolean getBool(String key, boolean defaultValue) {
+        return systemSettingRepository.findById(key)
+                .map(s -> s.getSettingValue())
+                .map(v -> "true".equalsIgnoreCase(v))
+                .orElse(defaultValue);
     }
 
     private static Object safeId(SoftwareInstall s) {

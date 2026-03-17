@@ -831,3 +831,19 @@ CREATE INDEX IF NOT EXISTS idx_app_user_roles_role ON app_user_roles(role_id);
 MERGE INTO app_roles (role_name) KEY (role_name) VALUES ('ADMIN');
 MERGE INTO app_roles (role_name) KEY (role_name) VALUES ('OPERATOR');
 MERGE INTO app_roles (role_name) KEY (role_name) VALUES ('VIEWER');
+
+-- =========================================================
+-- System Settings
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS system_settings
+(
+    setting_key VARCHAR(128) PRIMARY KEY,
+    setting_value VARCHAR(2048) NOT NULL,
+    updated_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+    );
+
+CREATE INDEX IF NOT EXISTS idx_system_settings_updated_at
+    ON system_settings(updated_at);

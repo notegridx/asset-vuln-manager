@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('Settings')}"></head>
+
+<body th:replace="~{layout/base :: layout('Settings', 'admin', ~{::main})}">
+<main>
+    <div class="actions">
+        <div>
+            <h1 style="margin:0;">Settings</h1>
+            <p class="muted" style="margin:8px 0 0 0;">
+                Centralized controls for candidate display, auto-link behavior, vulnerability suggestions, and explainability.
+            </p>
+        </div>
+    </div>
+
+    <div th:if="${success}" class="card" style="padding:12px; margin-bottom:16px; border:1px solid rgba(80,200,120,.35);">
+        <strong th:text="${success}">Saved.</strong>
+    </div>
+
+    <div class="card" style="padding:16px; margin-bottom:16px;">
+        <div class="muted" style="display:flex; gap:18px; flex-wrap:wrap;">
+            <div><strong>Last updated:</strong> <span th:text="${lastUpdatedAt != null ? #temporals.format(lastUpdatedAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</span></div>
+            <div><strong>Updated by:</strong> <span th:text="${lastUpdatedBy != null ? lastUpdatedBy : '-'}">-</span></div>
+        </div>
+    </div>
+
+    <form th:action="@{/admin/settings}" th:object="${settingsForm}" method="post">
+
+        <!-- Canonical Mapping -->
+        <div class="card" style="padding:20px; margin-bottom:18px;">
+            <div class="actions" style="align-items:flex-start;">
+                <div>
+                    <h2 style="margin:0;">1. Canonical Mapping</h2>
+                    <p class="muted" style="margin:8px 0 0 0;">
+                        Applies to: Admin &gt; Canonical Mapping, Unresolved Mappings, Software edit/import/backfill
+                    </p>
+                </div>
+            </div>
+
+            <hr style="margin:16px 0; border:none; border-top:1px solid rgba(255,255,255,.08);">
+
+            <h3 style="margin-top:0;">Candidate display</h3>
+            <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+                <div class="field">
+                    <label>Minimum characters</label>
+                    <input type="number" min="1" max="10" th:field="*{canonicalCandidateMinChars}">
+                </div>
+                <div class="field">
+                    <label>Exact candidates limit</label>
+                    <input type="number" min="1" max="50" th:field="*{canonicalCandidateExactLimit}">
+                </div>
+                <div class="field">
+                    <label>Other candidates limit</label>
+                    <input type="number" min="1" max="100" th:field="*{canonicalCandidateOtherLimit}">
+                </div>
+                <div class="field">
+                    <label>Unresolved candidate cap</label>
+                    <input type="number" min="1" max="100" th:field="*{canonicalCandidateUnresolvedLimit}">
+                </div>
+            </div>
+
+            <hr style="margin:18px 0; border:none; border-top:1px solid rgba(255,255,255,.08);">
+
+            <h3 style="margin-top:0;">Auto-link policy</h3>
+            <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{canonicalAutolinkUseSynonym}">
+                    <span>Use synonym mapping</span>
+                </label>
+
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{canonicalAutolinkUseTokenFallback}">
+                    <span>Use token fallback</span>
+                </label>
+
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{canonicalAutolinkContainsMatch}">
+                    <span>Allow contains match <span class="muted">(stored for next wiring)</span></span>
+                </label>
+
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{canonicalAutolinkVendorUniqueRequired}">
+                    <span>Require unique vendor hit <span class="muted">(stored for next wiring)</span></span>
+                </label>
+
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{canonicalAutolinkProductUniqueRequired}">
+                    <span>Require unique product hit <span class="muted">(stored for next wiring)</span></span>
+                </label>
+
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{canonicalAutolinkSkipDisabledRow}">
+                    <span>Skip disabled rows</span>
+                </label>
+
+                <div class="field">
+                    <label>Minimum score</label>
+                    <input type="number" min="0" max="1000" th:field="*{canonicalAutolinkMinScore}">
+                    <div class="muted" style="margin-top:6px;">Stored now; connect in matching phase.</div>
+                </div>
+            </div>
+
+            <hr style="margin:18px 0; border:none; border-top:1px solid rgba(255,255,255,.08);">
+
+            <h3 style="margin-top:0;">Explainability</h3>
+            <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{canonicalExplainShowReason}">
+                    <span>Show decision reason</span>
+                </label>
+
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{canonicalExplainShowScoreBreakdown}">
+                    <span>Show score breakdown <span class="muted">(stored for UI next step)</span></span>
+                </label>
+
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{canonicalExplainShowSkipReason}">
+                    <span>Show skip reason</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Vulnerability Suggestions -->
+        <div class="card" style="padding:20px; margin-bottom:18px;">
+            <h2 style="margin-top:0;">2. Vulnerability Suggestions</h2>
+            <p class="muted" style="margin:8px 0 16px 0;">
+                Applies to: Vulnerabilities &gt; Detail, Potential Unresolved Software Candidates
+            </p>
+
+            <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+                <div class="field">
+                    <label>Maximum displayed rows</label>
+                    <input type="number" min="1" max="100" th:field="*{vulnerabilitySuggestionMaxItems}">
+                </div>
+
+                <div class="field">
+                    <label>Vendor exact score</label>
+                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionVendorExactScore}">
+                </div>
+
+                <div class="field">
+                    <label>Vendor partial score</label>
+                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionVendorPartialScore}">
+                </div>
+
+                <div class="field">
+                    <label>Product exact score</label>
+                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionProductExactScore}">
+                </div>
+
+                <div class="field">
+                    <label>Token overlap score</label>
+                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionTokenOverlapScore}">
+                </div>
+
+                <div class="field">
+                    <label>Partial match score</label>
+                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionPartialMatchScore}">
+                </div>
+
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{vulnerabilitySuggestionActiveOnly}">
+                    <span>Only active unresolved rows</span>
+                </label>
+
+                <label class="field" style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" th:field="*{vulnerabilitySuggestionShowReasons}">
+                    <span>Show reasons</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Shared Matching Rules -->
+        <div class="card" style="padding:20px; margin-bottom:18px;">
+            <h2 style="margin-top:0;">3. Shared Matching Rules</h2>
+            <p class="muted" style="margin:8px 0 0 0;">
+                Reserved for tokenization / normalization / stop words. Keep this section visible so users can see where future shared rules will live.
+            </p>
+        </div>
+
+        <!-- Change Control -->
+        <div class="card" style="padding:20px; margin-bottom:18px;">
+            <h2 style="margin-top:0;">4. Change Control</h2>
+            <p class="muted" style="margin:8px 0 16px 0;">
+                Save changes immediately to the system settings table. Reset restores default values.
+            </p>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="submit" class="btn">Save Settings</button>
+            </div>
+        </div>
+    </form>
+
+    <form th:action="@{/admin/settings/reset}" method="post" style="margin-top:12px;">
+        <button type="submit" class="btn btn-ghost">Reset to Default</button>
+    </form>
+</main>
+</body>
+</html>
