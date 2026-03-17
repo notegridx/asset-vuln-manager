@@ -243,14 +243,17 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
      */
     @Query("""
             select s from SoftwareInstall s
-            where (
-                    (s.normalizedVendor is not null and s.normalizedVendor <> '')
-                    and (s.cpeVendorId is null)
-                  )
-               or (
-                    (s.normalizedVendor is not null and s.normalizedVendor <> '')
-                    and (s.normalizedProduct is not null and s.normalizedProduct <> '')
-                    and (s.cpeProductId is null)
+            where s.canonicalLinkDisabled = false
+              and (
+                    (
+                      (s.normalizedVendor is not null and s.normalizedVendor <> '')
+                      and (s.cpeVendorId is null)
+                    )
+                 or (
+                      (s.normalizedVendor is not null and s.normalizedVendor <> '')
+                      and (s.normalizedProduct is not null and s.normalizedProduct <> '')
+                      and (s.cpeProductId is null)
+                    )
                   )
             order by s.id desc
             """)
@@ -262,14 +265,17 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
      */
     @Query("""
             select s.id from SoftwareInstall s
-            where (
-                    (s.normalizedVendor is not null and s.normalizedVendor <> '')
-                    and (s.cpeVendorId is null)
-                  )
-               or (
-                    (s.normalizedVendor is not null and s.normalizedVendor <> '')
-                    and (s.normalizedProduct is not null and s.normalizedProduct <> '')
-                    and (s.cpeProductId is null)
+            where s.canonicalLinkDisabled = false
+              and (
+                    (
+                      (s.normalizedVendor is not null and s.normalizedVendor <> '')
+                      and (s.cpeVendorId is null)
+                    )
+                 or (
+                      (s.normalizedVendor is not null and s.normalizedVendor <> '')
+                      and (s.normalizedProduct is not null and s.normalizedProduct <> '')
+                      and (s.cpeProductId is null)
+                    )
                   )
             order by s.id desc
             """)

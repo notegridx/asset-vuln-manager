@@ -147,6 +147,8 @@ public class SoftwareInstall {
 
     public void disableCanonicalLink() {
         this.canonicalLinkDisabled = true;
+        unlinkCanonical();
+        this.cpeName = null;
     }
 
     public void enableCanonicalLink() {

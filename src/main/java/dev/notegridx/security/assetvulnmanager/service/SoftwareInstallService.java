@@ -141,6 +141,12 @@ public class SoftwareInstallService {
         SoftwareInstall si = getRequired(softwareInstallId);
         si.updateDetails(vendor, product, version, cpeName);
 
+        if (si.isCanonicalLinkDisabled()) {
+            si.unlinkCanonical();
+            si.updateDetails(vendor, product, version, null);
+            return softwareInstallRepository.save(si);
+        }
+
         if (r.hit()) {
             si.linkCanonical(r.vendorId(), r.productId());
         } else if (r.vendorId() != null) {
@@ -195,6 +201,17 @@ public class SoftwareInstallService {
                 form.getRelease(),
                 form.getPurl()
         );
+
+        if (si.isCanonicalLinkDisabled()) {
+            si.unlinkCanonical();
+            si.updateDetails(
+                    form.getVendor(),
+                    form.getProduct(),
+                    form.getVersion(),
+                    null
+            );
+            return softwareInstallRepository.save(si);
+        }
 
         if (r.hit()) {
             si.linkCanonical(r.vendorId(), r.productId());

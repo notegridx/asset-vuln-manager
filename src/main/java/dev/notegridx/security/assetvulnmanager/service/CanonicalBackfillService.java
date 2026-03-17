@@ -116,6 +116,12 @@ public class CanonicalBackfillService {
 
                 for (SoftwareInstall s : chunk) {
                     if (processedInChunk >= remaining) break;
+                    if (s == null) continue;
+
+                    if (s.isCanonicalLinkDisabled()) {
+                        processedInChunk++;
+                        continue;
+                    }
 
                     boolean alreadyFullyLinked = (s.getCpeVendorId() != null && s.getCpeProductId() != null);
                     if (alreadyFullyLinked && !forceRebuild) {
@@ -130,7 +136,7 @@ public class CanonicalBackfillService {
                     String versionIn = coalesceNullable(s.getVersionRaw(), s.getVersion());
                     String sourceIn = safeString(s.getSource());
 
-                    if (res.hit() && !s.isCanonicalLinkDisabled()) {
+                    if (res.hit()) {
                         s.linkCanonical(res.vendorId(), res.productId());
 
                         _linked++;
@@ -264,6 +270,11 @@ public class CanonicalBackfillService {
                 for (SoftwareInstall s : chunk) {
                     if (s == null) continue;
 
+                    if (s.isCanonicalLinkDisabled()) {
+                        processedInChunk++;
+                        continue;
+                    }
+
                     boolean alreadyFullyLinked = (s.getCpeVendorId() != null && s.getCpeProductId() != null);
                     if (alreadyFullyLinked && !forceRebuild) {
                         processedInChunk++;
@@ -277,7 +288,7 @@ public class CanonicalBackfillService {
                     String versionIn = coalesceNullable(s.getVersionRaw(), s.getVersion());
                     String sourceIn = safeString(s.getSource());
 
-                    if (res.hit() && !s.isCanonicalLinkDisabled()) {
+                    if (res.hit()) {
                         s.linkCanonical(res.vendorId(), res.productId());
 
                         _linked++;

@@ -95,6 +95,9 @@ public class MatchingService {
 			if (si == null || si.getId() == null) {
 				continue;
 			}
+			if (si.isCanonicalLinkDisabled()) {
+				continue;
+			}
 
 			long assetKey = assetGroupKey(si);
 			installsByAssetKey.computeIfAbsent(assetKey, k -> new ArrayList<>()).add(si);
@@ -131,6 +134,9 @@ public class MatchingService {
 			if (si == null || si.getId() == null) {
 				continue;
 			}
+			if (si.isCanonicalLinkDisabled()) {
+				continue;
+			}
 
 			long assetKey = assetGroupKey(si);
 			Map<Long, CandidateBundle> bundles = candidateBundlesByAssetKey.get(assetKey);
@@ -161,6 +167,8 @@ public class MatchingService {
 
 		Map<String, Alert> existingAlertMap = new HashMap<>();
 		List<Long> installIds = installsAll.stream()
+				.filter(Objects::nonNull)
+				.filter(si -> !si.isCanonicalLinkDisabled())
 				.map(SoftwareInstall::getId)
 				.filter(Objects::nonNull)
 				.toList();

@@ -1,6 +1,7 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.Asset;
+import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
@@ -21,19 +22,24 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -60,11 +66,7 @@ class AdminCanonicalControllerWebMvcTest {
     @Test
     @DisplayName("GET /admin/canonical uses default page=0 and size=50")
     void view_usesDefaultPagination() throws Exception {
-        CanonicalCpeLinkingService.MappingStats stats = mock(CanonicalCpeLinkingService.MappingStats.class);
-
         when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of());
-        when(softwareRepo.findAll()).thenReturn(List.of());
-        when(linker.stats(anyList())).thenReturn(stats);
         when(softwareRepo.findCanonicalSqlPage(
                 eq(null),
                 eq(null),
@@ -103,11 +105,7 @@ class AdminCanonicalControllerWebMvcTest {
     @Test
     @DisplayName("GET /admin/canonical accepts custom page and size")
     void view_acceptsCustomPageAndSize() throws Exception {
-        CanonicalCpeLinkingService.MappingStats stats = mock(CanonicalCpeLinkingService.MappingStats.class);
-
         when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of());
-        when(softwareRepo.findAll()).thenReturn(List.of());
-        when(linker.stats(anyList())).thenReturn(stats);
         when(softwareRepo.findCanonicalSqlPage(
                 eq(null),
                 eq(null),
@@ -144,11 +142,7 @@ class AdminCanonicalControllerWebMvcTest {
     @Test
     @DisplayName("GET /admin/canonical uses base-row path for non-SQL filter")
     void view_nonSqlFilter_usesBaseRowsPath() throws Exception {
-        CanonicalCpeLinkingService.MappingStats stats = mock(CanonicalCpeLinkingService.MappingStats.class);
-
         when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of());
-        when(softwareRepo.findAll()).thenReturn(List.of());
-        when(linker.stats(anyList())).thenReturn(stats);
         when(softwareRepo.findCanonicalBaseRows(eq(null), eq(null), eq("chrome"))).thenReturn(List.of());
 
         mockMvc.perform(get("/admin/canonical")
@@ -174,12 +168,7 @@ class AdminCanonicalControllerWebMvcTest {
         Asset asset2 = new Asset("Beta");
         ReflectionTestUtils.setField(asset2, "id", 2L);
 
-        CanonicalCpeLinkingService.MappingStats stats = mock(CanonicalCpeLinkingService.MappingStats.class);
-
         when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of(asset1, asset2));
-        when(softwareRepo.findAll()).thenReturn(List.of());
-        when(linker.stats(anyList())).thenReturn(stats);
-
         when(softwareRepo.findCanonicalSqlPage(
                 eq(2L),
                 isNull(),
@@ -197,6 +186,7 @@ class AdminCanonicalControllerWebMvcTest {
                 .andExpect(content().string(containsString("Alpha")))
                 .andExpect(content().string(containsString("Beta")));
 
+        verify(assetRepo).findAll(any(Sort.class));
         verify(softwareRepo).findCanonicalSqlPage(
                 eq(2L),
                 isNull(),
@@ -204,5 +194,89 @@ class AdminCanonicalControllerWebMvcTest {
                 eq("all"),
                 any(Pageable.class)
         );
+    }
+
+    @Test
+    @DisplayName("POST /admin/canonical/link-disabled disables canonical link and clears canonical fields")
+    void setLinkDisabled_true_clearsCanonicalFields() throws Exception {
+        Asset asset = new Asset("test-asset");
+        SoftwareInstall softwareInstall = new SoftwareInstall(asset, "VirtualBox");
+        ReflectionTestUtils.setField(softwareInstall, "id", 1L);
+
+        softwareInstall.updateDetails(
+                "Oracle",
+                "VirtualBox",
+                "7.0.10",
+                "cpe:2.3:a:oracle:virtualbox:7.0.10:*:*:*:*:*:*:*"
+        );
+        softwareInstall.linkCanonical(10L, 20L);
+
+        when(softwareRepo.findById(1L)).thenReturn(Optional.of(softwareInstall));
+        when(softwareRepo.save(any(SoftwareInstall.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/admin/canonical/link-disabled")
+                        .with(csrf())
+                        .param("softwareId", "1")
+                        .param("disabled", "true")
+                        .param("redirect", "/admin/canonical"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/canonical"))
+                .andExpect(flash().attributeExists("success"));
+
+        assertThat(softwareInstall.isCanonicalLinkDisabled()).isTrue();
+        assertThat(softwareInstall.getCpeVendorId()).isNull();
+        assertThat(softwareInstall.getCpeProductId()).isNull();
+        assertThat(softwareInstall.getCpeName()).isNull();
+
+        verify(softwareRepo).findById(1L);
+        verify(softwareRepo).save(softwareInstall);
+    }
+
+    @Test
+    @DisplayName("POST /admin/canonical/link-disabled enables canonical link without restoring canonical fields")
+    void setLinkDisabled_false_enablesFlagOnly() throws Exception {
+        Asset asset = new Asset("test-asset");
+        SoftwareInstall softwareInstall = new SoftwareInstall(asset, "VirtualBox");
+        ReflectionTestUtils.setField(softwareInstall, "id", 2L);
+
+        softwareInstall.disableCanonicalLink();
+
+        when(softwareRepo.findById(2L)).thenReturn(Optional.of(softwareInstall));
+        when(softwareRepo.save(any(SoftwareInstall.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/admin/canonical/link-disabled")
+                        .with(csrf())
+                        .param("softwareId", "2")
+                        .param("disabled", "false")
+                        .param("redirect", "/admin/canonical"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/canonical"))
+                .andExpect(flash().attributeExists("success"));
+
+        assertThat(softwareInstall.isCanonicalLinkDisabled()).isFalse();
+        assertThat(softwareInstall.getCpeVendorId()).isNull();
+        assertThat(softwareInstall.getCpeProductId()).isNull();
+        assertThat(softwareInstall.getCpeName()).isNull();
+
+        verify(softwareRepo).findById(2L);
+        verify(softwareRepo).save(softwareInstall);
+    }
+
+    @Test
+    @DisplayName("POST /admin/canonical/link-disabled returns error when software install is not found")
+    void setLinkDisabled_notFound() throws Exception {
+        when(softwareRepo.findById(anyLong())).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/admin/canonical/link-disabled")
+                        .with(csrf())
+                        .param("softwareId", "999")
+                        .param("disabled", "true")
+                        .param("redirect", "/admin/canonical"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/canonical"))
+                .andExpect(flash().attributeExists("error"));
+
+        verify(softwareRepo).findById(999L);
+        verify(softwareRepo, never()).save(any());
     }
 }

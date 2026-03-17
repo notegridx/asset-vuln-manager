@@ -187,7 +187,12 @@ public class AdminCanonicalController {
             return safeRedirectOrDefault(redirect, "/admin/canonical");
         }
 
-        s.setCanonicalLinkDisabled(disabled);
+        if (disabled) {
+            s.disableCanonicalLink();
+        } else {
+            s.enableCanonicalLink();
+        }
+
         softwareRepo.save(s);
         invalidateStatsCache();
 

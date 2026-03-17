@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class CanonicalBackfillServiceTest {
@@ -147,6 +146,84 @@ class CanonicalBackfillServiceTest {
         assertThat(saved.getVendorRaw()).isEqualTo("same-vendor");
         assertThat(saved.getProductRaw()).isEqualTo("same-product");
         assertThat(saved.getVersionRaw()).isEqualTo("3.1");
+    }
+
+    @Test
+    @DisplayName("backfill skips canonicalLinkDisabled row even when resolve returns vendorOnly")
+    void backfill_skipsDisabledRow() {
+        SoftwareInstall disabled = software("Oracle", "VirtualBox", "7.0.10");
+        disabled.disableCanonicalLink();
+
+        SoftwareInstall enabled = software("Oracle", "VirtualBox", "7.0.11");
+
+        when(softwareRepo.findNeedsCanonicalLink()).thenReturn(List.of(disabled, enabled));
+        when(linker.resolve(enabled))
+                .thenReturn(CanonicalCpeLinkingService.ResolveResult.vendorOnly(
+                        101L, "oracle", "virtualbox", "product unresolved", false
+                ));
+
+        when(unresolvedMappingRepository.findTopByVendorRawAndProductRaw("Oracle", "VirtualBox"))
+                .thenReturn(Optional.empty());
+
+        CanonicalBackfillService.BackfillResult result = service.backfill(100, false);
+
+        assertThat(result.scanned()).isEqualTo(2);
+        assertThat(result.linked()).isEqualTo(1);
+        assertThat(result.missed()).isEqualTo(1);
+        assertThat(result.forceRebuild()).isFalse();
+
+        assertThat(disabled.getCpeVendorId()).isNull();
+        assertThat(disabled.getCpeProductId()).isNull();
+
+        assertThat(enabled.getCpeVendorId()).isEqualTo(101L);
+        assertThat(enabled.getCpeProductId()).isNull();
+
+        verify(linker, never()).resolve(disabled);
+        verify(linker, times(1)).resolve(enabled);
+        verify(unresolvedMappingRepository, times(1))
+                .findTopByVendorRawAndProductRaw("Oracle", "VirtualBox");
+        verify(unresolvedMappingRepository, times(1))
+                .save(any(UnresolvedMapping.class));
+    }
+
+    @Test
+    @DisplayName("backfillForSoftwareIds skips canonicalLinkDisabled row even when resolve returns vendorOnly")
+    void backfillForSoftwareIds_skipsDisabledRow() {
+        SoftwareInstall disabled = software("Oracle", "VirtualBox", "7.0.10");
+        disabled.disableCanonicalLink();
+
+        SoftwareInstall enabled = software("Oracle", "VirtualBox", "7.0.11");
+
+        when(softwareRepo.findAllById(List.of(10L, 11L))).thenReturn(List.of(disabled, enabled));
+        when(linker.resolve(enabled))
+                .thenReturn(CanonicalCpeLinkingService.ResolveResult.vendorOnly(
+                        101L, "oracle", "virtualbox", "product unresolved", false
+                ));
+
+        when(unresolvedMappingRepository.findTopByVendorRawAndProductRaw("Oracle", "VirtualBox"))
+                .thenReturn(Optional.empty());
+
+        CanonicalBackfillService.BackfillResult result =
+                service.backfillForSoftwareIds(List.of(10L, 11L), false);
+
+        assertThat(result.scanned()).isEqualTo(2);
+        assertThat(result.linked()).isEqualTo(1);
+        assertThat(result.missed()).isEqualTo(1);
+        assertThat(result.forceRebuild()).isFalse();
+
+        assertThat(disabled.getCpeVendorId()).isNull();
+        assertThat(disabled.getCpeProductId()).isNull();
+
+        assertThat(enabled.getCpeVendorId()).isEqualTo(101L);
+        assertThat(enabled.getCpeProductId()).isNull();
+
+        verify(softwareRepo).findAllById(List.of(10L, 11L));
+        verify(linker, never()).resolve(disabled);
+        verify(linker, times(1)).resolve(enabled);
+        verify(unresolvedMappingRepository, times(1))
+                .findTopByVendorRawAndProductRaw("Oracle", "VirtualBox");
+        verify(unresolvedMappingRepository, times(1))
+                .save(any(UnresolvedMapping.class));
     }
 
     private SoftwareInstall software(String vendorRaw, String productRaw, String versionRaw) {
