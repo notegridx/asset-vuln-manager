@@ -1304,5 +1304,15 @@ CREATE TABLE IF NOT EXISTS system_settings
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
     ) ENGINE=InnoDB;
 
-CREATE INDEX idx_system_settings_updated_at
-    ON system_settings(updated_at);
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+          FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'system_settings'
+           AND index_name = 'idx_system_settings_updated_at'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_system_settings_updated_at ON system_settings(updated_at)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
