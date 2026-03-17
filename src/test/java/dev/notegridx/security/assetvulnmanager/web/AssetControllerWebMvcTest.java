@@ -53,7 +53,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("GET /assets returns asset list page")
     void list_returnsAssetsPage() throws Exception {
-
         when(assetService.findAll()).thenReturn(List.of());
 
         mockMvc.perform(get("/assets"))
@@ -65,7 +64,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("GET /assets/new returns new form")
     void newForm_returnsNewPage() throws Exception {
-
         mockMvc.perform(get("/assets/new"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("assets/new"))
@@ -75,7 +73,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("POST /assets with valid form redirects to list")
     void create_valid_redirectsToList() throws Exception {
-
         mockMvc.perform(post("/assets")
                         .with(csrf())
                         .param("externalKey", "asset-001")
@@ -87,18 +84,43 @@ class AssetControllerWebMvcTest {
                 .andExpect(redirectedUrl("/assets"));
 
         verify(assetService).create(
-                "asset-001",
-                "Test Asset",
-                "SERVER",
-                "ops",
-                "created by test"
+                eq("asset-001"),
+                eq("Test Asset"),
+                eq("SERVER"),
+                eq("ops"),
+                eq("created by test"),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull()
         );
     }
 
     @Test
     @DisplayName("POST /assets without required name stays on form")
     void create_invalid_returnsNewPage() throws Exception {
-
         mockMvc.perform(post("/assets")
                         .with(csrf())
                         .param("externalKey", "asset-001")
@@ -112,10 +134,17 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("POST /assets duplicate external key stays on form")
     void create_duplicateExternalKey_returnsNewPage() throws Exception {
-
         doThrow(new DataIntegrityViolationException("duplicate"))
                 .when(assetService)
-                .create(any(), any(), any(), any(), any());
+                .create(
+                        any(), any(), any(), any(), any(),
+                        any(), any(), any(), any(), any(),
+                        any(), any(), any(), any(), any(),
+                        any(), any(), any(), any(), any(),
+                        any(), any(), any(), any(), any(),
+                        any(), any(), any(), any(), any(),
+                        any()
+                );
 
         mockMvc.perform(post("/assets")
                         .with(csrf())
@@ -129,7 +158,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("POST /assets/{id}/delete redirects to list")
     void delete_redirectsToList() throws Exception {
-
         mockMvc.perform(post("/assets/10/delete")
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
@@ -141,7 +169,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("GET /assets/{id} returns detail page")
     void detail_returnsDetailPage() throws Exception {
-
         Asset asset = mock(Asset.class);
 
         when(assetService.getRequired(1L)).thenReturn(asset);
@@ -163,7 +190,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("GET /assets/{id} returns 404 when asset does not exist")
     void detail_notFound_returns404() throws Exception {
-
         when(assetService.getRequired(999L))
                 .thenThrow(new EntityNotFoundException("Asset not found. id=999"));
 
@@ -176,7 +202,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("GET /assets/{assetId}/software/new returns software form")
     void newSoftware_returnsForm() throws Exception {
-
         Asset asset = mock(Asset.class);
         when(assetService.getRequired(1L)).thenReturn(asset);
 
@@ -190,7 +215,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("POST /assets/{assetId}/software with valid form redirects to asset detail")
     void createSoftware_valid_redirectsToAssetDetail() throws Exception {
-
         Asset asset = mock(Asset.class);
         when(assetService.getRequired(1L)).thenReturn(asset);
 
@@ -218,7 +242,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("GET /assets/{id}/edit returns edit page")
     void edit_returnsEditPage() throws Exception {
-
         Asset asset = new Asset("Test Asset");
         asset.updateDetails("asset-001", "SERVER", "ops", "note");
         asset.setSource("OSQUERY");
@@ -262,7 +285,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("POST /assets/{id}/edit with valid form redirects to detail")
     void update_valid_redirectsToDetail() throws Exception {
-
         Asset asset = mock(Asset.class);
         when(assetService.getRequired(1L)).thenReturn(asset);
 
@@ -341,7 +363,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("POST /assets/{id}/edit without required name returns edit page")
     void update_invalid_returnsEditPage() throws Exception {
-
         Asset asset = mock(Asset.class);
         when(assetService.getRequired(1L)).thenReturn(asset);
 
@@ -359,7 +380,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("POST /assets/{id}/edit duplicate external key returns edit page")
     void update_duplicateExternalKey_returnsEditPage() throws Exception {
-
         Asset asset = mock(Asset.class);
         when(assetService.getRequired(1L)).thenReturn(asset);
 
@@ -387,7 +407,6 @@ class AssetControllerWebMvcTest {
     @Test
     @DisplayName("GET /assets/{id}/edit returns 404 when asset does not exist")
     void edit_notFound_returns404() throws Exception {
-
         when(assetService.getRequired(999L))
                 .thenThrow(new EntityNotFoundException("Asset not found. id=999"));
 
