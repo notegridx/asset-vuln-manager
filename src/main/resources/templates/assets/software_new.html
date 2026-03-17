@@ -46,17 +46,73 @@
       <input type="text" th:field="*{sourceType}" placeholder="e.g. OSQUERY_PROGRAMS / JSON_UPLOAD / WINGET">
     </div>
 
+    <!-- Hidden canonical selection -->
+    <input type="hidden" id="cpeVendorId" th:field="*{cpeVendorId}">
+    <input type="hidden" id="cpeProductId" th:field="*{cpeProductId}">
+
     <div class="field">
       <label>Vendor</label>
-      <input id="vendor" type="text" th:field="*{vendor}" list="vendor-suggest" placeholder="e.g. microsoft">
-      <datalist id="vendor-suggest"></datalist>
+      <input id="vendor"
+             type="text"
+             th:field="*{vendor}"
+             placeholder="e.g. microsoft"
+             autocomplete="off">
+
+      <div id="vendor-suggest-box"
+           class="card"
+           style="display:none; margin-top:8px; padding:8px;">
+        <div id="vendor-suggest-exact-wrap" style="display:none;">
+          <div class="muted" style="font-size:12px; margin-bottom:6px;">Exact</div>
+          <div id="vendor-suggest-exact" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+
+        <div id="vendor-suggest-others-wrap" style="display:none; margin-top:10px;">
+          <div class="muted" style="font-size:12px; margin-bottom:6px;">Others</div>
+          <div id="vendor-suggest-others" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+
+        <div id="vendor-suggest-empty" class="muted" style="display:none; font-size:12px;">
+          No vendor candidates.
+        </div>
+      </div>
+
+      <div id="vendor-selection-state" class="muted" style="font-size:12px; margin-top:6px;">
+        Type to search canonical vendor candidates.
+      </div>
+
       <div class="error" th:if="${#fields.hasErrors('vendor')}" th:errors="*{vendor}">Vendor error</div>
     </div>
 
     <div class="field">
       <label>Product *</label>
-      <input id="product" type="text" th:field="*{product}" list="product-suggest" placeholder="e.g. edge">
-      <datalist id="product-suggest"></datalist>
+      <input id="product"
+             type="text"
+             th:field="*{product}"
+             placeholder="e.g. edge"
+             autocomplete="off">
+
+      <div id="product-suggest-box"
+           class="card"
+           style="display:none; margin-top:8px; padding:8px;">
+        <div id="product-suggest-exact-wrap" style="display:none;">
+          <div class="muted" style="font-size:12px; margin-bottom:6px;">Exact</div>
+          <div id="product-suggest-exact" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+
+        <div id="product-suggest-others-wrap" style="display:none; margin-top:10px;">
+          <div class="muted" style="font-size:12px; margin-bottom:6px;">Others</div>
+          <div id="product-suggest-others" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+
+        <div id="product-suggest-empty" class="muted" style="display:none; font-size:12px;">
+          No product candidates.
+        </div>
+      </div>
+
+      <div id="product-selection-state" class="muted" style="font-size:12px; margin-top:6px;">
+        Select a vendor first, then search canonical product candidates.
+      </div>
+
       <div class="error" th:if="${#fields.hasErrors('product')}" th:errors="*{product}">Product error</div>
     </div>
 
@@ -159,67 +215,254 @@
 
     <script>
       (function () {
+          const MIN_CHARS = 2;
+
           const vendorEl = document.getElementById('vendor');
           const productEl = document.getElementById('product');
-          const vendorList = document.getElementById('vendor-suggest');
-          const productList = document.getElementById('product-suggest');
 
-          if (vendorEl && productEl && vendorList && productList) {
-              function debounce(fn, wait) {
-                  let t = null;
-                  return function (...args) {
-                      clearTimeout(t);
-                      t = setTimeout(() => fn.apply(this, args), wait);
-                  };
-              }
+          const cpeVendorIdEl = document.getElementById('cpeVendorId');
+          const cpeProductIdEl = document.getElementById('cpeProductId');
 
-              function setOptions(datalist, items) {
-                  datalist.innerHTML = '';
-                  for (const it of items) {
-                      const opt = document.createElement('option');
-                      opt.value = it.value;
-                      opt.label = it.label || it.value;
-                      datalist.appendChild(opt);
-                  }
-              }
+          const vendorBox = document.getElementById('vendor-suggest-box');
+          const vendorExactWrap = document.getElementById('vendor-suggest-exact-wrap');
+          const vendorOthersWrap = document.getElementById('vendor-suggest-others-wrap');
+          const vendorExact = document.getElementById('vendor-suggest-exact');
+          const vendorOthers = document.getElementById('vendor-suggest-others');
+          const vendorEmpty = document.getElementById('vendor-suggest-empty');
+          const vendorState = document.getElementById('vendor-selection-state');
 
-              async function fetchJson(url) {
-                  try {
-                      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-                      if (!res.ok) return [];
-                      return await res.json();
-                  } catch (e) {
-                      return [];
-                  }
-              }
+          const productBox = document.getElementById('product-suggest-box');
+          const productExactWrap = document.getElementById('product-suggest-exact-wrap');
+          const productOthersWrap = document.getElementById('product-suggest-others-wrap');
+          const productExact = document.getElementById('product-suggest-exact');
+          const productOthers = document.getElementById('product-suggest-others');
+          const productEmpty = document.getElementById('product-suggest-empty');
+          const productState = document.getElementById('product-selection-state');
 
-              const updateVendors = debounce(async () => {
-                  const q = vendorEl.value || '';
-                  if (q.length < 2) {
-                      vendorList.innerHTML = '';
-                      return;
-                  }
-                  const items = await fetchJson(`/api/dict/vendors?q=${encodeURIComponent(q)}`);
-                  setOptions(vendorList, items);
-              }, 200);
+          if (!vendorEl || !productEl || !cpeVendorIdEl || !cpeProductIdEl) {
+              return;
+          }
 
-              const updateProducts = debounce(async () => {
-                  const vendor = vendorEl.value || '';
-                  const q = productEl.value || '';
-                  if (!vendor || q.length < 2) {
-                      productList.innerHTML = '';
-                      return;
-                  }
-                  const items = await fetchJson(`/api/dict/products?vendor=${encodeURIComponent(vendor)}&q=${encodeURIComponent(q)}`);
-                  setOptions(productList, items);
-              }, 200);
+          function debounce(fn, wait) {
+              let t = null;
+              return function (...args) {
+                  clearTimeout(t);
+                  t = setTimeout(() => fn.apply(this, args), wait);
+              };
+          }
 
-              vendorEl.addEventListener('input', function () {
-                  updateVendors();
-                  productList.innerHTML = '';
+          function escapeHtml(s) {
+              return String(s ?? '')
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;');
+          }
+
+          function chipHtml(item) {
+              const label = escapeHtml(item.label || item.nameNorm || '');
+              const norm = escapeHtml(item.nameNorm || '');
+              const id = escapeHtml(item.id);
+              return ''
+                  + '<button type="button" class="btn btn-ghost btn-sm suggest-chip"'
+                  + ' data-id="' + id + '"'
+                  + ' data-label="' + label + '"'
+                  + ' data-name-norm="' + norm + '"'
+                  + ' style="display:inline-flex; align-items:center; gap:6px;">'
+                  + '<span>' + label + '</span>'
+                  + '<span class="muted" style="font-size:11px;">#' + id + '</span>'
+                  + '</button>';
+          }
+
+          function setGroupedOptions(exactContainer, othersContainer, emptyEl, exactWrap, othersWrap, data, onPick) {
+              const exactItems = Array.isArray(data?.exact) ? data.exact : [];
+              const otherItems = Array.isArray(data?.others) ? data.others : [];
+
+              exactContainer.innerHTML = exactItems.map(chipHtml).join('');
+              othersContainer.innerHTML = otherItems.map(chipHtml).join('');
+
+              exactWrap.style.display = exactItems.length > 0 ? '' : 'none';
+              othersWrap.style.display = otherItems.length > 0 ? '' : 'none';
+              emptyEl.style.display = (exactItems.length === 0 && otherItems.length === 0) ? '' : 'none';
+
+              exactContainer.querySelectorAll('.suggest-chip').forEach(btn => {
+                  btn.addEventListener('click', () => onPick(btn));
               });
+              othersContainer.querySelectorAll('.suggest-chip').forEach(btn => {
+                  btn.addEventListener('click', () => onPick(btn));
+              });
+          }
 
-              productEl.addEventListener('input', updateProducts);
+          function hideVendorBox() {
+              vendorBox.style.display = 'none';
+          }
+
+          function showVendorBox() {
+              vendorBox.style.display = '';
+          }
+
+          function hideProductBox() {
+              productBox.style.display = 'none';
+          }
+
+          function showProductBox() {
+              productBox.style.display = '';
+          }
+
+          async function fetchJson(url) {
+              try {
+                  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                  if (!res.ok) {
+                      return null;
+                  }
+                  return await res.json();
+              } catch (e) {
+                  return null;
+              }
+          }
+
+          function resetVendorSelectionState() {
+              cpeVendorIdEl.value = '';
+              vendorState.textContent = 'Type to search canonical vendor candidates.';
+
+              cpeProductIdEl.value = '';
+              productState.textContent = 'Select a vendor first, then search canonical product candidates.';
+              hideProductBox();
+              productExact.innerHTML = '';
+              productOthers.innerHTML = '';
+          }
+
+          function resetProductSelectionState() {
+              cpeProductIdEl.value = '';
+              productState.textContent = 'Select a vendor first, then search canonical product candidates.';
+          }
+
+          const updateVendors = debounce(async () => {
+              const q = (vendorEl.value || '').trim();
+
+              if (q.length < MIN_CHARS) {
+                  hideVendorBox();
+                  vendorExact.innerHTML = '';
+                  vendorOthers.innerHTML = '';
+                  return;
+              }
+
+              const data = await fetchJson(`/api/dict/vendors/search2?q=${encodeURIComponent(q)}`);
+              if (!data) {
+                  hideVendorBox();
+                  return;
+              }
+
+              setGroupedOptions(
+                  vendorExact,
+                  vendorOthers,
+                  vendorEmpty,
+                  vendorExactWrap,
+                  vendorOthersWrap,
+                  data,
+                  (btn) => {
+                      vendorEl.value = btn.dataset.label || '';
+                      cpeVendorIdEl.value = btn.dataset.id || '';
+                      vendorState.textContent = 'Selected canonical vendor: #' + (btn.dataset.id || '') + ' ' + (btn.dataset.nameNorm || btn.dataset.label || '');
+
+                      cpeProductIdEl.value = '';
+                      productEl.value = '';
+                      productState.textContent = 'Type to search canonical product candidates for the selected vendor.';
+                      hideVendorBox();
+                      hideProductBox();
+                  }
+              );
+
+              showVendorBox();
+          }, 200);
+
+          const updateProducts = debounce(async () => {
+              const vendorId = (cpeVendorIdEl.value || '').trim();
+              const q = (productEl.value || '').trim();
+
+              if (!vendorId) {
+                  hideProductBox();
+                  productExact.innerHTML = '';
+                  productOthers.innerHTML = '';
+                  productState.textContent = 'Select a vendor first, then search canonical product candidates.';
+                  return;
+              }
+
+              if (q.length < MIN_CHARS) {
+                  hideProductBox();
+                  productExact.innerHTML = '';
+                  productOthers.innerHTML = '';
+                  productState.textContent = 'Type to search canonical product candidates for the selected vendor.';
+                  return;
+              }
+
+              const data = await fetchJson(`/api/dict/products/search2?vendorId=${encodeURIComponent(vendorId)}&q=${encodeURIComponent(q)}`);
+              if (!data) {
+                  hideProductBox();
+                  return;
+              }
+
+              setGroupedOptions(
+                  productExact,
+                  productOthers,
+                  productEmpty,
+                  productExactWrap,
+                  productOthersWrap,
+                  data,
+                  (btn) => {
+                      productEl.value = btn.dataset.label || '';
+                      cpeProductIdEl.value = btn.dataset.id || '';
+                      productState.textContent = 'Selected canonical product: #' + (btn.dataset.id || '') + ' ' + (btn.dataset.nameNorm || btn.dataset.label || '');
+                      hideProductBox();
+                  }
+              );
+
+              showProductBox();
+          }, 200);
+
+          vendorEl.addEventListener('input', function () {
+              resetVendorSelectionState();
+              updateVendors();
+          });
+
+          vendorEl.addEventListener('focus', function () {
+              const q = (vendorEl.value || '').trim();
+              if (q.length >= MIN_CHARS) {
+                  updateVendors();
+              }
+          });
+
+          productEl.addEventListener('input', function () {
+              resetProductSelectionState();
+              updateProducts();
+          });
+
+          productEl.addEventListener('focus', function () {
+              const vendorId = (cpeVendorIdEl.value || '').trim();
+              const q = (productEl.value || '').trim();
+              if (vendorId && q.length >= MIN_CHARS) {
+                  updateProducts();
+              }
+          });
+
+          document.addEventListener('click', function (e) {
+              if (vendorBox && !vendorBox.contains(e.target) && e.target !== vendorEl) {
+                  hideVendorBox();
+              }
+              if (productBox && !productBox.contains(e.target) && e.target !== productEl) {
+                  hideProductBox();
+              }
+          });
+
+          // Initial hint for edit-back / validation error re-render
+          if ((cpeVendorIdEl.value || '').trim()) {
+              vendorState.textContent = 'Canonical vendor is selected: #' + cpeVendorIdEl.value;
+          }
+          if ((cpeProductIdEl.value || '').trim()) {
+              productState.textContent = 'Canonical product is selected: #' + cpeProductIdEl.value;
+          } else if ((cpeVendorIdEl.value || '').trim()) {
+              productState.textContent = 'Type to search canonical product candidates for the selected vendor.';
           }
       })();
     </script>

@@ -51,6 +51,11 @@ public class SoftwareInstallForm {
 
 	private String purl;
 
+	// selector UI / explicit canonical selection
+	private Long cpeVendorId;
+
+	private Long cpeProductId;
+
 	public String getType() {
 		return type;
 	}
@@ -58,7 +63,6 @@ public class SoftwareInstallForm {
 	public void setType(String type) {
 		this.type = type;
 	}
-
 
 	public String getSource() {
 		return source;
@@ -68,7 +72,6 @@ public class SoftwareInstallForm {
 		this.source = source;
 	}
 
-
 	public String getSourceType() {
 		return sourceType;
 	}
@@ -76,7 +79,6 @@ public class SoftwareInstallForm {
 	public void setSourceType(String sourceType) {
 		this.sourceType = sourceType;
 	}
-
 
 	public String getVendor() {
 		return vendor;
@@ -86,7 +88,6 @@ public class SoftwareInstallForm {
 		this.vendor = vendor;
 	}
 
-
 	public String getProduct() {
 		return product;
 	}
@@ -94,7 +95,6 @@ public class SoftwareInstallForm {
 	public void setProduct(String product) {
 		this.product = product;
 	}
-
 
 	public String getVersion() {
 		return version;
@@ -104,7 +104,6 @@ public class SoftwareInstallForm {
 		this.version = version;
 	}
 
-
 	public String getCpeName() {
 		return cpeName;
 	}
@@ -112,7 +111,6 @@ public class SoftwareInstallForm {
 	public void setCpeName(String cpeName) {
 		this.cpeName = cpeName;
 	}
-
 
 	public String getVendorRaw() {
 		return vendorRaw;
@@ -122,7 +120,6 @@ public class SoftwareInstallForm {
 		this.vendorRaw = vendorRaw;
 	}
 
-
 	public String getProductRaw() {
 		return productRaw;
 	}
@@ -130,7 +127,6 @@ public class SoftwareInstallForm {
 	public void setProductRaw(String productRaw) {
 		this.productRaw = productRaw;
 	}
-
 
 	public String getVersionRaw() {
 		return versionRaw;
@@ -140,7 +136,6 @@ public class SoftwareInstallForm {
 		this.versionRaw = versionRaw;
 	}
 
-
 	public String getLastSeenAt() {
 		return lastSeenAt;
 	}
@@ -148,7 +143,6 @@ public class SoftwareInstallForm {
 	public void setLastSeenAt(String lastSeenAt) {
 		this.lastSeenAt = lastSeenAt;
 	}
-
 
 	public String getInstalledAt() {
 		return installedAt;
@@ -158,7 +152,6 @@ public class SoftwareInstallForm {
 		this.installedAt = installedAt;
 	}
 
-
 	public String getInstallLocation() {
 		return installLocation;
 	}
@@ -166,7 +159,6 @@ public class SoftwareInstallForm {
 	public void setInstallLocation(String installLocation) {
 		this.installLocation = installLocation;
 	}
-
 
 	public String getPackageIdentifier() {
 		return packageIdentifier;
@@ -176,7 +168,6 @@ public class SoftwareInstallForm {
 		this.packageIdentifier = packageIdentifier;
 	}
 
-
 	public String getArch() {
 		return arch;
 	}
@@ -184,7 +175,6 @@ public class SoftwareInstallForm {
 	public void setArch(String arch) {
 		this.arch = arch;
 	}
-
 
 	public String getPublisher() {
 		return publisher;
@@ -194,7 +184,6 @@ public class SoftwareInstallForm {
 		this.publisher = publisher;
 	}
 
-
 	public String getBundleId() {
 		return bundleId;
 	}
@@ -202,7 +191,6 @@ public class SoftwareInstallForm {
 	public void setBundleId(String bundleId) {
 		this.bundleId = bundleId;
 	}
-
 
 	public String getPackageManager() {
 		return packageManager;
@@ -212,7 +200,6 @@ public class SoftwareInstallForm {
 		this.packageManager = packageManager;
 	}
 
-
 	public String getInstallSource() {
 		return installSource;
 	}
@@ -220,7 +207,6 @@ public class SoftwareInstallForm {
 	public void setInstallSource(String installSource) {
 		this.installSource = installSource;
 	}
-
 
 	public String getEdition() {
 		return edition;
@@ -230,7 +216,6 @@ public class SoftwareInstallForm {
 		this.edition = edition;
 	}
 
-
 	public String getChannel() {
 		return channel;
 	}
@@ -238,7 +223,6 @@ public class SoftwareInstallForm {
 	public void setChannel(String channel) {
 		this.channel = channel;
 	}
-
 
 	public String getRelease() {
 		return release;
@@ -248,12 +232,27 @@ public class SoftwareInstallForm {
 		this.release = release;
 	}
 
-
 	public String getPurl() {
 		return purl;
 	}
 
 	public void setPurl(String purl) {
 		this.purl = purl;
+	}
+
+	public Long getCpeVendorId() {
+		return cpeVendorId;
+	}
+
+	public void setCpeVendorId(Long cpeVendorId) {
+		this.cpeVendorId = cpeVendorId;
+	}
+
+	public Long getCpeProductId() {
+		return cpeProductId;
+	}
+
+	public void setCpeProductId(Long cpeProductId) {
+		this.cpeProductId = cpeProductId;
 	}
 }

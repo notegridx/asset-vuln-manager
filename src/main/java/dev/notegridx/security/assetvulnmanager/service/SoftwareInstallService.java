@@ -70,13 +70,6 @@ public class SoftwareInstallService {
             throw new IllegalArgumentException("asset is required");
         }
 
-        SoftwareDictionaryValidator.Resolve r;
-        if (dictMode == DictMode.STRICT) {
-            r = dictValidator.resolveOrThrow(form.getVendor(), form.getProduct());
-        } else {
-            r = dictValidator.resolve(form.getVendor(), form.getProduct());
-        }
-
         SoftwareInstall si = new SoftwareInstall(asset, form.getProduct());
 
         si.updateDetails(
@@ -112,13 +105,7 @@ public class SoftwareInstallService {
                 form.getPurl()
         );
 
-        if (r.hit()) {
-            si.linkCanonical(r.vendorId(), r.productId());
-        } else if (r.vendorId() != null) {
-            si.linkCanonical(r.vendorId(), null);
-        } else {
-            si.unlinkCanonical();
-        }
+        applyCanonicalSelectionOrResolve(si, form.getVendor(), form.getProduct(), form.getCpeVendorId(), form.getCpeProductId());
 
         return softwareInstallRepository.save(si);
     }
@@ -160,13 +147,6 @@ public class SoftwareInstallService {
 
     @Transactional
     public SoftwareInstall updateEditableFields(Long softwareInstallId, SoftwareInstallForm form) {
-        SoftwareDictionaryValidator.Resolve r;
-        if (dictMode == DictMode.STRICT) {
-            r = dictValidator.resolveOrThrow(form.getVendor(), form.getProduct());
-        } else {
-            r = dictValidator.resolve(form.getVendor(), form.getProduct());
-        }
-
         SoftwareInstall si = getRequired(softwareInstallId);
 
         si.updateDetails(
@@ -213,6 +193,35 @@ public class SoftwareInstallService {
             return softwareInstallRepository.save(si);
         }
 
+        applyCanonicalSelectionOrResolve(si, form.getVendor(), form.getProduct(), form.getCpeVendorId(), form.getCpeProductId());
+
+        return softwareInstallRepository.save(si);
+    }
+
+    private void applyCanonicalSelectionOrResolve(
+            SoftwareInstall si,
+            String vendor,
+            String product,
+            Long selectedVendorId,
+            Long selectedProductId
+    ) {
+        if (selectedVendorId != null && selectedProductId != null) {
+            si.linkCanonical(selectedVendorId, selectedProductId);
+            return;
+        }
+
+        if (selectedVendorId != null) {
+            si.linkCanonical(selectedVendorId, null);
+            return;
+        }
+
+        SoftwareDictionaryValidator.Resolve r;
+        if (dictMode == DictMode.STRICT) {
+            r = dictValidator.resolveOrThrow(vendor, product);
+        } else {
+            r = dictValidator.resolve(vendor, product);
+        }
+
         if (r.hit()) {
             si.linkCanonical(r.vendorId(), r.productId());
         } else if (r.vendorId() != null) {
@@ -220,8 +229,6 @@ public class SoftwareInstallService {
         } else {
             si.unlinkCanonical();
         }
-
-        return softwareInstallRepository.save(si);
     }
 
     private static SoftwareType parseSoftwareType(String value) {
