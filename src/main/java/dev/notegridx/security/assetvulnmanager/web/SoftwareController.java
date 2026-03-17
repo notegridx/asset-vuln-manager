@@ -121,6 +121,9 @@ public class SoftwareController {
         form.setVersion(s.getVersion());
         form.setCpeName(s.getCpeName());
 
+        form.setCpeVendorId(s.getCpeVendorId());
+        form.setCpeProductId(s.getCpeProductId());
+
         form.setVendorRaw(s.getVendorRaw());
         form.setProductRaw(s.getProductRaw());
         form.setVersionRaw(s.getVersionRaw());
