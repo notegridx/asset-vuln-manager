@@ -133,9 +133,15 @@ public class DictionarySuggestController {
 
     /**
      * Vendor suggestions for string-based search UI such as unresolved mappings.
-     * Search uses prefix match first and falls back to contains match.
+     * Search uses:
+     *   1) whole-string prefix
+     *   2) whole-string contains
+     *   3) token fallback (prefix / contains)
      *
-     * Example: GET /api/dict/vendors?q=mic
+     * Example:
+     *   "git"           -> git / github / ...
+     *   "the git"       -> fallback token "git"
+     *   "git developer" -> fallback token "git"
      */
     @GetMapping("/api/dict/vendors")
     public List<SuggestItem> suggestVendors(
@@ -147,15 +153,7 @@ public class DictionarySuggestController {
         String v0 = normalizer.normalizeVendor(q);
         if (v0 == null || v0.isBlank() || v0.length() < minChars) return List.of();
 
-        String v1 = synonymService.canonicalVendorOrSame(v0);
-        if (v1 == null || v1.isBlank() || v1.length() < minChars) return List.of();
-
-        List<CpeVendor> rows = vendorRepo.findTop20ByNameNormStartingWithOrderByNameNormAsc(v1);
-
-        // Fallback to contains search when no prefix match exists.
-        if (rows.isEmpty()) {
-            rows = vendorRepo.findTop20ByNameNormContainingOrderByNameNormAsc(v1);
-        }
+        List<CpeVendor> rows = searchVendorsFlexible(v0, minChars, otherLimit);
 
         return rows.stream()
                 .limit(otherLimit)
@@ -168,10 +166,15 @@ public class DictionarySuggestController {
 
     /**
      * Product suggestions for string-based search UI such as unresolved mappings.
-     * Resolve the vendor first, then search products under that vendor
-     * using prefix match and fall back to contains match.
+     * Resolve the vendor first (with token fallback), then search products under
+     * that vendor using:
+     *   1) whole-string prefix
+     *   2) whole-string contains
+     *   3) token fallback (prefix / contains)
      *
-     * Example: GET /api/dict/products?vendor=microsoft&q=ed
+     * Example:
+     *   vendor="the git", q="desktop"
+     *   -> vendor fallback token "git" can still resolve vendor candidates
      */
     @GetMapping("/api/dict/products")
     public List<SuggestItem> suggestProducts(
@@ -181,29 +184,13 @@ public class DictionarySuggestController {
         int minChars = getInt(KEY_CANONICAL_CANDIDATE_MIN_CHARS, 2);
         int otherLimit = getInt(KEY_CANONICAL_CANDIDATE_OTHER_LIMIT, 30);
 
-        String v0 = normalizer.normalizeVendor(vendorRaw);
-        if (v0 == null || v0.isBlank()) return List.of();
-
-        String v1 = synonymService.canonicalVendorOrSame(v0);
-        if (v1 == null || v1.isBlank()) return List.of();
-
-        CpeVendor vendor = vendorRepo.findByNameNorm(v1).orElse(null);
+        CpeVendor vendor = resolveVendorForProductSearch(vendorRaw, minChars);
         if (vendor == null) return List.of();
 
         String p0 = normalizer.normalizeProduct(q);
         if (p0 == null || p0.isBlank() || p0.length() < minChars) return List.of();
 
-        String p1 = synonymService.canonicalProductOrSame(v1, p0);
-        if (p1 == null || p1.isBlank() || p1.length() < minChars) return List.of();
-
-        List<CpeProduct> rows = productRepo
-                .findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendor.getId(), p1);
-
-        // Fallback to contains search when no prefix match exists.
-        if (rows.isEmpty()) {
-            rows = productRepo
-                    .findTop20ByVendorIdAndNameNormContainingOrderByNameNormAsc(vendor.getId(), p1);
-        }
+        List<CpeProduct> rows = searchProductsFlexible(vendor, p0, minChars, otherLimit);
 
         return rows.stream()
                 .limit(otherLimit)
@@ -212,6 +199,138 @@ public class DictionarySuggestController {
                         (p.getDisplayName() == null || p.getDisplayName().isBlank()) ? p.getNameNorm() : p.getDisplayName()
                 ))
                 .toList();
+    }
+
+    /* =========================================================
+     * Helpers for unresolved string-based suggestion UI
+     * ========================================================= */
+
+    private List<CpeVendor> searchVendorsFlexible(String rawNorm, int minChars, int limit) {
+        Map<Long, CpeVendor> out = new LinkedHashMap<>();
+
+        for (String candidate : expandQueriesForLookup(rawNorm, minChars)) {
+            String canonical = synonymService.canonicalVendorOrSame(candidate);
+            if (canonical == null || canonical.isBlank() || canonical.length() < minChars) continue;
+
+            List<CpeVendor> prefix = vendorRepo.findTop20ByNameNormStartingWithOrderByNameNormAsc(canonical);
+            appendVendors(out, prefix, limit);
+
+            if (out.size() >= limit) break;
+
+            if (prefix.isEmpty()) {
+                List<CpeVendor> contains = vendorRepo.findTop20ByNameNormContainingOrderByNameNormAsc(canonical);
+                appendVendors(out, contains, limit);
+                if (out.size() >= limit) break;
+            }
+        }
+
+        return new ArrayList<>(out.values());
+    }
+
+    private CpeVendor resolveVendorForProductSearch(String vendorRaw, int minChars) {
+        String v0 = normalizer.normalizeVendor(vendorRaw);
+        if (v0 == null || v0.isBlank()) return null;
+
+        for (String candidate : expandQueriesForLookup(v0, minChars)) {
+            String canonical = synonymService.canonicalVendorOrSame(candidate);
+            if (canonical == null || canonical.isBlank()) continue;
+
+            CpeVendor exact = vendorRepo.findByNameNorm(canonical).orElse(null);
+            if (exact != null) return exact;
+
+            List<CpeVendor> prefix = vendorRepo.findTop20ByNameNormStartingWithOrderByNameNormAsc(canonical);
+            if (!prefix.isEmpty()) return prefix.get(0);
+
+            List<CpeVendor> contains = vendorRepo.findTop20ByNameNormContainingOrderByNameNormAsc(canonical);
+            if (!contains.isEmpty()) return contains.get(0);
+        }
+
+        return null;
+    }
+
+    private List<CpeProduct> searchProductsFlexible(CpeVendor vendor, String rawNorm, int minChars, int limit) {
+        Map<Long, CpeProduct> out = new LinkedHashMap<>();
+
+        for (String candidate : expandQueriesForLookup(rawNorm, minChars)) {
+            String canonical = synonymService.canonicalProductOrSame(vendor.getNameNorm(), candidate);
+            if (canonical == null || canonical.isBlank() || canonical.length() < minChars) continue;
+
+            List<CpeProduct> prefix = productRepo
+                    .findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendor.getId(), canonical);
+            appendProducts(out, prefix, limit);
+
+            if (out.size() >= limit) break;
+
+            if (prefix.isEmpty()) {
+                List<CpeProduct> contains = productRepo
+                        .findTop20ByVendorIdAndNameNormContainingOrderByNameNormAsc(vendor.getId(), canonical);
+                appendProducts(out, contains, limit);
+                if (out.size() >= limit) break;
+            }
+        }
+
+        return new ArrayList<>(out.values());
+    }
+
+    private List<String> expandQueriesForLookup(String normalized, int minChars) {
+        if (normalized == null || normalized.isBlank()) return List.of();
+
+        List<String> queries = new ArrayList<>();
+        putQuery(queries, normalized);
+
+        String[] parts = normalized.trim().split("\\s+");
+        if (parts.length <= 1) return queries;
+
+        // 末尾トークンを優先
+        putQuery(queries, parts[parts.length - 1]);
+
+        // 全トークンも追加
+        for (String part : parts) {
+            if (part == null) continue;
+            String s = part.trim();
+            if (s.length() < minChars) continue;
+            if (isNoiseToken(s)) continue;
+            putQuery(queries, s);
+        }
+
+        return queries;
+    }
+
+    private void putQuery(List<String> queries, String q) {
+        if (q == null) return;
+        String s = q.trim();
+        if (s.isEmpty()) return;
+        if (!queries.contains(s)) {
+            queries.add(s);
+        }
+    }
+
+    private boolean isNoiseToken(String s) {
+        return switch (s) {
+            case "the", "and", "for", "with", "from", "inc", "inc.", "corp", "corp.", "co", "co.",
+                 "ltd", "ltd.", "llc", "gmbh", "sa", "ag", "plc",
+                 "software", "systems", "system", "developer", "developers",
+                 "development", "community" -> true;
+            default -> false;
+        };
+    }
+
+    private void appendVendors(Map<Long, CpeVendor> out, List<CpeVendor> rows, int limit) {
+        if (rows == null || rows.isEmpty()) return;
+        for (CpeVendor row : rows) {
+            if (row == null || row.getId() == null) continue;
+            out.putIfAbsent(row.getId(), row);
+            if (out.size() >= limit) return;
+        }
+    }
+
+    private void appendProducts(Map<Long, CpeProduct> out, List<CpeProduct> rows, int limit) {
+        if (rows == null || rows.isEmpty()) return;
+        for (CpeProduct row : rows) {
+            if (row == null || row.getId() == null) continue;
+            out.putIfAbsent(row.getId(), row);
+            if (out.size() >= limit) return;
+        }
     }
 
     // =========================================================
@@ -226,21 +345,12 @@ public class DictionarySuggestController {
         int exactLimit = getInt(KEY_CANONICAL_CANDIDATE_EXACT_LIMIT, 5);
         int otherLimit = getInt(KEY_CANONICAL_CANDIDATE_OTHER_LIMIT, 30);
 
-        String v = normalizer.normalizeVendor(q);
-        if (v == null || v.length() < minChars) return new SuggestGroupResponse(List.of(), List.of());
+        String v0 = normalizer.normalizeVendor(q);
+        if (v0 == null || v0.isBlank() || v0.length() < minChars) {
+            return new SuggestGroupResponse(List.of(), List.of());
+        }
 
-        // Exact matches.
-        List<SuggestIdItem> exact = vendorRepo.findExact(v).stream()
-                .limit(exactLimit)
-                .map(this::toSuggest)
-                .toList();
-
-        // Other candidates: prefix first, then contains.
-        List<CpeVendor> prefix = vendorRepo.findPrefixOrderByLength(v);
-        List<CpeVendor> contains = vendorRepo.findContainsOrderByLength(v);
-
-        List<SuggestIdItem> others = dedupeVendors(exact, prefix, contains, otherLimit);
-        return new SuggestGroupResponse(exact, others);
+        return searchVendorsGroupedFlexible(v0, minChars, exactLimit, otherLimit);
     }
 
     @GetMapping("/api/dict/products/search2")
@@ -252,24 +362,21 @@ public class DictionarySuggestController {
         int exactLimit = getInt(KEY_CANONICAL_CANDIDATE_EXACT_LIMIT, 5);
         int otherLimit = getInt(KEY_CANONICAL_CANDIDATE_OTHER_LIMIT, 30);
 
-        if (vendorId == null) return new SuggestGroupResponse(List.of(), List.of());
+        if (vendorId == null) {
+            return new SuggestGroupResponse(List.of(), List.of());
+        }
 
-        String p = normalizer.normalizeProduct(q);
-        if (p == null || p.length() < minChars) return new SuggestGroupResponse(List.of(), List.of());
+        CpeVendor vendor = vendorRepo.findById(vendorId).orElse(null);
+        if (vendor == null) {
+            return new SuggestGroupResponse(List.of(), List.of());
+        }
 
-        // Exact matches within the selected vendor.
-        List<CpeProduct> exactRows = productRepo.findExactByVendorId(vendorId, p);
-        List<SuggestIdItem> exact = exactRows.stream()
-                .limit(exactLimit)
-                .map(this::toSuggestProduct)
-                .toList();
+        String p0 = normalizer.normalizeProduct(q);
+        if (p0 == null || p0.isBlank() || p0.length() < minChars) {
+            return new SuggestGroupResponse(List.of(), List.of());
+        }
 
-        // Other candidates: prefix first, then contains.
-        List<CpeProduct> prefix = productRepo.findTop50ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendorId, p);
-        List<CpeProduct> contains = productRepo.findTop50ByVendorIdAndNameNormContainsOrderByNameNormAsc(vendorId, p);
-
-        List<SuggestIdItem> others = dedupeProducts(exact, prefix, contains, otherLimit);
-        return new SuggestGroupResponse(exact, others);
+        return searchProductsGroupedFlexible(vendor, p0, minChars, exactLimit, otherLimit);
     }
 
     // =========================================================
@@ -343,6 +450,99 @@ public class DictionarySuggestController {
                 .orElse(defaultValue);
     }
 
+    private SuggestGroupResponse searchVendorsGroupedFlexible(
+            String rawNorm,
+            int minChars,
+            int exactLimit,
+            int otherLimit
+    ) {
+        Map<Long, SuggestIdItem> exactMap = new LinkedHashMap<>();
+        Map<Long, SuggestIdItem> otherMap = new LinkedHashMap<>();
+
+        for (String candidate : expandQueriesForLookup(rawNorm, minChars)) {
+            String canonical = synonymService.canonicalVendorOrSame(candidate);
+            if (canonical == null || canonical.isBlank() || canonical.length() < minChars) continue;
+
+            for (CpeVendor v : vendorRepo.findExact(canonical)) {
+                putSuggest(exactMap, toSuggest(v), exactLimit);
+                if (exactMap.size() >= exactLimit) break;
+            }
+
+            for (CpeVendor v : vendorRepo.findPrefixOrderByLength(canonical)) {
+                putSuggest(otherMap, toSuggest(v), otherLimit);
+                if (otherMap.size() >= otherLimit) break;
+            }
+
+            for (CpeVendor v : vendorRepo.findContainsOrderByLength(canonical)) {
+                putSuggest(otherMap, toSuggest(v), otherLimit);
+                if (otherMap.size() >= otherLimit) break;
+            }
+
+            if (exactMap.size() >= exactLimit && otherMap.size() >= otherLimit) {
+                break;
+            }
+        }
+
+        for (Long id : exactMap.keySet()) {
+            otherMap.remove(id);
+        }
+
+        return new SuggestGroupResponse(
+                new ArrayList<>(exactMap.values()),
+                new ArrayList<>(otherMap.values())
+        );
+    }
+
+    private SuggestGroupResponse searchProductsGroupedFlexible(
+            CpeVendor vendor,
+            String rawNorm,
+            int minChars,
+            int exactLimit,
+            int otherLimit
+    ) {
+        Map<Long, SuggestIdItem> exactMap = new LinkedHashMap<>();
+        Map<Long, SuggestIdItem> otherMap = new LinkedHashMap<>();
+
+        for (String candidate : expandQueriesForLookup(rawNorm, minChars)) {
+            String canonical = synonymService.canonicalProductOrSame(vendor.getNameNorm(), candidate);
+            if (canonical == null || canonical.isBlank() || canonical.length() < minChars) continue;
+
+            for (CpeProduct p : productRepo.findExactByVendorId(vendor.getId(), canonical)) {
+                putSuggest(exactMap, toSuggestProduct(p), exactLimit);
+                if (exactMap.size() >= exactLimit) break;
+            }
+
+            for (CpeProduct p : productRepo.findTop50ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendor.getId(), canonical)) {
+                putSuggest(otherMap, toSuggestProduct(p), otherLimit);
+                if (otherMap.size() >= otherLimit) break;
+            }
+
+            for (CpeProduct p : productRepo.findTop50ByVendorIdAndNameNormContainsOrderByNameNormAsc(vendor.getId(), canonical)) {
+                putSuggest(otherMap, toSuggestProduct(p), otherLimit);
+                if (otherMap.size() >= otherLimit) break;
+            }
+
+            if (exactMap.size() >= exactLimit && otherMap.size() >= otherLimit) {
+                break;
+            }
+        }
+
+        for (Long id : exactMap.keySet()) {
+            otherMap.remove(id);
+        }
+
+        return new SuggestGroupResponse(
+                new ArrayList<>(exactMap.values()),
+                new ArrayList<>(otherMap.values())
+        );
+    }
+
+    private void putSuggest(Map<Long, SuggestIdItem> out, SuggestIdItem item, int limit) {
+        if (item == null || item.id() == null) return;
+        if (out.size() >= limit && !out.containsKey(item.id())) return;
+        out.putIfAbsent(item.id(), item);
+    }
+
     private static List<Long> parseIdCsv(String csv) {
         if (csv == null || csv.isBlank()) return List.of();
 
@@ -352,7 +552,6 @@ public class DictionarySuggestController {
             String s = part.trim();
             if (s.isEmpty()) continue;
 
-            // Migration-friendly: allow formats such as "97:google".
             var m = ID_PREFIX.matcher(s);
             if (!m.find()) continue;
 
@@ -404,7 +603,6 @@ public class DictionarySuggestController {
             ));
         }
 
-        // Remove exact matches from the "others" list.
         for (SuggestIdItem e : exact) map.remove(e.id());
 
         List<SuggestIdItem> out = new ArrayList<>(map.values());
@@ -436,7 +634,6 @@ public class DictionarySuggestController {
             ));
         }
 
-        // Remove exact matches from the "others" list.
         for (SuggestIdItem e : exact) map.remove(e.id());
 
         List<SuggestIdItem> out = new ArrayList<>(map.values());
