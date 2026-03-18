@@ -3,10 +3,11 @@ package dev.notegridx.security.assetvulnmanager.web;
 import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
 import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
 import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
-import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
-import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
-import dev.notegridx.security.assetvulnmanager.domain.enums.Severity;
-import dev.notegridx.security.assetvulnmanager.repository.*;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
+import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
+import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
+import dev.notegridx.security.assetvulnmanager.service.DashboardStatsService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -14,33 +15,32 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.time.*;
-import java.util.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 
 @Controller
 public class DashboardController {
 
-    private final AssetRepository assetRepository;
-    private final SoftwareInstallRepository softwareInstallRepository;
+    private final DashboardStatsService dashboardStatsService;
     private final VulnerabilityRepository vulnerabilityRepository;
-    private final AlertRepository alertRepository;
     private final CpeVendorRepository cpeVendorRepository;
     private final CpeProductRepository cpeProductRepository;
     private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
 
     public DashboardController(
-            AssetRepository assetRepository,
-            SoftwareInstallRepository softwareInstallRepository,
+            DashboardStatsService dashboardStatsService,
             VulnerabilityRepository vulnerabilityRepository,
-            AlertRepository alertRepository,
             CpeVendorRepository cpeVendorRepository,
             CpeProductRepository cpeProductRepository,
             VulnerabilityAffectedCpeRepository affectedCpeRepository
     ) {
-        this.assetRepository = assetRepository;
-        this.softwareInstallRepository = softwareInstallRepository;
+        this.dashboardStatsService = dashboardStatsService;
         this.vulnerabilityRepository = vulnerabilityRepository;
-        this.alertRepository = alertRepository;
         this.cpeVendorRepository = cpeVendorRepository;
         this.cpeProductRepository = cpeProductRepository;
         this.affectedCpeRepository = affectedCpeRepository;
@@ -64,7 +64,10 @@ public class DashboardController {
         CUSTOM("Custom");
 
         final String label;
-        TopRange(String label) { this.label = label; }
+
+        TopRange(String label) {
+            this.label = label;
+        }
 
         static TopRange parse(String raw) {
             if (raw == null) return ALL;
@@ -85,8 +88,6 @@ public class DashboardController {
     private record RangeWindow(LocalDateTime from, LocalDateTime to) {}
 
     private static RangeWindow computeWindow(TopRange range, LocalDate fromDate, LocalDate toDate) {
-        // Dashboardは「最近更新されたCVE傾向」を見る用途が多いので lastModifiedAt フィルタ前提
-        // to は「今日の終端」に寄せる（LocalDateTimeで inclusive 運用）
         LocalDate today = LocalDate.now();
         LocalDateTime to = today.atTime(23, 59, 59);
 
@@ -105,13 +106,13 @@ public class DashboardController {
             }
 
             case CUSTOM -> {
-                // CUSTOM は from/to が無ければ ALL 扱い（UIからは date を入れる想定だが、安全側に倒す）
-                if (fromDate == null && toDate == null) yield new RangeWindow(null, null);
+                if (fromDate == null && toDate == null) {
+                    yield new RangeWindow(null, null);
+                }
 
                 LocalDateTime f = (fromDate != null) ? fromDate.atStartOfDay() : null;
                 LocalDateTime t = (toDate != null) ? toDate.atTime(23, 59, 59) : null;
 
-                // from > to の場合は入れ替え（ユーザ操作ミス救済）
                 if (f != null && t != null && f.isAfter(t)) {
                     LocalDateTime tmp = f;
                     f = t.toLocalDate().atStartOfDay();
@@ -129,66 +130,36 @@ public class DashboardController {
             @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             Model model
     ) {
-        long assets = assetRepository.count();
-        long installs = softwareInstallRepository.count();
-        long vulns = vulnerabilityRepository.count();
+        DashboardStatsService.DashboardViewStats s = dashboardStatsService.load();
 
-        long openAlerts = alertRepository.countByStatus(AlertStatus.OPEN);
-        long openAlertsConfirmed = alertRepository.countByStatusAndCertainty(AlertStatus.OPEN, AlertCertainty.CONFIRMED);
-        long openAlertsUnconfirmed = alertRepository.countByStatusAndCertainty(AlertStatus.OPEN, AlertCertainty.UNCONFIRMED);
+        model.addAttribute("assets", s.assets());
+        model.addAttribute("installs", s.installs());
+        model.addAttribute("vulns", s.vulns());
 
-        // Per severity (NONEは除外)
-        long openAlertsCriticalConfirmed = alertRepository.countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus.OPEN, Severity.CRITICAL, AlertCertainty.CONFIRMED);
-        long openAlertsCriticalUnconfirmed = alertRepository.countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus.OPEN, Severity.CRITICAL, AlertCertainty.UNCONFIRMED);
-        long openAlertsCritical = openAlertsCriticalConfirmed + openAlertsCriticalUnconfirmed;
+        model.addAttribute("openAlerts", s.openAlerts());
+        model.addAttribute("openAlertsConfirmed", s.openAlertsConfirmed());
+        model.addAttribute("openAlertsUnconfirmed", s.openAlertsUnconfirmed());
 
-        long openAlertsHighConfirmed = alertRepository.countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus.OPEN, Severity.HIGH, AlertCertainty.CONFIRMED);
-        long openAlertsHighUnconfirmed = alertRepository.countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus.OPEN, Severity.HIGH, AlertCertainty.UNCONFIRMED);
-        long openAlertsHigh = openAlertsHighConfirmed + openAlertsHighUnconfirmed;
+        model.addAttribute("openAlertsCritical", s.openAlertsCritical());
+        model.addAttribute("openAlertsCriticalConfirmed", s.openAlertsCriticalConfirmed());
+        model.addAttribute("openAlertsCriticalUnconfirmed", s.openAlertsCriticalUnconfirmed());
 
-        long openAlertsMediumConfirmed = alertRepository.countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus.OPEN, Severity.MEDIUM, AlertCertainty.CONFIRMED);
-        long openAlertsMediumUnconfirmed = alertRepository.countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus.OPEN, Severity.MEDIUM, AlertCertainty.UNCONFIRMED);
-        long openAlertsMedium = openAlertsMediumConfirmed + openAlertsMediumUnconfirmed;
+        model.addAttribute("openAlertsHigh", s.openAlertsHigh());
+        model.addAttribute("openAlertsHighConfirmed", s.openAlertsHighConfirmed());
+        model.addAttribute("openAlertsHighUnconfirmed", s.openAlertsHighUnconfirmed());
 
-        long openAlertsLowConfirmed = alertRepository.countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus.OPEN, Severity.LOW, AlertCertainty.CONFIRMED);
-        long openAlertsLowUnconfirmed = alertRepository.countByStatusAndVulnerability_SeverityAndCertainty(AlertStatus.OPEN, Severity.LOW, AlertCertainty.UNCONFIRMED);
-        long openAlertsLow = openAlertsLowConfirmed + openAlertsLowUnconfirmed;
+        model.addAttribute("openAlertsMedium", s.openAlertsMedium());
+        model.addAttribute("openAlertsMediumConfirmed", s.openAlertsMediumConfirmed());
+        model.addAttribute("openAlertsMediumUnconfirmed", s.openAlertsMediumUnconfirmed());
 
-        long unmappedInstalls = softwareInstallRepository.countUnmappedCpe();
+        model.addAttribute("openAlertsLow", s.openAlertsLow());
+        model.addAttribute("openAlertsLowConfirmed", s.openAlertsLowConfirmed());
+        model.addAttribute("openAlertsLowUnconfirmed", s.openAlertsLowUnconfirmed());
 
-        long cpeVendors = cpeVendorRepository.count();
-        long cpeProducts = cpeProductRepository.count();
-
-        boolean needsSetup = (assets == 0) || (vulns == 0) || (cpeVendors == 0);
-
-        model.addAttribute("assets", assets);
-        model.addAttribute("installs", installs);
-        model.addAttribute("vulns", vulns);
-
-        model.addAttribute("openAlerts", openAlerts);
-        model.addAttribute("openAlertsConfirmed", openAlertsConfirmed);
-        model.addAttribute("openAlertsUnconfirmed", openAlertsUnconfirmed);
-
-        model.addAttribute("openAlertsCritical", openAlertsCritical);
-        model.addAttribute("openAlertsCriticalConfirmed", openAlertsCriticalConfirmed);
-        model.addAttribute("openAlertsCriticalUnconfirmed", openAlertsCriticalUnconfirmed);
-
-        model.addAttribute("openAlertsHigh", openAlertsHigh);
-        model.addAttribute("openAlertsHighConfirmed", openAlertsHighConfirmed);
-        model.addAttribute("openAlertsHighUnconfirmed", openAlertsHighUnconfirmed);
-
-        model.addAttribute("openAlertsMedium", openAlertsMedium);
-        model.addAttribute("openAlertsMediumConfirmed", openAlertsMediumConfirmed);
-        model.addAttribute("openAlertsMediumUnconfirmed", openAlertsMediumUnconfirmed);
-
-        model.addAttribute("openAlertsLow", openAlertsLow);
-        model.addAttribute("openAlertsLowConfirmed", openAlertsLowConfirmed);
-        model.addAttribute("openAlertsLowUnconfirmed", openAlertsLowUnconfirmed);
-
-        model.addAttribute("unmappedInstalls", unmappedInstalls);
-        model.addAttribute("cpeVendors", cpeVendors);
-        model.addAttribute("cpeProducts", cpeProducts);
-        model.addAttribute("needsSetup", needsSetup);
+        model.addAttribute("unmappedInstalls", s.unmappedInstalls());
+        model.addAttribute("cpeVendors", s.cpeVendors());
+        model.addAttribute("cpeProducts", s.cpeProducts());
+        model.addAttribute("needsSetup", s.needsSetup());
 
         long criticalNoCpeCount = vulnerabilityRepository.countCriticalWithoutAffectedCpes();
         List<Vulnerability> criticalNoCpe = vulnerabilityRepository
@@ -198,14 +169,9 @@ public class DashboardController {
         model.addAttribute("criticalNoCpeCount", criticalNoCpeCount);
         model.addAttribute("criticalNoCpe", criticalNoCpe);
 
-        // =========================================================
-        // Top 10 Vendors / Products by distinct CVE count (with time range)
-        // =========================================================
-
         TopRange tr = TopRange.parse(range);
         RangeWindow w = computeWindow(tr, from, to);
 
-        // UI state
         model.addAttribute("topRange", tr.name());
         model.addAttribute("topRangeLabel", tr.label);
         model.addAttribute("from", from);
@@ -249,7 +215,9 @@ public class DashboardController {
                     CpeVendor v = vendorById.get(id);
                     String label = (v == null)
                             ? ("vendor#" + id)
-                            : ((v.getDisplayName() == null || v.getDisplayName().isBlank()) ? v.getNameNorm() : v.getDisplayName());
+                            : ((v.getDisplayName() == null || v.getDisplayName().isBlank())
+                            ? v.getNameNorm()
+                            : v.getDisplayName());
                     return new TopCountRow(id, label, cnt);
                 })
                 .toList();
@@ -261,7 +229,9 @@ public class DashboardController {
                     CpeProduct p = productById.get(id);
                     String label = (p == null)
                             ? ("product#" + id)
-                            : ((p.getDisplayName() == null || p.getDisplayName().isBlank()) ? p.getNameNorm() : p.getDisplayName());
+                            : ((p.getDisplayName() == null || p.getDisplayName().isBlank())
+                            ? p.getNameNorm()
+                            : p.getDisplayName());
                     return new TopCountRow(id, label, cnt);
                 })
                 .toList();
