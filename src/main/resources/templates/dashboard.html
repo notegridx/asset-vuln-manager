@@ -341,7 +341,7 @@
                             <td class="dash-top10-count"><span class="pill" th:text="${r.cveCount}">0</span></td>
                         </tr>
                         <tr th:if="${topVendors == null || #lists.isEmpty(topVendors)}">
-                            <td colspan="3" class="muted">No items.</td>
+                            <td colspan="3" class="muted">Loading...</td>
                         </tr>
                         </tbody>
                     </table>
@@ -374,7 +374,7 @@
                             <td class="dash-top10-count"><span class="pill" th:text="${r.cveCount}">0</span></td>
                         </tr>
                         <tr th:if="${topProducts == null || #lists.isEmpty(topProducts)}">
-                            <td colspan="3" class="muted">No items.</td>
+                            <td colspan="3" class="muted">Loading...</td>
                         </tr>
                         </tbody>
                     </table>
@@ -398,10 +398,12 @@
 
             if (!form || !sel || !vendorsTbody || !productsTbody) return;
 
-            // ===== helpers =====
             const escapeHtml = (s) => String(s ?? '')
-                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-                .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
 
             function applyRangeInputsState() {
                 const isCustom = sel.value === 'CUSTOM';
@@ -409,7 +411,6 @@
                 if (to) to.disabled = !isCustom;
 
                 if (!isCustom) {
-                    // preset 時は date 値を送らない（Controller側はrangeだけで決まる）
                     if (from) from.value = '';
                     if (to) to.value = '';
                 }
@@ -420,6 +421,7 @@
                     vendorsTbody.innerHTML = `<tr><td colspan="3" class="muted">No items.</td></tr>`;
                     return;
                 }
+
                 vendorsTbody.innerHTML = rows.map((r, idx) => {
                     const label = escapeHtml(r.label);
                     const id = escapeHtml(r.id);
@@ -446,6 +448,7 @@
                     productsTbody.innerHTML = `<tr><td colspan="3" class="muted" style="padding:10px;">No items.</td></tr>`;
                     return;
                 }
+
                 productsTbody.innerHTML = rows.map((r, idx) => {
                     const label = escapeHtml(r.label);
                     const id = escapeHtml(r.id);
@@ -464,13 +467,13 @@
             }
 
             function renderLoadingBoth() {
-                vendorsTbody.innerHTML = `<tr><td colspan="3" class="muted" style="padding:10px;">Loading…</td></tr>`;
-                productsTbody.innerHTML = `<tr><td colspan="3" class="muted" style="padding:10px;">Loading…</td></tr>`;
+                vendorsTbody.innerHTML = `<tr><td colspan="3" class="muted" style="padding:10px;">Loading...</td></tr>`;
+                productsTbody.innerHTML = `<tr><td colspan="3" class="muted" style="padding:10px;">Loading...</td></tr>`;
             }
 
             function renderLoadingProducts(label) {
                 if (scope) scope.textContent = label ? ('— for ' + label) : '';
-                productsTbody.innerHTML = `<tr><td class="muted" colspan="3" style="padding:10px;">Loading…</td></tr>`;
+                productsTbody.innerHTML = `<tr><td class="muted" colspan="3" style="padding:10px;">Loading...</td></tr>`;
             }
 
             function clearSelectedVendor() {
@@ -478,7 +481,6 @@
                     .forEach(el => el.classList.remove('is-selected'));
             }
 
-            // 現在の Range 条件（Vendorクリック時にも同じ条件を付ける）
             function currentRangeParams() {
                 const p = new URLSearchParams();
                 p.set('range', sel.value || 'ALL');
@@ -490,17 +492,9 @@
                 return p;
             }
 
-            // ===== state =====
             let selectedVendorId = null;
 
-            // ===== events =====
-            sel.addEventListener('change', applyRangeInputsState);
-            applyRangeInputsState();
-
-            // Range Apply: prevent reload → fetch → redraw
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-
+            async function loadOverallTop() {
                 renderLoadingBoth();
                 selectedVendorId = null;
                 clearSelectedVendor();
@@ -508,28 +502,33 @@
 
                 try {
                     const qs = currentRangeParams();
-                    // ★ ここが新API（後述）: vendors + products をまとめて返す
                     const res = await fetch('/api/dashboard/top-cve-count?' + qs.toString(), {
                         headers: { 'Accept': 'application/json' }
                     });
                     if (!res.ok) throw new Error('HTTP ' + res.status);
-                    const data = await res.json();
 
-                    // data.vendors / data.products を想定
+                    const data = await res.json();
                     renderVendors(data.vendors || []);
                     renderProducts(data.products || []);
 
-                    // Current pill を更新したい場合（APIが label を返す想定）
-                    if (currentPill && data.rangeLabel) currentPill.textContent = data.rangeLabel;
-
+                    if (currentPill && data.rangeLabel) {
+                        currentPill.textContent = data.rangeLabel;
+                    }
                 } catch (err) {
                     vendorsTbody.innerHTML = `<tr><td colspan="3" class="muted" style="padding:10px;">Failed to load.</td></tr>`;
                     productsTbody.innerHTML = `<tr><td colspan="3" class="muted" style="padding:10px;">Failed to load.</td></tr>`;
                     console.error(err);
                 }
+            }
+
+            sel.addEventListener('change', applyRangeInputsState);
+            applyRangeInputsState();
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await loadOverallTop();
             });
 
-            // Vendor click (event delegation): vendors が差し替わっても生きる
             vendorsTbody.addEventListener('click', async (e) => {
                 const row = e.target.closest('.js-top-vendor-row');
                 if (!row) return;
@@ -537,26 +536,8 @@
                 const vendorId = row.getAttribute('data-vendor-id');
                 const vendorLabel = row.getAttribute('data-vendor-label') || '';
 
-                // toggle: click same vendor => reset to "overall top products" (現状の products 表を再取得)
                 if (selectedVendorId && String(selectedVendorId) === String(vendorId)) {
-                    selectedVendorId = null;
-                    clearSelectedVendor();
-                    if (scope) scope.textContent = '';
-
-                    // overall を取り直す（range条件は維持）
-                    try {
-                        renderLoadingProducts('');
-                        const qs = currentRangeParams();
-                        const res = await fetch('/api/dashboard/top-cve-count?' + qs.toString(), {
-                            headers: { 'Accept': 'application/json' }
-                        });
-                        if (!res.ok) throw new Error('HTTP ' + res.status);
-                        const data = await res.json();
-                        renderProducts(data.products || []);
-                    } catch (err) {
-                        productsTbody.innerHTML = `<tr><td class="muted" colspan="3" style="padding:10px;">Failed to load.</td></tr>`;
-                        console.error(err);
-                    }
+                    await loadOverallTop();
                     return;
                 }
 
@@ -564,23 +545,24 @@
                 clearSelectedVendor();
                 row.classList.add('is-selected');
 
-                // vendor-scope products（range条件も付与する）
                 try {
                     renderLoadingProducts(vendorLabel);
 
                     const qs = currentRangeParams();
                     qs.set('vendorId', vendorId);
 
-                    // ★ 既存APIを拡張して range/from/to を受けられるようにする（後述）
                     const res = await fetch('/api/dashboard/top-products?' + qs.toString(), {
                         headers: { 'Accept': 'application/json' }
                     });
                     if (!res.ok) throw new Error('HTTP ' + res.status);
+
                     const data = await res.json();
 
-                    if (scope) scope.textContent = data && data.vendorLabel
-                        ? ('— for ' + data.vendorLabel)
-                        : ('— for ' + vendorLabel);
+                    if (scope) {
+                        scope.textContent = data && data.vendorLabel
+                            ? ('— for ' + data.vendorLabel)
+                            : ('— for ' + vendorLabel);
+                    }
 
                     const rows = data?.rows ?? data?.products ?? data?.topProducts ?? [];
                     renderProducts(rows);
@@ -591,6 +573,8 @@
                     console.error(err);
                 }
             });
+
+            loadOverallTop();
         })();
     </script>
 

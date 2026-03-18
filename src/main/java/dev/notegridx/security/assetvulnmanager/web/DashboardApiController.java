@@ -5,6 +5,7 @@ import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
+import dev.notegridx.security.assetvulnmanager.service.DashboardTopService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,15 +21,18 @@ public class DashboardApiController {
     private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
     private final CpeProductRepository cpeProductRepository;
     private final CpeVendorRepository cpeVendorRepository;
+    private final DashboardTopService dashboardTopService;
 
     public DashboardApiController(
             VulnerabilityAffectedCpeRepository affectedCpeRepository,
             CpeProductRepository cpeProductRepository,
-            CpeVendorRepository cpeVendorRepository
+            CpeVendorRepository cpeVendorRepository,
+            DashboardTopService dashboardTopService
     ) {
         this.affectedCpeRepository = affectedCpeRepository;
         this.cpeProductRepository = cpeProductRepository;
         this.cpeVendorRepository = cpeVendorRepository;
+        this.dashboardTopService = dashboardTopService;
     }
 
     public record TopCountRow(Long id, String label, long cnt) {}
@@ -38,6 +42,29 @@ public class DashboardApiController {
             String vendorLabel,
             List<TopCountRow> rows
     ) {}
+
+    public record TopResponse(
+            List<TopCountRow> vendors,
+            List<TopCountRow> products
+    ) {}
+
+    @GetMapping("/api/dashboard/top")
+    public TopResponse top(
+            @RequestParam(name = "from", required = false) LocalDateTime from,
+            @RequestParam(name = "to", required = false) LocalDateTime to,
+            @RequestParam(name = "limit", defaultValue = "10") int limit
+    ) {
+        DashboardTopService.TopResponse r = dashboardTopService.load(from, to, limit);
+
+        return new TopResponse(
+                r.vendors().stream()
+                        .map(x -> new TopCountRow(x.id(), x.label(), x.cnt()))
+                        .toList(),
+                r.products().stream()
+                        .map(x -> new TopCountRow(x.id(), x.label(), x.cnt()))
+                        .toList()
+        );
+    }
 
     @GetMapping("/api/dashboard/top-products")
     public TopProductsResponse topProductsByVendor(
@@ -122,23 +149,24 @@ public class DashboardApiController {
                     fromDt = LocalDate.parse(from).atStartOfDay();
                 }
                 if (to != null && !to.isBlank()) {
-                    // to は “その日を含む” が自然なので +1 day startOfDay にして < toDt 扱いにする
+                    // Inclusive end-date handling: [from, to+1day)
                     toDt = LocalDate.parse(to).plusDays(1).atStartOfDay();
                 }
             }
             default -> {
-                // ALL: null,null のまま
+                // ALL: keep from/to as null
             }
         }
 
-        List<Object[]> vRows = affectedCpeRepository
-                .countTopVendorsByDistinctCvesWithinLastModified(fromDt, toDt, PageRequest.of(0, lim));
+        DashboardTopService.TopResponse r = dashboardTopService.load(fromDt, toDt, lim);
 
-        List<Object[]> pRows = affectedCpeRepository
-                .countTopProductsByDistinctCvesWithinLastModified(fromDt, toDt, PageRequest.of(0, lim));
+        List<TopCountRow> vendors = r.vendors().stream()
+                .map(x -> new TopCountRow(x.id(), x.label(), x.cnt()))
+                .toList();
 
-        List<TopCountRow> vendors = resolveVendorRows(vRows);
-        List<TopCountRow> products = resolveProductRows(pRows);
+        List<TopCountRow> products = r.products().stream()
+                .map(x -> new TopCountRow(x.id(), x.label(), x.cnt()))
+                .toList();
 
         return new TopCveCountResponse(range, toRangeLabel(range, from, to), vendors, products);
     }

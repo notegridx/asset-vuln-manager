@@ -1,11 +1,6 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
-import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
-import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
 import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
-import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
-import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
-import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
 import dev.notegridx.security.assetvulnmanager.service.DashboardStatsService;
 import org.springframework.data.domain.PageRequest;
@@ -17,33 +12,21 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
 
 @Controller
 public class DashboardController {
 
     private final DashboardStatsService dashboardStatsService;
     private final VulnerabilityRepository vulnerabilityRepository;
-    private final CpeVendorRepository cpeVendorRepository;
-    private final CpeProductRepository cpeProductRepository;
-    private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
 
     public DashboardController(
             DashboardStatsService dashboardStatsService,
-            VulnerabilityRepository vulnerabilityRepository,
-            CpeVendorRepository cpeVendorRepository,
-            CpeProductRepository cpeProductRepository,
-            VulnerabilityAffectedCpeRepository affectedCpeRepository
+            VulnerabilityRepository vulnerabilityRepository
     ) {
         this.dashboardStatsService = dashboardStatsService;
         this.vulnerabilityRepository = vulnerabilityRepository;
-        this.cpeVendorRepository = cpeVendorRepository;
-        this.cpeProductRepository = cpeProductRepository;
-        this.affectedCpeRepository = affectedCpeRepository;
     }
 
     @GetMapping("/")
@@ -177,67 +160,10 @@ public class DashboardController {
         model.addAttribute("from", from);
         model.addAttribute("to", to);
 
-        List<Object[]> topVendorRows = affectedCpeRepository.countTopVendorsByDistinctCvesWithinLastModified(
-                w.from(), w.to(), PageRequest.of(0, 10)
-        );
-        List<Object[]> topProductRows = affectedCpeRepository.countTopProductsByDistinctCvesWithinLastModified(
-                w.from(), w.to(), PageRequest.of(0, 10)
-        );
-
-        List<Long> topVendorIds = topVendorRows.stream()
-                .map(r -> (Long) r[0])
-                .filter(Objects::nonNull)
-                .toList();
-
-        List<Long> topProductIds = topProductRows.stream()
-                .map(r -> (Long) r[0])
-                .filter(Objects::nonNull)
-                .toList();
-
-        Map<Long, CpeVendor> vendorById = new HashMap<>();
-        if (!topVendorIds.isEmpty()) {
-            for (CpeVendor v : cpeVendorRepository.findAllById(topVendorIds)) {
-                vendorById.put(v.getId(), v);
-            }
-        }
-
-        Map<Long, CpeProduct> productById = new HashMap<>();
-        if (!topProductIds.isEmpty()) {
-            for (CpeProduct p : cpeProductRepository.findAllById(topProductIds)) {
-                productById.put(p.getId(), p);
-            }
-        }
-
-        List<TopCountRow> topVendors = topVendorRows.stream()
-                .map(r -> {
-                    Long id = (Long) r[0];
-                    long cnt = ((Number) r[1]).longValue();
-                    CpeVendor v = vendorById.get(id);
-                    String label = (v == null)
-                            ? ("vendor#" + id)
-                            : ((v.getDisplayName() == null || v.getDisplayName().isBlank())
-                            ? v.getNameNorm()
-                            : v.getDisplayName());
-                    return new TopCountRow(id, label, cnt);
-                })
-                .toList();
-
-        List<TopCountRow> topProducts = topProductRows.stream()
-                .map(r -> {
-                    Long id = (Long) r[0];
-                    long cnt = ((Number) r[1]).longValue();
-                    CpeProduct p = productById.get(id);
-                    String label = (p == null)
-                            ? ("product#" + id)
-                            : ((p.getDisplayName() == null || p.getDisplayName().isBlank())
-                            ? p.getNameNorm()
-                            : p.getDisplayName());
-                    return new TopCountRow(id, label, cnt);
-                })
-                .toList();
-
-        model.addAttribute("topVendors", topVendors);
-        model.addAttribute("topProducts", topProducts);
+        // Keep the existing model contract for the template.
+        // Heavy top vendor/product aggregation is loaded asynchronously via dashboard API.
+        model.addAttribute("topVendors", List.<TopCountRow>of());
+        model.addAttribute("topProducts", List.<TopCountRow>of());
 
         return "dashboard";
     }
