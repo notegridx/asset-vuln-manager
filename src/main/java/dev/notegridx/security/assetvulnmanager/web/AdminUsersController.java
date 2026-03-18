@@ -94,7 +94,7 @@ public class AdminUsersController {
                 "User created."
         );
 
-        return ok("User created.", user.getUsername());
+        return okUser("User created.", user);
     }
 
     @PostMapping("/{id}/enable")
@@ -122,7 +122,7 @@ public class AdminUsersController {
                 "User enabled."
         );
 
-        return ok("User enabled.", user.getUsername());
+        return okUser("User enabled.", user);
     }
 
     @PostMapping("/{id}/disable")
@@ -155,7 +155,7 @@ public class AdminUsersController {
                 "User disabled."
         );
 
-        return ok("User disabled.", user.getUsername());
+        return okUser("User disabled.", user);
     }
 
     @PostMapping("/{id}/unlock")
@@ -183,7 +183,7 @@ public class AdminUsersController {
                 "User unlocked and failed login counter reset."
         );
 
-        return ok("User unlocked.", user.getUsername());
+        return okUser("User unlocked.", user);
     }
 
     @PostMapping("/{id}/roles")
@@ -225,7 +225,7 @@ public class AdminUsersController {
                 "Roles updated to: " + roles.stream().map(AppRole::getRoleName).sorted().toList()
         );
 
-        return ok("Roles updated.", user.getUsername());
+        return okUser("Roles updated.", user);
     }
 
     private Set<AppRole> resolveRoles(List<String> roleNames) {
@@ -249,6 +249,24 @@ public class AdminUsersController {
         m.put("ok", true);
         m.put("message", message);
         m.put("username", username);
+        return m;
+    }
+
+    private static Map<String, Object> okUser(String message, AppUser user) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("ok", true);
+        m.put("message", message);
+
+        if (user != null) {
+            m.put("id", user.getId());
+            m.put("username", user.getUsername());
+            m.put("enabled", user.isEnabled());
+            m.put("roles", user.getRoles().stream()
+                    .map(AppRole::getRoleName)
+                    .sorted()
+                    .toList());
+        }
+
         return m;
     }
 

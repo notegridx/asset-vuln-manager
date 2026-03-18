@@ -115,7 +115,10 @@ class AdminUsersControllerWebMvcTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.ok").value(true))
                 .andExpect(jsonPath("$.message").value("User created."))
-                .andExpect(jsonPath("$.username").value("bob"));
+                .andExpect(jsonPath("$.id").value(101))
+                .andExpect(jsonPath("$.username").value("bob"))
+                .andExpect(jsonPath("$.enabled").value(false))
+                .andExpect(jsonPath("$.roles[0]").value("OPERATOR"));
 
         verify(passwordEncoder).encode("secret123");
         verify(appUserRepository).save(argThat(u ->
@@ -146,7 +149,11 @@ class AdminUsersControllerWebMvcTest {
         when(appUserRepository.existsByUsername("alice")).thenReturn(false);
         when(appRoleRepository.findByRoleNameIn(List.of("ADMIN"))).thenReturn(List.of(adminRole));
         when(passwordEncoder.encode("secret123")).thenReturn("ENC(secret123)");
-        when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> {
+            AppUser saved = inv.getArgument(0);
+            setId(saved, 102L);
+            return saved;
+        });
 
         mockMvc.perform(post("/admin/users")
                         .with(csrf())
@@ -157,7 +164,10 @@ class AdminUsersControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ok").value(true))
                 .andExpect(jsonPath("$.message").value("User created."))
-                .andExpect(jsonPath("$.username").value("alice"));
+                .andExpect(jsonPath("$.id").value(102))
+                .andExpect(jsonPath("$.username").value("alice"))
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.roles[0]").value("ADMIN"));
 
         verify(appUserRepository).save(argThat(AppUser::isEnabled));
     }
@@ -252,7 +262,10 @@ class AdminUsersControllerWebMvcTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.ok").value(true))
                 .andExpect(jsonPath("$.message").value("User enabled."))
-                .andExpect(jsonPath("$.username").value("alice"));
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.username").value("alice"))
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.roles[0]").value("OPERATOR"));
 
         verify(appUserRepository).save(argThat(AppUser::isEnabled));
         verify(securityAuditService).log(
@@ -282,7 +295,10 @@ class AdminUsersControllerWebMvcTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.ok").value(true))
                 .andExpect(jsonPath("$.message").value("User disabled."))
-                .andExpect(jsonPath("$.username").value("alice"));
+                .andExpect(jsonPath("$.id").value(11))
+                .andExpect(jsonPath("$.username").value("alice"))
+                .andExpect(jsonPath("$.enabled").value(false))
+                .andExpect(jsonPath("$.roles[0]").value("OPERATOR"));
 
         verify(appUserRepository).save(argThat(u -> !u.isEnabled()));
         verify(securityAuditService).log(
@@ -337,7 +353,10 @@ class AdminUsersControllerWebMvcTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.ok").value(true))
                 .andExpect(jsonPath("$.message").value("User unlocked."))
-                .andExpect(jsonPath("$.username").value("alice"));
+                .andExpect(jsonPath("$.id").value(13))
+                .andExpect(jsonPath("$.username").value("alice"))
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.roles[0]").value("OPERATOR"));
 
         verify(appUserRepository).save(argThat(u ->
                 u.isAccountNonLocked()
@@ -362,6 +381,7 @@ class AdminUsersControllerWebMvcTest {
         AppRole operatorRole = role("OPERATOR");
 
         AppUser user = AppUser.of("alice", "hash");
+        user.setEnabled(false);
         user.replaceRoles(Set.of(operatorRole));
         setId(user, 20L);
 
@@ -377,7 +397,11 @@ class AdminUsersControllerWebMvcTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.ok").value(true))
                 .andExpect(jsonPath("$.message").value("Roles updated."))
-                .andExpect(jsonPath("$.username").value("alice"));
+                .andExpect(jsonPath("$.id").value(20))
+                .andExpect(jsonPath("$.username").value("alice"))
+                .andExpect(jsonPath("$.enabled").value(false))
+                .andExpect(jsonPath("$.roles[0]").value("ADMIN"))
+                .andExpect(jsonPath("$.roles[1]").value("OPERATOR"));
 
         verify(appUserRepository).save(argThat(u ->
                 u.getRoles().size() == 2
