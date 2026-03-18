@@ -1,6 +1,6 @@
 spring:
   profiles:
-    default: h2
+    default: mysql
 
   jpa:
     hibernate:
