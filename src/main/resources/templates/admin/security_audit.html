@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/base :: head('Security Audit Log')}"></head>
+
+<body th:replace="~{layout/base :: layout('Security Audit Log', 'admin', ~{::main})}">
+<main>
+
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div class="page-header__left">
+            <h1 style="margin:0;">Security Audit Log</h1>
+            <p class="muted" style="margin:6px 0 0 0;">
+                Review authentication and account-management events such as login failures,
+                account locks, unlocks, password changes, and administrative actions.
+            </p>
+        </div>
+
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="pill" th:text="'Total: ' + ${totalElements}">Total: 0</span>
+            <span class="pill" th:text="'Page: ' + (${page} + 1) + ' / ' + (${totalPages} == 0 ? 1 : ${totalPages})">Page: 1 / 1</span>
+        </div>
+    </div>
+
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <form method="get" th:action="@{/admin/security-audit}">
+            <div class="toolbar"
+                 style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;">
+
+                <div class="toolbar__left" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+
+                    <div class="field" style="min-width:220px;">
+                        <label for="eventType">Event Type</label>
+                        <select id="eventType" name="eventType">
+                            <option value="">All event types</option>
+                            <option th:each="t : ${eventTypes}"
+                                    th:value="${t}"
+                                    th:text="${t}"
+                                    th:selected="${eventType != null and eventType == t}">
+                                LOGIN_FAILURE
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="field" style="min-width:320px; flex:1 1 320px;">
+                        <label for="q">Search</label>
+                        <input id="q"
+                               name="q"
+                               type="text"
+                               th:value="${q}"
+                               placeholder="event, actor, target, result, IP, message">
+                    </div>
+
+                    <div class="field" style="min-width:120px;">
+                        <label for="size">Page Size</label>
+                        <select id="size" name="size">
+                            <option value="25" th:selected="${size == 25}">25</option>
+                            <option value="50" th:selected="${size == 50}">50</option>
+                            <option value="100" th:selected="${size == 100}">100</option>
+                            <option value="200" th:selected="${size == 200}">200</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <button class="btn btn-primary" type="submit">Apply Filters</button>
+                    <a class="btn" th:href="@{/admin/security-audit}">Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="justify-content:space-between; align-items:center; margin:0 0 10px 0; gap:10px; flex-wrap:wrap;">
+            <div class="muted" style="font-size:12px;">
+                Results are ordered by newest first.
+            </div>
+            <div class="muted" style="font-size:12px;"
+                 th:text="${totalElements} + ' event(s)'">
+                0 event(s)
+            </div>
+        </div>
+
+        <div th:if="${#lists.isEmpty(items)}" class="muted" style="padding:8px 2px 2px 2px; line-height:1.7;">
+            No audit events found for the current filters.
+        </div>
+
+        <div th:if="${!#lists.isEmpty(items)}" style="overflow:auto;">
+            <table>
+                <thead>
+                <tr>
+                    <th style="min-width:148px;">Time</th>
+                    <th style="min-width:170px;">Event</th>
+                    <th style="min-width:140px;">Actor</th>
+                    <th style="min-width:140px;">Target</th>
+                    <th style="min-width:110px;">Result</th>
+                    <th style="min-width:150px;">IP</th>
+                    <th style="min-width:320px;">Message</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="log : ${items}">
+                    <td th:text="${log.createdAt != null ? #temporals.format(log.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
+                        2026-03-19 09:00:00
+                    </td>
+
+                    <td>
+                        <span class="pill"
+                              th:text="${log.eventType}">
+                            LOGIN_FAILURE
+                        </span>
+                    </td>
+
+                    <td>
+                        <span th:text="${log.actorUsername != null && !#strings.isEmpty(log.actorUsername) ? log.actorUsername : '-'}">admin</span>
+                    </td>
+
+                    <td>
+                        <span th:text="${log.targetUsername != null && !#strings.isEmpty(log.targetUsername) ? log.targetUsername : '-'}">user1</span>
+                    </td>
+
+                    <td>
+                        <span class="badge"
+                              th:classappend="${#strings.equalsIgnoreCase(log.result, 'SUCCESS')} ? ' badge--ok' :
+                                              (${#strings.equalsIgnoreCase(log.result, 'FAILURE')} ? ' badge--danger' : '')"
+                              th:text="${log.result}">
+                            FAILURE
+                        </span>
+                    </td>
+
+                    <td>
+                        <code th:text="${log.ipAddress != null && !#strings.isEmpty(log.ipAddress) ? log.ipAddress : '-'}">127.0.0.1</code>
+                    </td>
+
+                    <td>
+                        <div th:if="${log.message != null && !#strings.isEmpty(log.message)}"
+                             style="white-space:pre-wrap; word-break:break-word; line-height:1.5;"
+                             th:text="${log.message}">
+                            Failed login attempt for user admin
+                        </div>
+                        <span th:if="${log.message == null || #strings.isEmpty(log.message)}" class="muted">-</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:0;">
+            <div class="muted" style="font-size:12px;"
+                 th:text="'Showing page ' + (${page} + 1) + ' of ' + (${totalPages} == 0 ? 1 : ${totalPages})">
+                Showing page 1 of 1
+            </div>
+
+            <div class="actions" style="margin:0; gap:8px; flex-wrap:wrap;">
+                <a class="btn"
+                   th:if="${hasPrevious}"
+                   th:href="@{/admin/security-audit(eventType=${eventType}, q=${q}, size=${size}, page=${page - 1})}">
+                    Previous
+                </a>
+                <span class="btn"
+                      th:if="${!hasPrevious}"
+                      style="pointer-events:none; opacity:0.5;">
+                    Previous
+                </span>
+
+                <a class="btn"
+                   th:if="${hasNext}"
+                   th:href="@{/admin/security-audit(eventType=${eventType}, q=${q}, size=${size}, page=${page + 1})}">
+                    Next
+                </a>
+                <span class="btn"
+                      th:if="${!hasNext}"
+                      style="pointer-events:none; opacity:0.5;">
+                    Next
+                </span>
+            </div>
+        </div>
+    </div>
+
+</main>
+</body>
+</html>
