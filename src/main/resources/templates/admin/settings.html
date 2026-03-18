@@ -7,192 +7,565 @@
     <div class="actions">
         <div>
             <h1 style="margin:0;">Settings</h1>
-            <p class="muted" style="margin:8px 0 0 0;">
-                Centralized controls for candidate display, auto-link behavior, vulnerability suggestions, and explainability.
+            <p class="muted settings-top-note">
+                Centralized controls for canonical candidate display, canonical auto-link behavior,
+                vulnerability-side unresolved suggestions, and explainability.
+                Each setting below explains where it is used, what behavior changes, and whether it is already active
+                in the current implementation.
             </p>
         </div>
     </div>
 
-    <div th:if="${success}" class="card" style="padding:12px; margin-bottom:16px; border:1px solid rgba(80,200,120,.35);">
+    <div th:if="${success}" class="card card-success-inline">
         <strong th:text="${success}">Saved.</strong>
     </div>
 
-    <div class="card" style="padding:16px; margin-bottom:16px;">
-        <div class="muted" style="display:flex; gap:18px; flex-wrap:wrap;">
-            <div><strong>Last updated:</strong> <span th:text="${lastUpdatedAt != null ? #temporals.format(lastUpdatedAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</span></div>
-            <div><strong>Updated by:</strong> <span th:text="${lastUpdatedBy != null ? lastUpdatedBy : '-'}">-</span></div>
+    <div class="card settings-card-compact">
+        <div class="muted settings-meta">
+            <div>
+                <strong>Last updated:</strong>
+                <span th:text="${lastUpdatedAt != null ? #temporals.format(lastUpdatedAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</span>
+            </div>
+            <div>
+                <strong>Updated by:</strong>
+                <span th:text="${lastUpdatedBy != null ? lastUpdatedBy : '-'}">-</span>
+            </div>
         </div>
     </div>
 
     <form th:action="@{/admin/settings}" th:object="${settingsForm}" method="post">
 
         <!-- Canonical Mapping -->
-        <div class="card" style="padding:20px; margin-bottom:18px;">
-            <div class="actions" style="align-items:flex-start;">
+        <div class="card settings-card">
+            <div class="actions settings-actions-top">
                 <div>
-                    <h2 style="margin:0;">1. Canonical Mapping</h2>
-                    <p class="muted" style="margin:8px 0 0 0;">
-                        Applies to: Admin &gt; Canonical Mapping, Unresolved Mappings, Software edit/import/backfill
+                    <h2 class="settings-section-title">1. Canonical Mapping</h2>
+                    <p class="muted section-note">
+                        Applies to:
+                        Admin &gt; Canonical Mapping,
+                        unresolved mapping review flows,
+                        software create/edit screens that use dictionary suggestions,
+                        and software resolve/import/backfill processing.
+                        These settings affect either candidate display shown to users,
+                        or automatic canonical resolution behavior behind the scenes.
                     </p>
                 </div>
             </div>
 
-            <hr style="margin:16px 0; border:none; border-top:1px solid rgba(255,255,255,.08);">
+            <hr class="settings-divider">
 
-            <h3 style="margin-top:0;">Candidate display</h3>
-            <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
-                <div class="field">
-                    <label>Minimum characters</label>
-                    <input type="number" min="1" max="10" th:field="*{canonicalCandidateMinChars}">
+            <h3 class="settings-subsection-title">Candidate display</h3>
+            <p class="muted section-note">
+                Controls how vendor/product candidates are returned by dictionary-based search and suggestion UIs.
+                These values mainly affect what users see while selecting canonical vendor/product candidates.
+            </p>
+
+            <div class="settings-grid-sm">
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="canonicalCandidateMinChars">Minimum characters</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="canonicalCandidateMinChars"
+                               type="number"
+                               min="1"
+                               max="10"
+                               th:field="*{canonicalCandidateMinChars}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Minimum normalized query length before vendor/product suggestions are returned.
+                            Lower values show suggestions earlier, but can increase noisy matches.
+                        </div>
+                        <div class="help">
+                            Used by dictionary suggestion lookups for Canonical Mapping and related selection UIs.
+                        </div>
+                    </div>
                 </div>
-                <div class="field">
-                    <label>Exact candidates limit</label>
-                    <input type="number" min="1" max="50" th:field="*{canonicalCandidateExactLimit}">
+
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="canonicalCandidateExactLimit">Exact candidates limit</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="canonicalCandidateExactLimit"
+                               type="number"
+                               min="1"
+                               max="50"
+                               th:field="*{canonicalCandidateExactLimit}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Maximum number of exact-match candidates returned before stopping.
+                        </div>
+                        <div class="help">
+                            Affects screens where exact vendor/product hits should appear first.
+                        </div>
+                    </div>
                 </div>
-                <div class="field">
-                    <label>Other candidates limit</label>
-                    <input type="number" min="1" max="100" th:field="*{canonicalCandidateOtherLimit}">
+
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="canonicalCandidateOtherLimit">Other candidates limit</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="canonicalCandidateOtherLimit"
+                               type="number"
+                               min="1"
+                               max="100"
+                               th:field="*{canonicalCandidateOtherLimit}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Maximum number of non-exact fallback candidates, such as broader prefix/contains-style results.
+                        </div>
+                        <div class="help">
+                            Increase this if users need to browse more alternatives; keep it smaller to reduce noise.
+                        </div>
+                    </div>
                 </div>
-                <div class="field">
-                    <label>Unresolved candidate cap</label>
-                    <input type="number" min="1" max="100" th:field="*{canonicalCandidateUnresolvedLimit}">
+
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="canonicalCandidateUnresolvedLimit">Unresolved candidate cap</label>
+                        <span class="badge badge--active">active / unresolved-focused</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="canonicalCandidateUnresolvedLimit"
+                               type="number"
+                               min="1"
+                               max="100"
+                               th:field="*{canonicalCandidateUnresolvedLimit}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Upper bound for candidate rows shown while working with unresolved mapping-oriented flows.
+                        </div>
+                        <div class="help">
+                            Use a smaller value to keep unresolved review screens easier to scan.
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <hr style="margin:18px 0; border:none; border-top:1px solid rgba(255,255,255,.08);">
+            <hr class="settings-divider">
 
-            <h3 style="margin-top:0;">Auto-link policy</h3>
-            <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{canonicalAutolinkUseSynonym}">
-                    <span>Use synonym mapping</span>
-                </label>
+            <h3 class="settings-subsection-title">Auto-link policy</h3>
+            <p class="muted section-note">
+                Controls how raw vendor/product values may be resolved to canonical CPE vendor/product IDs during
+                automatic processing such as resolve, import, and backfill.
+                Some options are already active in the current implementation, while others are stored now for future strict-mode wiring.
+            </p>
 
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{canonicalAutolinkUseTokenFallback}">
-                    <span>Use token fallback</span>
-                </label>
+            <div class="settings-grid-md">
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalAutolinkUseSynonym"
+                               type="checkbox"
+                               th:field="*{canonicalAutolinkUseSynonym}">
+                        <label for="canonicalAutolinkUseSynonym">
+                            Use synonym mapping
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            When enabled, resolution first uses synonym/alias normalization before direct canonical lookup.
+                        </div>
+                        <div class="help">
+                            Affects software canonical linking during resolve/import/backfill.
+                        </div>
+                    </div>
+                </div>
 
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{canonicalAutolinkContainsMatch}">
-                    <span>Allow contains match <span class="muted">(stored for next wiring)</span></span>
-                </label>
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalAutolinkUseTokenFallback"
+                               type="checkbox"
+                               th:field="*{canonicalAutolinkUseTokenFallback}">
+                        <label for="canonicalAutolinkUseTokenFallback">
+                            Use token fallback
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            When enabled, the resolver may retry with token-based fallback logic if direct product matching is not sufficient.
+                        </div>
+                        <div class="help">
+                            Helps recover matches from shortened or slightly noisy product names, but can broaden matching behavior.
+                        </div>
+                    </div>
+                </div>
 
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{canonicalAutolinkVendorUniqueRequired}">
-                    <span>Require unique vendor hit <span class="muted">(stored for next wiring)</span></span>
-                </label>
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalAutolinkContainsMatch"
+                               type="checkbox"
+                               th:field="*{canonicalAutolinkContainsMatch}">
+                        <label for="canonicalAutolinkContainsMatch">
+                            Allow contains match
+                            <span class="badge badge--future">stored for future wiring</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Intended to allow broader substring-style matching in future canonical auto-link logic.
+                        </div>
+                        <div class="help">
+                            This value is saved now, but is not yet a primary active switch in the current resolve path.
+                        </div>
+                    </div>
+                </div>
 
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{canonicalAutolinkProductUniqueRequired}">
-                    <span>Require unique product hit <span class="muted">(stored for next wiring)</span></span>
-                </label>
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalAutolinkVendorUniqueRequired"
+                               type="checkbox"
+                               th:field="*{canonicalAutolinkVendorUniqueRequired}">
+                        <label for="canonicalAutolinkVendorUniqueRequired">
+                            Require unique vendor hit
+                            <span class="badge badge--future">stored for future wiring</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Intended to restrict automatic linking to cases where vendor resolution is unambiguous.
+                        </div>
+                        <div class="help">
+                            Useful for future stricter matching modes that prioritize precision over recall.
+                        </div>
+                    </div>
+                </div>
 
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{canonicalAutolinkSkipDisabledRow}">
-                    <span>Skip disabled rows</span>
-                </label>
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalAutolinkProductUniqueRequired"
+                               type="checkbox"
+                               th:field="*{canonicalAutolinkProductUniqueRequired}">
+                        <label for="canonicalAutolinkProductUniqueRequired">
+                            Require unique product hit
+                            <span class="badge badge--future">stored for future wiring</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Intended to restrict automatic linking to cases where product resolution is unambiguous under the resolved vendor.
+                        </div>
+                        <div class="help">
+                            This is stored now so stricter auto-link criteria can be introduced later without changing the settings schema.
+                        </div>
+                    </div>
+                </div>
 
-                <div class="field">
-                    <label>Minimum score</label>
-                    <input type="number" min="0" max="1000" th:field="*{canonicalAutolinkMinScore}">
-                    <div class="muted" style="margin-top:6px;">Stored now; connect in matching phase.</div>
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalAutolinkSkipDisabledRow"
+                               type="checkbox"
+                               th:field="*{canonicalAutolinkSkipDisabledRow}">
+                        <label for="canonicalAutolinkSkipDisabledRow">
+                            Skip disabled rows
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Excludes rows marked as canonical-link-disabled from automatic canonical resolution.
+                        </div>
+                        <div class="help">
+                            This preserves explicit user disable decisions during resolve/backfill.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="canonicalAutolinkMinScore">Minimum score</label>
+                        <span class="badge badge--future">stored for future wiring</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="canonicalAutolinkMinScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{canonicalAutolinkMinScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Reserved threshold for future score-gated auto-link acceptance.
+                        </div>
+                        <div class="help">
+                            Saved now so a score-based acceptance rule can be introduced later without schema changes.
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <hr style="margin:18px 0; border:none; border-top:1px solid rgba(255,255,255,.08);">
+            <hr class="settings-divider">
 
-            <h3 style="margin-top:0;">Explainability</h3>
-            <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{canonicalExplainShowReason}">
-                    <span>Show decision reason</span>
-                </label>
+            <h3 class="settings-subsection-title">Explainability</h3>
+            <p class="muted section-note">
+                Controls whether the UI should expose more detail about why canonical resolution succeeded, failed,
+                or was skipped. These settings are mainly about user-facing transparency rather than the matching result itself.
+            </p>
 
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{canonicalExplainShowScoreBreakdown}">
-                    <span>Show score breakdown <span class="muted">(stored for UI next step)</span></span>
-                </label>
+            <div class="settings-grid-md">
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalExplainShowReason"
+                               type="checkbox"
+                               th:field="*{canonicalExplainShowReason}">
+                        <label for="canonicalExplainShowReason">
+                            Show decision reason
+                            <span class="badge badge--ui">active / UI-facing</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Displays a human-readable reason for the canonical decision, such as why a row matched, stayed vendor-only, or remained unresolved.
+                        </div>
+                    </div>
+                </div>
 
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{canonicalExplainShowSkipReason}">
-                    <span>Show skip reason</span>
-                </label>
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalExplainShowScoreBreakdown"
+                               type="checkbox"
+                               th:field="*{canonicalExplainShowScoreBreakdown}">
+                        <label for="canonicalExplainShowScoreBreakdown">
+                            Show score breakdown
+                            <span class="badge badge--future">stored for future UI wiring</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Reserved for a future UI that exposes more detailed score components behind a canonical decision.
+                        </div>
+                        <div class="help">
+                            Saved now, but not yet fully surfaced in the current screens.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalExplainShowSkipReason"
+                               type="checkbox"
+                               th:field="*{canonicalExplainShowSkipReason}">
+                        <label for="canonicalExplainShowSkipReason">
+                            Show skip reason
+                            <span class="badge badge--ui">active / UI-facing</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Displays why resolution was skipped, for example because canonical linking was disabled or no usable normalized key was available.
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Vulnerability Suggestions -->
-        <div class="card" style="padding:20px; margin-bottom:18px;">
-            <h2 style="margin-top:0;">2. Vulnerability Suggestions</h2>
-            <p class="muted" style="margin:8px 0 16px 0;">
-                Applies to: Vulnerabilities &gt; Detail, Potential Unresolved Software Candidates
+        <div class="card settings-card">
+            <h2 class="settings-section-title">2. Vulnerability Suggestions</h2>
+            <p class="muted section-note">
+                Applies to: Vulnerabilities &gt; Detail, especially the
+                "Potential Unresolved Software Candidates" area.
+                These settings control how unresolved software rows are ranked and how many are shown on the vulnerability detail screen.
             </p>
 
-            <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
-                <div class="field">
-                    <label>Maximum displayed rows</label>
-                    <input type="number" min="1" max="100" th:field="*{vulnerabilitySuggestionMaxItems}">
+            <div class="settings-grid-sm">
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionMaxItems">Maximum displayed rows</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionMaxItems"
+                               type="number"
+                               min="1"
+                               max="100"
+                               th:field="*{vulnerabilitySuggestionMaxItems}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Maximum number of unresolved mapping candidates shown on Vulnerabilities &gt; Detail.
+                        </div>
+                        <div class="help">
+                            Lower values keep the panel focused; higher values expose more alternatives for manual review.
+                        </div>
+                    </div>
                 </div>
 
-                <div class="field">
-                    <label>Vendor exact score</label>
-                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionVendorExactScore}">
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionVendorExactScore">Vendor exact score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionVendorExactScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionVendorExactScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Score added when the unresolved vendor matches the affected CPE vendor exactly.
+                        </div>
+                    </div>
                 </div>
 
-                <div class="field">
-                    <label>Vendor partial score</label>
-                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionVendorPartialScore}">
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionVendorPartialScore">Vendor partial score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionVendorPartialScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionVendorPartialScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Score added when vendor names are not exact matches but still partially align.
+                        </div>
+                    </div>
                 </div>
 
-                <div class="field">
-                    <label>Product exact score</label>
-                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionProductExactScore}">
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionProductExactScore">Product exact score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionProductExactScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionProductExactScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Score added when the unresolved product matches the affected CPE product exactly.
+                        </div>
+                    </div>
                 </div>
 
-                <div class="field">
-                    <label>Token overlap score</label>
-                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionTokenOverlapScore}">
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionTokenOverlapScore">Token overlap score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionTokenOverlapScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionTokenOverlapScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Score added when product names share multiple meaningful tokens.
+                        </div>
+                        <div class="help">
+                            Useful for longer names where exact equality is too strict.
+                        </div>
+                    </div>
                 </div>
 
-                <div class="field">
-                    <label>Partial match score</label>
-                    <input type="number" min="0" max="1000" th:field="*{vulnerabilitySuggestionPartialMatchScore}">
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionPartialMatchScore">Partial match score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionPartialMatchScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionPartialMatchScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Smaller fallback score used when only a weaker similarity is found.
+                        </div>
+                    </div>
                 </div>
 
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{vulnerabilitySuggestionActiveOnly}">
-                    <span>Only active unresolved rows</span>
-                </label>
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="vulnerabilitySuggestionActiveOnly"
+                               type="checkbox"
+                               th:field="*{vulnerabilitySuggestionActiveOnly}">
+                        <label for="vulnerabilitySuggestionActiveOnly">
+                            Only active unresolved rows
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            When enabled, the suggestion panel only considers unresolved mappings that are still active.
+                        </div>
+                        <div class="help">
+                            Disable this only when you intentionally want inactive or historical unresolved rows included.
+                        </div>
+                    </div>
+                </div>
 
-                <label class="field" style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" th:field="*{vulnerabilitySuggestionShowReasons}">
-                    <span>Show reasons</span>
-                </label>
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="vulnerabilitySuggestionShowReasons"
+                               type="checkbox"
+                               th:field="*{vulnerabilitySuggestionShowReasons}">
+                        <label for="vulnerabilitySuggestionShowReasons">
+                            Show reasons
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Shows why each candidate received its score, helping users understand and tune the ranking behavior.
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Shared Matching Rules -->
-        <div class="card" style="padding:20px; margin-bottom:18px;">
-            <h2 style="margin-top:0;">3. Shared Matching Rules</h2>
-            <p class="muted" style="margin:8px 0 0 0;">
-                Reserved for tokenization / normalization / stop words. Keep this section visible so users can see where future shared rules will live.
+        <div class="card settings-card">
+            <h2 class="settings-section-title">3. Shared Matching Rules</h2>
+            <p class="muted section-note section-note--tight">
+                Reserved for future cross-screen rules shared by canonical candidate search,
+                canonical auto-link resolution,
+                and vulnerability unresolved suggestion scoring.
+                Planned scope includes tokenization, normalization, stop-word handling, and shared match heuristics.
+                No active shared rules are configurable here yet, but this section remains visible so users can see where those controls will live.
             </p>
         </div>
 
         <!-- Change Control -->
-        <div class="card" style="padding:20px; margin-bottom:18px;">
-            <h2 style="margin-top:0;">4. Change Control</h2>
-            <p class="muted" style="margin:8px 0 16px 0;">
-                Save changes immediately to the system settings table. Reset restores default values.
+        <div class="card settings-card">
+            <h2 class="settings-section-title">4. Change Control</h2>
+            <p class="muted section-note">
+                Save writes the current values to the system settings table immediately.
+                Reset restores default values for all settings on this page.
+                Some saved values already affect active behavior, while others are intentionally stored in advance for future wiring.
             </p>
 
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <div class="settings-actions">
                 <button type="submit" class="btn">Save Settings</button>
             </div>
         </div>
     </form>
 
-    <form th:action="@{/admin/settings/reset}" method="post" style="margin-top:12px;">
+    <form th:action="@{/admin/settings/reset}" method="post" class="settings-reset-form">
         <button type="submit" class="btn btn-ghost">Reset to Default</button>
     </form>
 </main>
