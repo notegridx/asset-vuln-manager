@@ -265,6 +265,61 @@
             max-width: none;
         }
     }
+
+     .canon-flash-head {
+         display: flex;
+         align-items: center;
+         justify-content: space-between;
+         gap: 12px;
+         flex-wrap: wrap;
+     }
+
+    .canon-backfill-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .canon-backfill-item {
+        min-width: 0;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .canon-backfill-label {
+        font-size: 12px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+    }
+
+    .canon-backfill-value {
+        margin-top: 6px;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 1180px) {
+        .canon-backfill-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 760px) {
+        .canon-backfill-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 520px) {
+        .canon-backfill-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
@@ -288,6 +343,74 @@
     <div th:if="${error}" class="card canon-card--flash">
         <span class="badge badge--warn">Error</span>
         <span class="mono" th:text="${error}">error</span>
+    </div>
+
+    <div th:if="${backfillResult != null}" class="card canon-card--flash">
+        <div class="canon-flash-head">
+            <span class="badge badge--status-open">Run Linking Done</span>
+            <button type="button"
+                    class="btn btn-ghost canon-btn-sm"
+                    onclick="this.closest('.canon-card--flash').remove()">
+                Close
+            </button>
+        </div>
+
+        <div class="muted canon-help" style="margin-top:6px;">
+            Detailed result is aligned with console log and admin run result_json.
+        </div>
+
+        <div class="canon-backfill-grid">
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">scanned</div>
+                <div class="canon-backfill-value mono" th:text="${backfillResult.scanned}">0</div>
+            </div>
+
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">fullyLinked</div>
+                <div class="canon-backfill-value mono" th:text="${backfillResult.fullyLinked}">0</div>
+            </div>
+
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">vendorOnly</div>
+                <div class="canon-backfill-value mono" th:text="${backfillResult.vendorOnly}">0</div>
+            </div>
+
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">pureMiss</div>
+                <div class="canon-backfill-value mono" th:text="${backfillResult.pureMiss}">0</div>
+            </div>
+
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">linkedTotal</div>
+                <div class="canon-backfill-value mono" th:text="${backfillResult.linkedTotal}">0</div>
+            </div>
+
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">unresolvedTotal</div>
+                <div class="canon-backfill-value mono" th:text="${backfillResult.unresolvedTotal}">0</div>
+            </div>
+
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">elapsedMs</div>
+                <div class="canon-backfill-value mono" th:text="${backfillResult.elapsedMs}">0</div>
+            </div>
+
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">elapsedSec</div>
+                <div class="canon-backfill-value mono" th:text="${backfillResult.elapsedSec}">0</div>
+            </div>
+
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">rowsPerSec</div>
+                <div class="canon-backfill-value mono" th:text="${backfillResult.rowsPerSec}">0</div>
+            </div>
+
+            <div class="canon-backfill-item">
+                <div class="canon-backfill-label">relink</div>
+                <div class="canon-backfill-value mono"
+                     th:text="${backfillResult.forceRebuild} ? 'true' : 'false'">false</div>
+            </div>
+        </div>
     </div>
 
     <div class="card canon-card">
@@ -703,6 +826,21 @@
             Tip: If the rightmost columns are cut off, scroll horizontally inside the table area.
         </div>
     </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const toast = document.getElementById("backfill-result-toast");
+            if (!toast) return;
+
+            toast.classList.add("canon-toast-live");
+
+            window.setTimeout(function () {
+                if (toast && toast.parentNode) {
+                    toast.classList.remove("canon-toast-live");
+                }
+            }, 8000);
+        });
+    </script>
 
 </main>
 </body>

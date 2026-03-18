@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -205,7 +206,18 @@ public class CanonicalBackfillService {
                 scanned, linked, missed, fullyLinked, vendorOnly, pureMiss, elapsedMs, elapsedSec, rowsPerSec
         );
 
-        return new BackfillResult(scanned, linked, missed, forceRebuild);
+        return new BackfillResult(
+                scanned,
+                linked,
+                missed,
+                forceRebuild,
+                fullyLinked,
+                vendorOnly,
+                pureMiss,
+                elapsedMs,
+                elapsedSec,
+                rowsPerSec
+        );
     }
 
     /**
@@ -218,7 +230,7 @@ public class CanonicalBackfillService {
      */
     public BackfillResult backfillForSoftwareIds(List<Long> softwareIds, boolean forceRebuild) {
         if (softwareIds == null || softwareIds.isEmpty()) {
-            return new BackfillResult(0, 0, 0, forceRebuild);
+            return emptyResult(forceRebuild);
         }
 
         List<Long> ids = softwareIds.stream()
@@ -227,7 +239,7 @@ public class CanonicalBackfillService {
                 .toList();
 
         if (ids.isEmpty()) {
-            return new BackfillResult(0, 0, 0, forceRebuild);
+            return emptyResult(forceRebuild);
         }
 
         long startNanos = System.nanoTime();
@@ -346,14 +358,58 @@ public class CanonicalBackfillService {
                 scanned, linked, missed, fullyLinked, vendorOnly, pureMiss, forceRebuild, elapsedMs, elapsedSec, rowsPerSec
         );
 
-        return new BackfillResult(scanned, linked, missed, forceRebuild);
+        return new BackfillResult(
+                scanned,
+                linked,
+                missed,
+                forceRebuild,
+                fullyLinked,
+                vendorOnly,
+                pureMiss,
+                elapsedMs,
+                elapsedSec,
+                rowsPerSec
+        );
     }
 
     public BackfillResult backfillForSoftwareIds(List<Long> softwareIds) {
         return backfillForSoftwareIds(softwareIds, false);
     }
 
-    public record BackfillResult(int scanned, int linked, int missed, boolean forceRebuild) {
+    public record BackfillResult(
+            int scanned,
+            int linked,
+            int missed,
+            boolean forceRebuild,
+            int fullyLinked,
+            int vendorOnly,
+            int pureMiss,
+            long elapsedMs,
+            String elapsedSec,
+            String rowsPerSec
+    ) {
+        public int linkedTotal() {
+            return linked;
+        }
+
+        public int unresolvedTotal() {
+            return missed;
+        }
+    }
+
+    private BackfillResult emptyResult(boolean forceRebuild) {
+        return new BackfillResult(
+                0,
+                0,
+                0,
+                forceRebuild,
+                0,
+                0,
+                0,
+                0L,
+                "0.000",
+                "0.0"
+        );
     }
 
     private CachedResolveResult resolveWithCache(Map<String, CachedResolveResult> resolveCache, SoftwareInstall s) {
@@ -495,7 +551,7 @@ public class CanonicalBackfillService {
     }
 
     private static String formatElapsedSec(long elapsedMs) {
-        return String.format("%.3f", elapsedMs / 1000.0);
+        return String.format(Locale.ROOT, "%.3f", elapsedMs / 1000.0);
     }
 
     private static String formatRowsPerSec(int rows, long elapsedMs) {
@@ -503,7 +559,7 @@ public class CanonicalBackfillService {
             return rows > 0 ? String.valueOf(rows) : "0.0";
         }
         double rowsPerSec = rows / (elapsedMs / 1000.0);
-        return String.format("%.1f", rowsPerSec);
+        return String.format(Locale.ROOT, "%.1f", rowsPerSec);
     }
 
     private static String normalizeNullable(String s) {

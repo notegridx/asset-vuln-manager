@@ -76,8 +76,18 @@ class JsonStagedImportServiceTest {
                 .thenReturn(Collections.emptyList());
 
         when(canonicalBackfillService.backfillForSoftwareIds(anyList(), eq(false)))
-                .thenReturn(new CanonicalBackfillService.BackfillResult(0, 0, 0, false));
-
+                .thenReturn(new CanonicalBackfillService.BackfillResult(
+                        0,      // scanned
+                        0,      // linked
+                        0,      // missed
+                        false,  // forceRebuild
+                        0,      // fullyLinked
+                        0,      // vendorOnly
+                        0,      // pureMiss
+                        0L,     // elapsedMs
+                        "0.000",// elapsedSec
+                        "0.0"   // rowsPerSec
+                ));
         // NPE 対応: save(...) が null を返さないようにする
         when(softwareInstallRepository.save(any(SoftwareInstall.class)))
                 .thenAnswer(i -> i.getArgument(0));

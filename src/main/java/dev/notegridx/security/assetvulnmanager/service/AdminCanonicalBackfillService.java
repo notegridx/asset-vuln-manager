@@ -26,7 +26,6 @@ public class AdminCanonicalBackfillService {
 
     @Transactional
     public CanonicalBackfillService.BackfillResult runBackfill(int maxRows, boolean relink) {
-
         int safeMax = Math.max(1, Math.min(maxRows, 5_000_000));
 
         Map<String, Object> params = new LinkedHashMap<>();
@@ -45,9 +44,15 @@ public class AdminCanonicalBackfillService {
                     result -> {
                         Map<String, Object> out = new LinkedHashMap<>();
                         out.put("scanned", result.scanned());
-                        out.put("linked", result.linked());
-                        out.put("missed", result.missed());
+                        out.put("fullyLinked", result.fullyLinked());
+                        out.put("vendorOnly", result.vendorOnly());
+                        out.put("pureMiss", result.pureMiss());
+                        out.put("linkedTotal", result.linkedTotal());
+                        out.put("unresolvedTotal", result.unresolvedTotal());
                         out.put("forceRebuild", result.forceRebuild());
+                        out.put("elapsedMs", result.elapsedMs());
+                        out.put("elapsedSec", result.elapsedSec());
+                        out.put("rowsPerSec", result.rowsPerSec());
                         return out;
                     }
             );

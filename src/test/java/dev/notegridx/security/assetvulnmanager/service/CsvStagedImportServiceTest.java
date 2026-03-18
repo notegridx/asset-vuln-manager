@@ -66,8 +66,18 @@ class CsvStagedImportServiceTest {
                 .thenReturn(Collections.emptyList());
 
         when(canonicalBackfillService.backfillForSoftwareIds(anyList(), eq(false)))
-                .thenReturn(new CanonicalBackfillService.BackfillResult(0, 0, 0, false));
-
+                .thenReturn(new CanonicalBackfillService.BackfillResult(
+                        0,      // scanned
+                        0,      // linked
+                        0,      // missed
+                        false,  // forceRebuild
+                        0,      // fullyLinked
+                        0,      // vendorOnly
+                        0,      // pureMiss
+                        0L,     // elapsedMs
+                        "0.000",// elapsedSec
+                        "0.0"   // rowsPerSec
+                ));
         service = new CsvStagedImportService(
                 importRunRepository,
                 stagingAssetRepository,
