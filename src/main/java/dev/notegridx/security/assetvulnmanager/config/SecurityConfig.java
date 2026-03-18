@@ -206,6 +206,7 @@ public class SecurityConfig {
         return (request, response, exception) -> {
             String username = safe(request.getParameter("username"));
             String ip = clientIp(request);
+            String reason = "bad-credentials";
 
             AppUserRepository appUserRepository = appUserRepositoryProvider.getIfAvailable();
             if (appUserRepository != null && username != null) {
@@ -240,6 +241,8 @@ public class SecurityConfig {
                                 "Account locked after too many failed login attempts."
                         );
                     }
+
+                    reason = resolveLoginFailureReason(user);
                 } else {
                     securityAuditService.log(
                             "LOGIN_FAILURE",
@@ -263,7 +266,7 @@ public class SecurityConfig {
                 );
             }
 
-            response.sendRedirect(request.getContextPath() + "/login?error");
+            response.sendRedirect(request.getContextPath() + "/login?error&reason=" + reason);
         };
     }
 
@@ -341,6 +344,19 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    private static String resolveLoginFailureReason(AppUser user) {
+        if (user == null) {
+            return "bad-credentials";
+        }
+        if (!user.isEnabled()) {
+            return "disabled";
+        }
+        if (!user.isAccountNonLocked()) {
+            return "locked";
+        }
+        return "bad-credentials";
     }
 
     private static String clientIp(HttpServletRequest request) {

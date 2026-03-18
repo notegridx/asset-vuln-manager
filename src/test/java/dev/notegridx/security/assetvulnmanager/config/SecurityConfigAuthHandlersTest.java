@@ -5,7 +5,6 @@ import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
 import dev.notegridx.security.assetvulnmanager.service.AppUserDetailsService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -21,7 +20,6 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -66,7 +64,7 @@ class SecurityConfigAuthHandlersTest {
         assertEquals(1, user.getFailedLoginCount());
         assertTrue(user.isAccountNonLocked());
         assertNull(user.getLockedAt());
-        assertEquals("/login?error", response.getRedirectedUrl());
+        assertEquals("/login?error&reason=bad-credentials", response.getRedirectedUrl());
 
         verify(appUserRepository).save(user);
         verify(securityAuditService).log(
@@ -122,7 +120,7 @@ class SecurityConfigAuthHandlersTest {
         assertEquals(3, user.getFailedLoginCount());
         assertFalse(user.isAccountNonLocked());
         assertTrue(user.getLockedAt() != null);
-        assertEquals("/login?error", response.getRedirectedUrl());
+        assertEquals("/login?error&reason=locked", response.getRedirectedUrl());
 
         verify(appUserRepository).save(user);
         verify(securityAuditService).log(
@@ -140,6 +138,61 @@ class SecurityConfigAuthHandlersTest {
                 eq("SUCCESS"),
                 eq("10.0.0.5"),
                 eq("Account locked after too many failed login attempts.")
+        );
+    }
+
+    @Test
+    @DisplayName("authentication failure redirects disabled user with disabled reason")
+    void failure_disabledUser_redirectsWithDisabledReason() throws Exception {
+        AppUserRepository appUserRepository = mock(AppUserRepository.class);
+        AppUserDetailsService appUserDetailsService = mock(AppUserDetailsService.class);
+        SecurityAuditService securityAuditService = mock(SecurityAuditService.class);
+
+        AppUser user = AppUser.of("alice", "hash");
+        user.addRole(AppRole.of("ADMIN"));
+        user.setEnabled(false);
+
+        when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService);
+        ReflectionTestUtils.setField(securityConfig, "maxFailedLogins", 5);
+
+        AuthenticationFailureHandler handler = securityConfig.authenticationFailureHandler(
+                providerOf(appUserRepository),
+                securityAuditService
+        );
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setContextPath("");
+        request.addParameter("username", "alice");
+        request.setRemoteAddr("172.16.0.20");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        handler.onAuthenticationFailure(request, response, new BadCredentialsException("bad credentials"));
+
+        assertEquals(1, user.getFailedLoginCount());
+        assertTrue(user.isAccountNonLocked());
+        assertNull(user.getLockedAt());
+        assertEquals("/login?error&reason=disabled", response.getRedirectedUrl());
+
+        verify(appUserRepository).save(user);
+        verify(securityAuditService).log(
+                eq("LOGIN_FAILURE"),
+                eq("alice"),
+                eq("alice"),
+                eq("FAILURE"),
+                eq("172.16.0.20"),
+                eq("Login failed. failedLoginCount=1")
+        );
+        verify(securityAuditService, never()).log(
+                eq("ACCOUNT_LOCKED"),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
         );
     }
 
@@ -256,7 +309,7 @@ class SecurityConfigAuthHandlersTest {
 
         handler.onAuthenticationFailure(request, response, new BadCredentialsException("bad credentials"));
 
-        assertEquals("/login?error", response.getRedirectedUrl());
+        assertEquals("/login?error&reason=bad-credentials", response.getRedirectedUrl());
         verify(appUserRepository, never()).save(any(AppUser.class));
         verify(securityAuditService).log(
                 eq("LOGIN_FAILURE"),

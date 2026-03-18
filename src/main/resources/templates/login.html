@@ -17,11 +17,25 @@
             </div>
 
             <div class="card" style="padding:16px;">
-                <div th:if="${param.error}" class="badge badge--danger" style="margin-bottom:12px;">
+                <div th:if="${param.error != null and param.reason != null and #strings.equals(param.reason[0], 'locked')}"
+                     class="badge badge--danger"
+                     style="margin-bottom:12px;">
+                    Your account is locked. Contact an administrator to unlock it.
+                </div>
+
+                <div th:if="${param.error != null and param.reason != null and #strings.equals(param.reason[0], 'disabled')}"
+                     class="badge badge--danger"
+                     style="margin-bottom:12px;">
+                    Your account is disabled. Contact an administrator.
+                </div>
+
+                <div th:if="${param.error != null and (param.reason == null or (!#strings.equals(param.reason[0], 'locked') and !#strings.equals(param.reason[0], 'disabled')))}"
+                     class="badge badge--danger"
+                     style="margin-bottom:12px;">
                     Invalid username or password.
                 </div>
 
-                <div th:if="${param.logout}" class="badge badge--ok" style="margin-bottom:12px;">
+                <div th:if="${param.logout != null}" class="badge badge--ok" style="margin-bottom:12px;">
                     Logged out.
                 </div>
 
