@@ -40,6 +40,11 @@ app:
       password: ${AVM_BOOTSTRAP_ADMIN_PASSWORD:}
     max-failed-logins: 5
 
+    remember-me:
+      enabled: false
+      key: ${AVM_REMEMBER_ME_KEY:}
+      validity-seconds: 1209600
+
   software:
     dict-mode: STRICT
 

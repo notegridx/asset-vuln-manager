@@ -538,6 +538,103 @@
             </div>
         </div>
 
+        <!-- Authentication -->
+        <div class="card settings-card">
+            <h2 class="settings-section-title">1. Authentication</h2>
+            <p class="muted section-note">
+                Controls the password policy used by the authenticated user password change flow.
+                These rules are applied in <code>/account/change-password</code> and define the minimum requirements
+                for newly chosen passwords.
+            </p>
+
+            <div class="settings-grid">
+                <div class="field settings-item">
+                    <label for="authPasswordMinLength">Minimum password length</label>
+                    <input id="authPasswordMinLength"
+                           type="number"
+                           min="8"
+                           max="256"
+                           th:field="*{authPasswordMinLength}">
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Minimum number of characters required for a new password.
+                        </div>
+                        <div class="help">
+                            Default is 8. Raise this if you want stricter local account hygiene.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="authPasswordRequireUpper"
+                               type="checkbox"
+                               th:field="*{authPasswordRequireUpper}">
+                        <label for="authPasswordRequireUpper">
+                            Require uppercase letter
+                            <span class="badge badge--active">A-Z</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Requires at least one uppercase letter in the new password.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="authPasswordRequireLower"
+                               type="checkbox"
+                               th:field="*{authPasswordRequireLower}">
+                        <label for="authPasswordRequireLower">
+                            Require lowercase letter
+                            <span class="badge badge--active">a-z</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Requires at least one lowercase letter in the new password.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="authPasswordRequireDigit"
+                               type="checkbox"
+                               th:field="*{authPasswordRequireDigit}">
+                        <label for="authPasswordRequireDigit">
+                            Require digit
+                            <span class="badge badge--active">0-9</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Requires at least one numeric character in the new password.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="authPasswordRequireSymbol"
+                               type="checkbox"
+                               th:field="*{authPasswordRequireSymbol}">
+                        <label for="authPasswordRequireSymbol">
+                            Require symbol
+                            <span class="badge badge--active">!@#</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Requires at least one non-alphanumeric symbol in the new password.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Shared Matching Rules -->
         <div class="card settings-card">
             <h2 class="settings-section-title">3. Shared Matching Rules</h2>

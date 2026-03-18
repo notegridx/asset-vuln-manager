@@ -2,7 +2,9 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.PasswordPolicyService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 
 @Controller
 @RequestMapping("/account/change-password")
@@ -22,15 +24,18 @@ public class ChangePasswordController {
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicyService passwordPolicyService;
     private final SecurityAuditService securityAuditService;
 
     public ChangePasswordController(
             AppUserRepository appUserRepository,
             PasswordEncoder passwordEncoder,
+            PasswordPolicyService passwordPolicyService,
             SecurityAuditService securityAuditService
     ) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordPolicyService = passwordPolicyService;
         this.securityAuditService = securityAuditService;
     }
 
@@ -48,6 +53,7 @@ public class ChangePasswordController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("passwordChangeRequired", user.isPasswordChangeRequired());
         model.addAttribute("bootstrapAdmin", user.isBootstrapAdmin());
+        model.addAttribute("passwordPolicy", passwordPolicyService.loadPolicy());
         return "account/change_password";
     }
 
@@ -94,11 +100,6 @@ public class ChangePasswordController {
             return "redirect:/account/change-password";
         }
 
-        if (next.length() < 8) {
-            ra.addFlashAttribute("error", "New password must be at least 8 characters.");
-            return "redirect:/account/change-password";
-        }
-
         if (!next.equals(confirm)) {
             ra.addFlashAttribute("error", "New password and confirmation do not match.");
             return "redirect:/account/change-password";
@@ -106,6 +107,12 @@ public class ChangePasswordController {
 
         if (passwordEncoder.matches(next, user.getPasswordHash())) {
             ra.addFlashAttribute("error", "New password must be different from the current password.");
+            return "redirect:/account/change-password";
+        }
+
+        List<String> policyErrors = passwordPolicyService.validate(next);
+        if (!policyErrors.isEmpty()) {
+            ra.addFlashAttribute("error", policyErrors.get(0));
             return "redirect:/account/change-password";
         }
 

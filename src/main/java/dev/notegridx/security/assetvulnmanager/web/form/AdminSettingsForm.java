@@ -44,4 +44,13 @@ public class AdminSettingsForm {
     private Integer vulnerabilitySuggestionPartialMatchScore;
     private boolean vulnerabilitySuggestionActiveOnly;
     private boolean vulnerabilitySuggestionShowReasons;
+
+    // ------------------------------------------------------------
+    // Authentication > Password policy
+    // ------------------------------------------------------------
+    private Integer authPasswordMinLength;
+    private boolean authPasswordRequireUpper;
+    private boolean authPasswordRequireLower;
+    private boolean authPasswordRequireDigit;
+    private boolean authPasswordRequireSymbol;
 }

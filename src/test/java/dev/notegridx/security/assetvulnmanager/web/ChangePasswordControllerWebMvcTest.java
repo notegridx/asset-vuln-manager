@@ -2,6 +2,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.PasswordPolicyService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -46,6 +48,9 @@ class ChangePasswordControllerWebMvcTest {
     private PasswordEncoder passwordEncoder;
 
     @MockitoBean
+    private PasswordPolicyService passwordPolicyService;
+
+    @MockitoBean
     private SecurityAuditService securityAuditService;
 
     @Test
@@ -64,14 +69,19 @@ class ChangePasswordControllerWebMvcTest {
         user.setPasswordChangeRequired(true);
         user.setBootstrapAdmin(true);
 
+        PasswordPolicyService.PasswordPolicy policy =
+                new PasswordPolicyService.PasswordPolicy(12, true, true, true, true);
+
         when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(passwordPolicyService.loadPolicy()).thenReturn(policy);
 
         mockMvc.perform(get("/account/change-password"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("account/change_password"))
                 .andExpect(model().attribute("username", "alice"))
                 .andExpect(model().attribute("passwordChangeRequired", true))
-                .andExpect(model().attribute("bootstrapAdmin", true));
+                .andExpect(model().attribute("bootstrapAdmin", true))
+                .andExpect(model().attribute("passwordPolicy", policy));
     }
 
     @Test
@@ -97,6 +107,7 @@ class ChangePasswordControllerWebMvcTest {
         when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("current-pass", "OLD_HASH")).thenReturn(true);
         when(passwordEncoder.matches("new-secret1", "OLD_HASH")).thenReturn(false);
+        when(passwordPolicyService.validate("new-secret1")).thenReturn(List.of());
         when(passwordEncoder.encode("new-secret1")).thenReturn("NEW_HASH");
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -111,6 +122,7 @@ class ChangePasswordControllerWebMvcTest {
 
         verify(passwordEncoder).matches("current-pass", "OLD_HASH");
         verify(passwordEncoder).matches("new-secret1", "OLD_HASH");
+        verify(passwordPolicyService).validate("new-secret1");
         verify(passwordEncoder).encode("new-secret1");
 
         verify(appUserRepository).save(argThat(saved ->
@@ -180,6 +192,7 @@ class ChangePasswordControllerWebMvcTest {
                 .andExpect(flash().attribute("error", "Current password is required."));
 
         verify(passwordEncoder, never()).matches(any(), any());
+        verify(passwordPolicyService, never()).validate(any());
         verify(appUserRepository, never()).save(any(AppUser.class));
         verify(securityAuditService, never()).log(any(), any(), any(), any(), any(), any());
     }
@@ -201,6 +214,7 @@ class ChangePasswordControllerWebMvcTest {
                 .andExpect(flash().attribute("error", "New password is required."));
 
         verify(passwordEncoder, never()).matches(any(), any());
+        verify(passwordPolicyService, never()).validate(any());
         verify(appUserRepository, never()).save(any(AppUser.class));
         verify(securityAuditService, never()).log(any(), any(), any(), any(), any(), any());
     }
@@ -222,6 +236,7 @@ class ChangePasswordControllerWebMvcTest {
                 .andExpect(flash().attribute("error", "Password confirmation is required."));
 
         verify(passwordEncoder, never()).matches(any(), any());
+        verify(passwordPolicyService, never()).validate(any());
         verify(appUserRepository, never()).save(any(AppUser.class));
         verify(securityAuditService, never()).log(any(), any(), any(), any(), any(), any());
     }
@@ -244,17 +259,21 @@ class ChangePasswordControllerWebMvcTest {
                 .andExpect(flash().attribute("error", "Current password is incorrect."));
 
         verify(passwordEncoder).matches("wrong-pass", "OLD_HASH");
+        verify(passwordPolicyService, never()).validate(any());
         verify(appUserRepository, never()).save(any(AppUser.class));
         verify(securityAuditService, never()).log(any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("POST /account/change-password rejects too short new password")
+    @DisplayName("POST /account/change-password rejects password that violates policy")
     @WithMockUser(username = "alice", roles = "ADMIN")
-    void change_rejectsTooShortNewPassword() throws Exception {
+    void change_rejectsPolicyViolation() throws Exception {
         AppUser user = AppUser.of("alice", "OLD_HASH");
         when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("current-pass", "OLD_HASH")).thenReturn(true);
+        when(passwordEncoder.matches("short", "OLD_HASH")).thenReturn(false);
+        when(passwordPolicyService.validate("short"))
+                .thenReturn(List.of("New password must be at least 12 characters."));
 
         mockMvc.perform(post("/account/change-password")
                         .with(csrf())
@@ -263,9 +282,11 @@ class ChangePasswordControllerWebMvcTest {
                         .param("confirmPassword", "short"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/account/change-password"))
-                .andExpect(flash().attribute("error", "New password must be at least 8 characters."));
+                .andExpect(flash().attribute("error", "New password must be at least 12 characters."));
 
         verify(passwordEncoder).matches("current-pass", "OLD_HASH");
+        verify(passwordEncoder).matches("short", "OLD_HASH");
+        verify(passwordPolicyService).validate("short");
         verify(appUserRepository, never()).save(any(AppUser.class));
         verify(securityAuditService, never()).log(any(), any(), any(), any(), any(), any());
     }
@@ -288,6 +309,7 @@ class ChangePasswordControllerWebMvcTest {
                 .andExpect(flash().attribute("error", "New password and confirmation do not match."));
 
         verify(passwordEncoder).matches("current-pass", "OLD_HASH");
+        verify(passwordPolicyService, never()).validate(any());
         verify(appUserRepository, never()).save(any(AppUser.class));
         verify(securityAuditService, never()).log(any(), any(), any(), any(), any(), any());
     }
@@ -312,6 +334,7 @@ class ChangePasswordControllerWebMvcTest {
 
         verify(passwordEncoder).matches("current-pass", "OLD_HASH");
         verify(passwordEncoder).matches("same-password", "OLD_HASH");
+        verify(passwordPolicyService, never()).validate(any());
         verify(passwordEncoder, never()).encode(any());
         verify(appUserRepository, never()).save(any(AppUser.class));
         verify(securityAuditService, never()).log(any(), any(), any(), any(), any(), any());

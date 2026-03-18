@@ -15,7 +15,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.Authentication;
@@ -42,6 +41,15 @@ public class SecurityConfig {
 
     @Value("${app.security.max-failed-logins:5}")
     private int maxFailedLogins;
+
+    @Value("${app.security.remember-me.enabled:false}")
+    private boolean rememberMeEnabled;
+
+    @Value("${app.security.remember-me.key:}")
+    private String rememberMeKey;
+
+    @Value("${app.security.remember-me.validity-seconds:1209600}")
+    private int rememberMeValiditySeconds;
 
     public SecurityConfig(AppUserDetailsService appUserDetailsService) {
         this.appUserDetailsService = appUserDetailsService;
@@ -136,8 +144,22 @@ public class SecurityConfig {
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
-                )
-                .rememberMe(Customizer.withDefaults());
+                );
+
+        if (rememberMeEnabled) {
+            String key = rememberMeKey == null ? "" : rememberMeKey.trim();
+            if (key.isEmpty()) {
+                throw new IllegalStateException(
+                        "app.security.remember-me.enabled=true requires app.security.remember-me.key"
+                );
+            }
+
+            http.rememberMe(remember -> remember
+                    .key(key)
+                    .tokenValiditySeconds(Math.max(60, rememberMeValiditySeconds))
+                    .userDetailsService(appUserDetailsService)
+            );
+        }
 
         return http.build();
     }

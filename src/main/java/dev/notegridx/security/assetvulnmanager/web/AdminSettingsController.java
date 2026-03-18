@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -44,6 +43,12 @@ public class AdminSettingsController {
     public static final String KEY_VULN_SUGGEST_PARTIAL_MATCH_SCORE = "vuln.suggest.partial-match-score";
     public static final String KEY_VULN_SUGGEST_ACTIVE_ONLY = "vuln.suggest.active-only";
     public static final String KEY_VULN_SUGGEST_SHOW_REASONS = "vuln.suggest.show-reasons";
+
+    public static final String KEY_AUTH_PASSWORD_MIN_LENGTH = "auth.password.min-length";
+    public static final String KEY_AUTH_PASSWORD_REQUIRE_UPPER = "auth.password.require-upper";
+    public static final String KEY_AUTH_PASSWORD_REQUIRE_LOWER = "auth.password.require-lower";
+    public static final String KEY_AUTH_PASSWORD_REQUIRE_DIGIT = "auth.password.require-digit";
+    public static final String KEY_AUTH_PASSWORD_REQUIRE_SYMBOL = "auth.password.require-symbol";
 
     private final SystemSettingRepository systemSettingRepository;
 
@@ -93,6 +98,12 @@ public class AdminSettingsController {
         putBool(KEY_VULN_SUGGEST_ACTIVE_ONLY, form.isVulnerabilitySuggestionActiveOnly(), username);
         putBool(KEY_VULN_SUGGEST_SHOW_REASONS, form.isVulnerabilitySuggestionShowReasons(), username);
 
+        putInt(KEY_AUTH_PASSWORD_MIN_LENGTH, clamp(form.getAuthPasswordMinLength(), 8, 256, 8), username);
+        putBool(KEY_AUTH_PASSWORD_REQUIRE_UPPER, form.isAuthPasswordRequireUpper(), username);
+        putBool(KEY_AUTH_PASSWORD_REQUIRE_LOWER, form.isAuthPasswordRequireLower(), username);
+        putBool(KEY_AUTH_PASSWORD_REQUIRE_DIGIT, form.isAuthPasswordRequireDigit(), username);
+        putBool(KEY_AUTH_PASSWORD_REQUIRE_SYMBOL, form.isAuthPasswordRequireSymbol(), username);
+
         ra.addFlashAttribute("success", "Settings updated.");
         return "redirect:/admin/settings";
     }
@@ -138,6 +149,12 @@ public class AdminSettingsController {
         f.setVulnerabilitySuggestionPartialMatchScore(getInt(KEY_VULN_SUGGEST_PARTIAL_MATCH_SCORE, 10));
         f.setVulnerabilitySuggestionActiveOnly(getBool(KEY_VULN_SUGGEST_ACTIVE_ONLY, true));
         f.setVulnerabilitySuggestionShowReasons(getBool(KEY_VULN_SUGGEST_SHOW_REASONS, true));
+
+        f.setAuthPasswordMinLength(getInt(KEY_AUTH_PASSWORD_MIN_LENGTH, 8));
+        f.setAuthPasswordRequireUpper(getBool(KEY_AUTH_PASSWORD_REQUIRE_UPPER, false));
+        f.setAuthPasswordRequireLower(getBool(KEY_AUTH_PASSWORD_REQUIRE_LOWER, false));
+        f.setAuthPasswordRequireDigit(getBool(KEY_AUTH_PASSWORD_REQUIRE_DIGIT, false));
+        f.setAuthPasswordRequireSymbol(getBool(KEY_AUTH_PASSWORD_REQUIRE_SYMBOL, false));
 
         return f;
     }
@@ -220,6 +237,12 @@ public class AdminSettingsController {
         m.put(KEY_VULN_SUGGEST_PARTIAL_MATCH_SCORE, "10");
         m.put(KEY_VULN_SUGGEST_ACTIVE_ONLY, "true");
         m.put(KEY_VULN_SUGGEST_SHOW_REASONS, "true");
+
+        m.put(KEY_AUTH_PASSWORD_MIN_LENGTH, "8");
+        m.put(KEY_AUTH_PASSWORD_REQUIRE_UPPER, "false");
+        m.put(KEY_AUTH_PASSWORD_REQUIRE_LOWER, "false");
+        m.put(KEY_AUTH_PASSWORD_REQUIRE_DIGIT, "false");
+        m.put(KEY_AUTH_PASSWORD_REQUIRE_SYMBOL, "false");
 
         return m;
     }
