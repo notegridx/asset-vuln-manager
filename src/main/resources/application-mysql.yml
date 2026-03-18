@@ -6,8 +6,8 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/assetvulndb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Tokyo&useSSL=false&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${DB_USERNAME:assetvuln}
-    password: ${DB_PASSWORD:assetvuln}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   sql:
     init:

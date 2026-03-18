@@ -1,11 +1,10 @@
 package dev.notegridx.security.assetvulnmanager.domain;
 
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 import jakarta.persistence.*;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
-
-import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -39,6 +38,15 @@ public class AppUser {
     @Column(name = "bootstrap_admin", nullable = false)
     private boolean bootstrapAdmin = false;
 
+    @Column(name = "failed_login_count", nullable = false)
+    private int failedLoginCount = 0;
+
+    @Column(name = "last_failed_login_at")
+    private LocalDateTime lastFailedLoginAt;
+
+    @Column(name = "locked_at")
+    private LocalDateTime lockedAt;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "app_user_roles",
@@ -63,6 +71,7 @@ public class AppUser {
         this.accountNonLocked = true;
         this.passwordChangeRequired = false;
         this.bootstrapAdmin = false;
+        this.failedLoginCount = 0;
     }
 
     public static AppUser of(String username, String passwordHash) {
@@ -79,6 +88,9 @@ public class AppUser {
 
     public void setAccountNonLocked(boolean accountNonLocked) {
         this.accountNonLocked = accountNonLocked;
+        if (accountNonLocked) {
+            this.lockedAt = null;
+        }
     }
 
     public void setPasswordChangeRequired(boolean passwordChangeRequired) {
@@ -97,11 +109,38 @@ public class AppUser {
     }
 
     public void addRole(AppRole role) {
-        if (role != null) this.roles.add(role);
+        if (role != null) {
+            this.roles.add(role);
+        }
+    }
+
+    public int incrementFailedLoginCount() {
+        this.failedLoginCount++;
+        this.lastFailedLoginAt = DbTime.now();
+        return this.failedLoginCount;
+    }
+
+    public void clearLoginFailures() {
+        this.failedLoginCount = 0;
+        this.lastFailedLoginAt = null;
+    }
+
+    public void lockNow() {
+        this.accountNonLocked = false;
+        this.lockedAt = DbTime.now();
+    }
+
+    public void unlock() {
+        this.accountNonLocked = true;
+        this.failedLoginCount = 0;
+        this.lastFailedLoginAt = null;
+        this.lockedAt = null;
     }
 
     private static String requireNotBlank(String s, String field) {
-        if (s == null || s.trim().isEmpty()) throw new IllegalArgumentException(field + " is required");
+        if (s == null || s.trim().isEmpty()) {
+            throw new IllegalArgumentException(field + " is required");
+        }
         return s.trim();
     }
 

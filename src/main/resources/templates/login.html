@@ -42,10 +42,11 @@
                 </form>
 
                 <div class="muted" style="margin-top:14px; font-size:12px; line-height:1.6;">
-                    Initial bootstrap account: <code>admin</code> / <code>admin123!</code><br>
-                    On first login, password change is required.<br><br>
-                    For better security, create a new administrator account with a non-guessable name
-                    and disable the default <code>admin</code> account.
+                    An initial administrator account may be created at startup if bootstrap is enabled.<br>
+                    If enabled, credentials are provided via environment variables
+                    (e.g. <code>AVM_BOOTSTRAP_ADMIN_PASSWORD</code>).<br><br>
+                    After first login, change the password immediately, create a new administrator account
+                    with a non-guessable name, and disable the bootstrap administrator account.
                 </div>
             </div>
         </div>

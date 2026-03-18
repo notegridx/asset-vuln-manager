@@ -2,6 +2,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -13,19 +14,24 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Controller
 @RequestMapping("/account/change-password")
 public class ChangePasswordController {
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SecurityAuditService securityAuditService;
 
     public ChangePasswordController(
             AppUserRepository appUserRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            SecurityAuditService securityAuditService
     ) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
+        this.securityAuditService = securityAuditService;
     }
 
     @GetMapping
@@ -52,7 +58,8 @@ public class ChangePasswordController {
             @RequestParam("currentPassword") String currentPassword,
             @RequestParam("newPassword") String newPassword,
             @RequestParam("confirmPassword") String confirmPassword,
-            RedirectAttributes ra
+            RedirectAttributes ra,
+            HttpServletRequest request
     ) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return "redirect:/login";
@@ -104,15 +111,40 @@ public class ChangePasswordController {
 
         user.changePasswordHash(passwordEncoder.encode(next));
         user.setPasswordChangeRequired(false);
+        user.clearLoginFailures();
         appUserRepository.save(user);
+
+        securityAuditService.log(
+                "PASSWORD_CHANGED",
+                user.getUsername(),
+                user.getUsername(),
+                "SUCCESS",
+                clientIp(request),
+                "Password changed by authenticated user."
+        );
 
         ra.addFlashAttribute("message", "Password updated.");
         return "redirect:/dashboard";
     }
 
-    private String safe(String s) {
-        if (s == null) return null;
+    private static String safe(String s) {
+        if (s == null) {
+            return null;
+        }
         String v = s.trim();
         return v.isEmpty() ? null : v;
+    }
+
+    private static String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            int comma = forwarded.indexOf(',');
+            return comma >= 0 ? forwarded.substring(0, comma).trim() : forwarded.trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 }

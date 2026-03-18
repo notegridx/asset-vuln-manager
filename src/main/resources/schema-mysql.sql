@@ -1214,6 +1214,11 @@ CREATE TABLE IF NOT EXISTS app_users
     account_non_locked BOOLEAN NOT NULL DEFAULT TRUE,
     password_change_required BOOLEAN NOT NULL DEFAULT FALSE,
     bootstrap_admin BOOLEAN NOT NULL DEFAULT FALSE,
+
+    failed_login_count INT NOT NULL DEFAULT 0,
+    last_failed_login_at DATETIME(6) NULL,
+    locked_at DATETIME(6) NULL,
+
     created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_app_users_username UNIQUE (username)
@@ -1284,6 +1289,66 @@ SET @ddl = IF (
     ),
     'SELECT 1',
     'CREATE INDEX idx_app_user_roles_role ON app_user_roles(role_id)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+CREATE TABLE IF NOT EXISTS security_audit_logs
+(
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_type VARCHAR(64) NOT NULL,
+    actor_username VARCHAR(100) NULL,
+    target_username VARCHAR(100) NULL,
+    result VARCHAR(32) NOT NULL,
+    ip_address VARCHAR(128) NULL,
+    message TEXT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+    ) ENGINE=InnoDB;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'security_audit_logs'
+           AND index_name = 'idx_security_audit_logs_created_at'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_security_audit_logs_created_at ON security_audit_logs(created_at)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'security_audit_logs'
+           AND index_name = 'idx_security_audit_logs_event_type'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_security_audit_logs_event_type ON security_audit_logs(event_type)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'security_audit_logs'
+           AND index_name = 'idx_security_audit_logs_actor_username'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_security_audit_logs_actor_username ON security_audit_logs(actor_username)'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1 FROM information_schema.statistics
+         WHERE table_schema = DATABASE()
+           AND table_name = 'security_audit_logs'
+           AND index_name = 'idx_security_audit_logs_target_username'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_security_audit_logs_target_username ON security_audit_logs(target_username)'
 );
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 

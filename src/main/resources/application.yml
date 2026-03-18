@@ -33,6 +33,12 @@ logging:
     dev.notegridx.security.assetvulnmanager.service.CriteriaEvaluator: info
 
 app:
+  security:
+    bootstrap-admin:
+      enabled: false
+      username: admin
+      password: ${AVM_BOOTSTRAP_ADMIN_PASSWORD:}
+    max-failed-logins: 5
 
   software:
     dict-mode: STRICT

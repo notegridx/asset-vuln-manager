@@ -4,18 +4,15 @@ import dev.notegridx.security.assetvulnmanager.domain.AppRole;
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppRoleRepository;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.security.Principal;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -31,15 +28,18 @@ public class AdminUsersController {
     private final AppUserRepository appUserRepository;
     private final AppRoleRepository appRoleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SecurityAuditService securityAuditService;
 
     public AdminUsersController(
             AppUserRepository appUserRepository,
             AppRoleRepository appRoleRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            SecurityAuditService securityAuditService
     ) {
         this.appUserRepository = appUserRepository;
         this.appRoleRepository = appRoleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.securityAuditService = securityAuditService;
     }
 
     @GetMapping
@@ -56,7 +56,9 @@ public class AdminUsersController {
             @RequestParam("username") String username,
             @RequestParam("password") String password,
             @RequestParam(name = "roles", required = false) List<String> roleNames,
-            @RequestParam(name = "enabled", defaultValue = "false") boolean enabled
+            @RequestParam(name = "enabled", defaultValue = "false") boolean enabled,
+            Principal principal,
+            HttpServletRequest request
     ) {
         String u = safe(username);
         String p = safe(password);
@@ -83,34 +85,44 @@ public class AdminUsersController {
 
         appUserRepository.save(user);
 
-        return ok(
-                "message", "User created: " + u,
-                "id", user.getId(),
-                "username", user.getUsername(),
-                "enabled", user.isEnabled(),
-                "roles", user.getRoles().stream().map(AppRole::getRoleName).sorted().toList()
+        securityAuditService.log(
+                "USER_CREATED",
+                actor(principal),
+                user.getUsername(),
+                "SUCCESS",
+                clientIp(request),
+                "User created."
         );
+
+        return ok("User created.", user.getUsername());
     }
 
     @PostMapping("/{id}/enable")
     @ResponseBody
     @Transactional
-    public Map<String, Object> enable(@PathVariable("id") Long id) {
+    public Map<String, Object> enable(
+            @PathVariable("id") Long id,
+            Principal principal,
+            HttpServletRequest request
+    ) {
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
-            return error("User not found. id=" + id);
+            return error("User not found.");
         }
 
         user.setEnabled(true);
         appUserRepository.save(user);
 
-        return ok(
-                "message", "User enabled: " + user.getUsername(),
-                "id", user.getId(),
-                "username", user.getUsername(),
-                "enabled", true,
-                "roles", user.getRoles().stream().map(AppRole::getRoleName).sorted().toList()
+        securityAuditService.log(
+                "USER_ENABLED",
+                actor(principal),
+                user.getUsername(),
+                "SUCCESS",
+                clientIp(request),
+                "User enabled."
         );
+
+        return ok("User enabled.", user.getUsername());
     }
 
     @PostMapping("/{id}/disable")
@@ -118,27 +130,60 @@ public class AdminUsersController {
     @Transactional
     public Map<String, Object> disable(
             @PathVariable("id") Long id,
-            Principal principal
+            Principal principal,
+            HttpServletRequest request
     ) {
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
-            return error("User not found. id=" + id);
+            return error("User not found.");
         }
 
-        if (principal != null && user.getUsername().equalsIgnoreCase(principal.getName())) {
+        String actor = actor(principal);
+        if (actor != null && actor.equalsIgnoreCase(user.getUsername())) {
             return error("You cannot disable your own account.");
         }
 
         user.setEnabled(false);
         appUserRepository.save(user);
 
-        return ok(
-                "message", "User disabled: " + user.getUsername(),
-                "id", user.getId(),
-                "username", user.getUsername(),
-                "enabled", false,
-                "roles", user.getRoles().stream().map(AppRole::getRoleName).sorted().toList()
+        securityAuditService.log(
+                "USER_DISABLED",
+                actor,
+                user.getUsername(),
+                "SUCCESS",
+                clientIp(request),
+                "User disabled."
         );
+
+        return ok("User disabled.", user.getUsername());
+    }
+
+    @PostMapping("/{id}/unlock")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> unlock(
+            @PathVariable("id") Long id,
+            Principal principal,
+            HttpServletRequest request
+    ) {
+        AppUser user = appUserRepository.findById(id).orElse(null);
+        if (user == null) {
+            return error("User not found.");
+        }
+
+        user.unlock();
+        appUserRepository.save(user);
+
+        securityAuditService.log(
+                "USER_UNLOCKED",
+                actor(principal),
+                user.getUsername(),
+                "SUCCESS",
+                clientIp(request),
+                "User unlocked and failed login counter reset."
+        );
+
+        return ok("User unlocked.", user.getUsername());
     }
 
     @PostMapping("/{id}/roles")
@@ -147,11 +192,12 @@ public class AdminUsersController {
     public Map<String, Object> updateRoles(
             @PathVariable("id") Long id,
             @RequestParam(name = "roles", required = false) List<String> roleNames,
-            Principal principal
+            Principal principal,
+            HttpServletRequest request
     ) {
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
-            return error("User not found. id=" + id);
+            return error("User not found.");
         }
 
         Set<AppRole> roles = resolveRoles(roleNames);
@@ -159,56 +205,82 @@ public class AdminUsersController {
             return error("At least one role is required.");
         }
 
-        boolean editingSelf = principal != null && user.getUsername().equalsIgnoreCase(principal.getName());
-        boolean selfWouldLoseAdmin = editingSelf
-                && roles.stream().noneMatch(r -> "ADMIN".equalsIgnoreCase(r.getRoleName()));
-
-        if (selfWouldLoseAdmin) {
-            return error("You cannot remove ADMIN from your own account.");
+        String actor = actor(principal);
+        if (actor != null && actor.equalsIgnoreCase(user.getUsername())) {
+            boolean keepsAdmin = roles.stream().anyMatch(r -> "ADMIN".equalsIgnoreCase(r.getRoleName()));
+            if (!keepsAdmin) {
+                return error("You cannot remove ADMIN from your own account.");
+            }
         }
 
         user.replaceRoles(roles);
         appUserRepository.save(user);
 
-        return ok(
-                "message", "Roles updated: " + user.getUsername(),
-                "id", user.getId(),
-                "username", user.getUsername(),
-                "roles", user.getRoles().stream().map(AppRole::getRoleName).sorted().toList()
+        securityAuditService.log(
+                "USER_ROLES_UPDATED",
+                actor,
+                user.getUsername(),
+                "SUCCESS",
+                clientIp(request),
+                "Roles updated to: " + roles.stream().map(AppRole::getRoleName).sorted().toList()
         );
+
+        return ok("Roles updated.", user.getUsername());
     }
 
     private Set<AppRole> resolveRoles(List<String> roleNames) {
-        List<String> normalized = (roleNames == null ? List.<String>of() : roleNames.stream()
-                .map(AdminUsersController::safe)
-                .filter(s -> s != null)
-                .map(s -> s.startsWith("ROLE_") ? s.substring("ROLE_".length()) : s)
-                .distinct()
-                .toList());
+        Set<String> names = new LinkedHashSet<>();
+        if (roleNames != null) {
+            for (String roleName : roleNames) {
+                String v = safe(roleName);
+                if (v != null) {
+                    names.add(v.toUpperCase());
+                }
+            }
+        }
+        if (names.isEmpty()) {
+            return Set.of();
+        }
+        return new LinkedHashSet<>(appRoleRepository.findByRoleNameIn(names.stream().toList()));
+    }
 
-        List<AppRole> found = appRoleRepository.findByRoleNameIn(normalized);
-        return new LinkedHashSet<>(found);
+    private static Map<String, Object> ok(String message, String username) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("ok", true);
+        m.put("message", message);
+        m.put("username", username);
+        return m;
+    }
+
+    private static Map<String, Object> error(String message) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("ok", false);
+        m.put("message", message);
+        return m;
     }
 
     private static String safe(String s) {
-        if (s == null) return null;
-        String t = s.trim();
-        return t.isEmpty() ? null : t;
-    }
-
-    private Map<String, Object> error(String message) {
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("ok", false);
-        res.put("error", message);
-        return res;
-    }
-
-    private Map<String, Object> ok(Object... kv) {
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("ok", true);
-        for (int i = 0; i + 1 < kv.length; i += 2) {
-            res.put(String.valueOf(kv[i]), kv[i + 1]);
+        if (s == null) {
+            return null;
         }
-        return res;
+        String v = s.trim();
+        return v.isEmpty() ? null : v;
+    }
+
+    private static String actor(Principal principal) {
+        return principal == null ? null : principal.getName();
+    }
+
+    private static String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            int comma = forwarded.indexOf(',');
+            return comma >= 0 ? forwarded.substring(0, comma).trim() : forwarded.trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 }
