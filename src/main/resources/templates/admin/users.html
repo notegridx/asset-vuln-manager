@@ -8,7 +8,7 @@
     <div class="page-header page-header--split">
         <div class="page-header__left">
             <h1>Users</h1>
-            <div class="muted mt-6">Create users, enable or disable accounts, and update roles.</div>
+            <div class="muted mt-6">Create users, enable or disable accounts, unlock locked users, reset temporary passwords, and update roles.</div>
         </div>
 
         <div class="page-header__right page-header__right--pills">
@@ -18,6 +18,7 @@
     </div>
 
     <div id="users-page-message" class="my-12" style="display:none;"></div>
+
     <!-- Create user -->
     <div class="card" style="padding:16px; margin:12px 0;">
         <div class="actions" style="margin:0; align-items:flex-end;">
@@ -80,7 +81,7 @@
             <div>
                 <h2 style="margin:0;">Existing Users</h2>
                 <div class="muted" style="font-size:12px; margin-top:6px;">
-                    Click Enabled / Disabled to toggle account state. Update roles with Apply.
+                    Click Enabled / Disabled to toggle account state. Unlock locked users when needed. Reset password to issue a temporary password and force change on next login.
                 </div>
             </div>
         </div>
@@ -134,7 +135,80 @@
                     </td>
 
                     <td>
-                        <div class="actions" style="margin:0; gap:8px; align-items:flex-start; flex-direction:column;">
+                        <div class="actions" style="margin:0; gap:10px; align-items:flex-start; flex-direction:column;">
+
+                            <div class="js-account-state" style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <span class="pill"
+                                      th:if="${!u.accountNonLocked}">
+                                    Locked
+                                </span>
+                                <span class="pill"
+                                      th:if="${u.passwordChangeRequired}">
+                                    Password change required
+                                </span>
+                                <span class="pill"
+                                      th:if="${u.failedLoginCount != null and u.failedLoginCount > 0}"
+                                      th:text="'Failed: ' + ${u.failedLoginCount}">
+                                    Failed: 0
+                                </span>
+                            </div>
+
+                            <div class="actions" style="margin:0; gap:8px; align-items:center; flex-wrap:wrap;">
+                                <form class="unlock-form"
+                                      th:action="@{/admin/users/{id}/unlock(id=${u.id})}"
+                                      method="post"
+                                      style="margin:0;">
+                                    <input type="hidden"
+                                           th:if="${_csrf != null}"
+                                           th:name="${_csrf.parameterName}"
+                                           th:value="${_csrf.token}">
+                                    <button type="submit"
+                                            class="btn btn-sm"
+                                            th:disabled="${u.accountNonLocked}">
+                                        Unlock
+                                    </button>
+                                </form>
+                            </div>
+
+                            <form class="reset-password-form"
+                                  th:action="@{/admin/users/{id}/reset-password(id=${u.id})}"
+                                  method="post"
+                                  style="width:100%;">
+                                <input type="hidden"
+                                       th:if="${_csrf != null}"
+                                       th:name="${_csrf.parameterName}"
+                                       th:value="${_csrf.token}">
+
+                                <div class="field" style="margin:0;">
+                                    <label style="font-size:12px;">Reset Password</label>
+
+                                    <div class="form-row" style="margin-top:8px;">
+                                        <div class="field" style="min-width:180px; flex:1 1 180px; margin:0;">
+                                            <input type="password"
+                                                   name="newPassword"
+                                                   placeholder="Temporary password"
+                                                   autocomplete="new-password"
+                                                   required>
+                                        </div>
+
+                                        <div class="field" style="min-width:180px; flex:1 1 180px; margin:0;">
+                                            <input type="password"
+                                                   name="confirmPassword"
+                                                   placeholder="Confirm password"
+                                                   autocomplete="new-password"
+                                                   required>
+                                        </div>
+
+                                        <div class="field" style="min-width:120px; margin:0;">
+                                            <button type="submit" class="btn">Reset Password</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="muted" style="font-size:12px; margin-top:6px;">
+                                        Sets a temporary password, clears lock state, and forces password change at next login.
+                                    </div>
+                                </div>
+                            </form>
 
                             <form class="roles-form"
                                   th:action="@{/admin/users/{id}/roles(id=${u.id})}"
@@ -205,16 +279,59 @@
             </td>
 
             <td>
-                <div class="actions" style="margin:0; gap:8px; align-items:flex-start; flex-direction:column;">
+                <div class="actions" style="margin:0; gap:10px; align-items:flex-start; flex-direction:column;">
+
+                    <div class="js-account-state" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+
+                    <div class="actions" style="margin:0; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <form class="unlock-form" method="post" style="margin:0;">
+                            <input type="hidden" class="js-csrf-field" name="" value="">
+                            <button type="submit" class="btn btn-sm js-unlock-button" disabled>Unlock</button>
+                        </form>
+                    </div>
+
+                    <form class="reset-password-form" method="post" style="width:100%;">
+                        <input type="hidden" class="js-csrf-field" name="" value="">
+                        <div class="field" style="margin:0;">
+                            <label style="font-size:12px;">Reset Password</label>
+
+                            <div class="form-row" style="margin-top:8px;">
+                                <div class="field" style="min-width:180px; flex:1 1 180px; margin:0;">
+                                    <input type="password"
+                                           name="newPassword"
+                                           placeholder="Temporary password"
+                                           autocomplete="new-password"
+                                           required>
+                                </div>
+
+                                <div class="field" style="min-width:180px; flex:1 1 180px; margin:0;">
+                                    <input type="password"
+                                           name="confirmPassword"
+                                           placeholder="Confirm password"
+                                           autocomplete="new-password"
+                                           required>
+                                </div>
+
+                                <div class="field" style="min-width:120px; margin:0;">
+                                    <button type="submit" class="btn">Reset Password</button>
+                                </div>
+                            </div>
+
+                            <div class="muted" style="font-size:12px; margin-top:6px;">
+                                Sets a temporary password, clears lock state, and forces password change at next login.
+                            </div>
+                        </div>
+                    </form>
+
                     <form class="roles-form" method="post" style="width:100%;">
                         <input type="hidden" class="js-csrf-field" name="" value="">
                         <div class="field" style="margin:0;">
                             <label style="font-size:12px;">Update Roles</label>
-                            <div class="card js-roles-editor" style="padding:10px;"></div>
-                        </div>
 
-                        <div class="actions" style="margin-top:8px;">
-                            <button type="submit" class="btn">Apply</button>
+                            <div class="actions" style="margin:0; gap:10px; align-items:center;">
+                                <div class="card js-roles-editor" style="padding:10px; flex:1;"></div>
+                                <button type="submit" class="btn btn-primary">Apply</button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -283,7 +400,9 @@
             }
 
             function setButtonBusy(button, busy, busyText) {
-                if (!button) return;
+                if (!button) {
+                    return;
+                }
 
                 if (busy) {
                     if (!button.dataset.originalText) {
@@ -313,13 +432,32 @@
                     .join(" ");
             }
 
+            function buildAccountStateHtml(payload) {
+                const parts = [];
+
+                if (payload && payload.accountNonLocked === false) {
+                    parts.push('<span class="pill">Locked</span>');
+                }
+                if (payload && payload.passwordChangeRequired === true) {
+                    parts.push('<span class="pill">Password change required</span>');
+                }
+                if (payload && Number(payload.failedLoginCount || 0) > 0) {
+                    parts.push(`<span class="pill">Failed: ${escapeHtml(payload.failedLoginCount)}</span>`);
+                }
+
+                return parts.join("");
+            }
+
             function updateEnabledToggle(toggle, enabled, userId) {
-                if (!toggle) return;
+                if (!toggle) {
+                    return;
+                }
 
                 toggle.dataset.enabled = String(!!enabled);
                 if (userId != null) {
                     toggle.dataset.userId = String(userId);
                 }
+
                 toggle.className = enabled
                     ? "js-enabled-toggle btn btn-primary btn-sm"
                     : "js-enabled-toggle btn btn-danger btn-sm";
@@ -327,8 +465,23 @@
                 toggle.title = enabled ? "Click to disable" : "Click to enable";
             }
 
+            function updateUnlockButton(row, payload) {
+                const button =
+                    row.querySelector(".js-unlock-button") ||
+                    row.querySelector('.unlock-form button[type="submit"]');
+
+                if (!button) {
+                    return;
+                }
+
+                const locked = payload && payload.accountNonLocked === false;
+                button.disabled = !locked;
+            }
+
             function updateUserRow(row, payload) {
-                if (!row || !payload) return;
+                if (!row || !payload) {
+                    return;
+                }
 
                 if (payload.id != null) {
                     row.dataset.userId = String(payload.id);
@@ -363,9 +516,26 @@
                     });
                 }
 
+                const accountState = row.querySelector(".js-account-state");
+                if (accountState) {
+                    accountState.innerHTML = buildAccountStateHtml(payload);
+                }
+
+                updateUnlockButton(row, payload);
+
                 const rolesForm = row.querySelector(".roles-form");
                 if (rolesForm && payload.id != null) {
                     rolesForm.action = `/admin/users/${payload.id}/roles`;
+                }
+
+                const unlockForm = row.querySelector(".unlock-form");
+                if (unlockForm && payload.id != null) {
+                    unlockForm.action = `/admin/users/${payload.id}/unlock`;
+                }
+
+                const resetPasswordForm = row.querySelector(".reset-password-form");
+                if (resetPasswordForm && payload.id != null) {
+                    resetPasswordForm.action = `/admin/users/${payload.id}/reset-password`;
                 }
             }
 
@@ -390,7 +560,7 @@
                 }
 
                 if (!response.ok) {
-                    throw new Error(json?.error || "Request failed.");
+                    throw new Error(json?.message || "Request failed.");
                 }
 
                 return json;
@@ -420,7 +590,7 @@
                 }
 
                 if (!response.ok) {
-                    throw new Error(json?.error || "Request failed.");
+                    throw new Error(json?.message || "Request failed.");
                 }
 
                 return json;
@@ -438,7 +608,7 @@
                     const json = await submitFormAsJson(form);
 
                     if (!json.ok) {
-                        showMessage(json.error || "Failed to create user.", true);
+                        showMessage(json.message || "Failed to create user.", true);
                         return;
                     }
 
@@ -482,7 +652,7 @@
 
                     if (!json.ok) {
                         setButtonBusy(button, false);
-                        showMessage(json.error || "Failed to update user.", true);
+                        showMessage(json.message || "Failed to update user.", true);
                         return;
                     }
 
@@ -494,6 +664,59 @@
                 } catch (e) {
                     setButtonBusy(button, false);
                     showMessage(e.message || "Failed to update user.", true);
+                }
+            }
+
+            async function handleUnlockSubmit(event) {
+                event.preventDefault();
+                showMessage("", false);
+
+                const form = event.currentTarget;
+                const button = form.querySelector('button[type="submit"]');
+                const row = form.closest(".user-row");
+
+                try {
+                    setButtonBusy(button, true, "Unlocking...");
+                    const json = await submitFormAsJson(form);
+
+                    if (!json.ok) {
+                        showMessage(json.message || "Failed to unlock user.", true);
+                        return;
+                    }
+
+                    updateUserRow(row, json);
+                    showMessage(json.message || "User unlocked.", false);
+                } catch (e) {
+                    showMessage(e.message || "Failed to unlock user.", true);
+                } finally {
+                    setButtonBusy(button, false);
+                }
+            }
+
+            async function handleResetPasswordSubmit(event) {
+                event.preventDefault();
+                showMessage("", false);
+
+                const form = event.currentTarget;
+                const button = form.querySelector('button[type="submit"]');
+                const row = form.closest(".user-row");
+
+                try {
+                    setButtonBusy(button, true, "Resetting...");
+                    const json = await submitFormAsJson(form);
+
+                    if (!json.ok) {
+                        showMessage(json.message || "Failed to reset password.", true);
+                        return;
+                    }
+
+                    updateUserRow(row, json);
+                    form.reset();
+                    showMessage(json.message || "Temporary password updated.", false);
+                } catch (e) {
+                    showMessage(e.message || "Failed to reset password.", true);
+                } finally {
+                    setButtonBusy(button, false);
                 }
             }
 
@@ -510,7 +733,7 @@
                     const json = await submitFormAsJson(form);
 
                     if (!json.ok) {
-                        showMessage(json.error || "Failed to update roles.", true);
+                        showMessage(json.message || "Failed to update roles.", true);
                         return;
                     }
 
@@ -528,6 +751,20 @@
                     if (!button.dataset.bound) {
                         button.dataset.bound = "true";
                         button.addEventListener("click", handleEnabledToggleClick);
+                    }
+                });
+
+                scope.querySelectorAll(".unlock-form").forEach(form => {
+                    if (!form.dataset.bound) {
+                        form.dataset.bound = "true";
+                        form.addEventListener("submit", handleUnlockSubmit);
+                    }
+                });
+
+                scope.querySelectorAll(".reset-password-form").forEach(form => {
+                    if (!form.dataset.bound) {
+                        form.dataset.bound = "true";
+                        form.addEventListener("submit", handleResetPasswordSubmit);
                     }
                 });
 
@@ -551,6 +788,19 @@
                 }).join("");
             }
 
+            function applyCsrfField(field) {
+                if (!field) {
+                    return;
+                }
+
+                if (csrf.token) {
+                    field.name = csrf.parameterName;
+                    field.value = csrf.token;
+                } else {
+                    field.remove();
+                }
+            }
+
             function appendUserRow(payload) {
                 const fragment = userRowTemplate.content.cloneNode(true);
                 const row = fragment.querySelector(".user-row");
@@ -562,22 +812,40 @@
                 updateEnabledToggle(toggle, !!payload.enabled, payload.id);
 
                 const rolesForm = row.querySelector(".roles-form");
-                rolesForm.action = `/admin/users/${payload.id}/roles`;
-
-                const csrfField = row.querySelector(".js-csrf-field");
-                if (csrf.token) {
-                    csrfField.name = csrf.parameterName;
-                    csrfField.value = csrf.token;
-                } else {
-                    csrfField.remove();
+                if (rolesForm) {
+                    rolesForm.action = `/admin/users/${payload.id}/roles`;
                 }
+
+                const unlockForm = row.querySelector(".unlock-form");
+                if (unlockForm) {
+                    unlockForm.action = `/admin/users/${payload.id}/unlock`;
+                }
+
+                const resetPasswordForm = row.querySelector(".reset-password-form");
+                if (resetPasswordForm) {
+                    resetPasswordForm.action = `/admin/users/${payload.id}/reset-password`;
+                }
+
+                const csrfFields = row.querySelectorAll(".js-csrf-field");
+                csrfFields.forEach(applyCsrfField);
 
                 const selectedRoles = Array.isArray(payload.roles) ? payload.roles : [];
                 const rolesEditor = row.querySelector(".js-roles-editor");
-                rolesEditor.innerHTML = buildRolesEditorHtml(selectedRoles);
+                if (rolesEditor) {
+                    rolesEditor.innerHTML = buildRolesEditorHtml(selectedRoles);
+                }
 
                 const createdAtEl = row.querySelector(".js-created-at");
-                createdAtEl.textContent = "-";
+                if (createdAtEl) {
+                    createdAtEl.textContent = "-";
+                }
+
+                const accountState = row.querySelector(".js-account-state");
+                if (accountState) {
+                    accountState.innerHTML = buildAccountStateHtml(payload);
+                }
+
+                updateUnlockButton(row, payload);
 
                 usersTableBody.appendChild(fragment);
                 const appendedRow = usersTableBody.querySelector(`tr.user-row[data-user-id="${payload.id}"]`);

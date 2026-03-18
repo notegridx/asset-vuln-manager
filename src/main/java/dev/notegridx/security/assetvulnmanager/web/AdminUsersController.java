@@ -4,6 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.AppRole;
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppRoleRepository;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.PasswordPolicyService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,17 +29,20 @@ public class AdminUsersController {
     private final AppUserRepository appUserRepository;
     private final AppRoleRepository appRoleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicyService passwordPolicyService;
     private final SecurityAuditService securityAuditService;
 
     public AdminUsersController(
             AppUserRepository appUserRepository,
             AppRoleRepository appRoleRepository,
             PasswordEncoder passwordEncoder,
+            PasswordPolicyService passwordPolicyService,
             SecurityAuditService securityAuditService
     ) {
         this.appUserRepository = appUserRepository;
         this.appRoleRepository = appRoleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordPolicyService = passwordPolicyService;
         this.securityAuditService = securityAuditService;
     }
 
@@ -186,6 +190,57 @@ public class AdminUsersController {
         return okUser("User unlocked.", user);
     }
 
+    @PostMapping("/{id}/reset-password")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> resetPassword(
+            @PathVariable("id") Long id,
+            @RequestParam("newPassword") String newPassword,
+            @RequestParam("confirmPassword") String confirmPassword,
+            Principal principal,
+            HttpServletRequest request
+    ) {
+        AppUser user = appUserRepository.findById(id).orElse(null);
+        if (user == null) {
+            return error("User not found.");
+        }
+
+        String next = safe(newPassword);
+        String confirm = safe(confirmPassword);
+
+        if (next == null) {
+            return error("Temporary password is required.");
+        }
+        if (confirm == null) {
+            return error("Password confirmation is required.");
+        }
+        if (!next.equals(confirm)) {
+            return error("Temporary password and confirmation do not match.");
+        }
+
+        List<String> passwordErrors = passwordPolicyService.validate(next);
+        if (!passwordErrors.isEmpty()) {
+            return error(String.join(" ", passwordErrors));
+        }
+
+        user.changePasswordHash(passwordEncoder.encode(next));
+        user.setPasswordChangeRequired(true);
+        user.unlock();
+
+        appUserRepository.save(user);
+
+        securityAuditService.log(
+                "PASSWORD_RESET_BY_ADMIN",
+                actor(principal),
+                user.getUsername(),
+                "SUCCESS",
+                clientIp(request),
+                "Password reset by administrator. passwordChangeRequired=true"
+        );
+
+        return okUser("Temporary password updated.", user);
+    }
+
     @PostMapping("/{id}/roles")
     @ResponseBody
     @Transactional
@@ -261,6 +316,9 @@ public class AdminUsersController {
             m.put("id", user.getId());
             m.put("username", user.getUsername());
             m.put("enabled", user.isEnabled());
+            m.put("accountNonLocked", user.isAccountNonLocked());
+            m.put("passwordChangeRequired", user.isPasswordChangeRequired());
+            m.put("failedLoginCount", user.getFailedLoginCount());
             m.put("roles", user.getRoles().stream()
                     .map(AppRole::getRoleName)
                     .sorted()

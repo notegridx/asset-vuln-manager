@@ -4,6 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.AppRole;
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppRoleRepository;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.PasswordPolicyService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,9 @@ class AdminUsersControllerWebMvcTest {
 
     @MockitoBean
     private PasswordEncoder passwordEncoder;
+
+    @MockitoBean
+    private PasswordPolicyService passwordPolicyService;
 
     @MockitoBean
     private SecurityAuditService securityAuditService;
@@ -356,6 +360,8 @@ class AdminUsersControllerWebMvcTest {
                 .andExpect(jsonPath("$.id").value(13))
                 .andExpect(jsonPath("$.username").value("alice"))
                 .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.accountNonLocked").value(true))
+                .andExpect(jsonPath("$.failedLoginCount").value(0))
                 .andExpect(jsonPath("$.roles[0]").value("OPERATOR"));
 
         verify(appUserRepository).save(argThat(u ->
@@ -372,6 +378,109 @@ class AdminUsersControllerWebMvcTest {
                 any(),
                 eq("User unlocked and failed login counter reset.")
         );
+    }
+
+    @Test
+    @DisplayName("POST /admin/users/{id}/reset-password updates password and forces password change")
+    void resetPassword_updatesPasswordAndUnlocks() throws Exception {
+        AppRole userRole = role("OPERATOR");
+        AppUser user = AppUser.of("alice", "old-hash");
+        user.setEnabled(true);
+        user.setAccountNonLocked(false);
+        user.replaceRoles(Set.of(userRole));
+        user.incrementFailedLoginCount();
+        user.lockNow();
+        setId(user, 14L);
+
+        when(appUserRepository.findById(14L)).thenReturn(Optional.of(user));
+        when(passwordPolicyService.validate("TempPass123!")).thenReturn(List.of());
+        when(passwordEncoder.encode("TempPass123!")).thenReturn("ENC(TempPass123!)");
+        when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        mockMvc.perform(post("/admin/users/14/reset-password")
+                        .with(csrf())
+                        .param("newPassword", "TempPass123!")
+                        .param("confirmPassword", "TempPass123!"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.ok").value(true))
+                .andExpect(jsonPath("$.message").value("Temporary password updated."))
+                .andExpect(jsonPath("$.id").value(14))
+                .andExpect(jsonPath("$.username").value("alice"))
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.accountNonLocked").value(true))
+                .andExpect(jsonPath("$.passwordChangeRequired").value(true))
+                .andExpect(jsonPath("$.failedLoginCount").value(0))
+                .andExpect(jsonPath("$.roles[0]").value("OPERATOR"));
+
+        verify(passwordPolicyService).validate("TempPass123!");
+        verify(passwordEncoder).encode("TempPass123!");
+        verify(appUserRepository).save(argThat(u ->
+                "alice".equals(u.getUsername())
+                        && u.isEnabled()
+                        && u.isAccountNonLocked()
+                        && u.isPasswordChangeRequired()
+                        && u.getFailedLoginCount() == 0
+                        && u.getLockedAt() == null
+                        && u.getLastFailedLoginAt() == null
+        ));
+        verify(securityAuditService).log(
+                eq("PASSWORD_RESET_BY_ADMIN"),
+                eq("admin"),
+                eq("alice"),
+                eq("SUCCESS"),
+                any(),
+                eq("Password reset by administrator. passwordChangeRequired=true")
+        );
+    }
+
+    @Test
+    @DisplayName("POST /admin/users/{id}/reset-password rejects mismatch")
+    void resetPassword_mismatch_rejects() throws Exception {
+        AppUser user = AppUser.of("alice", "old-hash");
+        setId(user, 15L);
+
+        when(appUserRepository.findById(15L)).thenReturn(Optional.of(user));
+
+        mockMvc.perform(post("/admin/users/15/reset-password")
+                        .with(csrf())
+                        .param("newPassword", "TempPass123!")
+                        .param("confirmPassword", "TempPass999!"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.ok").value(false))
+                .andExpect(jsonPath("$.message").value("Temporary password and confirmation do not match."));
+
+        verify(passwordPolicyService, never()).validate(any());
+        verify(passwordEncoder, never()).encode(any());
+        verify(appUserRepository, never()).save(any(AppUser.class));
+        verify(securityAuditService, never()).log(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("POST /admin/users/{id}/reset-password rejects policy violation")
+    void resetPassword_policyViolation_rejects() throws Exception {
+        AppUser user = AppUser.of("alice", "old-hash");
+        setId(user, 16L);
+
+        when(appUserRepository.findById(16L)).thenReturn(Optional.of(user));
+        when(passwordPolicyService.validate("short")).thenReturn(List.of(
+                "Password must be at least 12 characters."
+        ));
+
+        mockMvc.perform(post("/admin/users/16/reset-password")
+                        .with(csrf())
+                        .param("newPassword", "short")
+                        .param("confirmPassword", "short"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.ok").value(false))
+                .andExpect(jsonPath("$.message").value("Password must be at least 12 characters."));
+
+        verify(passwordPolicyService).validate("short");
+        verify(passwordEncoder, never()).encode(any());
+        verify(appUserRepository, never()).save(any(AppUser.class));
+        verify(securityAuditService, never()).log(any(), any(), any(), any(), any(), any());
     }
 
     @Test
