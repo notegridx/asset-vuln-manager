@@ -21,12 +21,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 @Controller
 public class AdminCanonicalController {
 
     private static final long STATS_CACHE_MILLIS = 30_000L;
+    private static final long ASSETS_CACHE_MILLIS = 30_000L;
     private static final String UNUSED_ASSET_NAME = null;
 
     private final AssetRepository assetRepo;
@@ -36,6 +38,9 @@ public class AdminCanonicalController {
 
     private volatile CanonicalCpeLinkingService.MappingStats cachedStats;
     private volatile long cachedStatsAtMillis;
+
+    private volatile List<Asset> cachedAssets;
+    private volatile long cachedAssetsAtMillis;
 
     public AdminCanonicalController(
             AssetRepository assetRepo,
@@ -89,8 +94,7 @@ public class AdminCanonicalController {
         Filter filter = Filter.parse(filterRaw);
         String keyword = normalizeKeyword(q);
 
-        List<Asset> assets = assetRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
-        model.addAttribute("assets", assets);
+        model.addAttribute("assets", getCachedAssets());
         model.addAttribute("stats", getCachedStats());
 
         Pageable pageable = PageRequest.of(safePage, safeSize);
@@ -112,25 +116,7 @@ public class AdminCanonicalController {
 
             rowPage = new PageImpl<>(rows, pageable, softwarePage.getTotalElements());
         } else {
-            List<SoftwareInstall> base =
-                    softwareRepo.findCanonicalBaseRows(assetId, UNUSED_ASSET_NAME, keyword);
-
-            List<Row> analyzed = base.stream()
-                    .map(s -> Row.from(s, linker.analyze(s)))
-                    .toList();
-
-            List<Row> filteredRows = analyzed.stream()
-                    .filter(r -> matchesFilter(r, filter))
-                    .toList();
-
-            int fromIndex = Math.min((int) pageable.getOffset(), filteredRows.size());
-            int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredRows.size());
-
-            rowPage = new PageImpl<>(
-                    filteredRows.subList(fromIndex, toIndex),
-                    pageable,
-                    filteredRows.size()
-            );
+            rowPage = findCanonicalAnalyzedPage(assetId, keyword, filter, pageable);
         }
 
         int pageRowStart = rowPage.getNumberOfElements() == 0 ? 0 : (int) pageable.getOffset() + 1;
@@ -165,7 +151,7 @@ public class AdminCanonicalController {
     ) {
         try {
             var result = adminCanonicalBackfillService.runBackfill(maxRows, relink);
-            invalidateStatsCache();
+            invalidateCaches();
             ra.addFlashAttribute("backfillResult", result);
         } catch (AdminJobAlreadyRunningException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
@@ -206,6 +192,52 @@ public class AdminCanonicalController {
         return safeRedirectOrDefault(redirect, "/admin/canonical");
     }
 
+    private Page<Row> findCanonicalAnalyzedPage(
+            Long assetId,
+            String keyword,
+            Filter filter,
+            Pageable pageable
+    ) {
+        int batchSize = Math.max(200, pageable.getPageSize() * 4);
+        long offset = pageable.getOffset();
+
+        long matchedCount = 0;
+        int batchPage = 0;
+        List<Row> pageRows = new ArrayList<>(pageable.getPageSize());
+
+        while (true) {
+            Page<SoftwareInstall> batch = softwareRepo.findCanonicalBasePage(
+                    assetId,
+                    UNUSED_ASSET_NAME,
+                    keyword,
+                    PageRequest.of(batchPage, batchSize)
+            );
+
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            for (SoftwareInstall s : batch.getContent()) {
+                Row row = Row.from(s, linker.analyze(s));
+                if (!matchesFilter(row, filter)) {
+                    continue;
+                }
+
+                if (matchedCount >= offset && pageRows.size() < pageable.getPageSize()) {
+                    pageRows.add(row);
+                }
+                matchedCount++;
+            }
+
+            if (!batch.hasNext()) {
+                break;
+            }
+            batchPage++;
+        }
+
+        return new PageImpl<>(pageRows, pageable, matchedCount);
+    }
+
     private CanonicalCpeLinkingService.MappingStats getCachedStats() {
         long now = System.currentTimeMillis();
         CanonicalCpeLinkingService.MappingStats local = cachedStats;
@@ -229,9 +261,42 @@ public class AdminCanonicalController {
         }
     }
 
+    private List<Asset> getCachedAssets() {
+        long now = System.currentTimeMillis();
+        List<Asset> local = cachedAssets;
+
+        if (local != null && (now - cachedAssetsAtMillis) < ASSETS_CACHE_MILLIS) {
+            return local;
+        }
+
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            local = cachedAssets;
+
+            if (local != null && (now - cachedAssetsAtMillis) < ASSETS_CACHE_MILLIS) {
+                return local;
+            }
+
+            List<Asset> refreshed = assetRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
+            cachedAssets = refreshed;
+            cachedAssetsAtMillis = now;
+            return refreshed;
+        }
+    }
+
+    private void invalidateCaches() {
+        invalidateStatsCache();
+        invalidateAssetsCache();
+    }
+
     private void invalidateStatsCache() {
         cachedStats = null;
         cachedStatsAtMillis = 0L;
+    }
+
+    private void invalidateAssetsCache() {
+        cachedAssets = null;
+        cachedAssetsAtMillis = 0L;
     }
 
     private static boolean isSqlPageableFilter(Filter filter) {

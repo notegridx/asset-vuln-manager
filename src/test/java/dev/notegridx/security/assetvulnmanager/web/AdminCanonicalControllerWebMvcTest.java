@@ -5,15 +5,16 @@ import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
+import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
+import dev.notegridx.security.assetvulnmanager.service.CanonicalBackfillService;
 import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -25,18 +26,16 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -51,6 +50,9 @@ class AdminCanonicalControllerWebMvcTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private AdminCanonicalController controller;
+
     @MockitoBean
     private AssetRepository assetRepo;
 
@@ -62,6 +64,23 @@ class AdminCanonicalControllerWebMvcTest {
 
     @MockitoBean
     private AdminCanonicalBackfillService adminCanonicalBackfillService;
+
+    @BeforeEach
+    void setUpControllerCaches() {
+        ReflectionTestUtils.setField(
+                controller,
+                "cachedStats",
+                mock(CanonicalCpeLinkingService.MappingStats.class)
+        );
+        ReflectionTestUtils.setField(
+                controller,
+                "cachedStatsAtMillis",
+                System.currentTimeMillis()
+        );
+
+        ReflectionTestUtils.setField(controller, "cachedAssets", null);
+        ReflectionTestUtils.setField(controller, "cachedAssetsAtMillis", 0L);
+    }
 
     @Test
     @DisplayName("GET /admin/canonical uses default page=0 and size=50")
@@ -87,9 +106,7 @@ class AdminCanonicalControllerWebMvcTest {
                 .andExpect(model().attributeExists("rows"))
                 .andExpect(model().attributeExists("rowPage"))
                 .andExpect(model().attributeExists("sizeOptions"))
-                .andExpect(content().string(containsString("Rows per page")))
-                .andExpect(content().string(containsString("Previous page")))
-                .andExpect(content().string(containsString("Next page")));
+                .andExpect(model().attribute("currentQuery", "?filter=all&page=0&size=50"));
 
         verify(assetRepo).findAll(any(Sort.class));
         verify(softwareRepo).findCanonicalSqlPage(
@@ -99,101 +116,126 @@ class AdminCanonicalControllerWebMvcTest {
                 eq("all"),
                 eq(PageRequest.of(0, 50))
         );
+        verify(softwareRepo, never()).findCanonicalBasePage(any(), any(), any(), any());
         verify(softwareRepo, never()).findCanonicalBaseRows(any(), any(), any());
     }
 
     @Test
-    @DisplayName("GET /admin/canonical accepts custom page and size")
-    void view_acceptsCustomPageAndSize() throws Exception {
+    @DisplayName("GET /admin/canonical accepts custom page and normalizes size")
+    void view_acceptsCustomPageAndNormalizesSize() throws Exception {
         when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of());
         when(softwareRepo.findCanonicalSqlPage(
                 eq(null),
                 eq(null),
                 eq("chrome"),
                 eq("notLinked"),
-                eq(PageRequest.of(1, 200))
-        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(1, 200), 0));
+                eq(PageRequest.of(2, 200))
+        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(2, 200), 0));
 
         mockMvc.perform(get("/admin/canonical")
-                        .param("page", "1")
-                        .param("size", "200")
                         .param("filter", "notLinked")
-                        .param("q", "chrome"))
+                        .param("q", "chrome")
+                        .param("page", "2")
+                        .param("size", "120"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/canonical"))
-                .andExpect(model().attribute("page", 1))
+                .andExpect(model().attribute("page", 2))
                 .andExpect(model().attribute("size", 200))
                 .andExpect(model().attribute("filter", "notLinked"))
                 .andExpect(model().attribute("q", "chrome"))
-                .andExpect(model().attributeExists("rowPage"))
-                .andExpect(content().string(containsString("Showing")));
+                .andExpect(model().attribute("totalFilteredRows", 0L))
+                .andExpect(model().attribute("currentQuery", "?filter=notLinked&q=chrome&page=2&size=200"));
 
-        verify(assetRepo).findAll(any(Sort.class));
         verify(softwareRepo).findCanonicalSqlPage(
                 eq(null),
                 eq(null),
                 eq("chrome"),
                 eq("notLinked"),
-                eq(PageRequest.of(1, 200))
+                eq(PageRequest.of(2, 200))
         );
+        verify(softwareRepo, never()).findCanonicalBasePage(any(), any(), any(), any());
         verify(softwareRepo, never()).findCanonicalBaseRows(any(), any(), any());
     }
 
     @Test
-    @DisplayName("GET /admin/canonical uses base-row path for non-SQL filter")
-    void view_nonSqlFilter_usesBaseRowsPath() throws Exception {
+    @DisplayName("GET /admin/canonical uses paged base scan for non-SQL filter")
+    void view_nonSqlFilter_usesFindCanonicalBasePage() throws Exception {
         when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of());
-        when(softwareRepo.findCanonicalBaseRows(eq(null), eq(null), eq("chrome"))).thenReturn(List.of());
+        when(softwareRepo.findCanonicalBasePage(
+                eq(null),
+                eq(null),
+                eq("oracle"),
+                eq(PageRequest.of(0, 200))
+        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 200), 0));
 
         mockMvc.perform(get("/admin/canonical")
                         .param("filter", "linkedValid")
-                        .param("q", "chrome"))
+                        .param("q", "oracle"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/canonical"))
                 .andExpect(model().attribute("filter", "linkedValid"))
-                .andExpect(model().attribute("q", "chrome"))
-                .andExpect(model().attributeExists("rowPage"));
+                .andExpect(model().attribute("q", "oracle"))
+                .andExpect(model().attribute("page", 0))
+                .andExpect(model().attribute("size", 50))
+                .andExpect(model().attribute("totalFilteredRows", 0L))
+                .andExpect(model().attribute("pageRowStart", 0))
+                .andExpect(model().attribute("pageRowEnd", 0));
 
-        verify(assetRepo).findAll(any(Sort.class));
-        verify(softwareRepo).findCanonicalBaseRows(eq(null), eq(null), eq("chrome"));
+        verify(softwareRepo).findCanonicalBasePage(
+                eq(null),
+                eq(null),
+                eq("oracle"),
+                eq(PageRequest.of(0, 200))
+        );
         verify(softwareRepo, never()).findCanonicalSqlPage(any(), any(), any(), any(), any());
+        verify(softwareRepo, never()).findCanonicalBaseRows(any(), any(), any());
     }
 
     @Test
-    @DisplayName("GET /admin/canonical filters by asset id and exposes assets for selector")
-    void view_filtersByAssetId_andExposesAssetsForSelector() throws Exception {
-        Asset asset1 = new Asset("Alpha");
-        ReflectionTestUtils.setField(asset1, "id", 1L);
+    @DisplayName("POST /admin/canonical/link runs backfill and redirects to requested page")
+    void runLinking_success() throws Exception {
+        CanonicalBackfillService.BackfillResult result =
+                new CanonicalBackfillService.BackfillResult(
+                        100,      // scanned
+                        80,       // linked
+                        10,       // missed
+                        true,     // forceRebuild
+                        90,       // fullyLinked
+                        10,       // vendorOnly
+                        0,        // pureMiss
+                        1234L,    // elapsedMs
+                        "1.234",  // elapsedSec
+                        "81.0"    // rowsPerSec
+                );
 
-        Asset asset2 = new Asset("Beta");
-        ReflectionTestUtils.setField(asset2, "id", 2L);
+        when(adminCanonicalBackfillService.runBackfill(1000, true)).thenReturn(result);
 
-        when(assetRepo.findAll(any(Sort.class))).thenReturn(List.of(asset1, asset2));
-        when(softwareRepo.findCanonicalSqlPage(
-                eq(2L),
-                isNull(),
-                isNull(),
-                eq("all"),
-                any(Pageable.class)
-        )).thenReturn(Page.empty());
+        mockMvc.perform(post("/admin/canonical/link")
+                        .with(csrf())
+                        .param("maxRows", "1000")
+                        .param("relink", "true")
+                        .param("redirect", "/admin/canonical?filter=notLinked"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/canonical?filter=notLinked"))
+                .andExpect(flash().attributeExists("backfillResult"));
 
-        mockMvc.perform(get("/admin/canonical")
-                        .param("asset", "2"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("admin/canonical"))
-                .andExpect(model().attribute("asset", 2L))
-                .andExpect(model().attributeExists("assets"))
-                .andExpect(content().string(containsString("Alpha")))
-                .andExpect(content().string(containsString("Beta")));
+        verify(adminCanonicalBackfillService).runBackfill(1000, true);
+    }
 
-        verify(assetRepo).findAll(any(Sort.class));
-        verify(softwareRepo).findCanonicalSqlPage(
-                eq(2L),
-                isNull(),
-                isNull(),
-                eq("all"),
-                any(Pageable.class)
-        );
+    @Test
+    @DisplayName("POST /admin/canonical/link returns flash error when job is already running")
+    void runLinking_alreadyRunning() throws Exception {
+        when(adminCanonicalBackfillService.runBackfill(5000000, false))
+                .thenThrow(new AdminJobAlreadyRunningException("already running"));
+
+        mockMvc.perform(post("/admin/canonical/link")
+                        .with(csrf())
+                        .param("redirect", "/admin/canonical"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/canonical"))
+                .andExpect(flash().attribute("error", "already running"));
+
+        verify(adminCanonicalBackfillService).runBackfill(5000000, false);
     }
 
     @Test

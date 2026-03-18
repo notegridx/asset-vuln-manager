@@ -79,12 +79,6 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
 
     /**
      * Paged search for /software list with SQL-level link status filtering.
-     * This avoids loading the full software inventory into memory before paging.
-     *
-     * Supported linkStatus values:
-     * - null / ALL       : no link filter
-     * - LINKED           : both cpeVendorId and cpeProductId are present
-     * - NOT_LINKED       : either cpeVendorId or cpeProductId is missing
      */
     @EntityGraph(attributePaths = {"asset"})
     @Query("""
@@ -118,7 +112,6 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
 
     // =========================================================
     // /admin/canonical optimized reads
-    // - SQL-pageable filters only: all / fullyLinked / vendorOnlyLinked / notLinked
     // =========================================================
 
     @EntityGraph(attributePaths = {"asset"})
@@ -147,6 +140,33 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             @Param("assetName") String assetName,
             @Param("q") String q,
             @Param("linkState") String linkState,
+            Pageable pageable
+    );
+
+    /**
+     * Base page scan for non-SQL filters on /admin/canonical.
+     * This is intentionally pageable so the controller can scan in chunks
+     * instead of loading the full candidate list into memory at once.
+     */
+    @EntityGraph(attributePaths = {"asset"})
+    @Query("""
+            select s from SoftwareInstall s
+            where (:assetId is null or s.asset.id = :assetId)
+              and (:assetName is null or lower(coalesce(s.asset.name, '')) like lower(concat('%', :assetName, '%')))
+              and (
+                    :q is null or :q = ''
+                    or lower(coalesce(s.vendorRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.productRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.versionRaw, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedVendor, '')) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(s.normalizedProduct, '')) like lower(concat('%', :q, '%'))
+                  )
+            order by s.id desc
+            """)
+    Page<SoftwareInstall> findCanonicalBasePage(
+            @Param("assetId") Long assetId,
+            @Param("assetName") String assetName,
+            @Param("q") String q,
             Pageable pageable
     );
 
@@ -205,7 +225,6 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
 
     // =========================================================
     // Bulk apply canonical IDs (raw/display coalesce match)
-    // - match logic aligns with UnresolvedMappingRepository.findAllActive()
     // =========================================================
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -236,11 +255,6 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             @Param("productRaw") String productRaw
     );
 
-    /**
-     * Select rows that still need canonical linking.
-     * Rows are included when normalized vendor/product data exists
-     * but canonical vendor/product IDs are still missing.
-     */
     @Query("""
             select s from SoftwareInstall s
             where s.canonicalLinkDisabled = false
@@ -259,10 +273,6 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             """)
     List<SoftwareInstall> findNeedsCanonicalLink();
 
-    /**
-     * Same scope as findNeedsCanonicalLink(), but returns only IDs and supports paging.
-     * This avoids loading the full SoftwareInstall list into memory during backfill.
-     */
     @Query("""
             select s.id from SoftwareInstall s
             where s.canonicalLinkDisabled = false
@@ -281,9 +291,6 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
             """)
     Page<Long> findNeedsCanonicalLinkIds(Pageable pageable);
 
-    /**
-     * Full rebuild path: page through all IDs only.
-     */
     @Query("""
             select s.id from SoftwareInstall s
             order by s.id desc
