@@ -58,7 +58,11 @@
             <span th:text="${success}">Product dictionary updated successfully.</span>
         </div>
 
-        <form th:action="@{/admin/cpe/sync}" method="post" enctype="multipart/form-data" class="mt-12">
+        <form id="cpeSyncForm"
+              th:action="@{/admin/cpe/sync}"
+              method="post"
+              enctype="multipart/form-data"
+              class="mt-12">
 
             <div class="field">
                 <label>Source</label>
@@ -122,10 +126,15 @@
                 </div>
             </div>
 
-            <div class="actions actions--mt-14">
-                <button type="submit" class="btn btn-primary">
-                    Update Product Dictionary
+            <div class="actions actions--mt-14" style="align-items:center; gap:10px;">
+                <button id="cpeSyncSubmitButton" type="submit" class="btn btn-primary">
+                    <span id="cpeSyncSubmitLabel">Update Product Dictionary</span>
                 </button>
+                <span id="cpeSyncBusyMessage"
+                      class="muted text-12"
+                      style="display:none;">
+                    Processing... Please wait until the update completes.
+                </span>
             </div>
 
         </form>
@@ -205,11 +214,15 @@
 
     <script>
         (() => {
+            const form = document.getElementById('cpeSyncForm');
             const modeRadios = document.querySelectorAll('input[name="mode"]');
             const downloadModeFields = document.getElementById('downloadModeFields');
             const uploadModeFields = document.getElementById('uploadModeFields');
             const forceCheckbox = document.querySelector('input[name="force"]');
             const fileInput = document.querySelector('input[name="file"]');
+            const submitButton = document.getElementById('cpeSyncSubmitButton');
+            const submitLabel = document.getElementById('cpeSyncSubmitLabel');
+            const busyMessage = document.getElementById('cpeSyncBusyMessage');
 
             if (!modeRadios.length || !downloadModeFields || !uploadModeFields) {
                 return;
@@ -246,6 +259,51 @@
             });
 
             applyModeUi();
+
+            if (!form || !submitButton) {
+                return;
+            }
+
+            let submitting = false;
+
+            function setSubmittingState() {
+                if (submitting) {
+                    return false;
+                }
+                submitting = true;
+
+                submitButton.disabled = true;
+                submitButton.setAttribute('aria-disabled', 'true');
+                submitButton.style.opacity = '0.7';
+                submitButton.style.cursor = 'not-allowed';
+
+                if (submitLabel) {
+                    submitLabel.textContent = 'Processing...';
+                }
+
+                if (busyMessage) {
+                    busyMessage.style.display = '';
+                }
+
+                const controls = form.querySelectorAll('input, select, textarea, button');
+                controls.forEach(el => {
+                    if (el === submitButton) {
+                        return;
+                    }
+                    if (el.tagName === 'INPUT' && el.type === 'hidden') {
+                        return;
+                    }
+                    el.disabled = true;
+                });
+
+                return true;
+            }
+
+            form.addEventListener('submit', event => {
+                if (!setSubmittingState()) {
+                    event.preventDefault();
+                }
+            });
         })();
     </script>
 
