@@ -23,6 +23,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Controller
 public class AdminCanonicalController {
@@ -55,28 +56,69 @@ public class AdminCanonicalController {
     }
 
     public enum Filter {
-        all,
+        all("all"),
 
-        fullyLinked,
-        vendorOnlyLinked,
-        notLinked,
+        fullyLinked("fullyLinked"),
+        vendorOnlyLinked("vendorOnlyLinked"),
+        notLinked("notLinked"),
 
-        linkedValid,
-        linkedStale,
+        linkedValid("linkedValid"),
+        linkedStale("linkedStale"),
 
-        fullyResolvable,
-        vendorResolvableOnly,
-        unresolvable,
+        fullyResolvable("fullyResolvable"),
+        vendorResolvableOnly("vendorResolvableOnly"),
+        unresolvable("unresolvable"),
 
-        needsNormalization;
+        needsNormalization("needsNormalization");
+
+        private final String paramValue;
+
+        Filter(String paramValue) {
+            this.paramValue = paramValue;
+        }
+
+        public String paramValue() {
+            return paramValue;
+        }
 
         static Filter parse(String s) {
-            if (s == null || s.isBlank()) return all;
-            try {
-                return Filter.valueOf(s.trim());
-            } catch (Exception e) {
+            if (s == null || s.isBlank()) {
                 return all;
             }
+
+            String raw = s.trim();
+            String normalized = raw.toLowerCase(Locale.ROOT);
+
+            return switch (normalized) {
+                case "all" -> all;
+
+                // Existing filter names
+                case "fullylinked" -> fullyLinked;
+                case "vendoronlylinked" -> vendorOnlyLinked;
+                case "notlinked" -> notLinked;
+
+                case "linkedvalid" -> linkedValid;
+                case "linkedstale" -> linkedStale;
+
+                case "fullyresolvable" -> fullyResolvable;
+                case "vendorresolvableonly" -> vendorResolvableOnly;
+                case "unresolvable" -> unresolvable;
+
+                case "needsnormalization" -> needsNormalization;
+
+                // Stats button aliases
+                case "fullylinkedsql" -> fullyLinked;
+                case "vendoronlylinkedsql" -> vendorOnlyLinked;
+                case "notlinkedsql" -> notLinked;
+
+                default -> {
+                    try {
+                        yield Filter.valueOf(raw);
+                    } catch (Exception e) {
+                        yield all;
+                    }
+                }
+            };
         }
     }
 
@@ -126,7 +168,13 @@ public class AdminCanonicalController {
         model.addAttribute("rowPage", rowPage);
 
         model.addAttribute("asset", assetId);
+
+        // Keep the existing model attribute for backward compatibility with the current template.
         model.addAttribute("filter", filter.name());
+
+        // Additional attribute for template-side link/highlight handling.
+        model.addAttribute("selectedFilterParam", filter.paramValue());
+
         model.addAttribute("q", q);
         model.addAttribute("page", safePage);
         model.addAttribute("size", safeSize);
@@ -136,7 +184,7 @@ public class AdminCanonicalController {
         model.addAttribute("pageRowStart", pageRowStart);
         model.addAttribute("pageRowEnd", pageRowEnd);
 
-        String currentQuery = buildCurrentQuery(assetId, filter.name(), q, safePage, safeSize);
+        String currentQuery = buildCurrentQuery(assetId, filter.paramValue(), q, safePage, safeSize);
         model.addAttribute("currentQuery", currentQuery);
 
         return "admin/canonical";

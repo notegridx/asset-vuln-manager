@@ -149,12 +149,21 @@
         border-radius: 12px;
         background: rgba(255, 255, 255, 0.02);
         transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
     }
 
     .canon-stat-item:hover {
         border-color: rgba(138, 180, 255, 0.45);
         background: rgba(138, 180, 255, 0.06);
         transform: translateY(-1px);
+    }
+
+    .canon-stat-item.is-active {
+        border-color: rgba(138, 180, 255, 0.75);
+        background: rgba(138, 180, 255, 0.12);
+        box-shadow: 0 0 0 1px rgba(138, 180, 255, 0.15) inset;
     }
 
     .canon-stat-label {
@@ -176,6 +185,11 @@
         border-radius: 999px;
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.03);
+    }
+
+    .canon-stat-item.is-active .canon-stat-value {
+        border-color: rgba(138, 180, 255, 0.55);
+        background: rgba(138, 180, 255, 0.12);
     }
 
     .canon-stat-tooltip {
@@ -212,7 +226,8 @@
         border-top-color: #111;
     }
 
-    .canon-stat-item:hover .canon-stat-tooltip {
+    .canon-stat-item:hover .canon-stat-tooltip,
+    .canon-stat-item:focus-visible .canon-stat-tooltip {
         opacity: 1;
         transform: translateY(0);
     }
@@ -534,85 +549,165 @@
 
         <div class="canon-stats-grid">
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'all' or filter == 'all'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='all',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">total</div>
                 <div class="canon-stat-value" th:text="${stats.total}">0</div>
                 <div class="canon-stat-tooltip">
                     Rows currently loaded across all software rows.
                 </div>
-            </div>
+            </a>
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'fullyLinked' or selectedFilterParam == 'fullyLinkedSql' or filter == 'fullyLinked'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='fullyLinkedSql',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">fullyLinkedSql</div>
                 <div class="canon-stat-value" th:text="${stats.fullyLinkedSql}">0</div>
                 <div class="canon-stat-tooltip">
                     Both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are set.
                 </div>
-            </div>
+            </a>
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'vendorOnlyLinked' or selectedFilterParam == 'vendorOnlyLinkedSql' or filter == 'vendorOnlyLinked'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='vendorOnlyLinkedSql',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">vendorOnlyLinkedSql</div>
                 <div class="canon-stat-value" th:text="${stats.vendorOnlyLinkedSql}">0</div>
                 <div class="canon-stat-tooltip">
                     <code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.
                 </div>
-            </div>
+            </a>
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'notLinked' or selectedFilterParam == 'notLinkedSql' or filter == 'notLinked'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='notLinkedSql',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">notLinkedSql</div>
                 <div class="canon-stat-value" th:text="${stats.notLinkedSql}">0</div>
                 <div class="canon-stat-tooltip">
                     Neither <code>cpe_vendor_id</code> nor <code>cpe_product_id</code> is set.
                 </div>
-            </div>
+            </a>
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'linkedValid' or filter == 'linkedValid'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='linkedValid',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">linkedValid</div>
                 <div class="canon-stat-value" th:text="${stats.linkedValid}">0</div>
                 <div class="canon-stat-tooltip">
                     Fully linked and IDs are valid. Referenced dictionary rows exist.
                 </div>
-            </div>
+            </a>
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'linkedStale' or filter == 'linkedStale'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='linkedStale',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">linkedStale</div>
                 <div class="canon-stat-value" th:text="${stats.linkedStale}">0</div>
                 <div class="canon-stat-tooltip">
                     Fully linked but referenced dictionary rows are missing. These are stale IDs.
                 </div>
-            </div>
+            </a>
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'fullyResolvable' or filter == 'fullyResolvable'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='fullyResolvable',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">fullyResolvable</div>
                 <div class="canon-stat-value" th:text="${stats.fullyResolvable}">0</div>
                 <div class="canon-stat-tooltip">
                     <b>(not linked only)</b> Dictionary can resolve both vendor and product.
                 </div>
-            </div>
+            </a>
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'vendorResolvableOnly' or filter == 'vendorResolvableOnly'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='vendorResolvableOnly',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">vendorResolvableOnly</div>
                 <div class="canon-stat-value" th:text="${stats.vendorResolvableOnly}">0</div>
                 <div class="canon-stat-tooltip">
                     <b>(not linked only)</b> Vendor is resolvable, but product is not.
                 </div>
-            </div>
+            </a>
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'unresolvable' or filter == 'unresolvable'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='unresolvable',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">unresolvable</div>
                 <div class="canon-stat-value" th:text="${stats.unresolvable}">0</div>
                 <div class="canon-stat-tooltip">
                     <b>(not linked only)</b> Neither vendor nor product can be resolved from normalized strings.
                 </div>
-            </div>
+            </a>
 
-            <div class="canon-stat-item">
+            <a class="canon-stat-item"
+               th:classappend="${selectedFilterParam == 'needsNormalization' or filter == 'needsNormalization'} ? ' is-active' : ''"
+               th:href="@{/admin/canonical(
+                    asset=${asset},
+                    filter='needsNormalization',
+                    q=${q},
+                    page=0,
+                    size=${size}
+               )}">
                 <div class="canon-stat-label">needsNormalization</div>
                 <div class="canon-stat-value" th:text="${stats.needsNormalization}">0</div>
                 <div class="canon-stat-tooltip">
                     Row has not been normalized, or normalized fields are blank.
                 </div>
-            </div>
+            </a>
 
         </div>
     </div>
@@ -790,8 +885,7 @@
                    th:if="${rowPage.hasPrevious()}"
                    th:href="@{/admin/canonical(
                         asset=${asset},
-                        assetName=${assetName},
-                        filter=${filter},
+                        filter=${selectedFilterParam != null ? selectedFilterParam : filter},
                         q=${q},
                         page=${rowPage.number - 1},
                         size=${size}
@@ -807,8 +901,7 @@
                    th:if="${rowPage.hasNext()}"
                    th:href="@{/admin/canonical(
                         asset=${asset},
-                        assetName=${assetName},
-                        filter=${filter},
+                        filter=${selectedFilterParam != null ? selectedFilterParam : filter},
                         q=${q},
                         page=${rowPage.number + 1},
                         size=${size}
