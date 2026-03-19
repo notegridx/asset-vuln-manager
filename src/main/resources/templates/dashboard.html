@@ -407,8 +407,6 @@
 
             function applyRangeInputsState() {
                 const isCustom = sel.value === 'CUSTOM';
-                if (from) from.disabled = !isCustom;
-                if (to) to.disabled = !isCustom;
 
                 if (!isCustom) {
                     if (from) from.value = '';
