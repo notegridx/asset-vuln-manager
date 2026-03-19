@@ -47,7 +47,7 @@
       </div>
     </div>
 
-    <form th:action="@{/admin/cve/sync}" method="post" style="margin-top:12px;">
+    <form id="cveSyncForm" th:action="@{/admin/cve/sync}" method="post" style="margin-top:12px;">
 
       <div class="field">
         <label>Feed selection</label>
@@ -109,10 +109,15 @@
         </div>
       </div>
 
-      <div class="actions" style="margin-top:14px;">
-        <button type="submit" class="btn btn-primary">
-          Update Vulnerability Data
+      <div class="actions" style="margin-top:14px; align-items:center; gap:10px;">
+        <button id="cveSyncSubmitButton" type="submit" class="btn btn-primary">
+          <span id="cveSyncSubmitLabel">Update Vulnerability Data</span>
         </button>
+        <span id="cveSyncBusyMessage"
+              class="muted"
+              style="display:none; font-size:12px;">
+          Processing... Please wait until the update completes.
+        </span>
       </div>
 
     </form>
@@ -243,13 +248,19 @@
 
   </div>
 
-  <!-- Script (unchanged logic) -->
+  <!-- Script -->
   <script>
     (function () {
+      const form = document.getElementById('cveSyncForm');
       const kindEl = document.getElementById('feedKind');
       const yearField = document.getElementById('yearField');
       const yearInput = document.getElementById('yearInput');
       const datalist = document.getElementById('yearCandidates');
+      const submitButton = document.getElementById('cveSyncSubmitButton');
+      const submitLabel = document.getElementById('cveSyncSubmitLabel');
+      const busyMessage = document.getElementById('cveSyncBusyMessage');
+
+      let submitting = false;
 
       function toggleYear() {
         const isYear = (kindEl.value === 'YEAR');
@@ -272,7 +283,40 @@
         }
       }
 
+      function setSubmittingState() {
+        if (submitting) return;
+        submitting = true;
+
+        submitButton.disabled = true;
+        submitButton.setAttribute('aria-disabled', 'true');
+        submitButton.style.opacity = '0.7';
+        submitButton.style.cursor = 'not-allowed';
+
+        if (submitLabel) {
+          submitLabel.textContent = 'Processing...';
+        }
+
+        if (busyMessage) {
+          busyMessage.style.display = '';
+        }
+
+        const controls = form.querySelectorAll('input, select, textarea, button');
+        controls.forEach(function (el) {
+          if (el === submitButton) return;
+
+          // Keep hidden inputs enabled so CSRF token is still submitted.
+          if (el.tagName === 'INPUT' && el.type === 'hidden') return;
+
+          el.disabled = true;
+        });
+      }
+
       kindEl.addEventListener('change', toggleYear);
+
+      form.addEventListener('submit', function () {
+        setSubmittingState();
+      });
+
       toggleYear();
     })();
   </script>
