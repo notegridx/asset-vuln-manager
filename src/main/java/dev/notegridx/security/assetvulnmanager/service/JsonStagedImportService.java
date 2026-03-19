@@ -154,6 +154,8 @@ public class JsonStagedImportService {
     }
 
     public static class SoftwareJsonRow {
+
+        @JsonAlias("external_key")
         public String externalKey;
 
         public String vendor;
@@ -299,17 +301,21 @@ public class JsonStagedImportService {
             ImportStagingSoftware s = ImportStagingSoftware.of(run.getId(), rowNo);
 
             String externalKey = normNullable(r.externalKey);
-            String vendor = normNullable(r.vendor);
-            String product = normNullable(r.product);
-            String version = normNullableAllowEmpty(r.version);
 
             String vendorRaw = normNullable(r.vendorRaw);
+            String productRaw = normNullable(r.productRaw);
+            String versionRaw = normNullableAllowEmpty(r.versionRaw);
+
+            String vendor = normNullable(r.vendor);
+            if (vendor == null) vendor = vendorRaw;
             if (vendorRaw == null) vendorRaw = vendor;
 
-            String productRaw = normNullable(r.productRaw);
+            String product = normNullable(r.product);
+            if (product == null) product = productRaw;
             if (productRaw == null) productRaw = product;
 
-            String versionRaw = normNullableAllowEmpty(r.versionRaw);
+            String version = normNullableAllowEmpty(r.version);
+            if (version == null) version = versionRaw;
             if (versionRaw == null) versionRaw = version;
 
             LocalDateTime installedAt = parseDateTimeNullable(r.installedAt);
@@ -342,12 +348,10 @@ public class JsonStagedImportService {
 
             if (externalKey == null) {
                 s.markInvalid("externalKey is required");
-            } else if (product == null && productRaw == null) {
+            } else if (product == null || product.isBlank()) {
                 s.markInvalid("product is required");
-            } else {
-                if (!assetRepository.existsByExternalKey(externalKey)) {
-                    s.markInvalid("asset not found for externalKey=" + externalKey + " (import assets first)");
-                }
+            } else if (!assetRepository.existsByExternalKey(externalKey)) {
+                s.markInvalid("asset not found for externalKey=" + externalKey + " (import assets first)");
             }
 
             if (s.isValid()) valid++;

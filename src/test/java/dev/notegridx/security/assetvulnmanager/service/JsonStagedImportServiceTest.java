@@ -10,7 +10,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
-import static org.mockito.ArgumentMatchers.anyString;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -77,18 +76,18 @@ class JsonStagedImportServiceTest {
 
         when(canonicalBackfillService.backfillForSoftwareIds(anyList(), eq(false)))
                 .thenReturn(new CanonicalBackfillService.BackfillResult(
-                        0,      // scanned
-                        0,      // linked
-                        0,      // missed
-                        false,  // forceRebuild
-                        0,      // fullyLinked
-                        0,      // vendorOnly
-                        0,      // pureMiss
-                        0L,     // elapsedMs
-                        "0.000",// elapsedSec
-                        "0.0"   // rowsPerSec
+                        0,
+                        0,
+                        0,
+                        false,
+                        0,
+                        0,
+                        0,
+                        0L,
+                        "0.000",
+                        "0.0"
                 ));
-        // NPE 対応: save(...) が null を返さないようにする
+
         when(softwareInstallRepository.save(any(SoftwareInstall.class)))
                 .thenAnswer(i -> i.getArgument(0));
 
@@ -183,6 +182,98 @@ class JsonStagedImportServiceTest {
         );
 
         assertThat(run.getValidRows()).isEqualTo(1);
+        assertThat(run.getInvalidRows()).isEqualTo(0);
+    }
+
+    @Test
+    void stageSoftware_acceptsSnakeCaseExternalKey() {
+        when(assetRepository.existsByExternalKey("host1")).thenReturn(true);
+
+        String json = """
+                [
+                  {
+                    "external_key":"host1",
+                    "product":"Chrome"
+                  }
+                ]
+                """;
+
+        ImportRun run = service.stageSoftware(
+                "software.json",
+                json.getBytes(StandardCharsets.UTF_8)
+        );
+
+        assertThat(run.getValidRows()).isEqualTo(1);
+        assertThat(run.getInvalidRows()).isEqualTo(0);
+
+        ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
+        verify(stagingSoftwareRepository).saveAll(captor.capture());
+
+        @SuppressWarnings("unchecked")
+        List<ImportStagingSoftware> rows = captor.getValue();
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getExternalKey()).isEqualTo("host1");
+    }
+
+    @Test
+    void stageSoftware_acceptsProductRaw_whenProductMissing() {
+        when(assetRepository.existsByExternalKey("host1")).thenReturn(true);
+
+        String json = """
+                [
+                  {
+                    "externalKey":"host1",
+                    "product_raw":"Google Chrome",
+                    "vendor_raw":"Google LLC",
+                    "version_raw":"145.0.7632.159"
+                  }
+                ]
+                """;
+
+        ImportRun run = service.stageSoftware(
+                "software.json",
+                json.getBytes(StandardCharsets.UTF_8)
+        );
+
+        assertThat(run.getValidRows()).isEqualTo(1);
+        assertThat(run.getInvalidRows()).isEqualTo(0);
+
+        ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
+        verify(stagingSoftwareRepository).saveAll(captor.capture());
+
+        @SuppressWarnings("unchecked")
+        List<ImportStagingSoftware> rows = captor.getValue();
+        assertThat(rows).hasSize(1);
+
+        ImportStagingSoftware saved = rows.get(0);
+        assertThat(saved.getProduct()).isEqualTo("Google Chrome");
+        assertThat(saved.getProductRaw()).isEqualTo("Google Chrome");
+        assertThat(saved.getVendor()).isEqualTo("Google LLC");
+        assertThat(saved.getVendorRaw()).isEqualTo("Google LLC");
+        assertThat(saved.getVersion()).isEqualTo("145.0.7632.159");
+        assertThat(saved.getVersionRaw()).isEqualTo("145.0.7632.159");
+    }
+
+    @Test
+    void stageSoftware_invalid_whenNeitherProductNorProductRawExists() {
+        when(assetRepository.existsByExternalKey("host1")).thenReturn(true);
+
+        String json = """
+                [
+                  {
+                    "externalKey":"host1",
+                    "vendor_raw":"Google LLC"
+                  }
+                ]
+                """;
+
+        ImportRun run = service.stageSoftware(
+                "software.json",
+                json.getBytes(StandardCharsets.UTF_8)
+        );
+
+        assertThat(run.getValidRows()).isEqualTo(0);
+        assertThat(run.getInvalidRows()).isEqualTo(1);
     }
 
     @Test
@@ -393,9 +484,7 @@ class JsonStagedImportServiceTest {
         when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(5L)).thenReturn(List.of(row));
         when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.of(asset));
         when(asset.getId()).thenReturn(1L);
-
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(1L, "Google", "Chrome", "145.0"))
-                .thenReturn(Optional.empty());
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(1L)).thenReturn(List.of());
 
         when(validator.resolve("Google", "Chrome"))
                 .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
@@ -464,10 +553,7 @@ class JsonStagedImportServiceTest {
         when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(6L)).thenReturn(List.of(row));
         when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.of(asset));
         when(asset.getId()).thenReturn(10L);
-
-        // Phase 4: asset 単位 preload に合わせる
-        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(10L))
-                .thenReturn(List.of(existing));
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(10L)).thenReturn(List.of(existing));
 
         service.importSoftware(6L);
 
@@ -516,9 +602,8 @@ class JsonStagedImportServiceTest {
         when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(7L)).thenReturn(List.of(row));
         when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.of(asset));
         when(asset.getId()).thenReturn(77L);
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
-                77L, "Google LLC", "Google Chrome", "145.0.7632.159"
-        )).thenReturn(Optional.empty());
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(77L)).thenReturn(List.of());
+
         when(validator.resolve("Google LLC", "Google Chrome"))
                 .thenReturn(SoftwareDictionaryValidator.Resolve.hit(11L, 22L, "google", "chrome"));
 
@@ -572,9 +657,7 @@ class JsonStagedImportServiceTest {
         when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(8L)).thenReturn(List.of(row));
         when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.of(asset));
         when(asset.getId()).thenReturn(88L);
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
-                88L, "Unknown Vendor", "Unknown Product", "1.0"
-        )).thenReturn(Optional.empty());
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(88L)).thenReturn(List.of());
 
         when(validator.resolve("Unknown Vendor", "Unknown Product"))
                 .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
@@ -630,9 +713,7 @@ class JsonStagedImportServiceTest {
         when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(9L)).thenReturn(List.of(row));
         when(assetRepository.findByExternalKey("asset-001")).thenReturn(Optional.of(asset));
         when(asset.getId()).thenReturn(99L);
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
-                99L, "Microsoft Corporation", "Microsoft.WindowsNotepad", "11.0"
-        )).thenReturn(Optional.empty());
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(99L)).thenReturn(List.of());
 
         service.importSoftware(9L);
 
@@ -647,7 +728,6 @@ class JsonStagedImportServiceTest {
         Asset asset1 = mock(Asset.class);
         Asset asset2 = mock(Asset.class);
 
-        // row1
         when(row1.isValid()).thenReturn(true);
         when(row1.getExternalKey()).thenReturn("asset-001");
         when(row1.getVendor()).thenReturn("Google");
@@ -673,7 +753,6 @@ class JsonStagedImportServiceTest {
         when(row1.getRelease()).thenReturn(null);
         when(row1.getPurl()).thenReturn(null);
 
-        // row2: vendor/product は row1 と同じ、asset/version だけ変える
         when(row2.isValid()).thenReturn(true);
         when(row2.getExternalKey()).thenReturn("asset-002");
         when(row2.getVendor()).thenReturn("Google");
@@ -707,13 +786,8 @@ class JsonStagedImportServiceTest {
         when(asset1.getId()).thenReturn(301L);
         when(asset2.getId()).thenReturn(302L);
 
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
-                301L, "Google LLC", "Google Chrome", "145.0.7632.159"
-        )).thenReturn(Optional.empty());
-
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
-                302L, "Google LLC", "Google Chrome", "145.1.7632.200"
-        )).thenReturn(Optional.empty());
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(301L)).thenReturn(List.of());
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(302L)).thenReturn(List.of());
 
         when(validator.resolve("Google LLC", "Google Chrome"))
                 .thenReturn(SoftwareDictionaryValidator.Resolve.hit(11L, 22L, "google", "chrome"));
@@ -732,7 +806,6 @@ class JsonStagedImportServiceTest {
         Asset asset1 = mock(Asset.class);
         Asset asset2 = mock(Asset.class);
 
-        // row1
         when(row1.isValid()).thenReturn(true);
         when(row1.getExternalKey()).thenReturn("asset-010");
         when(row1.getVendor()).thenReturn("Unknown Vendor");
@@ -758,7 +831,6 @@ class JsonStagedImportServiceTest {
         when(row1.getRelease()).thenReturn(null);
         when(row1.getPurl()).thenReturn(null);
 
-        // row2: vendor/product は row1 と同じ
         when(row2.isValid()).thenReturn(true);
         when(row2.getExternalKey()).thenReturn("asset-011");
         when(row2.getVendor()).thenReturn("Unknown Vendor");
@@ -792,13 +864,8 @@ class JsonStagedImportServiceTest {
         when(asset1.getId()).thenReturn(310L);
         when(asset2.getId()).thenReturn(311L);
 
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
-                310L, "Unknown Vendor", "Unknown Product", "1.0"
-        )).thenReturn(Optional.empty());
-
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(
-                311L, "Unknown Vendor", "Unknown Product", "2.0"
-        )).thenReturn(Optional.empty());
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(310L)).thenReturn(List.of());
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(311L)).thenReturn(List.of());
 
         when(validator.resolve("Unknown Vendor", "Unknown Product"))
                 .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
@@ -897,6 +964,9 @@ class JsonStagedImportServiceTest {
         when(row1.getVendorRaw()).thenReturn("VendorA");
         when(row1.getProductRaw()).thenReturn("ProductA");
         when(row1.getVersionRaw()).thenReturn("1.0");
+        when(row1.getSource()).thenReturn("OSQUERY");
+        when(row1.getSourceType()).thenReturn("OSQUERY");
+        when(row1.getType()).thenReturn("APPLICATION");
 
         when(row2.isValid()).thenReturn(true);
         when(row2.getExternalKey()).thenReturn("asset-001");
@@ -906,6 +976,9 @@ class JsonStagedImportServiceTest {
         when(row2.getVendorRaw()).thenReturn("VendorB");
         when(row2.getProductRaw()).thenReturn("ProductB");
         when(row2.getVersionRaw()).thenReturn("2.0");
+        when(row2.getSource()).thenReturn("OSQUERY");
+        when(row2.getSourceType()).thenReturn("OSQUERY");
+        when(row2.getType()).thenReturn("APPLICATION");
 
         when(stagingSoftwareRepository.findByImportRunIdOrderByRowNoAsc(20L))
                 .thenReturn(List.of(row1, row2));
@@ -913,11 +986,7 @@ class JsonStagedImportServiceTest {
         when(assetRepository.findByExternalKey("asset-001"))
                 .thenReturn(Optional.of(asset));
         when(asset.getId()).thenReturn(100L);
-
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(100L, "VendorA", "ProductA", "1.0"))
-                .thenReturn(Optional.empty());
-        when(softwareInstallRepository.findByAssetIdAndVendorAndProductAndVersion(100L, "VendorB", "ProductB", "2.0"))
-                .thenReturn(Optional.empty());
+        when(softwareInstallRepository.findByAssetIdOrderByIdAsc(100L)).thenReturn(List.of());
 
         when(validator.resolve("VendorA", "ProductA"))
                 .thenReturn(SoftwareDictionaryValidator.Resolve.miss(
@@ -1012,8 +1081,6 @@ class JsonStagedImportServiceTest {
         service.importSoftware(40L);
 
         verify(softwareInstallRepository, times(1)).findByAssetIdOrderByIdAsc(400L);
-        verify(softwareInstallRepository, never())
-                .findByAssetIdAndVendorAndProductAndVersion(anyLong(), anyString(), anyString(), anyString());
         verify(softwareInstallRepository, times(2)).save(any(SoftwareInstall.class));
     }
 
@@ -1061,8 +1128,6 @@ class JsonStagedImportServiceTest {
         service.importSoftware(41L);
 
         verify(softwareInstallRepository, times(1)).findByAssetIdOrderByIdAsc(410L);
-        verify(softwareInstallRepository, never())
-                .findByAssetIdAndVendorAndProductAndVersion(anyLong(), anyString(), anyString(), anyString());
         verify(softwareInstallRepository).save(existing);
     }
 
@@ -1135,7 +1200,4 @@ class JsonStagedImportServiceTest {
         assertThat(run.getValidRows()).isEqualTo(1);
         assertThat(run.getInvalidRows()).isEqualTo(0);
     }
-
-
-
 }
