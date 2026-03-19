@@ -14,6 +14,10 @@ import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 @Table(name = "cpe_vendor_aliases")
 public class CpeVendorAlias {
 
+    /**
+     * Stores normalized vendor aliases that map raw vendor names
+     * to canonical CPE vendor identifiers.
+     */
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_INACTIVE = "INACTIVE";
 
@@ -30,15 +34,22 @@ public class CpeVendorAlias {
     @Column(name = "note", length = 1024)
     private String note;
 
-    // ✁EStringのまま維持E既存Controller互換EE
+    /**
+     * Kept as String for compatibility with existing controller and API layers.
+     */
     @Column(name = "status", nullable = false, length = 16)
     private String status = STATUS_ACTIVE;
 
-    // ✁EenumEユーザー提示版を使用EE
+    /**
+     * Indicates how this alias was created (manual, seeded, imported, etc.).
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "source", nullable = false, length = 32)
     private AliasSource source = AliasSource.MANUAL;
 
+    /**
+     * Represents review status (manual, auto-generated, etc.).
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "review_state", nullable = false, length = 16)
     private AliasReviewState reviewState = AliasReviewState.MANUAL;
@@ -57,7 +68,9 @@ public class CpeVendorAlias {
 
     protected CpeVendorAlias() { }
 
-    // 既存互換の最小コンストラクタ
+    /**
+     * Minimal constructor kept for backward-compatible creation paths.
+     */
     public CpeVendorAlias(Long cpeVendorId, String aliasNorm, String note) {
         this.cpeVendorId = cpeVendorId;
         this.aliasNorm = aliasNorm;
@@ -67,7 +80,9 @@ public class CpeVendorAlias {
         this.reviewState = AliasReviewState.MANUAL;
     }
 
-    // Controller互換E忁E！E
+    /**
+     * Alternative constructor kept for compatibility with existing controller calls.
+     */
     public CpeVendorAlias(String aliasNorm, Long cpeVendorId, String note) {
         this.cpeVendorId = cpeVendorId;
         this.aliasNorm = aliasNorm;
@@ -77,7 +92,9 @@ public class CpeVendorAlias {
         this.reviewState = AliasReviewState.MANUAL;
     }
 
-    // 自動投入/提案投入向けEEop20投Eはここを使ぁEE
+    /**
+     * Factory for aliases created by automated seeding or suggestion workflows.
+     */
     public static CpeVendorAlias seeded(
             Long cpeVendorId,
             String aliasNorm,
@@ -89,14 +106,16 @@ public class CpeVendorAlias {
     ) {
         CpeVendorAlias a = new CpeVendorAlias(cpeVendorId, aliasNorm, note);
         a.source = (source == null) ? AliasSource.MANUAL : source;
-        a.reviewState = (reviewState == null) ? AliasReviewState.AUTO : reviewState; // nullならAUTO寁E
+        a.reviewState = (reviewState == null) ? AliasReviewState.AUTO : reviewState;
         a.confidence = confidence;
         a.evidenceUrl = evidenceUrl;
         a.status = STATUS_ACTIVE;
         return a;
     }
 
-    // ✁E既存Controllerが呼ぶので忁EE
+    /**
+     * Setter retained for compatibility with existing controller flows.
+     */
     public void setStatus(String status) {
         if (status == null) {
             this.status = STATUS_ACTIVE;
@@ -106,7 +125,6 @@ public class CpeVendorAlias {
         this.status = s.isEmpty() ? STATUS_ACTIVE : s;
     }
 
-    // 任意！Eontroller変更は不要EE
     public void toggleStatus() {
         String cur = (status == null) ? "" : status.trim();
         this.status = STATUS_ACTIVE.equals(cur) ? STATUS_INACTIVE : STATUS_ACTIVE;
@@ -115,9 +133,12 @@ public class CpeVendorAlias {
     public void setNote(String note) { this.note = note; }
     public void setSource(AliasSource source) { if (source != null) this.source = source; }
     public void setReviewState(AliasReviewState reviewState) { if (reviewState != null) this.reviewState = reviewState; }
+
     public void setConfidence(Integer confidence) {
         this.confidence = (confidence == null) ? 0 : confidence;
-    }    public void setEvidenceUrl(String evidenceUrl) { this.evidenceUrl = evidenceUrl; }
+    }
+
+    public void setEvidenceUrl(String evidenceUrl) { this.evidenceUrl = evidenceUrl; }
 
     @PrePersist
     void prePersist() {

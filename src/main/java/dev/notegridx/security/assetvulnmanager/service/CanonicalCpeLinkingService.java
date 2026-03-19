@@ -51,24 +51,25 @@ public class CanonicalCpeLinkingService {
     }
 
     // ------------------------------------------------------------
-    // Public: stats
-    //  - Dictionary buckets are ONLY for "not linked" (no vendor_id & no product_id)
+    // Public: statistics
+    // Dictionary buckets are counted only for rows that are not linked
+    // at the SQL level (no vendor_id and no product_id).
     // ------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public MappingStats stats(Collection<SoftwareInstall> rows) {
         int total = 0;
 
-        // SQL link axis
+        // SQL link state
         int vendorOnlyLinkedSql = 0;
         int fullyLinkedSql = 0;
         int notLinkedSql = 0;
 
-        // Fully linked quality
+        // Quality of fully linked rows
         int linkedValid = 0;
         int linkedStale = 0;
 
-        // Dictionary resolution (ONLY for notLinkedSql)
+        // Dictionary resolvability for notLinkedSql rows only
         int fullyResolvable = 0;
         int vendorResolvableOnly = 0;
         int unresolvable = 0;
@@ -109,7 +110,7 @@ public class CanonicalCpeLinkingService {
     }
 
     /**
-     * Overall stats (first N rows).
+     * Returns overall mapping statistics for the first N rows.
      */
     @Transactional(readOnly = true)
     public MappingStats statsOverall(int limit) {
@@ -119,13 +120,22 @@ public class CanonicalCpeLinkingService {
     }
 
     // ------------------------------------------------------------
-    // Public: analysis (LINKED / RESOLVED / STALE / UNRESOLVED)
-    //  - LINKED/STALE: "fully linked" (vendor+product both present)
-    //  - RESOLVED: not fully linked, and dictionary fully resolves vendor+product
-    //  - UNRESOLVED: otherwise
+    // Public: row analysis (LINKED / RESOLVED / STALE / UNRESOLVED)
     //
-    //  NOTE: Dictionary buckets (Fully/Vendor-only/Unresolvable) are computed
-    //        ONLY when "not linked" (neither vendor_id nor product_id is set).
+    // LINKED / STALE:
+    //   The row is fully linked at the SQL level
+    //   (both vendor_id and product_id are present).
+    //
+    // RESOLVED:
+    //   The row is not fully linked, but dictionary resolution can
+    //   fully resolve vendor and product from the current strings.
+    //
+    // UNRESOLVED:
+    //   All other cases.
+    //
+    // Dictionary buckets (fully resolvable / vendor-only resolvable /
+    // unresolvable) are meaningful only when the row is not linked
+    // at the SQL level.
     // ------------------------------------------------------------
 
     @Transactional(readOnly = true)
@@ -138,15 +148,17 @@ public class CanonicalCpeLinkingService {
         boolean vendorOnlyLinked = vendorLinked && !productLinked;
         boolean notLinked = !vendorLinked && !productLinked;
 
-        // Dictionary resolvability from strings (existing behavior)
+        // Resolve current strings against the dictionary using the same
+        // logic that the auto-link path uses.
         ResolveResult r = resolve(s);
 
-        // Dictionary buckets are ONLY for "not linked"
+        // Dictionary buckets are counted only for rows with no SQL link.
         boolean dictFullyResolvable = notLinked && r.hit();
         boolean dictVendorOnlyResolvable = notLinked && r.vendorOnly();
         boolean dictUnresolvable = notLinked && !r.hit() && !r.vendorOnly();
 
-        // Fully linked: validate referenced dictionary rows still exist.
+        // Fully linked rows must still be validated against current
+        // dictionary contents because referenced IDs may have gone stale.
         if (fullyLinked) {
             boolean vendorOk = vendorRepo.existsById(s.getCpeVendorId());
             boolean prodOk = productRepo.existsById(s.getCpeProductId());
@@ -163,16 +175,16 @@ public class CanonicalCpeLinkingService {
                     dictFullyResolvable, dictVendorOnlyResolvable, dictUnresolvable);
         }
 
-        // Not fully linked:
+        // Rows that are not fully linked are classified by whether the
+        // dictionary can fully resolve them from the current strings.
         if (r.hit()) {
-            // RESOLVED = vendor+product fully resolvable
             return Analysis.resolved(r, null,
                     vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
                     dictFullyResolvable, dictVendorOnlyResolvable, dictUnresolvable);
         }
 
-        // UNRESOLVED
-        // When only vendor is already linked, add slightly richer reason text for UI clarity.
+        // For partially linked or not-linked rows, enrich the reason text
+        // to make the UI explanation easier to understand.
         String reason = r.reason();
         if (vendorOnlyLinked) {
             reason = (reason == null || reason.isBlank())
@@ -190,25 +202,25 @@ public class CanonicalCpeLinkingService {
     }
 
     public enum ItemResult {
-        LINKED,      // Fully linked and IDs are valid
-        RESOLVED,    // Not fully linked, but dictionary can fully resolve vendor+product
-        STALE,       // Fully linked, but referenced dictionary rows are missing
-        UNRESOLVED   // Otherwise
+        LINKED,      // Fully linked and referenced IDs are valid
+        RESOLVED,    // Not fully linked, but vendor and product are fully resolvable
+        STALE,       // Fully linked, but referenced dictionary rows no longer exist
+        UNRESOLVED   // Any other case
     }
 
     public record MappingStats(
             int total,
 
-            // SQL link axis
+            // SQL link state
             int fullyLinkedSql,
             int vendorOnlyLinkedSql,
             int notLinkedSql,
 
-            // Fully linked quality
+            // Quality of fully linked rows
             int linkedValid,
             int linkedStale,
 
-            // Dictionary resolution (ONLY for notLinkedSql)
+            // Dictionary resolution for notLinkedSql rows only
             int fullyResolvable,
             int vendorResolvableOnly,
             int unresolvable,
@@ -229,7 +241,7 @@ public class CanonicalCpeLinkingService {
             boolean vendorOnlyLinkedSql,
             boolean notLinkedSql,
 
-            // Dictionary buckets (ONLY meaningful when notLinkedSql=true)
+            // Dictionary buckets; meaningful only when notLinkedSql=true
             boolean dictFullyResolvable,
             boolean dictVendorResolvableOnly,
             boolean dictUnresolvable
@@ -273,9 +285,9 @@ public class CanonicalCpeLinkingService {
 
     // ------------------------------------------------------------
     // Resolve (string -> dictionary lookup)
-    //  - Exact vendor/product lookup
-    //  - Optional synonym normalization
-    //  - Optional product token matching fallback within vendor
+    // - Exact vendor/product lookup
+    // - Optional synonym-based canonicalization
+    // - Optional token-matching fallback within the resolved vendor
     // ------------------------------------------------------------
 
     @Transactional(readOnly = true)
@@ -296,6 +308,7 @@ public class CanonicalCpeLinkingService {
         boolean useSynonym = getBool(KEY_CANONICAL_AUTOLINK_USE_SYNONYM, true);
         boolean useTokenFallback = getBool(KEY_CANONICAL_AUTOLINK_USE_TOKEN_FALLBACK, true);
 
+        // Apply optional synonym resolution before dictionary lookup.
         String v1 = useSynonym ? synonymService.canonicalVendorOrSame(v0) : v0;
         String p1 = useSynonym ? synonymService.canonicalProductOrSame(v1, p0) : p0;
 
@@ -310,6 +323,7 @@ public class CanonicalCpeLinkingService {
 
         Long vendorId = vendor.getId();
 
+        // Prefer exact product lookup within the resolved vendor.
         CpeProduct prod = productRepo.findByVendorIdAndNameNorm(vendorId, p1).orElse(null);
         if (prod != null) {
             return ResolveResult.hit(vendorId, prod.getId(), v1, p1, needsNorm);
@@ -335,6 +349,7 @@ public class CanonicalCpeLinkingService {
             );
         }
 
+        // Token matching is vendor-scoped and used only as a controlled fallback.
         Optional<CpeProduct> best = tokenMatchingService.bestProduct(vendorId, p1);
         if (best.isPresent()) {
             CpeProduct bp = best.get();
@@ -391,7 +406,7 @@ public class CanonicalCpeLinkingService {
     }
 
     // ============================================================
-    // Token matching skip heuristics
+    // Token-matching skip heuristics
     // ============================================================
 
     private static final Pattern GUID = Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
@@ -399,8 +414,8 @@ public class CanonicalCpeLinkingService {
     private static final Pattern NAMESPACE_DOT = Pattern.compile("(?i)[a-z]\\.[a-z]"); // letter.dot.letter
 
     /**
-     * Skip token matching for Windows OS / Store / AppX style identifiers and GUID-like values,
-     * because they tend to produce noisy or misleading matches.
+     * Skips token matching for GUID-like values and Windows / Store / AppX-style
+     * identifiers because they often produce noisy or misleading matches.
      */
     private boolean shouldSkipTokenMatching(String productRaw, String productNorm) {
         String pr = (productRaw == null) ? "" : productRaw.trim();

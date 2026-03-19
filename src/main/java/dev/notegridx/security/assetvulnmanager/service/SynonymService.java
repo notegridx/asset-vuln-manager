@@ -17,7 +17,8 @@ public class SynonymService {
     private final CpeVendorAliasRepository vendorAliasRepository;
     private final CpeProductAliasRepository productAliasRepository;
 
-    // small LRU caches (same style as other services)
+    // Small LRU caches to avoid repeated alias and vendor-id lookups
+    // during import, matching, and suggestion workflows.
     private final Map<String, String> vendorAliasCache = new LruMap<>(50_000);
     private final Map<String, String> productAliasCache = new LruMap<>(100_000);
     private final Map<String, Long> vendorNormToIdCache = new LruMap<>(50_000);
@@ -35,8 +36,9 @@ public class SynonymService {
     }
 
     /**
-     * vendorNorm（正規化済み）を、alias辞書で canonical vendorNorm に寄せる。
-     * 見つからなければ入力をそのまま返す。
+     * Resolves a normalized vendor name through the vendor alias dictionary.
+     * Returns the canonical vendor name when an active alias is found.
+     * Otherwise, returns the original normalized input.
      */
     public String canonicalVendorOrSame(String vendorNorm) {
         String v = normalize(vendorNorm);
@@ -56,8 +58,14 @@ public class SynonymService {
     }
 
     /**
-     * productNorm（正規化済み）を、vendorスコープ付き alias辞書で canonical productNorm に寄せる。
-     * 見つからなければ入力をそのまま返す。
+     * Resolves a normalized product name through the product alias dictionary
+     * within the scope of a canonical vendor.
+     *
+     * Product aliases are vendor-scoped because the same product-like token
+     * may legitimately map to different canonical products under different vendors.
+     *
+     * Returns the canonical product name when an active alias is found.
+     * Otherwise, returns the original normalized product input.
      */
     public String canonicalProductOrSame(String vendorNorm, String productNorm) {
         String vn = normalize(vendorNorm);
@@ -85,6 +93,10 @@ public class SynonymService {
         return out;
     }
 
+    /**
+     * Resolves a canonical vendor name to its internal vendor identifier.
+     * This lookup is cached because product alias resolution depends on it.
+     */
     private Long vendorNormToId(String vendorNorm) {
         Long cached = vendorNormToIdCache.get(vendorNorm);
         if (cached != null) return cached;
@@ -97,12 +109,21 @@ public class SynonymService {
         return id;
     }
 
+    /**
+     * Trims input and converts blank strings to null so lookup behavior stays
+     * consistent across import and matching paths.
+     */
     private static String normalize(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
 
+    /**
+     * Clears in-memory lookup caches.
+     * Call this after alias master data changes so subsequent resolutions
+     * reflect the latest dictionary state.
+     */
     public void clearCaches() {
         vendorAliasCache.clear();
         productAliasCache.clear();

@@ -29,41 +29,73 @@ public class SoftwareDictionaryValidator {
         this.synonymService = synonymService;
     }
 
+    /**
+     * Resolves raw vendor and product values to canonical CPE vendor/product IDs.
+     *
+     * Resolution flow:
+     * 1. Normalize raw input values
+     * 2. Apply synonym/alias resolution
+     * 3. Resolve canonical vendor
+     * 4. Resolve exact product within that vendor
+     * 5. Optionally fall back to vendor-scoped token matching
+     *
+     * The method may return:
+     * - hit: both vendor and product were resolved
+     * - vendorOnly: vendor was resolved but product was not
+     * - miss: resolution failed before a canonical vendor could be established
+     */
     public Resolve resolve(String vendorRaw, String productRaw) {
-        // 1) normalize
+        // Step 1: normalize raw input values before dictionary lookup.
         String v0 = normalizer.normalizeVendor(vendorRaw);
         String p0 = normalizer.normalizeProduct(productRaw);
 
         if (p0 == null) {
-            return Resolve.miss(DictionaryValidationException.DictionaryErrorCode.DICT_PRODUCT_REQUIRED,
-                    "product", "Product is required.", null, null);
+            return Resolve.miss(
+                    DictionaryValidationException.DictionaryErrorCode.DICT_PRODUCT_REQUIRED,
+                    "product",
+                    "Product is required.",
+                    null,
+                    null
+            );
         }
 
-        // 2) synonym
+        // Step 2: resolve aliases to canonical vendor/product names when possible.
         String v1 = synonymService.canonicalVendorOrSame(v0);
         String p1 = synonymService.canonicalProductOrSame(v1, p0);
 
-        // 3) dictionary lookup (vendor)
+        // Step 3: resolve canonical vendor from the dictionary.
         if (v1 == null || v1.isBlank()) {
-            return Resolve.miss(DictionaryValidationException.DictionaryErrorCode.DICT_VENDOR_REQUIRED,
-                    "vendor", "Vendor is required (CPE dictionary lookup).", null, p1);
+            return Resolve.miss(
+                    DictionaryValidationException.DictionaryErrorCode.DICT_VENDOR_REQUIRED,
+                    "vendor",
+                    "Vendor is required (CPE dictionary lookup).",
+                    null,
+                    p1
+            );
         }
 
         CpeVendor vendor = vendorRepo.findByNameNorm(v1).orElse(null);
         if (vendor == null) {
-            return Resolve.miss(DictionaryValidationException.DictionaryErrorCode.DICT_VENDOR_NOT_FOUND,
-                    "vendor", "Vendor not found in CPE dictionary: " + v1, v1, p1);
+            return Resolve.miss(
+                    DictionaryValidationException.DictionaryErrorCode.DICT_VENDOR_NOT_FOUND,
+                    "vendor",
+                    "Vendor not found in CPE dictionary: " + v1,
+                    v1,
+                    p1
+            );
         }
 
         Long vendorId = vendor.getId();
 
-        // 4) exact product within vendor
+        // Step 4: attempt exact product resolution within the resolved vendor.
         CpeProduct prod = productRepo.findByVendorIdAndNameNorm(vendorId, p1).orElse(null);
         if (prod != null) {
             return Resolve.hit(vendorId, prod.getId(), v1, p1);
         }
 
-        // 5) fallback: token matching within vendor (safe guard)
+        // Step 5: optionally try token-based fallback within the same vendor.
+        // This fallback is intentionally guarded because some raw product strings
+        // are too noisy or too opaque to use safely.
         if (shouldSkipTokenMatching(productRaw, p1)) {
             return Resolve.vendorOnly(
                     vendorId,
@@ -91,6 +123,11 @@ public class SoftwareDictionaryValidator {
         );
     }
 
+    /**
+     * Resolves vendor/product values and throws when the result is not a full hit.
+     * This is useful for flows that require canonical vendor and product IDs
+     * before proceeding.
+     */
     public Resolve resolveOrThrow(String vendorRaw, String productRaw) {
         Resolve r = resolve(vendorRaw, productRaw);
         if (!r.hit()) {
@@ -105,6 +142,18 @@ public class SoftwareDictionaryValidator {
         return r;
     }
 
+    /**
+     * Resolution result returned by dictionary validation.
+     *
+     * hit:
+     *   Both vendorId and productId are resolved.
+     *
+     * vendorOnly:
+     *   vendorId is resolved, but productId is not.
+     *
+     * miss:
+     *   Resolution failed before a canonical vendor could be determined.
+     */
     public record Resolve(
             boolean hit,
             Long vendorId,
@@ -119,7 +168,10 @@ public class SoftwareDictionaryValidator {
             return new Resolve(true, vendorId, productId, vendorNorm, productNorm, null, null, null);
         }
 
-        /** vendorId/productId ともに不明（vendor未入力、vendor辞書なし等） */
+        /**
+         * Returns a failure result where neither vendor nor product could be
+         * resolved to canonical dictionary identifiers.
+         */
         public static Resolve miss(
                 DictionaryValidationException.DictionaryErrorCode code,
                 String field,
@@ -130,7 +182,11 @@ public class SoftwareDictionaryValidator {
             return new Resolve(false, null, null, vendorNorm, productNorm, code, field, message);
         }
 
-        /** vendor は辞書で確定したが product が確定しない（hit=false だが vendorId は返す） */
+        /**
+         * Returns a partial result where the vendor is resolved but the product
+         * is not. This allows caller flows to keep vendor context for review,
+         * suggestion, or later backfill.
+         */
         public static Resolve vendorOnly(
                 Long vendorId,
                 DictionaryValidationException.DictionaryErrorCode code,
@@ -151,11 +207,30 @@ public class SoftwareDictionaryValidator {
     // Token matching (vendor-scoped fallback)
     // =========================================================
 
+    /**
+     * Product strings that look like GUIDs are usually package identities,
+     * not stable product names for dictionary matching.
+     */
     private static final Pattern GUID =
             Pattern.compile("(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+
+    /**
+     * AppX- or Windows-style dotted identifiers are often too noisy for safe
+     * token overlap matching and are therefore excluded from fallback matching.
+     */
     private static final Pattern APPX_PREFIX =
             Pattern.compile("(?i)^(microsoft\\.|microsoftwindows\\.|windows\\.)");
 
+    /**
+     * Returns true when token-based fallback should be skipped because the raw
+     * product string is too noisy or structurally unsuitable for safe matching.
+     *
+     * Current skip rules:
+     * - blank raw product
+     * - GUID-like identifiers
+     * - AppX/Windows package-style prefixes
+     * - strings containing many dots, which often indicate package identities
+     */
     private boolean shouldSkipTokenMatching(String productRaw, String productNorm) {
         String pr = (productRaw == null) ? "" : productRaw.trim();
         if (pr.isEmpty()) return true;
@@ -166,10 +241,25 @@ public class SoftwareDictionaryValidator {
         if (!pn.isEmpty() && APPX_PREFIX.matcher(pn).find()) return true;
 
         int dotCount = 0;
-        for (int i = 0; i < pr.length(); i++) if (pr.charAt(i) == '.') dotCount++;
+        for (int i = 0; i < pr.length(); i++) {
+            if (pr.charAt(i) == '.') dotCount++;
+        }
         return dotCount >= 2;
     }
 
+    /**
+     * Attempts to find the best product candidate within a resolved vendor using
+     * token overlap against canonical product names.
+     *
+     * Matching strategy:
+     * - tokenize the normalized input
+     * - pick a long token as the search anchor
+     * - fetch a bounded candidate set using prefix/contains queries
+     * - score candidates by token overlap and overlap ratio
+     * - require minimum overlap and ratio thresholds before accepting
+     *
+     * This fallback is intentionally vendor-scoped to reduce false positives.
+     */
     private Optional<CpeProduct> bestProductByTokenOverlap(Long vendorId, String productNorm) {
         if (vendorId == null) return Optional.empty();
         if (productNorm == null || productNorm.isBlank()) return Optional.empty();
@@ -202,7 +292,9 @@ public class SoftwareDictionaryValidator {
             if (ct.isEmpty()) continue;
 
             int overlap = 0;
-            for (String t : ct) if (tokenSet.contains(t)) overlap++;
+            for (String t : ct) {
+                if (tokenSet.contains(t)) overlap++;
+            }
 
             double ratio = overlap / (double) Math.max(tokens.size(), ct.size());
 
@@ -218,12 +310,18 @@ public class SoftwareDictionaryValidator {
 
         if (best == null) return Optional.empty();
 
+        // Require both absolute overlap and relative overlap to keep fallback conservative.
         if (bestOverlap >= 2 && bestRatio >= 0.60) {
             return Optional.of(best);
         }
         return Optional.empty();
     }
 
+    /**
+     * Splits a normalized product string into comparison tokens.
+     * Very short tokens are ignored because they add noise and increase
+     * the chance of accidental overlap.
+     */
     private List<String> tokenize(String norm) {
         if (norm == null) return List.of();
         String x = norm.trim();

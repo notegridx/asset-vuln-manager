@@ -41,7 +41,7 @@ public class Asset {
     @Lob
     private String note;
 
-    // ===== Added: inventory identifiers / OS / hardware =====
+    // ===== Inventory identity, hardware, and OS fields =====
 
     @Column(name = "system_uuid", length = 128)
     private String systemUuid;
@@ -112,7 +112,7 @@ public class Asset {
     @Column(name = "os_patch")
     private Integer osPatch;
 
-    // ===== Existing: provenance / platform =====
+    // ===== Provenance, platform, and timestamps =====
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -157,8 +157,9 @@ public class Asset {
     }
 
     /**
-     * Existing behavior: updates basic identity fields.
-     * (Inventory/hardware columns are updated by updateInventory(...) to keep compatibility.)
+     * Updates the core descriptive fields of the asset.
+     * Inventory-specific attributes are intentionally updated through
+     * updateInventory(...) so the update boundary remains explicit.
      */
     public void updateDetails(String externalKey, String assetType, String owner, String note) {
         this.externalKey = normalizeNullable(externalKey);
@@ -172,7 +173,8 @@ public class Asset {
     }
 
     /**
-     * Added behavior: update osquery-derived inventory fields (all optional).
+     * Updates optional inventory attributes collected from external sources
+     * such as osquery. Blank string values are normalized to null.
      */
     public void updateInventory(
             String platform,
@@ -255,7 +257,7 @@ public class Asset {
         this.createdAt = now;
         this.updatedAt = now;
         if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
-        // lastSeenAt は null 許容。初回観測まで未設定でもOK
+        // lastSeenAt is intentionally nullable until the asset is first observed.
     }
 
     @PreUpdate

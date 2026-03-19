@@ -31,6 +31,7 @@ public class CanonicalBackfillService {
 
     private static final Logger log = LoggerFactory.getLogger(CanonicalBackfillService.class);
 
+    // Chunking and logging thresholds for large backfill runs
     private static final int TX_CHUNK = 5_000;
     private static final int LOG_EVERY = 10_000;
     private static final int FLUSH_EVERY = 2_000;
@@ -67,6 +68,7 @@ public class CanonicalBackfillService {
         this.cpeProductRepository = cpeProductRepository;
         this.em = em;
 
+        // Run each chunk in its own transaction to reduce long-lived TX scope
         TransactionTemplate tt = new TransactionTemplate(txManager);
         tt.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.chunkTx = tt;
@@ -78,11 +80,11 @@ public class CanonicalBackfillService {
 
         int scanned = 0;
 
-        // backward-compatible result fields
+        // Backward-compatible summary fields
         int linked = 0;
         int missed = 0;
 
-        // detailed logging
+        // Detailed counters for logging and UI display
         int fullyLinked = 0;
         int vendorOnly = 0;
         int pureMiss = 0;
@@ -91,7 +93,7 @@ public class CanonicalBackfillService {
                 ? softwareRepo.findAll()
                 : softwareRepo.findNeedsCanonicalLink();
 
-        // Dedupe unresolved upsert within the same backfill run
+        // Deduplicate unresolved-mapping upserts within the same backfill run
         Set<String> unresolvedSeen = new HashSet<>();
 
         // Cache resolve results within the same run
@@ -106,11 +108,11 @@ public class CanonicalBackfillService {
             int[] result = chunkTx.execute(status -> {
                 int processedInChunk = 0;
 
-                // backward-compatible result fields
+                // Backward-compatible summary fields
                 int _linked = 0;
                 int _missed = 0;
 
-                // detailed logging
+                // Detailed counters for logging and UI display
                 int _fullyLinked = 0;
                 int _vendorOnly = 0;
                 int _pureMiss = 0;
@@ -143,7 +145,7 @@ public class CanonicalBackfillService {
                         _linked++;
                         _fullyLinked++;
                     } else if (res.vendorId() != null) {
-                        // Fill vendor-only; product stays unresolved
+                        // Vendor resolved, product remains unresolved
                         s.linkCanonical(res.vendorId(), null);
 
                         _linked++;
@@ -221,10 +223,12 @@ public class CanonicalBackfillService {
     }
 
     /**
-     * Try canonical linking only for the given SoftwareInstall IDs, e.g. right after import.
-     * - hit: set cpe_vendor_id / cpe_product_id on software_install
-     * - vendor-only: set only cpe_vendor_id (product stays unresolved)
-     * - miss: upsert into unresolved_mappings (and fill candidate IDs)
+     * Tries canonical linking only for the given SoftwareInstall IDs,
+     * for example immediately after an import run.
+     *
+     * - hit: set cpe_vendor_id and cpe_product_id
+     * - vendor-only: set only cpe_vendor_id, leaving product unresolved
+     * - miss: upsert into unresolved_mappings and populate candidate IDs
      *
      * When forceRebuild=false, fully linked rows are skipped.
      */
@@ -246,16 +250,16 @@ public class CanonicalBackfillService {
 
         int scanned = 0;
 
-        // backward-compatible result fields
+        // Backward-compatible summary fields
         int linked = 0;
         int missed = 0;
 
-        // detailed logging
+        // Detailed counters for logging and UI display
         int fullyLinked = 0;
         int vendorOnly = 0;
         int pureMiss = 0;
 
-        // Dedupe unresolved upsert within the same backfill run
+        // Deduplicate unresolved-mapping upserts within the same backfill run
         Set<String> unresolvedSeen = new HashSet<>();
 
         // Cache resolve results within the same run
@@ -268,11 +272,11 @@ public class CanonicalBackfillService {
             int[] result = chunkTx.execute(status -> {
                 int processedInChunk = 0;
 
-                // backward-compatible result fields
+                // Backward-compatible summary fields
                 int _linked = 0;
                 int _missed = 0;
 
-                // detailed logging
+                // Detailed counters for logging and UI display
                 int _fullyLinked = 0;
                 int _vendorOnly = 0;
                 int _pureMiss = 0;
@@ -412,6 +416,10 @@ public class CanonicalBackfillService {
         );
     }
 
+    /**
+     * Resolves canonical-linking results with per-run caching
+     * to avoid repeating the same linker lookup.
+     */
     private CachedResolveResult resolveWithCache(Map<String, CachedResolveResult> resolveCache, SoftwareInstall s) {
         String key = buildResolveCacheKey(s);
         return resolveCache.computeIfAbsent(key, k -> {
@@ -420,6 +428,10 @@ public class CanonicalBackfillService {
         });
     }
 
+    /**
+     * Builds a cache key from raw, normalized, and source fields
+     * so equivalent software rows share the same resolve result.
+     */
     private String buildResolveCacheKey(SoftwareInstall s) {
         return safePart(s.getSource()) + "\u0000"
                 + safePart(s.getVendorRaw()) + "\u0000"
@@ -493,6 +505,10 @@ public class CanonicalBackfillService {
         return v + "\u0000" + p;
     }
 
+    /**
+     * Fills candidate vendor/product IDs when normalized values allow
+     * a reasonable prefix-based lookup.
+     */
     private void fillCandidatesIfPossible(UnresolvedMapping um) {
         String vn = normalizeNullable(um.getNormalizedVendor());
         String pn = normalizeNullable(um.getNormalizedProduct());
@@ -524,8 +540,8 @@ public class CanonicalBackfillService {
     }
 
     /**
-     * Persist only IDs, e.g. "97,11961,8623".
-     * (No ":nameNorm" to avoid column overflow and long-tail strings.)
+     * Persists only IDs, for example "97,11961,8623".
+     * Name strings are intentionally excluded to avoid column overflow.
      */
     private static String encodeVendors(List<CpeVendor> vendors) {
         if (vendors == null || vendors.isEmpty()) return null;
@@ -536,7 +552,7 @@ public class CanonicalBackfillService {
     }
 
     /**
-     * Persist only IDs, e.g. "123,456".
+     * Persists only IDs, for example "123,456".
      */
     private static String encodeProducts(List<CpeProduct> products) {
         if (products == null || products.isEmpty()) return null;

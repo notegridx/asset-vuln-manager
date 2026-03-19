@@ -30,6 +30,10 @@ import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallReposit
 @Service
 public class JsonStagedImportService {
 
+    // =========================================================
+    // Dependencies
+    // =========================================================
+
     private final ObjectMapper objectMapper;
 
     private final ImportRunRepository importRunRepository;
@@ -63,6 +67,15 @@ public class JsonStagedImportService {
         this.canonicalBackfillService = canonicalBackfillService;
         this.assetSoftwareReplaceService = assetSoftwareReplaceService;
     }
+
+    // =========================================================
+    // JSON DTOs
+    // =========================================================
+
+    /**
+     * Represents a single asset row from JSON input.
+     * Field aliases allow flexible mapping from external sources (e.g. osquery).
+     */
 
     public static class AssetJsonRow {
 
@@ -153,6 +166,11 @@ public class JsonStagedImportService {
         public String lastSeenAt;
     }
 
+    /**
+     * Represents a single software row from JSON input.
+     * Raw fields are preserved for dictionary matching.
+     */
+
     public static class SoftwareJsonRow {
 
         @JsonAlias("external_key")
@@ -208,8 +226,26 @@ public class JsonStagedImportService {
         public String lastSeenAt;
     }
 
+    // =========================================================
+    // Stage: Assets
+    // =========================================================
+
+    /**
+     * Parses JSON asset array and stores it into staging tables.
+     *
+     * Validation rules:
+     * - externalKey is required
+     * - name is required
+     *
+     * No actual Asset entities are created at this stage.
+     */
+
     @Transactional
     public ImportRun stageAssets(String originalFilename, byte[] bytes) {
+
+        // Same staging concept as CSV:
+        // Validate → store → do not mutate domain entities yet
+
         String sha256 = sha256Hex(bytes);
 
         ImportRun run = ImportRun.newStaged("JSON_UPLOAD", "JSON_ASSETS", originalFilename, sha256);
@@ -281,8 +317,28 @@ public class JsonStagedImportService {
         return importRunRepository.save(run);
     }
 
+    // =========================================================
+    // Stage: Software
+    // =========================================================
+
+    /**
+     * Parses JSON software array and stores it into staging tables.
+     *
+     * Validation rules:
+     * - externalKey must exist
+     * - product must exist
+     * - referenced asset must exist
+     *
+     * Raw values (vendorRaw/productRaw/versionRaw) are preserved
+     * to support synonym resolution and dictionary matching.
+     */
+
     @Transactional
     public ImportRun stageSoftware(String originalFilename, byte[] bytes) {
+
+        // JSON allows more flexible field presence,
+        // so we fallback between raw and normalized fields.
+
         String sha256 = sha256Hex(bytes);
 
         ImportRun run = ImportRun.newStaged("JSON_UPLOAD", "JSON_SOFTWARE", originalFilename, sha256);
@@ -364,8 +420,27 @@ public class JsonStagedImportService {
         return importRunRepository.save(run);
     }
 
+    // =========================================================
+    // Import: Assets
+    // =========================================================
+
+    /**
+     * Converts staged asset rows into Asset entities.
+     *
+     * Policy:
+     * - externalKey is the identity key
+     * - existing assets are updated (upsert)
+     * - name IS updated (JSON differs from CSV behavior)
+     * - inventory fields are updated via updateInventory(...)
+     */
+
     @Transactional
     public ImportRun importAssets(Long runId) {
+
+        // NOTE:
+        // JSON import updates asset name, unlike CSV import.
+        // This reflects JSON being treated as a more authoritative source.
+
         ImportRun run = importRunRepository.findById(runId)
                 .orElseThrow(() -> new IllegalArgumentException("import_run not found: " + runId));
 
@@ -432,6 +507,17 @@ public class JsonStagedImportService {
         return importRunRepository.save(run);
     }
 
+    // =========================================================
+    // Import: Software (mode-aware)
+    // =========================================================
+
+    /**
+     * Entry point supporting import mode control.
+     *
+     * REPLACE_ASSET_SOFTWARE:
+     *   Existing software for each asset is replaced before import.
+     */
+
     @Transactional
     public ImportRun importSoftware(Long runId, SoftwareImportMode mode) {
         SoftwareImportMode effective = (mode == null) ? SoftwareImportMode.REPLACE_ASSET_SOFTWARE : mode;
@@ -443,8 +529,31 @@ public class JsonStagedImportService {
         return importSoftware(runId);
     }
 
+    // =========================================================
+    // Import: Software (core logic)
+    // =========================================================
+
+    /**
+     * Converts staged software rows into SoftwareInstall entities.
+     *
+     * Key behaviors:
+     * - Upsert per (asset, vendor, product, version)
+     * - Raw values are preserved for traceability
+     * - Canonical linking is attempted during import
+     * - Backfill is executed for unresolved entries
+     *
+     * Performance optimizations:
+     * - assetCache: avoids repeated DB lookups
+     * - resolveCache: avoids repeated dictionary resolution
+     * - existingByAssetCache: avoids repeated full scans per asset
+     */
+
     @Transactional
     public ImportRun importSoftware(Long runId) {
+
+        // This method is intentionally optimized for bulk ingestion:
+        // avoid N+1 queries and repeated resolution work.
+
         ImportRun run = importRunRepository.findById(runId)
                 .orElseThrow(() -> new IllegalArgumentException("import_run not found: " + runId));
 
@@ -586,6 +695,10 @@ public class JsonStagedImportService {
         return normEmpty(vendor) + "\u0000" + normEmpty(product) + "\u0000" + normEmpty(version);
     }
 
+    /**
+     * Attempts to map string value to SoftwareType enum.
+     * Invalid values are ignored to keep import resilient.
+     */
     private static void trySetSoftwareType(SoftwareInstall sw, String type) {
         String t = normNullable(type);
         if (t == null) return;
@@ -596,6 +709,10 @@ public class JsonStagedImportService {
         }
     }
 
+    /**
+     * Parses JSON array into a list of typed objects.
+     * The input must be a top-level JSON array.
+     */
     private <T> List<T> parseJsonArray(byte[] bytes, TypeReference<List<T>> typeRef) {
         try {
             return objectMapper.readValue(bytes, typeRef);
@@ -614,24 +731,37 @@ public class JsonStagedImportService {
         }
     }
 
+    /**
+     * Normalizes string by trimming and converting blanks to null.
+     */
     private static String normNullable(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
 
+    /**
+     * Same as normNullable but allows empty semantics for version fields.
+     */
     private static String normNullableAllowEmpty(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
 
+    /**
+     * Converts null to empty string for identity key generation.
+     */
     private static String normEmpty(String s) {
         if (s == null) return "";
         String t = s.trim();
         return t.isEmpty() ? "" : t;
     }
 
+    /**
+     * Parses ISO-8601 or local datetime formats.
+     * Invalid values are ignored.
+     */
     private static LocalDateTime parseDateTimeNullable(String s) {
         String t = normNullable(s);
         if (t == null) return null;
@@ -675,6 +805,15 @@ public class JsonStagedImportService {
         return t;
     }
 
+    // =========================================================
+    // Canonical linking behavior
+    // =========================================================
+
+    /**
+     * Windows components (AppX-style identifiers, GUIDs, etc.)
+     * are excluded from canonical linking because they do not map
+     * reliably to CPE dictionary entries.
+     */
     private static boolean looksLikeWindowsComponent(String productRawOrDisplay) {
         String t = normNullable(productRawOrDisplay);
         if (t == null) return false;

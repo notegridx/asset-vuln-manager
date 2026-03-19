@@ -33,6 +33,10 @@ import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallReposit
 @Service
 public class CsvStagedImportService {
 
+    // =========================================================
+    // Dependencies
+    // =========================================================
+
     private final ImportRunRepository importRunRepository;
     private final ImportStagingAssetRepository stagingAssetRepository;
     private final ImportStagingSoftwareRepository stagingSoftwareRepository;
@@ -61,6 +65,22 @@ public class CsvStagedImportService {
         this.canonicalBackfillService = canonicalBackfillService;
         this.assetSoftwareReplaceService = assetSoftwareReplaceService;
     }
+
+    // =========================================================
+    // Stage: Assets
+    // =========================================================
+
+    /**
+     * Parses CSV asset data and stores it into staging tables.
+     * No actual asset records are created at this stage.
+     *
+     * Validation rules:
+     * - external_key is required
+     * - name is required
+     *
+     * The result is stored as ImportStagingAsset rows and aggregated
+     * into an ImportRun.
+     */
 
     @Transactional
     public ImportRun stageAssets(String originalFilename, byte[] bytes) {
@@ -120,6 +140,7 @@ public class CsvStagedImportService {
                     parseDateTimeNullable(r.get("last_seen_at"))
             );
 
+            // Required field validation
             if (externalKey == null) {
                 s.markInvalid("external_key is required");
             } else if (name == null) {
@@ -135,6 +156,22 @@ public class CsvStagedImportService {
         run.markCounts(total, valid, invalid);
         return importRunRepository.save(run);
     }
+
+    // =========================================================
+    // Stage: Software
+    // =========================================================
+
+    /**
+     * Parses CSV software data and stores it into staging tables.
+     *
+     * Validation rules:
+     * - external_key must exist
+     * - product must exist
+     * - referenced asset must already exist
+     *
+     * Raw fields (vendor_raw, product_raw, version_raw) are preserved
+     * to support later dictionary matching.
+     */
 
     @Transactional
     public ImportRun stageSoftware(String originalFilename, byte[] bytes) {
@@ -198,6 +235,7 @@ public class CsvStagedImportService {
                     normNullable(r.get("purl"))
             );
 
+            // Validation
             if (externalKey == null) {
                 s.markInvalid("external_key is required");
             } else if (product == null) {
@@ -218,8 +256,23 @@ public class CsvStagedImportService {
         return importRunRepository.save(run);
     }
 
+    // =========================================================
+    // Import: Assets
+    // =========================================================
+
+    /**
+     * Converts staged asset rows into actual Asset entities.
+     *
+     * Policy:
+     * - external_key is the identity key
+     * - existing assets are updated (upsert)
+     * - asset name is intentionally NOT updated once created
+     * - inventory fields are updated via updateInventory(...)
+     */
     @Transactional
     public ImportRun importAssets(Long runId) {
+        // NOTE: Name is intentionally not updated to preserve identity consistency
+        // across imports and avoid accidental renaming from external sources.
         ImportRun run = importRunRepository.findById(runId)
                 .orElseThrow(() -> new IllegalArgumentException("import_run not found: " + runId));
 
@@ -286,6 +339,19 @@ public class CsvStagedImportService {
         return importRunRepository.save(run);
     }
 
+    // =========================================================
+    // Import: Software
+    // =========================================================
+
+    /**
+     * Converts staged software rows into SoftwareInstall entities.
+     *
+     * Key behaviors:
+     * - Upsert based on (asset_id, vendor, product, version)
+     * - Raw values are captured for dictionary matching
+     * - Canonical linking is attempted during import
+     * - Backfill is executed after import for unresolved mappings
+     */
     @Transactional
     public ImportRun importSoftware(Long runId, SoftwareImportMode mode) {
         SoftwareImportMode effective = (mode == null) ? SoftwareImportMode.REPLACE_ASSET_SOFTWARE : mode;
@@ -401,7 +467,17 @@ public class CsvStagedImportService {
         return importRunRepository.save(run);
     }
 
+    // =========================================================
+    // Utilities
+    // =========================================================
+
+    /**
+     * Lightweight CSV parser supporting quoted fields.
+     * This avoids introducing external dependencies for simple ingestion use cases.
+     */
     private static List<Map<String, String>> parseCsv(byte[] bytes) {
+        // NOTE: This parser is intentionally simple and does not fully comply
+        // with all CSV edge cases. It is sufficient for controlled input formats.
         try (BufferedReader br = new BufferedReader(new InputStreamReader(
                 new ByteArrayInputStream(bytes), java.nio.charset.StandardCharsets.UTF_8))) {
 
@@ -462,7 +538,12 @@ public class CsvStagedImportService {
         return out;
     }
 
+    /**
+     * Attempts to map string value to SoftwareType enum.
+     * Invalid values are ignored without failing the import.
+     */
     private static void trySetSoftwareType(SoftwareInstall sw, String type) {
+        // ignore invalid enum values
         String t = normNullable(type);
         if (t == null) return;
         try {

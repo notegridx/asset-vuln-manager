@@ -14,6 +14,10 @@ import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 @Table(name = "cpe_product_aliases")
 public class CpeProductAlias {
 
+    /**
+     * Stores normalized product aliases that map raw product names
+     * to canonical CPE vendor/product identifiers.
+     */
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_INACTIVE = "INACTIVE";
 
@@ -33,15 +37,22 @@ public class CpeProductAlias {
     @Column(name = "note", length = 1024)
     private String note;
 
-    // Stringのまま維持E既存Controller互換
+    /**
+     * Kept as String for compatibility with existing controller and API layers.
+     */
     @Column(name = "status", nullable = false, length = 16)
     private String status = STATUS_ACTIVE;
 
-    // EenumEユーザー提示版を使用
+    /**
+     * Indicates how this alias was created (manual, seeded, imported, etc.).
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "source", nullable = false, length = 32)
     private AliasSource source = AliasSource.MANUAL;
 
+    /**
+     * Represents review status (manual, auto-generated, etc.).
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "review_state", nullable = false, length = 16)
     private AliasReviewState reviewState = AliasReviewState.MANUAL;
@@ -60,7 +71,9 @@ public class CpeProductAlias {
 
     protected CpeProductAlias() { }
 
-    // 既存互換の最小コンストラクタ
+    /**
+     * Minimal constructor kept for backward-compatible creation paths.
+     */
     public CpeProductAlias(Long cpeVendorId, Long cpeProductId, String aliasNorm, String note) {
         this.cpeVendorId = cpeVendorId;
         this.cpeProductId = cpeProductId;
@@ -71,7 +84,9 @@ public class CpeProductAlias {
         this.reviewState = AliasReviewState.MANUAL;
     }
 
-    // 自動投入/提案投入向け
+    /**
+     * Factory for aliases created by automated seeding or suggestion workflows.
+     */
     public static CpeProductAlias seeded(
             Long cpeVendorId,
             Long cpeProductId,
@@ -84,14 +99,16 @@ public class CpeProductAlias {
     ) {
         CpeProductAlias a = new CpeProductAlias(cpeVendorId, cpeProductId, aliasNorm, note);
         a.source = (source == null) ? AliasSource.MANUAL : source;
-        a.reviewState = (reviewState == null) ? AliasReviewState.AUTO : reviewState; // nullならAUTO寁E
+        a.reviewState = (reviewState == null) ? AliasReviewState.AUTO : reviewState;
         a.confidence = confidence;
         a.evidenceUrl = evidenceUrl;
         a.status = STATUS_ACTIVE;
         return a;
     }
 
-    // ✁E既存Controllerが呼ぶので忁EE
+    /**
+     * Setter retained for compatibility with existing controller flows.
+     */
     public void setStatus(String status) {
         if (status == null) {
             this.status = STATUS_ACTIVE;
