@@ -10,7 +10,7 @@
     </parent>
     <groupId>dev.notegridx.security</groupId>
     <artifactId>asset-vuln-manager</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <name>asset-vuln-manager</name>
     <description>練習用</description>
     <url/>
