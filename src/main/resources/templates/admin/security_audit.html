@@ -6,6 +6,49 @@
 <body th:replace="~{layout/base :: layout('Security Audit Log', 'admin', ~{::main})}">
 <main>
 
+    <style>
+        /* Keep the outer .card, but remove any nested panel look inside the filter area. */
+        .audit-filter-toolbar {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: space-between;
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .audit-filter-left {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .audit-filter-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* If shared .field styling adds its own panel/border/background,
+           neutralize it only on this page. */
+        .audit-filter-toolbar .field {
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            padding: 0;
+            margin: 0;
+            min-width: 0;
+        }
+    </style>
+
     <div class="page-header"
          style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
         <div class="page-header__left">
@@ -24,10 +67,9 @@
 
     <div class="card" style="padding:12px; margin:12px 0;">
         <form method="get" th:action="@{/admin/security-audit}">
-            <div class="toolbar"
-                 style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;">
+            <div class="audit-filter-toolbar">
 
-                <div class="toolbar__left" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                <div class="audit-filter-left">
 
                     <div class="field" style="min-width:220px;">
                         <label for="eventType">Event Type</label>
@@ -63,7 +105,7 @@
 
                 </div>
 
-                <div class="toolbar__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div class="audit-filter-right">
                     <button class="btn btn-primary" type="submit">Apply Filters</button>
                     <a class="btn" th:href="@{/admin/security-audit}">Reset</a>
                 </div>
