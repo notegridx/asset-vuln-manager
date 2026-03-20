@@ -44,6 +44,7 @@ public class AdminInventoryController {
     public String unresolved(
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
+            @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             @RequestParam(name = "id", required = false) Long id,
@@ -52,6 +53,7 @@ public class AdminInventoryController {
         var view = adminInventoryReadService.findUnresolvedMappings(
                 status,
                 runId,
+                q,
                 activeOnly,
                 activeOnlyPresent,
                 id
@@ -60,6 +62,7 @@ public class AdminInventoryController {
         model.addAttribute("mappings", view.mappings());
         model.addAttribute("status", view.status());
         model.addAttribute("runId", view.runId());
+        model.addAttribute("q", view.q());
         model.addAttribute("activeOnly", view.activeOnly());
         model.addAttribute("activeOnlyPresent", view.activeOnlyPresent());
         model.addAttribute("id", view.id());
@@ -78,6 +81,7 @@ public class AdminInventoryController {
             @RequestParam(name = "cpeProductId", required = false) String cpeProductIdRaw,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
+            @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             @RequestParam(name = "id", required = false) Long id,
@@ -91,11 +95,11 @@ public class AdminInventoryController {
 
         if (mappingId == null) {
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
         }
         if (vendorId == null) {
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates (chips).");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
         }
 
         try {
@@ -113,7 +117,7 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", "Apply failed: " + safeMsg(e));
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
     }
 
     /**
@@ -139,6 +143,7 @@ public class AdminInventoryController {
     private static String redirectQuery(
             String status,
             Long runId,
+            String q,
             boolean activeOnly,
             boolean includeActiveOnlyPresent,
             Long id
@@ -152,6 +157,10 @@ public class AdminInventoryController {
         }
         if (runId != null) {
             sb.append(first ? "?" : "&").append("runId=").append(runId);
+            first = false;
+        }
+        if (q != null && !q.isBlank()) {
+            sb.append(first ? "?" : "&").append("q=").append(url(q));
             first = false;
         }
         if (id != null) {
@@ -203,6 +212,7 @@ public class AdminInventoryController {
             @RequestParam(name = "cpeProductId", required = false) String cpeProductIdRaw,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "runId", required = false) Long runId,
+            @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             @RequestParam(name = "id", required = false) Long id,
@@ -216,11 +226,11 @@ public class AdminInventoryController {
 
         if (mappingId == null) {
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
         }
         if (vendorId == null) {
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
         }
 
         try {
@@ -239,6 +249,6 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", "QuickAdd failed: " + safeMsg(e));
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId, active, true, id);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
     }
 }

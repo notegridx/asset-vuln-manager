@@ -41,11 +41,13 @@ public class AdminInventoryReadService {
     public UnresolvedListView findUnresolvedMappings(
             String status,
             Long runId,
+            String q,
             Boolean activeOnly,
             String activeOnlyPresent,
             Long id
     ) {
         boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
+        String effectiveQ = normalize(q);
 
         // ID review mode:
         // if id is specified, show only that mapping and bypass list filters.
@@ -62,6 +64,7 @@ public class AdminInventoryReadService {
                     list,
                     effectiveStatus,
                     runId,
+                    effectiveQ,
                     active,
                     activeOnlyPresent,
                     id
@@ -85,6 +88,14 @@ public class AdminInventoryReadService {
             list.removeIf(m -> m.getStatus() == null || !m.getStatus().equalsIgnoreCase(effectiveStatus));
         }
 
+        // Keyword filter:
+        // q matches vendorRaw or productRaw with case-insensitive contains.
+        if (effectiveQ != null) {
+            String needle = effectiveQ.toLowerCase(Locale.ROOT);
+            list.removeIf(m -> !containsIgnoreCase(m.getVendorRaw(), needle)
+                    && !containsIgnoreCase(m.getProductRaw(), needle));
+        }
+
         // NOTE:
         // runId filtering is not implemented in the current code base.
         // runId is preserved only as UI state.
@@ -99,6 +110,7 @@ public class AdminInventoryReadService {
                 list,
                 effectiveStatus,
                 runId,
+                effectiveQ,
                 active,
                 activeOnlyPresent,
                 null
@@ -125,10 +137,26 @@ public class AdminInventoryReadService {
         return Boolean.TRUE.equals(activeOnly);
     }
 
+    private static boolean containsIgnoreCase(String value, String needleLower) {
+        if (value == null || needleLower == null) {
+            return false;
+        }
+        return value.toLowerCase(Locale.ROOT).contains(needleLower);
+    }
+
+    private static String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     public record UnresolvedListView(
             List<UnresolvedMapping> mappings,
             String status,
             Long runId,
+            String q,
             boolean activeOnly,
             String activeOnlyPresent,
             Long id

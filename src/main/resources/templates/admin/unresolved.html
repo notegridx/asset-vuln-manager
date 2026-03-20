@@ -19,13 +19,6 @@
         flex-wrap: wrap;
     }
 
-    .um-page-header__right {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
     .um-page-subtitle {
         margin-top: 6px;
     }
@@ -38,11 +31,6 @@
 
     .um-card {
         padding: 12px;
-        margin-top: 12px;
-    }
-
-    .um-card--hint {
-        padding: 10px;
         margin-top: 12px;
     }
 
@@ -96,6 +84,14 @@
         align-self: flex-end;
     }
 
+    .um-filter-search {
+        min-width: 260px;
+    }
+
+    .um-filter-search input {
+        min-width: 260px;
+    }
+
     .um-raw-stack {
         display: flex;
         flex-direction: column;
@@ -104,10 +100,6 @@
 
     .um-empty {
         padding: 14px;
-    }
-
-    .um-hint-list {
-        margin: 6px 0 0 16px;
     }
 
     .um-th-status {
@@ -156,6 +148,12 @@
         .um-filterbar__right {
             justify-content: flex-start;
         }
+
+        .um-filter-search,
+        .um-filter-search input {
+            min-width: 100%;
+            width: 100%;
+        }
     }
 
     /* =========================================================
@@ -194,30 +192,30 @@
         text-overflow: ellipsis;
     }
 
-.um-table td:nth-child(3) input,
-.um-table td:nth-child(3) select,
-.um-table td:nth-child(3) textarea {
-    width: 100%;
-    box-sizing: border-box;
-}
+    .um-table td:nth-child(3) input,
+    .um-table td:nth-child(3) select,
+    .um-table td:nth-child(3) textarea {
+        width: 100%;
+        box-sizing: border-box;
+    }
 
-.js-vendor-q,
-.js-product-q {
-    max-width: 240px;
-}
+    .js-vendor-q,
+    .js-product-q {
+        max-width: 240px;
+    }
 
-.js-vendor-select,
-.js-product-select {
-    max-width: 280px;
-}
+    .js-vendor-select,
+    .js-product-select {
+        max-width: 280px;
+    }
 
-.um-note textarea {
-    max-width: 320px;
-}
+    .um-note textarea {
+        max-width: 320px;
+    }
 
-.um-actions--inline .btn {
-    white-space: nowrap;
-}
+    .um-actions--inline .btn {
+        white-space: nowrap;
+    }
 
     /* =========================================================
        5) Resolve form area
@@ -248,36 +246,17 @@
         min-width: 0;
     }
 
-.um-resolve input,
-.um-resolve select {
-    height: 30px;
-    padding: 4px 8px;
-    font-size: 13px;
-}
+    .um-resolve input,
+    .um-resolve select {
+        height: 30px;
+        padding: 4px 8px;
+        font-size: 13px;
+    }
 
-.um-actions .btn {
-    height: 30px;
-    padding: 0 10px;
-    font-size: 12px;
-}
-
-.um-note textarea {
-    min-height: 30px;
-    height: 30px;
-    padding: 5px 8px;
-    font-size: 13px;
-    line-height: 1.3;
-    resize: none;
-    overflow: hidden;
-}
-
-    .um-actions {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-        margin-top: 6px;
+    .um-actions .btn {
+        height: 30px;
+        padding: 0 10px;
+        font-size: 12px;
     }
 
     .um-note-row {
@@ -292,21 +271,29 @@
     }
 
     .um-note textarea {
-.um-note textarea {
-    min-height: 30px;
-    height: 30px;
-    padding: 5px 8px;
-    font-size: 13px;
-    line-height: 1.3;
-    resize: none;
-    overflow: hidden;
-}
+        min-height: 30px;
+        height: 30px;
+        padding: 5px 8px;
+        font-size: 13px;
+        line-height: 1.3;
+        resize: none;
+        overflow: hidden;
+    }
 
-.um-btn-compact {
-    height: 30px;
-    padding: 0 10px;
-    font-size: 12px;
-}
+    .um-btn-compact {
+        height: 30px;
+        padding: 0 10px;
+        font-size: 12px;
+    }
+
+    .um-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        margin-top: 6px;
+    }
 
     .um-actions--inline {
         margin-top: 0;
@@ -356,7 +343,6 @@
     tr.row-resolved .badge {
         filter: grayscale(0.6);
     }
-
 </style>
 
 <body th:replace="~{layout/base :: layout('Unresolved Mappings', 'admin', ~{::main})}">
@@ -369,10 +355,6 @@
             <div class="muted um-page-subtitle">
                 Review and resolve vendor/product mappings that couldn't be linked automatically.
             </div>
-        </div>
-
-        <div class="page-header__right um-page-header__right">
-            <a class="btn btn-ghost" th:href="@{/admin}">Admin</a>
         </div>
     </div>
 
@@ -389,11 +371,23 @@
     <!-- Filter bar -->
     <div class="card um-card">
         <form class="um-filterbar" method="get" th:action="@{/admin/unresolved}">
-            <!-- unchecked 判定用: Controller の effectiveActiveOnly() と整合 -->
+            <!-- Keep checkbox semantics aligned with effectiveActiveOnly() -->
             <input type="hidden" name="activeOnlyPresent" value="1"/>
             <input th:if="${id != null}" type="hidden" name="id" th:value="${id}"/>
 
+            <!-- Keep runId as hidden UI state so existing controller behavior is preserved -->
+            <input type="hidden" name="runId" th:value="${runId != null ? runId : ''}"/>
+
             <div class="um-filterbar__left">
+                <div class="um-stack-6 um-filter-search">
+                    <label for="q">Search</label>
+                    <input id="q"
+                           name="q"
+                           type="text"
+                           th:value="${q}"
+                           placeholder="Search vendor / product"/>
+                </div>
+
                 <div class="um-stack-6">
                     <label for="status">Status</label>
                     <select id="status" name="status">
@@ -410,20 +404,20 @@
                     </label>
                 </div>
 
-                <div class="um-stack-6">
-                    <label for="runId">Run ID (state only)</label>
-                    <input id="runId" name="runId" type="text" placeholder="(optional)"
-                           th:value="${runId != null ? runId : ''}">
-                </div>
-
                 <button class="btn btn-primary um-filter-submit" type="submit">Apply</button>
             </div>
 
             <div class="um-filterbar__right">
                 <span class="pill" th:text="'Total: ' + ${#lists.size(mappings)}">Total: 0</span>
-                <div class="um-viewing"
-                     th:text="'Viewing: status=' + ${status} + ' / activeOnly=' + ${activeOnly}">
-                    Viewing: status=NEW / activeOnly=true
+
+                <div class="um-viewing">
+        <span th:text="'Viewing: status=' + ${status} + ' / activeOnly=' + ${activeOnly}">
+            Viewing: status=NEW / activeOnly=true
+        </span>
+                    <span th:if="${q != null and !#strings.isEmpty(q)}"
+                          th:text="' / q=' + ${q}">
+            / q=keyword
+        </span>
                 </div>
             </div>
         </form>
@@ -480,12 +474,12 @@
 
                     <td>
                         <form class="js-apply-form" method="post" th:action="@{/admin/unresolved/apply}">
-                            <!-- Controller expects mappingId/cpeVendorId/cpeProductId -->
                             <input type="hidden" name="mappingId" th:value="${r.id}"/>
 
                             <!-- UI state passthrough -->
                             <input type="hidden" name="status" th:value="${status}"/>
                             <input type="hidden" name="runId" th:value="${runId}"/>
+                            <input type="hidden" name="q" th:value="${q}"/>
                             <input type="hidden" name="id" th:value="${id}"/>
                             <input type="hidden" name="activeOnlyPresent" value="1"/>
                             <input type="hidden" name="activeOnly" th:value="${activeOnly}"/>
@@ -497,8 +491,6 @@
                             <div class="um-resolve">
 
                                 <div class="um-resolve-grid">
-
-                                    <!-- Vendor -->
                                     <div class="um-resolve-col">
                                         <div class="um-label">Vendor</div>
                                         <input class="js-vendor-q"
@@ -512,7 +504,6 @@
                                         </select>
                                     </div>
 
-                                    <!-- Product -->
                                     <div class="um-resolve-col">
                                         <div class="um-label">Product</div>
                                         <input class="js-product-q"
@@ -525,7 +516,6 @@
                                             <option value="">-- Select product --</option>
                                         </select>
                                     </div>
-
                                 </div>
 
                                 <div class="um-note-row">
@@ -536,8 +526,8 @@
                                     </div>
 
                                     <div class="um-actions um-actions--inline">
-                                        <button class="btn btn-primary um-btn-compact" type="submit">Link to Product
-                                            Dictionary
+                                        <button class="btn btn-primary um-btn-compact" type="submit">
+                                            Link to Product Dictionary
                                         </button>
                                     </div>
                                 </div>
@@ -564,7 +554,7 @@
                 .map(s => s.trim())
                 .filter(s => s.length > 0)
                 .map(s => {
-                    const m = s.match(/^(\d+)/); // "97" or "97:google"
+                    const m = s.match(/^(\d+)/);
                     return m ? Number(m[1]) : null;
                 })
                 .filter(n => Number.isInteger(n) && n > 0);
@@ -610,7 +600,7 @@
             let items = [];
             try {
                 const url = `/api/dict/${kind}/by-ids?ids=` + encodeURIComponent(ids.join(','));
-                items = await fetchJson(url); // [{id,label,nameNorm},...]
+                items = await fetchJson(url);
             } catch (e) {
                 items = ids.map(id => ({id, label: `#${id}`}));
             }
@@ -665,9 +655,6 @@
             };
         }
 
-        // =========================================================
-        // Row initialization
-        // =========================================================
         document.querySelectorAll('tr[data-row-id]').forEach(row => {
             const form = row.querySelector('.js-apply-form');
             const vSel = row.querySelector('.js-vendor-select');
@@ -677,7 +664,6 @@
 
             if (!form || !vSel || !pSel) return;
 
-            // default queries from server (normalizedVendor/Product)
             if (vQ && vQ.dataset.defaultQ) vQ.value = vQ.dataset.defaultQ;
             if (pQ && pQ.dataset.defaultQ) pQ.value = pQ.dataset.defaultQ;
 
@@ -688,16 +674,12 @@
                 const grouped = await fetchJson('/api/dict/vendors/search2?q=' + encodeURIComponent(q));
                 fillSelectWithGrouped(vSel, grouped, '-- Select vendor --');
 
-                // keep quick candidates at bottom (optional)
                 const quickIds = splitIds(vSel.dataset.candidateIds);
                 if (quickIds.length > 0) {
                     const quick = await fetchJson('/api/dict/vendors/by-ids?ids=' + encodeURIComponent(quickIds.join(',')));
                     appendOptGroup(vSel, 'Quick candidates', uniqById(quick), (it) => `${it.label} (#${it.id})`);
                 }
 
-                // SAFE auto-select:
-                // only when there is exactly one exact-match candidate
-                // and nothing has been selected yet.
                 if ((!vSel.value || vSel.value === '')
                     && grouped
                     && Array.isArray(grouped.exact)
@@ -723,7 +705,6 @@
                 );
                 fillSelectWithGrouped(pSel, grouped, '-- Select product --');
 
-                // keep quick candidates at bottom (optional)
                 const quickIds = splitIds(pSel.dataset.candidateIds);
                 if (quickIds.length > 0) {
                     const quick = await fetchJson('/api/dict/products/by-ids?ids=' + encodeURIComponent(quickIds.join(',')));
@@ -733,30 +714,25 @@
                 syncSubmitHidden(form, vSel.value || null, pSel.value || null);
             }
 
-            // Quick candidates (resolve labels by IDs) on load
             (async () => {
                 await fillSelectWithQuick(vSel, splitIds(vSel.dataset.candidateIds), '-- Select vendor --', 'vendors');
                 await fillSelectWithQuick(pSel, splitIds(pSel.dataset.candidateIds), '-- Select product --', 'products');
 
-                // auto vendor search if normalizedVendor exists
                 const vDefault = (vQ?.value || '').trim();
                 if (vDefault.length >= 2) {
                     try { await runVendorSearch(); } catch (_) {}
                 }
 
-                // auto product search only if vendor already selected and normalizedProduct exists
                 const pDefault = (pQ?.value || '').trim();
                 if ((vSel.value || '').trim() && pDefault.length >= 2) {
                     try { await runProductSearch(); } catch (_) {}
                 }
             })();
 
-            // keep selects in sync
             vSel.addEventListener('change', () => {
                 clearSelect(pSel, '-- Select product --');
                 syncSubmitHidden(form, vSel.value || null, null);
 
-                // if product query exists, auto-search after vendor selection
                 const pDefault = (pQ?.value || '').trim();
                 if (pDefault.length >= 2) {
                     runProductSearch().catch(() => {});
@@ -767,17 +743,14 @@
                 syncSubmitHidden(form, vSel.value || null, pSel.value || null);
             });
 
-            // Enter key support
             onEnter(vQ, () => runVendorSearch().catch(() => {}));
             onEnter(pQ, () => runProductSearch().catch(() => {}));
 
-            // debounce auto-search while typing (no Search buttons)
             const vendorDebounced = debounce(() => runVendorSearch().catch(() => {}), 350);
             const productDebounced = debounce(() => runProductSearch().catch(() => {}), 350);
             vQ?.addEventListener('input', vendorDebounced);
             pQ?.addEventListener('input', productDebounced);
 
-            // Apply: enforce vendor selection + jump to next row after redirect
             form.addEventListener('submit', (e) => {
                 const vendorId = vSel.value || '';
                 if (!vendorId) {
@@ -786,7 +759,6 @@
                     return false;
                 }
 
-                // remember next row id to jump after redirect
                 const next = row.nextElementSibling;
                 const nextId = next?.getAttribute('data-row-id');
                 if (nextId) sessionStorage.setItem('um-next-row', nextId);
@@ -795,9 +767,6 @@
             });
         });
 
-        // =========================================================
-        // After redirect: jump to next row (best-effort)
-        // =========================================================
         (function jumpToNextRow() {
             const jumpId = sessionStorage.getItem('um-next-row');
             if (!jumpId) return;
