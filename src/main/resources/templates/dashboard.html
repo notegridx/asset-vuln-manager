@@ -221,6 +221,20 @@
             </div>
         </a>
 
+        <a class="status-tile" th:href="@{/admin/canonical}">
+            <div class="status-tile__label">CPE Linking Coverage</div>
+            <div class="status-tile__value">
+                <span class="pill"
+                      th:text="${installs > 0 ? #numbers.formatDecimal(((installs - unmappedInstalls) * 100.0) / installs, 1, 1) + '%' : '0.0%'}">
+                    0.0%
+                </span>
+                <span class="muted"
+                      th:text="'(' + ${installs - unmappedInstalls} + '/' + ${installs} + ' linked)'">
+                    (0/0 linked)
+                </span>
+            </div>
+        </a>
+
         <a class="status-tile" th:href="@{/admin/cpe/sync}">
             <div class="status-tile__label">CPE Dictionary (Vendors)</div>
             <div class="status-tile__value">
@@ -242,22 +256,6 @@
             <div class="status-tile__value">
                 <span class="pill" th:text="${vulns}">0</span>
                 <span class="muted">stored</span>
-            </div>
-        </a>
-
-        <a class="status-tile" th:href="@{/alerts}">
-            <div class="status-tile__label">Open alerts</div>
-            <div class="status-tile__value">
-                <span class="pill" th:text="${openAlerts}">0</span>
-                <span class="muted">active</span>
-            </div>
-        </a>
-
-        <a class="status-tile status-tile--wide" th:href="@{/admin/canonical}">
-            <div class="status-tile__label">Software needs product mapping</div>
-            <div class="status-tile__value">
-                <span class="pill" th:text="${unmappedInstalls}">0</span>
-                <span class="muted">may reduce matching accuracy</span>
             </div>
         </a>
 
