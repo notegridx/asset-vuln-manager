@@ -80,10 +80,6 @@
         margin: 0;
     }
 
-    .um-filter-submit {
-        align-self: flex-end;
-    }
-
     .um-filter-search {
         min-width: 260px;
     }
@@ -382,7 +378,7 @@
 
     <!-- Filter bar -->
     <div class="card um-card">
-        <form class="um-filterbar" method="get" th:action="@{/admin/unresolved}">
+        <form id="unresolved-filter-form" class="um-filterbar" method="get" th:action="@{/admin/unresolved}">
             <!-- Keep checkbox semantics aligned with effectiveActiveOnly() -->
             <input type="hidden" name="activeOnlyPresent" value="1"/>
             <input th:if="${id != null}" type="hidden" name="id" th:value="${id}"/>
@@ -411,12 +407,10 @@
 
                 <div class="um-stack-6 um-stack-6--checkbox">
                     <label class="um-checkbox-label">
-                        <input type="checkbox" name="activeOnly" value="true" th:checked="${activeOnly}"/>
+                        <input id="activeOnly" type="checkbox" name="activeOnly" value="true" th:checked="${activeOnly}"/>
                         <span>Active only</span>
                     </label>
                 </div>
-
-                <button class="btn btn-primary um-filter-submit" type="submit">Apply</button>
             </div>
 
             <div class="um-filterbar__right">
@@ -665,6 +659,30 @@
                 t = setTimeout(() => fn(...args), ms);
             };
         }
+
+        (function initUnresolvedFilters() {
+            const form = document.getElementById('unresolved-filter-form');
+            if (!form) return;
+
+            const q = document.getElementById('q');
+            const status = document.getElementById('status');
+            const activeOnly = document.getElementById('activeOnly');
+
+            status?.addEventListener('change', () => {
+                form.requestSubmit();
+            });
+
+            activeOnly?.addEventListener('change', () => {
+                form.requestSubmit();
+            });
+
+            q?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    form.requestSubmit();
+                }
+            });
+        })();
 
         document.querySelectorAll('tr[data-row-id]').forEach(row => {
             const form = row.querySelector('.js-apply-form');
