@@ -273,7 +273,7 @@
 
     <div class="card" style="padding:12px; margin-top:12px;">
 
-        <!-- Top10 Range Filter (practical UI) -->
+        <!-- Top10 Range Filter -->
         <form id="topCveRangeForm" method="get" th:action="@{/dashboard}" style="margin-bottom:12px;">
             <div class="actions" style="margin:0; align-items:flex-end; gap:10px; flex-wrap:wrap;">
                 <div class="field" style="min-width:220px;">
@@ -298,11 +298,6 @@
                 <div class="field" style="min-width:160px;">
                     <label>To</label>
                     <input type="date" name="to" id="topTo" th:value="${to}">
-                </div>
-
-                <div class="actions" style="margin:0;">
-                    <button type="submit" class="btn btn-primary">Apply</button>
-                    <a class="btn btn-ghost" th:href="@{/dashboard}">Reset</a>
                 </div>
 
                 <div class="muted" style="font-size:12px; margin-left:auto;">
@@ -408,6 +403,8 @@
             function applyRangeInputsState() {
                 const isCustom = sel.value === 'CUSTOM';
 
+                // Keep From/To always clickable.
+                // Only clear the values when a preset range is selected.
                 if (!isCustom) {
                     if (from) from.value = '';
                     if (to) to.value = '';
@@ -425,19 +422,19 @@
                     const id = escapeHtml(r.id);
                     const cnt = (r.cveCount != null) ? Number(r.cveCount) : Number(r.cnt || 0);
                     return `
-        <tr class="js-top-vendor-row"
-            data-vendor-id="${id}"
-            data-vendor-label="${label}"
-            title="Click to show Top Products for this vendor"
-            style="cursor:pointer;">
-          <td class="muted dash-top10-rank">${idx + 1}</td>
-          <td>
-            <span class="mono dash-top10-label">${label}</span>
-            <span class="muted dash-top10-id"> (#${id})</span>
-          </td>
-          <td class="dash-top10-count"><span class="pill">${cnt}</span></td>
-        </tr>
-      `;
+            <tr class="js-top-vendor-row"
+                data-vendor-id="${id}"
+                data-vendor-label="${label}"
+                title="Click to show Top Products for this vendor"
+                style="cursor:pointer;">
+              <td class="muted dash-top10-rank">${idx + 1}</td>
+              <td>
+                <span class="mono dash-top10-label">${label}</span>
+                <span class="muted dash-top10-id"> (#${id})</span>
+              </td>
+              <td class="dash-top10-count"><span class="pill">${cnt}</span></td>
+            </tr>
+          `;
                 }).join('');
             }
 
@@ -452,15 +449,15 @@
                     const id = escapeHtml(r.id);
                     const cnt = (r.cveCount != null) ? Number(r.cveCount) : Number(r.cnt || 0);
                     return `
-        <tr>
-          <td class="muted dash-top10-rank">${idx + 1}</td>
-          <td>
-            <span class="mono dash-top10-label">${label}</span>
-            <span class="muted dash-top10-id"> (#${id})</span>
-          </td>
-          <td class="dash-top10-count"><span class="pill">${cnt}</span></td>
-        </tr>
-      `;
+            <tr>
+              <td class="muted dash-top10-rank">${idx + 1}</td>
+              <td>
+                <span class="mono dash-top10-label">${label}</span>
+                <span class="muted dash-top10-id"> (#${id})</span>
+              </td>
+              <td class="dash-top10-count"><span class="pill">${cnt}</span></td>
+            </tr>
+          `;
                 }).join('');
             }
 
@@ -519,8 +516,32 @@
                 }
             }
 
-            sel.addEventListener('change', applyRangeInputsState);
-            applyRangeInputsState();
+            async function reloadForCurrentInputs() {
+                applyRangeInputsState();
+                await loadOverallTop();
+            }
+
+            sel.addEventListener('change', async () => {
+                await reloadForCurrentInputs();
+            });
+
+            if (from) {
+                from.addEventListener('change', async () => {
+                    if (sel.value !== 'CUSTOM') {
+                        sel.value = 'CUSTOM';
+                    }
+                    await reloadForCurrentInputs();
+                });
+            }
+
+            if (to) {
+                to.addEventListener('change', async () => {
+                    if (sel.value !== 'CUSTOM') {
+                        sel.value = 'CUSTOM';
+                    }
+                    await reloadForCurrentInputs();
+                });
+            }
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
