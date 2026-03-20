@@ -16,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -31,6 +32,7 @@ public class AdminCanonicalController {
     private static final long STATS_CACHE_MILLIS = 30_000L;
     private static final long ASSETS_CACHE_MILLIS = 30_000L;
     private static final String UNUSED_ASSET_NAME = null;
+    private static final List<Integer> SIZE_OPTIONS = List.of(50, 100, 200, 500);
 
     private final AssetRepository assetRepo;
     private final SoftwareInstallRepository softwareRepo;
@@ -131,6 +133,31 @@ public class AdminCanonicalController {
             @RequestParam(name = "size", required = false, defaultValue = "50") Integer size,
             Model model
     ) {
+        populateViewModel(assetId, filterRaw, q, page, size, model);
+        return "admin/canonical";
+    }
+
+    @GetMapping("/admin/canonical/table")
+    public String table(
+            @RequestParam(name = "asset", required = false) Long assetId,
+            @RequestParam(name = "filter", required = false, defaultValue = "all") String filterRaw,
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "page", required = false, defaultValue = "0") Integer page,
+            @RequestParam(name = "size", required = false, defaultValue = "50") Integer size,
+            Model model
+    ) {
+        populateViewModel(assetId, filterRaw, q, page, size, model);
+        return "admin/fragments/canonical_table :: canonicalTable";
+    }
+
+    private void populateViewModel(
+            Long assetId,
+            String filterRaw,
+            String q,
+            Integer page,
+            Integer size,
+            Model model
+    ) {
         int safePage = Math.max(page == null ? 0 : page, 0);
         int safeSize = normalizePageSize(size);
         Filter filter = Filter.parse(filterRaw);
@@ -178,7 +205,7 @@ public class AdminCanonicalController {
         model.addAttribute("q", q);
         model.addAttribute("page", safePage);
         model.addAttribute("size", safeSize);
-        model.addAttribute("sizeOptions", List.of(50, 100, 200, 500));
+        model.addAttribute("sizeOptions", SIZE_OPTIONS);
 
         model.addAttribute("totalFilteredRows", rowPage.getTotalElements());
         model.addAttribute("pageRowStart", pageRowStart);
@@ -186,8 +213,6 @@ public class AdminCanonicalController {
 
         String currentQuery = buildCurrentQuery(assetId, filter.paramValue(), q, safePage, safeSize);
         model.addAttribute("currentQuery", currentQuery);
-
-        return "admin/canonical";
     }
 
     @PostMapping("/admin/canonical/link")
@@ -213,10 +238,23 @@ public class AdminCanonicalController {
             @RequestParam("softwareId") Long softwareId,
             @RequestParam("disabled") boolean disabled,
             @RequestParam(name = "redirect", required = false) String redirect,
+            @RequestParam(name = "asset", required = false) Long assetId,
+            @RequestParam(name = "filter", required = false, defaultValue = "all") String filterRaw,
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "page", required = false, defaultValue = "0") Integer page,
+            @RequestParam(name = "size", required = false, defaultValue = "50") Integer size,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest,
+            Model model,
             RedirectAttributes ra
     ) {
         SoftwareInstall s = softwareRepo.findById(softwareId).orElse(null);
         if (s == null) {
+            if (isHtmxRequest(hxRequest)) {
+                populateViewModel(assetId, filterRaw, q, page, size, model);
+                model.addAttribute("error", "SoftwareInstall not found: id=" + softwareId);
+                return "admin/fragments/canonical_table :: canonicalTable";
+            }
+
             ra.addFlashAttribute("error", "SoftwareInstall not found: id=" + softwareId);
             return safeRedirectOrDefault(redirect, "/admin/canonical");
         }
@@ -229,6 +267,11 @@ public class AdminCanonicalController {
 
         softwareRepo.save(s);
         invalidateStatsCache();
+
+        if (isHtmxRequest(hxRequest)) {
+            populateViewModel(assetId, filterRaw, q, page, size, model);
+            return "admin/fragments/canonical_table :: canonicalTable";
+        }
 
         ra.addFlashAttribute(
                 "success",
@@ -352,6 +395,10 @@ public class AdminCanonicalController {
             case all, fullyLinked, vendorOnlyLinked, notLinked -> true;
             default -> false;
         };
+    }
+
+    private static boolean isHtmxRequest(String hxRequest) {
+        return "true".equalsIgnoreCase(hxRequest);
     }
 
     private static String safeRedirectOrDefault(String redirect, String fallback) {

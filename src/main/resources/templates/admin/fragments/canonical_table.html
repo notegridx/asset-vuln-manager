@@ -1,0 +1,228 @@
+<div th:fragment="canonicalTable">
+
+    <div class="card canon-card">
+        <div class="actions" style="margin:0; align-items:flex-end; justify-content:space-between;">
+            <div>
+                <h2 style="margin:0;">Entries</h2>
+                <div class="muted canon-help">
+                    Shows how each row is linked. V = vendor, P = product.
+                </div>
+            </div>
+            <div class="muted canon-help">
+                Showing <span th:text="${pageRowStart}">0</span> -
+                <span th:text="${pageRowEnd}">0</span>
+                of
+                <span th:text="${totalFilteredRows}">0</span>
+            </div>
+        </div>
+
+        <div class="table-wrap canon-table-top">
+            <table class="canon-table canon-table-no-top">
+                <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th style="width: 80px;">Asset</th>
+                    <th style="width: 220px;">Raw</th>
+                    <th style="width: 200px;">Normalized</th>
+                    <th style="width: 200px;">Result</th>
+                    <th style="width: 150px;">Action</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                <tr th:if="${#lists.isEmpty(rows)}">
+                    <td colspan="6" class="muted">No entries</td>
+                </tr>
+
+                <tr th:each="r : ${rows}">
+                    <td class="mono" th:text="${r.softwareId}">1</td>
+
+                    <td class="muted canon-help canon-asset-cell">
+                        <div class="mono" th:text="${r.assetId != null ? r.assetId : '-'}">-</div>
+                        <div th:text="${r.assetName != null ? r.assetName : '-'}">Asset</div>
+                    </td>
+
+                    <td class="muted canon-raw-cell" style="font-size:12px; overflow-wrap:anywhere;">
+                        <div class="truncate-1"
+                             th:attr="title=${r.vendor != null ? r.vendor : '-'}"
+                             th:text="${'v: ' + (r.vendor != null ? r.vendor : '-')}">
+                            v: vendor
+                        </div>
+
+                        <div class="truncate-1"
+                             th:attr="title=${r.product != null ? r.product : '-'}"
+                             th:text="${'p: ' + (r.product != null ? r.product : '-')}">
+                            p: product
+                        </div>
+
+                        <div class="truncate-1"
+                             th:attr="title=${r.version != null ? r.version : '-'}"
+                             th:text="${r.version != null ? r.version : '-'}">
+                            1.0
+                        </div>
+                    </td>
+
+                    <td class="canon-normalized-cell">
+                        <div class="muted canon-help">
+                            v: <span th:text="${r.normalizedVendor != null ? r.normalizedVendor : '-'}">-</span>
+                        </div>
+                        <div class="muted canon-help">
+                            p: <span th:text="${r.normalizedProduct != null ? r.normalizedProduct : '-'}">-</span>
+                        </div>
+                    </td>
+
+                    <td class="canon-result" th:with="res=${r.analysis.resolve}">
+                        <div class="canon-result-main">
+                            <span th:if="${r.canonicalLinkDisabled}"
+                                  class="badge badge--disabled"
+                                  title="Run Linking will not create auto product link for this software row">
+                                LINK DISABLED
+                            </span>
+                        </div>
+
+                        <div class="canon-result-sub">
+                            <span class="badge"
+                                  th:classappend="${
+                                    r.analysis.vendorLinkedSql()
+                                      ? ' badge--status-open'
+                                      : (res != null and res.vendorId() != null ? ' badge--warn' : ' badge--unmapped')
+                                  }"
+                                  th:text="${
+                                    r.analysis.vendorLinkedSql()
+                                      ? ('V ' + (res != null and res.vendorId() != null ? res.vendorId() : '?')
+                                           + ':' + (res != null and res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                      : (res != null and res.vendorId() != null
+                                           ? ('V → ' + res.vendorId()
+                                                + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                           : 'V-')
+                                  }"
+                                  th:attr="title=${
+                                    r.analysis.vendorLinkedSql()
+                                      ? ('Linked vendor: ' + (res != null and res.vendorId() != null ? res.vendorId() : '?')
+                                          + ':' + (res != null and res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                      : (res != null and res.vendorId() != null
+                                          ? ('Resolvable vendor: ' + res.vendorId()
+                                              + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                          : 'Vendor not linked / not resolvable')
+                                  }">V-</span>
+
+                            <span class="badge"
+                                  th:classappend="${
+                                    r.analysis.productLinkedSql()
+                                      ? ' badge--status-open'
+                                      : (res != null and res.productId() != null ? ' badge--warn' : ' badge--unmapped')
+                                  }"
+                                  th:text="${
+                                    r.analysis.productLinkedSql()
+                                      ? ('P ' + (res != null and res.productId() != null ? res.productId() : '?')
+                                           + ':' + (res != null and res.productNorm() != null ? res.productNorm() : '-'))
+                                      : (res != null and res.productId() != null
+                                           ? ('P → ' + res.productId()
+                                                + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
+                                           : 'P-')
+                                  }"
+                                  th:attr="title=${
+                                    r.analysis.productLinkedSql()
+                                      ? ('Linked product: ' + (res != null and res.productId() != null ? res.productId() : '?')
+                                          + ':' + (res != null and res.productNorm() != null ? res.productNorm() : '-'))
+                                      : (res != null and res.productId() != null
+                                          ? ('Resolvable product: ' + res.productId()
+                                              + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
+                                          : 'Product not linked / not resolvable')
+                                  }">P-</span>
+                        </div>
+                    </td>
+
+                    <td>
+                        <div class="canon-action-col">
+                            <a class="btn btn-ghost canon-btn-sm"
+                               th:href="@{/software/{id}/edit(id=${r.softwareId})}">
+                                Edit
+                            </a>
+
+                            <form method="post"
+                                  th:action="@{/admin/canonical/link-disabled}"
+                                  hx-post="/admin/canonical/link-disabled"
+                                  hx-target="#canonical-table-region"
+                                  hx-swap="innerHTML"
+                                  style="margin:0;">
+                                <input type="hidden"
+                                       th:name="${_csrf.parameterName}"
+                                       th:value="${_csrf.token}">
+                                <input type="hidden" name="softwareId" th:value="${r.softwareId}">
+                                <input type="hidden" name="disabled" th:value="${!r.canonicalLinkDisabled}">
+
+                                <input type="hidden" name="asset" th:value="${asset}">
+                                <input type="hidden" name="filter"
+                                       th:value="${selectedFilterParam != null ? selectedFilterParam : filter}">
+                                <input type="hidden" name="q" th:value="${q}">
+                                <input type="hidden" name="page" th:value="${page}">
+                                <input type="hidden" name="size" th:value="${size}">
+
+                                <input type="hidden" name="redirect"
+                                       th:value="${'/admin/canonical' + currentQuery}">
+
+                                <button class="btn canon-btn-sm"
+                                        type="submit"
+                                        th:classappend="${r.canonicalLinkDisabled} ? ' btn-primary' : ' btn-ghost'"
+                                        th:text="${r.canonicalLinkDisabled} ? 'Enable Link' : 'Disable Link'">
+                                    Disable Link
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="canon-pagination">
+            <div class="canon-pagination__left muted canon-help">
+                Page
+                <span th:text="${rowPage.totalPages == 0 ? 0 : rowPage.number + 1}">1</span>
+                /
+                <span th:text="${rowPage.totalPages == 0 ? 1 : rowPage.totalPages}">1</span>
+            </div>
+
+            <div class="canon-pagination__right">
+                <a class="btn btn-ghost"
+                   th:if="${rowPage.hasPrevious()}"
+                   th:href="@{/admin/canonical(asset=${asset}, filter=${selectedFilterParam != null ? selectedFilterParam : filter}, q=${q}, page=${rowPage.number - 1}, size=${size})}"
+                   th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter=${selectedFilterParam != null ? selectedFilterParam : filter}, q=${q}, page=${rowPage.number - 1}, size=${size})}"
+                   hx-target="#canonical-table-region"
+                   hx-push-url="true">
+                    Previous page
+                </a>
+
+                <span class="btn btn-ghost"
+                      th:if="${!rowPage.hasPrevious()}"
+                      aria-disabled="true"
+                      style="pointer-events:none; opacity:0.5;">
+                    Previous page
+                </span>
+
+                <a class="btn btn-ghost"
+                   th:if="${rowPage.hasNext()}"
+                   th:href="@{/admin/canonical(asset=${asset}, filter=${selectedFilterParam != null ? selectedFilterParam : filter}, q=${q}, page=${rowPage.number + 1}, size=${size})}"
+                   th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter=${selectedFilterParam != null ? selectedFilterParam : filter}, q=${q}, page=${rowPage.number + 1}, size=${size})}"
+                   hx-target="#canonical-table-region"
+                   hx-push-url="true">
+                    Next page
+                </a>
+
+                <span class="btn btn-ghost"
+                      th:if="${!rowPage.hasNext()}"
+                      aria-disabled="true"
+                      style="pointer-events:none; opacity:0.5;">
+                    Next page
+                </span>
+            </div>
+        </div>
+
+        <div class="muted canon-help" style="margin-top:10px;">
+            Tip: If the rightmost columns are cut off, scroll horizontally inside the table area.
+        </div>
+    </div>
+
+</div>
