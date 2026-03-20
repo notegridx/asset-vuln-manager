@@ -22,11 +22,11 @@ public class ImportStagingAsset {
     @Column(name = "row_no", nullable = false)
     private int rowNo;
 
-    // invalid行も保存してPreviewで見せるため nullable=true にする
+    // Allow null so invalid rows can still be persisted and shown in preview for user correction.
     @Column(name = "external_key", length = 128)
     private String externalKey;
 
-    // invalid行も保存してPreviewで見せるため nullable=true にする
+    // Allow null so invalid rows can still be persisted and shown in preview for user correction.
     @Column(length = 255)
     private String name;
 
@@ -38,7 +38,7 @@ public class ImportStagingAsset {
     @Lob
     private String note;
 
-    // source は fill で補正を入れるので NOT NULL のままでOK
+    // Keep NOT NULL; value is normalized/filled during import processing.
     @Column(nullable = false)
     private String source = "JSON_UPLOAD";
 

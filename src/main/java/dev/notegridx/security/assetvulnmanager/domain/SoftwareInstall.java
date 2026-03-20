@@ -351,7 +351,7 @@ public class SoftwareInstall {
         if (this.source == null || this.source.trim().isEmpty()) this.source = "MANUAL";
         if (this.sourceType == null || this.sourceType.trim().isEmpty()) this.sourceType = "UNKNOWN";
 
-        // lastSeenAt は null 許容
+        // Nullable because some sources do not provide last seen timestamp.
     }
 
     @PreUpdate

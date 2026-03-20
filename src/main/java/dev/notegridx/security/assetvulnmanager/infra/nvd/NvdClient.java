@@ -147,7 +147,7 @@ public class NvdClient {
 							});
 				});
 
-		// Throttle BEFORE request (reduces load; also applies to retries, which is OK for being polite)
+		// Throttle requests to respect NVD rate limits, especially strict without API key.
 		return request
 				.delaySubscription(throttle)
 				.retryWhen(retrySpec());

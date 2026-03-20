@@ -11,9 +11,11 @@ import java.util.Locale;
 public class CpeFeedMetaParser {
 
     /**
-     * sha256: meta上のSHA-256（gzip/zip/json等、フィードのハッシュ）
-     * lastModified: meta上の最終更新日時文字列
-     * size: meta上のサイズ（gzipSize / size / fileSize 等）
+     * Metadata extracted from NVD CPE feed meta file.
+     *
+     * sha256: hash of the feed content (gzip/json/etc.)
+     * lastModified: last update timestamp from meta
+     * size: feed size (gzipSize / size / fileSize variants)
      */
     public record FeedMeta(String sha256, String lastModified, Long size) {
     }
@@ -152,7 +154,7 @@ public class CpeFeedMetaParser {
         String t = s.trim();
         if (t.isEmpty()) return null;
 
-        // "12345" 以外に "12345 bytes" みたいなのが来ても拾えるように、先頭の数字だけ読む
+        // Accept values like "12345" or "12345 bytes" by extracting leading digits only.
         StringBuilder digits = new StringBuilder();
         for (int i = 0; i < t.length(); i++) {
             char c = t.charAt(i);

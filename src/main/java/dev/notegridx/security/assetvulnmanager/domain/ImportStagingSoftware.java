@@ -21,7 +21,7 @@ public class ImportStagingSoftware {
     @Column(name = "row_no", nullable = false)
     private int rowNo;
 
-    // invalid行も保存してPreviewで見せるためEnullable=true にする
+    // Allow null so invalid rows can still be persisted and shown in preview for user correction.
     @Column(name = "external_key", length = 128)
     private String externalKey;
 

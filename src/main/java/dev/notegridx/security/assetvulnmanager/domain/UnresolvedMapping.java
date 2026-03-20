@@ -85,7 +85,7 @@ public class UnresolvedMapping {
         updatedAt = DbTime.now();
     }
 
-    // ===== settersEEsvImportService が使ぁEEEE====
+    /// ===== setters used by import services to populate unresolved mapping rows =====
 
     public void setSource(String source) {
         this.source = source;

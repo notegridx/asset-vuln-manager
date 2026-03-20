@@ -1,8 +1,11 @@
 package dev.notegridx.security.assetvulnmanager.domain.enums;
 
 /**
- * /admin/runs に集約するジョブ種別。
- * 将来増えても schema 変更なし（ENUM追加のみ）。
+ * Job types tracked in /admin/runs.
+ *
+ * WHY:
+ * Designed to be extensible without schema changes.
+ * New job types can be introduced by adding enum values only.
  */
 public enum AdminJobType {
     CPE_SYNC,
@@ -14,6 +17,6 @@ public enum AdminJobType {
     CANONICAL_BACKFILL,
     ALIAS_SEED_IMPORT,
 
-    // 将来の統合枠（必要に応じて細分化してOK）
+    // Reserved for future consolidation or grouping if job types expand.
     IMPORT
 }
