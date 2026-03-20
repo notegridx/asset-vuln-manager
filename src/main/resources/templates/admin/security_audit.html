@@ -47,6 +47,78 @@
             margin: 0;
             min-width: 0;
         }
+
+        /* =========================================================
+           Security audit table layout
+           - percentage-based widths
+           - no horizontal scroll
+           ========================================================= */
+        .audit-table-wrap {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .audit-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+
+        .audit-table th,
+        .audit-table td {
+            min-width: 0;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .audit-col-time {
+            width: 12%;
+        }
+
+        .audit-col-event {
+            width: 20%;
+        }
+
+        .audit-col-actor {
+            width: 12%;
+        }
+
+        .audit-col-target {
+            width: 12%;
+        }
+
+        .audit-col-result {
+            width: 10%;
+        }
+
+        .audit-col-ip {
+            width: 14%;
+        }
+
+        .audit-col-message {
+            width: 20%;
+        }
+
+        .audit-cell-event .pill,
+        .audit-cell-result .badge {
+            max-width: 100%;
+        }
+
+        .audit-cell-ip code {
+            display: inline-block;
+            max-width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .audit-cell-message {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.5;
+        }
     </style>
 
     <div class="page-header"
@@ -128,41 +200,44 @@
             No audit events found for the current filters.
         </div>
 
-        <div th:if="${!#lists.isEmpty(items)}" style="overflow:auto;">
-            <table>
+        <div th:if="${!#lists.isEmpty(items)}" class="audit-table-wrap">
+            <table class="audit-table">
                 <thead>
                 <tr>
-                    <th style="min-width:148px;">Time</th>
-                    <th style="min-width:170px;">Event</th>
-                    <th style="min-width:140px;">Actor</th>
-                    <th style="min-width:140px;">Target</th>
-                    <th style="min-width:110px;">Result</th>
-                    <th style="min-width:150px;">IP</th>
-                    <th style="min-width:320px;">Message</th>
+                    <th class="audit-col-time">Time</th>
+                    <th class="audit-col-event">Event</th>
+                    <th class="audit-col-actor">Actor</th>
+                    <th class="audit-col-target">Target</th>
+                    <th class="audit-col-result">Result</th>
+                    <th class="audit-col-ip">IP</th>
+                    <th class="audit-col-message">Message</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="log : ${items}">
-                    <td th:text="${log.createdAt != null ? #temporals.format(log.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
+                    <td class="audit-col-time"
+                        th:text="${log.createdAt != null ? #temporals.format(log.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
                         2026-03-19 09:00:00
                     </td>
 
-                    <td>
+                    <td class="audit-col-event audit-cell-event">
                         <span class="pill"
                               th:text="${log.eventType}">
                             LOGIN_FAILURE
                         </span>
                     </td>
 
-                    <td>
-                        <span th:text="${log.actorUsername != null && !#strings.isEmpty(log.actorUsername) ? log.actorUsername : '-'}">admin</span>
+                    <td class="audit-col-actor"
+                        th:text="${log.actorUsername != null && !#strings.isEmpty(log.actorUsername) ? log.actorUsername : '-'}">
+                        admin
                     </td>
 
-                    <td>
-                        <span th:text="${log.targetUsername != null && !#strings.isEmpty(log.targetUsername) ? log.targetUsername : '-'}">user1</span>
+                    <td class="audit-col-target"
+                        th:text="${log.targetUsername != null && !#strings.isEmpty(log.targetUsername) ? log.targetUsername : '-'}">
+                        user1
                     </td>
 
-                    <td>
+                    <td class="audit-col-result audit-cell-result">
                         <span class="badge"
                               th:classappend="${#strings.equalsIgnoreCase(log.result, 'SUCCESS')} ? ' badge--ok' :
                                               (${#strings.equalsIgnoreCase(log.result, 'FAILURE')} ? ' badge--danger' : '')"
@@ -171,13 +246,13 @@
                         </span>
                     </td>
 
-                    <td>
+                    <td class="audit-col-ip audit-cell-ip">
                         <code th:text="${log.ipAddress != null && !#strings.isEmpty(log.ipAddress) ? log.ipAddress : '-'}">127.0.0.1</code>
                     </td>
 
-                    <td>
+                    <td class="audit-col-message">
                         <div th:if="${log.message != null && !#strings.isEmpty(log.message)}"
-                             style="white-space:pre-wrap; word-break:break-word; line-height:1.5;"
+                             class="audit-cell-message"
                              th:text="${log.message}">
                             Failed login attempt for user admin
                         </div>
