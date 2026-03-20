@@ -52,8 +52,8 @@ class SecurityLoginIntegrationTest {
     void setUp() {
         appUserRepository.deleteAll();
 
-        // app_roles は schema-h2.sql の MERGE で投入される前提。
-        // 念のため無ければ補充する。
+        // app_roles is expected to be seeded by MERGE statements in schema-h2.sql.
+        // Backfill defensively when the test database was initialized without them.
         ensureRoleExists("ADMIN");
         ensureRoleExists("OPERATOR");
         ensureRoleExists("VIEWER");
@@ -66,7 +66,7 @@ class SecurityLoginIntegrationTest {
 
         mockMvc.perform(formLogin().user("alice").password("wrong-password"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?error"));
+                .andExpect(redirectedUrl("/login?error&reason=bad-credentials"));
 
         AppUser reloaded = appUserRepository.findByUsername("alice").orElseThrow();
 
@@ -98,7 +98,7 @@ class SecurityLoginIntegrationTest {
 
         mockMvc.perform(formLogin().user("alice").password("wrong-password"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?error"));
+                .andExpect(redirectedUrl("/login?error&reason=locked"));
 
         AppUser reloaded = appUserRepository.findByUsername("alice").orElseThrow();
 
@@ -188,7 +188,7 @@ class SecurityLoginIntegrationTest {
 
         mockMvc.perform(formLogin().user("alice").password("correct-password"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?error"));
+                .andExpect(redirectedUrl("/login?error&reason=locked"));
 
         AppUser reloaded = appUserRepository.findByUsername("alice").orElseThrow();
 

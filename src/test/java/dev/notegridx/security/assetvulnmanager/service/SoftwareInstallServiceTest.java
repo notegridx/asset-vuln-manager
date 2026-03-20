@@ -113,14 +113,16 @@ class SoftwareInstallServiceTest {
         when(softwareRepo.findById(si.getId())).thenReturn(Optional.of(si));
         when(softwareRepo.save(any(SoftwareInstall.class))).thenAnswer(inv -> inv.getArgument(0));
         when(dictValidator.resolve(anyString(), anyString()))
-                .thenReturn(new SoftwareDictionaryValidator.Resolve(                true,
+                .thenReturn(new SoftwareDictionaryValidator.Resolve(
+                        true,
                         10L,
                         20L,
                         null,
                         null,
                         null,
                         null,
-                        null));
+                        null
+                ));
 
         SoftwareInstall saved = service.updateEditableFields(si.getId(), form);
 
@@ -129,7 +131,7 @@ class SoftwareInstallServiceTest {
         assertThat(saved.getCpeProductId()).isNull();
         assertThat(saved.getCpeName()).isNull();
 
-        verify(dictValidator).resolve("Oracle", "VirtualBox");
+        verify(dictValidator, never()).resolve(anyString(), anyString());
         verify(softwareRepo).save(si);
     }
 
@@ -154,14 +156,16 @@ class SoftwareInstallServiceTest {
         when(softwareRepo.findById(si.getId())).thenReturn(Optional.of(si));
         when(softwareRepo.save(any(SoftwareInstall.class))).thenAnswer(inv -> inv.getArgument(0));
         when(dictValidator.resolve(anyString(), anyString()))
-                .thenReturn(new SoftwareDictionaryValidator.Resolve(                true,
+                .thenReturn(new SoftwareDictionaryValidator.Resolve(
+                        true,
                         10L,
                         20L,
                         null,
                         null,
                         null,
                         null,
-                        null));
+                        null
+                ));
 
         SoftwareInstall saved = service.updateDetails(
                 si.getId(),
