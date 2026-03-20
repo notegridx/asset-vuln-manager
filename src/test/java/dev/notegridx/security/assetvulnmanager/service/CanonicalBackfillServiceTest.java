@@ -75,6 +75,86 @@ class CanonicalBackfillServiceTest {
     }
 
     @Test
+    @DisplayName("backfill: full hit resolves existing unresolved mapping to RESOLVED")
+    void backfill_fullHit_resolvesExistingUnresolvedMapping() {
+        SoftwareInstall s = software("Oracle", "VirtualBox", "7.0.10");
+
+        UnresolvedMapping existing = UnresolvedMapping.create(
+                "JSON_UPLOAD",
+                "Oracle",
+                "VirtualBox",
+                "7.0.9"
+        );
+
+        when(softwareRepo.findNeedsCanonicalLink()).thenReturn(List.of(s));
+        when(linker.resolve(any(SoftwareInstall.class)))
+                .thenReturn(CanonicalCpeLinkingService.ResolveResult.hit(
+                        101L, 202L, "oracle", "virtualbox", false
+                ));
+        when(unresolvedMappingRepository.findTopByVendorRawAndProductRaw("Oracle", "VirtualBox"))
+                .thenReturn(Optional.of(existing));
+
+        CanonicalBackfillService.BackfillResult result = service.backfill(100, false);
+
+        assertThat(result.scanned()).isEqualTo(1);
+        assertThat(result.linked()).isEqualTo(1);
+        assertThat(result.missed()).isEqualTo(0);
+        assertThat(result.forceRebuild()).isFalse();
+
+        assertThat(s.getCpeVendorId()).isEqualTo(101L);
+        assertThat(s.getCpeProductId()).isEqualTo(202L);
+
+        verify(unresolvedMappingRepository, times(1))
+                .findTopByVendorRawAndProductRaw("Oracle", "VirtualBox");
+        verify(unresolvedMappingRepository, times(1))
+                .save(existing);
+
+        assertThat(existing.getStatus()).isEqualTo("RESOLVED");
+        assertThat(existing.getLastSeenAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("backfillForSoftwareIds: full hit resolves existing unresolved mapping to RESOLVED")
+    void backfillForSoftwareIds_fullHit_resolvesExistingUnresolvedMapping() {
+        SoftwareInstall s = software("Oracle", "VirtualBox", "7.0.10");
+
+        UnresolvedMapping existing = UnresolvedMapping.create(
+                "JSON_UPLOAD",
+                "Oracle",
+                "VirtualBox",
+                "7.0.9"
+        );
+
+        when(softwareRepo.findAllById(List.of(10L))).thenReturn(List.of(s));
+        when(linker.resolve(any(SoftwareInstall.class)))
+                .thenReturn(CanonicalCpeLinkingService.ResolveResult.hit(
+                        101L, 202L, "oracle", "virtualbox", false
+                ));
+        when(unresolvedMappingRepository.findTopByVendorRawAndProductRaw("Oracle", "VirtualBox"))
+                .thenReturn(Optional.of(existing));
+
+        CanonicalBackfillService.BackfillResult result =
+                service.backfillForSoftwareIds(List.of(10L), false);
+
+        assertThat(result.scanned()).isEqualTo(1);
+        assertThat(result.linked()).isEqualTo(1);
+        assertThat(result.missed()).isEqualTo(0);
+        assertThat(result.forceRebuild()).isFalse();
+
+        assertThat(s.getCpeVendorId()).isEqualTo(101L);
+        assertThat(s.getCpeProductId()).isEqualTo(202L);
+
+        verify(softwareRepo).findAllById(List.of(10L));
+        verify(unresolvedMappingRepository, times(1))
+                .findTopByVendorRawAndProductRaw("Oracle", "VirtualBox");
+        verify(unresolvedMappingRepository, times(1))
+                .save(existing);
+
+        assertThat(existing.getStatus()).isEqualTo("RESOLVED");
+        assertThat(existing.getLastSeenAt()).isNotNull();
+    }
+
+    @Test
     @DisplayName("backfill: 同じ unresolved key は 1 run 内で 1 回だけ upsert し、missed は software 件数ベースで維持する")
     void backfill_dedupesUnresolvedUpsert_butKeepsMissedCount() {
         SoftwareInstall s1 = software(" raw-vendor ", " raw-product ", "1.0");
@@ -226,15 +306,6 @@ class CanonicalBackfillServiceTest {
                 .save(any(UnresolvedMapping.class));
     }
 
-    private SoftwareInstall software(String vendorRaw, String productRaw, String versionRaw) {
-        Asset asset = new Asset("test-asset");
-        SoftwareInstall s = new SoftwareInstall(asset, productRaw.trim());
-        s.updateDetails(vendorRaw, productRaw, versionRaw, null);
-        s.captureRaw(vendorRaw, productRaw, versionRaw);
-        s.setSource("JSON_UPLOAD");
-        return s;
-    }
-
     @Test
     @DisplayName("backfill caches resolve results within a single run for identical software keys")
     void backfill_cachesResolveResultsWithinSingleRun() {
@@ -311,5 +382,14 @@ class CanonicalBackfillServiceTest {
         assertThat(s1.getCpeProductId()).isNull();
         assertThat(s2.getCpeVendorId()).isEqualTo(97L);
         assertThat(s2.getCpeProductId()).isNull();
+    }
+
+    private SoftwareInstall software(String vendorRaw, String productRaw, String versionRaw) {
+        Asset asset = new Asset("test-asset");
+        SoftwareInstall s = new SoftwareInstall(asset, productRaw.trim());
+        s.updateDetails(vendorRaw, productRaw, versionRaw, null);
+        s.captureRaw(vendorRaw, productRaw, versionRaw);
+        s.setSource("JSON_UPLOAD");
+        return s;
     }
 }

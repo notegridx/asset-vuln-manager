@@ -57,7 +57,7 @@ class AdminInventoryReadServiceTest {
         when(unresolvedMappingRepository.findAllActive()).thenReturn(List.of(mapping1, mapping2));
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings(null, null, null, null, null);
+                service.findUnresolvedMappings(null, null, null, null, null, null);
 
         assertThat(result).isNotNull();
         assertThat(result.status()).isEqualTo("NEW");
@@ -84,7 +84,7 @@ class AdminInventoryReadServiceTest {
         when(unresolvedMappingRepository.findAllActive()).thenReturn(List.of(mapping1, mapping2));
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("ALL", null, true, "1", null);
+                service.findUnresolvedMappings("ALL", null, null,true, "1", null);
 
         assertThat(result.status()).isEqualTo("ALL");
         assertThat(result.activeOnly()).isTrue();
@@ -109,7 +109,7 @@ class AdminInventoryReadServiceTest {
         when(unresolvedMappingRepository.findAll()).thenReturn(List.of(mapping1, mapping2));
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("NEW", null, null, "1", null);
+                service.findUnresolvedMappings("NEW", null, null, true, "1", null);
 
         assertThat(result.status()).isEqualTo("NEW");
         assertThat(result.activeOnly()).isFalse();
@@ -138,7 +138,7 @@ class AdminInventoryReadServiceTest {
         when(unresolvedMappingRepository.findAllActive()).thenReturn(List.of(mapping1, mapping2, mapping3));
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("resolved", 99L, true, "1", null);
+                service.findUnresolvedMappings("resolved", 99L, null, true, "1", null);
 
         assertThat(result.status()).isEqualTo("RESOLVED");
         assertThat(result.runId()).isEqualTo(99L);

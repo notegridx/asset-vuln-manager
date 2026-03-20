@@ -141,6 +141,7 @@ public class CanonicalBackfillService {
 
                     if (res.hit()) {
                         s.linkCanonical(res.vendorId(), res.productId());
+                        resolveUnresolvedMappingIfPresent(vendorIn, productIn);
 
                         _linked++;
                         _fullyLinked++;
@@ -306,6 +307,7 @@ public class CanonicalBackfillService {
 
                     if (res.hit()) {
                         s.linkCanonical(res.vendorId(), res.productId());
+                        resolveUnresolvedMappingIfPresent(vendorIn, productIn);
 
                         _linked++;
                         _fullyLinked++;
@@ -445,7 +447,7 @@ public class CanonicalBackfillService {
     }
 
     // =========================================================
-    // UnresolvedMapping upsert (including candidate IDs)
+    // UnresolvedMapping upsert / resolve (including candidate IDs)
     // =========================================================
     private void upsertUnresolvedMapping(String source, String vendorRaw, String productRaw, String versionRaw) {
         String v = normalizeNullable(vendorRaw);
@@ -490,6 +492,22 @@ public class CanonicalBackfillService {
         fillCandidatesIfPossible(um);
 
         unresolvedMappingRepository.save(um);
+    }
+
+    /**
+     * Marks an existing unresolved mapping as RESOLVED when canonical linking
+     * succeeds for the same raw vendor/product pair.
+     */
+    private void resolveUnresolvedMappingIfPresent(String vendorRaw, String productRaw) {
+        String v = normalizeNullable(vendorRaw);
+        String p = normalizeNullable(productRaw);
+        if (v == null || p == null) return;
+
+        unresolvedMappingRepository.findTopByVendorRawAndProductRaw(v, p).ifPresent(um -> {
+            um.setStatus("RESOLVED");
+            um.setLastSeenAt(LocalDateTime.now());
+            unresolvedMappingRepository.save(um);
+        });
     }
 
     private boolean shouldUpsertUnresolved(Set<String> unresolvedSeen, String vendorRaw, String productRaw) {

@@ -64,10 +64,11 @@ class AdminInventoryControllerWebMvcTest {
         UnresolvedMapping mapping1 = mock(UnresolvedMapping.class);
         UnresolvedMapping mapping2 = mock(UnresolvedMapping.class);
 
-        when(adminInventoryReadService.findUnresolvedMappings(null, null, null, null, null))
+        when(adminInventoryReadService.findUnresolvedMappings(null, null, null, null, null, null))
                 .thenReturn(new AdminInventoryReadService.UnresolvedListView(
                         List.of(mapping1, mapping2),
                         "NEW",
+                        null,
                         null,
                         true,
                         null,
@@ -83,6 +84,6 @@ class AdminInventoryControllerWebMvcTest {
                 .andExpect(model().attribute("activeOnly", true))
                 .andExpect(model().attribute("activeOnlyPresent", nullValue()));
 
-        verify(adminInventoryReadService).findUnresolvedMappings(null, null, null, null, null);
+        verify(adminInventoryReadService).findUnresolvedMappings(null, null, null, null, null, null);
     }
 }
