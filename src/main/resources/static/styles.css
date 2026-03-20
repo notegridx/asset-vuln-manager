@@ -2019,33 +2019,29 @@ td.canon-reason .line-clamp-2 {
     margin-top: 12px;
 }
 
-.badge {
-    display: inline-block;
-    margin-left: 6px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 12px;
-    line-height: 1.4;
-    vertical-align: middle;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.04);
-    color: var(--text-muted, #aab4c3);
-    white-space: nowrap;
-}
+/* =========================================================
+   SETTINGS BADGE MODIFIERS
+   Reuse the shared .badge base declared in COMPONENTS: PILLS / BADGES.
+   Do NOT redefine .badge here, otherwise severity/status/certainty badges
+   across the app are overridden.
+   ========================================================= */
 
 .badge--active {
     border-color: rgba(80, 200, 120, .35);
     background: rgba(80, 200, 120, .10);
+    color: var(--text);
 }
 
 .badge--future {
     border-color: rgba(255, 196, 0, .28);
     background: rgba(255, 196, 0, .10);
+    color: var(--text);
 }
 
 .badge--ui {
     border-color: rgba(120, 170, 255, .28);
     background: rgba(120, 170, 255, .10);
+    color: var(--text);
 }
 
 .card-success-inline {

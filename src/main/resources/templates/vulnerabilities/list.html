@@ -3,6 +3,98 @@
 
 <head th:replace="~{layout/base :: head('Vulnerabilities')}"></head>
 
+<style>
+    .vuln-card {
+        padding: 12px;
+        margin: 12px 0;
+    }
+
+    .vuln-help {
+        font-size: 12px;
+    }
+
+    .vuln-filter-form {
+        margin-top: 12px;
+    }
+
+    .vuln-filter-stack {
+        display: grid;
+        gap: 12px;
+    }
+
+    .vuln-filter-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        align-items: center;
+    }
+
+    .vuln-filter-pair {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .vuln-filter-pair label {
+        margin: 0;
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+    }
+
+    .vuln-filter-pair input,
+    .vuln-filter-pair select {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .vuln-filter-row--flags {
+        grid-template-columns: 190px minmax(0, 1fr);
+    }
+
+    .vuln-flags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 18px;
+        align-items: center;
+        min-height: 42px;
+    }
+
+    .vuln-flags .check-label {
+        margin: 0;
+        white-space: nowrap;
+        font-size: 13px;
+    }
+
+    .vuln-total {
+        margin-top: 8px;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+
+    @media (max-width: 1180px) {
+        .vuln-filter-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .vuln-filter-row--flags {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 760px) {
+        .vuln-filter-row {
+            grid-template-columns: 1fr;
+        }
+
+        .vuln-filter-pair {
+            grid-template-columns: 92px minmax(0, 1fr);
+        }
+    }
+</style>
+
 <body th:replace="~{layout/base :: layout('Vulnerabilities', 'vulns', ~{::main})}">
 <main>
 
@@ -11,172 +103,193 @@
         <a class="btn" th:href="@{/vulnerabilities}">Clear</a>
     </div>
 
-    <!-- ===== Filters ===== -->
-    <form id="vulnFilterForm" method="get" th:action="@{/vulnerabilities}" class="card p-12 my-12">
-        <input type="hidden" name="page" value="0">
-
-        <div class="form-row">
-
-            <div class="field minw-220">
-                <label>Search</label>
-                <input type="text"
-                       name="q"
-                       placeholder="CVE / CPE"
-                       th:value="${q}"
-                       data-auto-submit="search">
+    <div class="card vuln-card">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Filters</h2>
+            <div class="muted vuln-help">
+                Search applies after typing. Date/select fields apply on change. CVSS fields apply on blur.
             </div>
-
-            <div class="field minw-180">
-                <label>Vendor</label>
-                <input type="text"
-                       name="vendor"
-                       placeholder="e.g. microsoft"
-                       th:value="${vendor}"
-                       data-auto-submit="search">
-            </div>
-
-            <div class="field minw-180">
-                <label>Product</label>
-                <input type="text"
-                       name="product"
-                       placeholder="e.g. edge"
-                       th:value="${product}"
-                       data-auto-submit="search">
-            </div>
-
-            <div class="field minw-160">
-                <label>Published From</label>
-                <input type="date"
-                       name="publishedFrom"
-                       th:value="${publishedFrom}"
-                       data-auto-submit="change">
-            </div>
-
-            <div class="field minw-160">
-                <label>Published To</label>
-                <input type="date"
-                       name="publishedTo"
-                       th:value="${publishedTo}"
-                       data-auto-submit="change">
-            </div>
-
-            <div class="field minw-170">
-                <label>Last Modified From</label>
-                <input type="date"
-                       name="lastModifiedFrom"
-                       th:value="${lastModifiedFrom}"
-                       data-auto-submit="change">
-            </div>
-
-            <div class="field minw-170">
-                <label>Last Modified To</label>
-                <input type="date"
-                       name="lastModifiedTo"
-                       th:value="${lastModifiedTo}"
-                       data-auto-submit="change">
-            </div>
-
-            <div class="field minw-160">
-                <label>Sort</label>
-                <select name="sort" data-auto-submit="change">
-                    <option value="LAST_MODIFIED" th:selected="${sort == 'LAST_MODIFIED'}">Last Modified</option>
-                    <option value="CVSS" th:selected="${sort == 'CVSS'}">CVSS (desc)</option>
-                    <option value="SEVERITY" th:selected="${sort == 'SEVERITY'}">Severity</option>
-                </select>
-            </div>
-
-            <div class="field minw-160">
-                <label>Severity</label>
-                <select name="severity" data-auto-submit="change">
-                    <option value="" th:selected="${severity == ''}">All</option>
-                    <option value="CRITICAL" th:selected="${severity == 'CRITICAL'}">CRITICAL</option>
-                    <option value="HIGH" th:selected="${severity == 'HIGH'}">HIGH</option>
-                    <option value="MEDIUM" th:selected="${severity == 'MEDIUM'}">MEDIUM</option>
-                    <option value="LOW" th:selected="${severity == 'LOW'}">LOW</option>
-                    <option value="NONE" th:selected="${severity == 'NONE'}">NONE</option>
-                </select>
-            </div>
-
-            <div class="field minw-130">
-                <label>Min CVSS</label>
-                <input type="number"
-                       name="minCvss"
-                       step="0.1"
-                       min="0"
-                       max="10"
-                       th:value="${minCvss}"
-                       data-auto-submit="blur">
-            </div>
-
-            <div class="field minw-130">
-                <label>Max CVSS</label>
-                <input type="number"
-                       name="maxCvss"
-                       step="0.1"
-                       min="0"
-                       max="10"
-                       th:value="${maxCvss}"
-                       data-auto-submit="blur">
-            </div>
-
-            <div class="field minw-160">
-                <label>Page size</label>
-                <select name="size" data-auto-submit="change">
-                    <option value="25" th:selected="${size == 25}">25</option>
-                    <option value="50" th:selected="${size == 50}">50</option>
-                    <option value="100" th:selected="${size == 100}">100</option>
-                    <option value="200" th:selected="${size == 200}">200</option>
-                    <option value="500" th:selected="${size == 500}">500</option>
-                </select>
-            </div>
-
-            <div class="field minw-190">
-                <label>No CVSS rows</label>
-                <select name="includeNoCvss" data-auto-submit="change">
-                    <option value="true" th:selected="${includeNoCvss}">Include</option>
-                    <option value="false" th:selected="${!includeNoCvss}">Exclude</option>
-                </select>
-            </div>
-
-            <div class="field check-row">
-                <label class="check-label">
-                    <input type="checkbox" name="withCpe" value="true" th:checked="${withCpe}" data-auto-submit="change">
-                    With CPE
-                </label>
-
-                <label class="check-label">
-                    <input type="checkbox" name="withRange" value="true" th:checked="${withRange}" data-auto-submit="change">
-                    With version range
-                </label>
-
-                <label class="check-label">
-                    <input type="checkbox" name="kevOnly" value="true" th:checked="${kevOnly}" data-auto-submit="change">
-                    KEV only
-                </label>
-
-                <label class="check-label">
-                    <input type="checkbox" name="hasAlerts" value="true" th:checked="${hasAlerts}" data-auto-submit="change">
-                    Has alerts
-                </label>
-
-                <label class="check-label">
-                    <input type="checkbox" name="openOnly" value="true" th:checked="${openOnly}" data-auto-submit="change">
-                    Open only
-                </label>
-            </div>
-
         </div>
 
-        <div class="muted mt-8" style="font-size:12px;">
-            Search is applied automatically after typing. Date fields apply on selection. CVSS fields apply when you leave the field.
-        </div>
-    </form>
+        <form id="vulnFilterForm"
+              method="get"
+              th:action="@{/vulnerabilities}"
+              class="vuln-filter-form">
+            <input type="hidden" name="page" value="0">
 
-    <div class="muted my-8">
+            <div class="vuln-filter-stack">
+                <div class="vuln-filter-row">
+                    <div class="vuln-filter-pair">
+                        <label for="q">Search</label>
+                        <input id="q"
+                               type="text"
+                               name="q"
+                               placeholder="CVE / CPE"
+                               th:value="${q}"
+                               data-auto-submit="search">
+                    </div>
+
+                    <div class="vuln-filter-pair">
+                        <label for="vendor">Vendor</label>
+                        <input id="vendor"
+                               type="text"
+                               name="vendor"
+                               placeholder="e.g. microsoft"
+                               th:value="${vendor}"
+                               data-auto-submit="search">
+                    </div>
+
+                    <div class="vuln-filter-pair">
+                        <label for="product">Product</label>
+                        <input id="product"
+                               type="text"
+                               name="product"
+                               placeholder="e.g. edge"
+                               th:value="${product}"
+                               data-auto-submit="search">
+                    </div>
+
+                    <div class="vuln-filter-pair">
+                        <label for="sort">Sort</label>
+                        <select id="sort" name="sort" data-auto-submit="change">
+                            <option value="LAST_MODIFIED" th:selected="${sort == 'LAST_MODIFIED'}">Last Modified</option>
+                            <option value="CVSS" th:selected="${sort == 'CVSS'}">CVSS (desc)</option>
+                            <option value="SEVERITY" th:selected="${sort == 'SEVERITY'}">Severity</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="vuln-filter-row">
+                    <div class="vuln-filter-pair">
+                        <label for="publishedFrom">Pub From</label>
+                        <input id="publishedFrom"
+                               type="date"
+                               name="publishedFrom"
+                               th:value="${publishedFrom}"
+                               data-auto-submit="change">
+                    </div>
+
+                    <div class="vuln-filter-pair">
+                        <label for="publishedTo">Pub To</label>
+                        <input id="publishedTo"
+                               type="date"
+                               name="publishedTo"
+                               th:value="${publishedTo}"
+                               data-auto-submit="change">
+                    </div>
+
+                    <div class="vuln-filter-pair">
+                        <label for="lastModifiedFrom">Mod From</label>
+                        <input id="lastModifiedFrom"
+                               type="date"
+                               name="lastModifiedFrom"
+                               th:value="${lastModifiedFrom}"
+                               data-auto-submit="change">
+                    </div>
+
+                    <div class="vuln-filter-pair">
+                        <label for="lastModifiedTo">Mod To</label>
+                        <input id="lastModifiedTo"
+                               type="date"
+                               name="lastModifiedTo"
+                               th:value="${lastModifiedTo}"
+                               data-auto-submit="change">
+                    </div>
+                </div>
+
+                <div class="vuln-filter-row">
+                    <div class="vuln-filter-pair">
+                        <label for="severity">Severity</label>
+                        <select id="severity" name="severity" data-auto-submit="change">
+                            <option value="" th:selected="${severity == ''}">All</option>
+                            <option value="CRITICAL" th:selected="${severity == 'CRITICAL'}">CRITICAL</option>
+                            <option value="HIGH" th:selected="${severity == 'HIGH'}">HIGH</option>
+                            <option value="MEDIUM" th:selected="${severity == 'MEDIUM'}">MEDIUM</option>
+                            <option value="LOW" th:selected="${severity == 'LOW'}">LOW</option>
+                            <option value="NONE" th:selected="${severity == 'NONE'}">NONE</option>
+                        </select>
+                    </div>
+
+                    <div class="vuln-filter-pair">
+                        <label for="minCvss">Min CVSS</label>
+                        <input id="minCvss"
+                               type="number"
+                               name="minCvss"
+                               step="0.1"
+                               min="0"
+                               max="10"
+                               th:value="${minCvss}"
+                               data-auto-submit="blur">
+                    </div>
+
+                    <div class="vuln-filter-pair">
+                        <label for="maxCvss">Max CVSS</label>
+                        <input id="maxCvss"
+                               type="number"
+                               name="maxCvss"
+                               step="0.1"
+                               min="0"
+                               max="10"
+                               th:value="${maxCvss}"
+                               data-auto-submit="blur">
+                    </div>
+
+                    <div class="vuln-filter-pair">
+                        <label for="size">Page size</label>
+                        <select id="size" name="size" data-auto-submit="change">
+                            <option value="25" th:selected="${size == 25}">25</option>
+                            <option value="50" th:selected="${size == 50}">50</option>
+                            <option value="100" th:selected="${size == 100}">100</option>
+                            <option value="200" th:selected="${size == 200}">200</option>
+                            <option value="500" th:selected="${size == 500}">500</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="vuln-filter-row vuln-filter-row--flags">
+                    <div class="vuln-filter-pair">
+                        <label for="includeNoCvss">No CVSS</label>
+                        <select id="includeNoCvss" name="includeNoCvss" data-auto-submit="change">
+                            <option value="true" th:selected="${includeNoCvss}">Include</option>
+                            <option value="false" th:selected="${!includeNoCvss}">Exclude</option>
+                        </select>
+                    </div>
+
+                    <div class="vuln-flags">
+                        <label class="check-label">
+                            <input type="checkbox" name="withCpe" value="true" th:checked="${withCpe}" data-auto-submit="change">
+                            With CPE
+                        </label>
+
+                        <label class="check-label">
+                            <input type="checkbox" name="withRange" value="true" th:checked="${withRange}" data-auto-submit="change">
+                            With version range
+                        </label>
+
+                        <label class="check-label">
+                            <input type="checkbox" name="kevOnly" value="true" th:checked="${kevOnly}" data-auto-submit="change">
+                            KEV only
+                        </label>
+
+                        <label class="check-label">
+                            <input type="checkbox" name="hasAlerts" value="true" th:checked="${hasAlerts}" data-auto-submit="change">
+                            Has alerts
+                        </label>
+
+                        <label class="check-label">
+                            <input type="checkbox" name="openOnly" value="true" th:checked="${openOnly}" data-auto-submit="change">
+                            Open only
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="muted vuln-total">
         <span th:text="'Total: ' + ${vulns.totalElements} + ' / Pages: ' + ${vulns.totalPages}">Total</span>
     </div>
 
-    <!-- ===== Table ===== -->
     <div class="card p-0 overflow-auto">
         <table class="table" style="table-layout:fixed; width:100%;">
             <thead>
