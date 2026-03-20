@@ -7,6 +7,16 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.regex.Pattern;
 
+/**
+ * Provides a conservative token-based fallback when exact product lookup fails.
+ *
+ * <p>This service is intentionally a last-resort matcher. It is designed to
+ * recover common naming drift after normalization and synonym resolution, while
+ * rejecting ambiguous inputs that are likely to produce false positives.
+ *
+ * <p>Matching is always vendor-scoped. This keeps generic product tokens from
+ * drifting across vendors during canonical linking.
+ */
 @Service
 public class TokenMatchingService {
 
@@ -14,7 +24,7 @@ public class TokenMatchingService {
     private static final Pattern MOSTLY_VERSION = Pattern.compile("^[0-9]+(\\.[0-9]+){1,4}$");
     private static final Set<String> STOP = Set.of(
             "microsoft", "corporation", "inc", "ltd", "llc",
-            "windows", "microsoft.", // publisher汚れ対策
+            "windows", "microsoft.", // NOTE: absorbs publisher noise that often leaks into product-like strings
             "x64", "x86", "arm64",
             "minimum", "additional",
             "runtime", "redistributable",
@@ -27,13 +37,21 @@ public class TokenMatchingService {
         this.productRepo = productRepo;
     }
 
+    /**
+     * Returns the best vendor-scoped product candidate for a normalized product string.
+     *
+     * <p>This method favors precision over recall. It refuses to match when the
+     * input looks identifier-like, when useful tokens cannot be extracted, or
+     * when the top candidates are too close to separate confidently.
+     */
     public Optional<CpeProduct> bestProduct(Long vendorId, String productNorm) {
         if (vendorId == null) return Optional.empty();
         if (productNorm == null || productNorm.isBlank()) return Optional.empty();
 
         String p = productNorm.trim().toLowerCase(Locale.ROOT);
 
-        // Windows store / UWP のGUIDやパッケージっぽいものは除外
+        // NOTE: Windows Store / AppX-style identifiers often look searchable but
+        // are poor canonical product keys and tend to create false matches.
         if (UUID.matcher(p).matches()) return Optional.empty();
         if (p.contains(".") && !p.contains(" ")) {
             // e.g. Microsoft.AAD.BrokerPlugin / Clipchamp.Clipchamp
@@ -43,7 +61,8 @@ public class TokenMatchingService {
         List<String> tokens = tokens(p);
         if (tokens.isEmpty()) return Optional.empty();
 
-        // 代表トークン：長い順に最大3つ
+        // Use a few strong tokens to keep candidate collection cheap and
+        // targeted before scoring the broader token overlap.
         List<String> keyTokens = tokens.stream()
                 .filter(t -> t.length() >= 3)
                 .filter(t -> !STOP.contains(t))
@@ -54,13 +73,16 @@ public class TokenMatchingService {
 
         if (keyTokens.isEmpty()) return Optional.empty();
 
-        // 候補収集：まず一番強いトークンで contains 検索
+        // Start with the strongest token so later scoring works on a small,
+        // plausibly relevant vendor-scoped candidate set.
         List<CpeProduct> cands = productRepo
                 .findTop200ByVendorIdAndNameNormContainingOrderByNameNormAsc(vendorId, keyTokens.get(0));
 
         if (cands.isEmpty()) return Optional.empty();
 
-        // スコアリング（単純だが効く）
+        // NOTE: The scoring model is intentionally simple. The goal is not to
+        // find the most "similar" string in general, but to separate clearly
+        // better candidates from the rest with predictable behavior.
         Scored best = null;
         Scored second = null;
 
@@ -90,8 +112,9 @@ public class TokenMatchingService {
 
         if (best == null) return Optional.empty();
 
-        // 閾値 + 2位との差（誤爆防止）
-        int minScore = 6; // overlap 2 くらいは欲しい
+        // Require both a minimum quality bar and clear separation from the
+        // runner-up so fuzzy matching does not auto-link marginal guesses.
+        int minScore = 6; // overlap around 2 is the minimum acceptable signal
         int margin = 2;
 
         if (best.score < minScore) return Optional.empty();
@@ -100,14 +123,26 @@ public class TokenMatchingService {
         return Optional.of(best.product);
     }
 
+    /**
+     * Normalizes local comparison input for token scoring.
+     *
+     * <p>This does not replace the main normalizer. It only keeps internal
+     * scoring behavior stable when repository values include casing noise.
+     */
     private static String safe(String s) {
         if (s == null) return null;
         String t = s.trim().toLowerCase(Locale.ROOT);
         return t.isEmpty() ? null : t;
     }
 
+    /**
+     * Splits a normalized product string into comparable tokens.
+     *
+     * <p>This tokenizer is intentionally lightweight. It assumes upstream
+     * normalization already handled the main cleanup policy and focuses only on
+     * producing stable token boundaries for overlap scoring.
+     */
     private static List<String> tokens(String s) {
-        // 許容文字は normalizer に寄せる前提。ここでは分割のみ。
         String x = s.replaceAll("[^a-z0-9\\+._\\- ]", " ");
         x = x.replaceAll("[._\\-\\+]", " ");
         x = x.replaceAll("\\s+", " ").trim();

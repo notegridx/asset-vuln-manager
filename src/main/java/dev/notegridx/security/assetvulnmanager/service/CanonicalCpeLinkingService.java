@@ -20,6 +20,22 @@ import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsControlle
 import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_AUTOLINK_USE_SYNONYM;
 import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_AUTOLINK_USE_TOKEN_FALLBACK;
 
+/**
+ * Resolves installed software rows to canonical CPE vendor/product IDs.
+ *
+ * <p>This service defines the lookup policy used by both UI analysis and
+ * auto-link workflows. The order is intentional:
+ *
+ * <ol>
+ *   <li>normalize current vendor/product strings,</li>
+ *   <li>optionally canonicalize them through synonym aliases,</li>
+ *   <li>attempt exact dictionary lookup,</li>
+ *   <li>optionally fall back to vendor-scoped token matching.</li>
+ * </ol>
+ *
+ * <p>Keeping all paths on the same resolution policy makes mapping results
+ * predictable across manual review, bulk backfill, and future imports.
+ */
 @Slf4j
 @Service
 public class CanonicalCpeLinkingService {
@@ -52,8 +68,9 @@ public class CanonicalCpeLinkingService {
 
     // ------------------------------------------------------------
     // Public: statistics
-    // Dictionary buckets are counted only for rows that are not linked
-    // at the SQL level (no vendor_id and no product_id).
+    // NOTE: Dictionary buckets are counted only for rows with no SQL link.
+    // Once a row already carries a vendor_id and/or product_id, the UI should
+    // show link quality rather than treat it as a fresh dictionary candidate.
     // ------------------------------------------------------------
 
     @Transactional(readOnly = true)
@@ -110,7 +127,10 @@ public class CanonicalCpeLinkingService {
     }
 
     /**
-     * Returns overall mapping statistics for the first N rows.
+     * Returns aggregate mapping statistics for a bounded sample of rows.
+     *
+     * <p>The limit is capped to keep this UI-oriented summary predictable even
+     * when the inventory grows large.
      */
     @Transactional(readOnly = true)
     public MappingStats statsOverall(int limit) {
@@ -127,17 +147,23 @@ public class CanonicalCpeLinkingService {
     //   (both vendor_id and product_id are present).
     //
     // RESOLVED:
-    //   The row is not fully linked, but dictionary resolution can
-    //   fully resolve vendor and product from the current strings.
+    //   The row is not fully linked, but current strings still resolve
+    //   cleanly through the dictionary policy.
     //
     // UNRESOLVED:
     //   All other cases.
     //
-    // Dictionary buckets (fully resolvable / vendor-only resolvable /
-    // unresolvable) are meaningful only when the row is not linked
-    // at the SQL level.
+    // NOTE: Dictionary buckets are meaningful only when the row has no SQL link.
+    // Partially linked rows are shown as operational cleanup cases instead.
     // ------------------------------------------------------------
 
+    /**
+     * Classifies one software row from both perspectives:
+     * SQL link state and current dictionary resolvability.
+     *
+     * <p>This split lets the UI distinguish between rows that are already linked,
+     * rows that could be auto-linked now, and rows whose stored link has gone stale.
+     */
     @Transactional(readOnly = true)
     public Analysis analyze(SoftwareInstall s) {
 
@@ -148,17 +174,18 @@ public class CanonicalCpeLinkingService {
         boolean vendorOnlyLinked = vendorLinked && !productLinked;
         boolean notLinked = !vendorLinked && !productLinked;
 
-        // Resolve current strings against the dictionary using the same
-        // logic that the auto-link path uses.
+        // Reuse the same resolver as auto-link so review screens and write paths
+        // explain the same outcome for the same input strings.
         ResolveResult r = resolve(s);
 
-        // Dictionary buckets are counted only for rows with no SQL link.
+        // These buckets intentionally exclude partially linked rows because the
+        // operational question there is cleanup, not first-time resolvability.
         boolean dictFullyResolvable = notLinked && r.hit();
         boolean dictVendorOnlyResolvable = notLinked && r.vendorOnly();
         boolean dictUnresolvable = notLinked && !r.hit() && !r.vendorOnly();
 
-        // Fully linked rows must still be validated against current
-        // dictionary contents because referenced IDs may have gone stale.
+        // Stored IDs can become invalid after dictionary refresh or cleanup, so
+        // a row that looks linked in SQL still needs dictionary existence checks.
         if (fullyLinked) {
             boolean vendorOk = vendorRepo.existsById(s.getCpeVendorId());
             boolean prodOk = productRepo.existsById(s.getCpeProductId());
@@ -175,16 +202,16 @@ public class CanonicalCpeLinkingService {
                     dictFullyResolvable, dictVendorOnlyResolvable, dictUnresolvable);
         }
 
-        // Rows that are not fully linked are classified by whether the
-        // dictionary can fully resolve them from the current strings.
+        // Rows without a full SQL link are treated as resolved only when the
+        // current lookup policy can reach both canonical IDs deterministically.
         if (r.hit()) {
             return Analysis.resolved(r, null,
                     vendorLinked, productLinked, fullyLinked, vendorOnlyLinked, notLinked,
                     dictFullyResolvable, dictVendorOnlyResolvable, dictUnresolvable);
         }
 
-        // For partially linked or not-linked rows, enrich the reason text
-        // to make the UI explanation easier to understand.
+        // Expand the explanation for common cleanup states so the UI can show
+        // why the row stopped short of a full canonical link.
         String reason = r.reason();
         if (vendorOnlyLinked) {
             reason = (reason == null || reason.isBlank())
@@ -290,6 +317,14 @@ public class CanonicalCpeLinkingService {
     // - Optional token-matching fallback within the resolved vendor
     // ------------------------------------------------------------
 
+    /**
+     * Resolves one software row to canonical dictionary IDs.
+     *
+     * <p>The resolution flow is deliberately strict before it becomes fuzzy:
+     * normalized lookup first, synonym canonicalization second, token fallback
+     * last. This keeps exact matches deterministic while still recovering
+     * common raw-name variations.
+     */
     @Transactional(readOnly = true)
     public ResolveResult resolve(SoftwareInstall s) {
         String v0 = normalizer.normalizeVendor(bestEffortVendor(s));
@@ -297,6 +332,7 @@ public class CanonicalCpeLinkingService {
 
         boolean needsNorm = (s.getNormalizedProduct() == null || s.getNormalizedProduct().isBlank());
 
+        // Respect explicit row-level opt-out before any automated resolution path.
         if (getBool(KEY_CANONICAL_AUTOLINK_SKIP_DISABLED_ROW, true) && s.isCanonicalLinkDisabled()) {
             return ResolveResult.miss("canonical link is disabled for this row", needsNorm, null, v0, p0);
         }
@@ -308,10 +344,13 @@ public class CanonicalCpeLinkingService {
         boolean useSynonym = getBool(KEY_CANONICAL_AUTOLINK_USE_SYNONYM, true);
         boolean useTokenFallback = getBool(KEY_CANONICAL_AUTOLINK_USE_TOKEN_FALLBACK, true);
 
-        // Apply optional synonym resolution before dictionary lookup.
+        // Synonyms run before repository lookup so aliases and display-name drift
+        // still converge on the same canonical vendor/product keys.
         String v1 = useSynonym ? synonymService.canonicalVendorOrSame(v0) : v0;
         String p1 = useSynonym ? synonymService.canonicalProductOrSame(v1, p0) : p0;
 
+        // Product lookup is vendor-scoped, so missing vendor means there is no
+        // safe product search space yet.
         if (v1 == null || v1.isBlank()) {
             return ResolveResult.miss("vendor missing (cannot lookup cpe_products)", needsNorm, null, null, p1);
         }
@@ -323,7 +362,8 @@ public class CanonicalCpeLinkingService {
 
         Long vendorId = vendor.getId();
 
-        // Prefer exact product lookup within the resolved vendor.
+        // Exact product lookup stays first so token matching never overrides a
+        // deterministic dictionary hit.
         CpeProduct prod = productRepo.findByVendorIdAndNameNorm(vendorId, p1).orElse(null);
         if (prod != null) {
             return ResolveResult.hit(vendorId, prod.getId(), v1, p1, needsNorm);
@@ -337,6 +377,8 @@ public class CanonicalCpeLinkingService {
             );
         }
 
+        // NOTE: Token matching is intentionally skipped for identifier-heavy
+        // values that tend to create plausible-looking but incorrect matches.
         if (shouldSkipTokenMatching(s.getProduct(), p1)) {
             if (log.isDebugEnabled()) {
                 log.debug("CPE token-match skipped: swId={}, vendorNorm={}, productNorm={}, productRaw='{}'",
@@ -349,7 +391,8 @@ public class CanonicalCpeLinkingService {
             );
         }
 
-        // Token matching is vendor-scoped and used only as a controlled fallback.
+        // Token matching is the last recovery path and remains vendor-scoped to
+        // avoid cross-vendor drift when short or generic product tokens overlap.
         Optional<CpeProduct> best = tokenMatchingService.bestProduct(vendorId, p1);
         if (best.isPresent()) {
             CpeProduct bp = best.get();
@@ -414,8 +457,11 @@ public class CanonicalCpeLinkingService {
     private static final Pattern NAMESPACE_DOT = Pattern.compile("(?i)[a-z]\\.[a-z]"); // letter.dot.letter
 
     /**
-     * Skips token matching for GUID-like values and Windows / Store / AppX-style
-     * identifiers because they often produce noisy or misleading matches.
+     * Skips token matching for identifier-like product names that usually
+     * represent platform package IDs rather than human-readable product names.
+     *
+     * <p>This is a precision guardrail. Missing one fuzzy match is cheaper than
+     * auto-linking a Windows/AppX identifier to the wrong product.
      */
     private boolean shouldSkipTokenMatching(String productRaw, String productNorm) {
         String pr = (productRaw == null) ? "" : productRaw.trim();
