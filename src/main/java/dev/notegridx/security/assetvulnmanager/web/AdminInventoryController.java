@@ -1,9 +1,14 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminInventoryReadService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedQuickAddService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedResolutionService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,12 +75,8 @@ public class AdminInventoryController {
         return "admin/unresolved";
     }
 
-    // =========================================================
-    // Apply resolution
-    // =========================================================
-
     @PostMapping("/admin/unresolved/apply")
-    public String applyUnresolved(
+    public Object applyUnresolved(
             @RequestParam("mappingId") String mappingIdRaw,
             @RequestParam(name = "cpeVendorId", required = false) String cpeVendorIdRaw,
             @RequestParam(name = "cpeProductId", required = false) String cpeProductIdRaw,
@@ -85,36 +86,68 @@ public class AdminInventoryController {
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             @RequestParam(name = "id", required = false) Long id,
-            RedirectAttributes ra
+            RedirectAttributes ra,
+            HttpServletRequest request,
+            Model model
     ) {
         Long mappingId = parseLong(mappingIdRaw);
         Long vendorId = parseLongNullable(cpeVendorIdRaw);
         Long productId = parseLongNullable(cpeProductIdRaw);
 
         boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
+        boolean htmx = isHtmx(request);
 
         if (mappingId == null) {
+            if (htmx) {
+                return htmxError("Invalid mappingId.");
+            }
             ra.addFlashAttribute("error", "Invalid mappingId.");
             return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
         }
+
         if (vendorId == null) {
+            if (htmx) {
+                return htmxError("Vendor ID is required. Please select from candidates (chips).");
+            }
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates (chips).");
             return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
         }
 
         try {
             var result = unresolvedResolutionService.apply(mappingId, vendorId, productId);
-            ra.addFlashAttribute("success",
+
+            String successMessage =
                     "Applied: mappingId=" + result.mappingId()
                             + " vendorId=" + result.vendorId()
                             + (result.productId() == null ? "" : (" productId=" + result.productId()))
                             + " affectedSoftware=" + result.affectedSoftwareRows()
                             + " status=" + result.status()
                             + " | vendorAlias=" + result.vendorAliasOutcome()
-                            + " productAlias=" + result.productAliasOutcome()
-            );
+                            + " productAlias=" + result.productAliasOutcome();
+
+            if (htmx) {
+                return buildHtmxSuccessResponse(
+                        mappingId,
+                        status,
+                        runId,
+                        q,
+                        active,
+                        activeOnlyPresent,
+                        id,
+                        successMessage,
+                        model
+                );
+            }
+
+            ra.addFlashAttribute("success", successMessage);
         } catch (Exception e) {
-            ra.addFlashAttribute("error", "Apply failed: " + safeMsg(e));
+            String errorMessage = "Apply failed: " + safeMsg(e);
+
+            if (htmx) {
+                return htmxError(errorMessage);
+            }
+
+            ra.addFlashAttribute("error", errorMessage);
         }
 
         return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
@@ -131,12 +164,9 @@ public class AdminInventoryController {
      * it means the checkbox was unchecked.
      */
     private static boolean effectiveActiveOnly(Boolean activeOnly, String activeOnlyPresent) {
-        // Initial access (no activeOnlyPresent): default true
         if (activeOnlyPresent == null) {
             return (activeOnly == null) ? true : activeOnly;
         }
-
-        // After filter submit: missing activeOnly means unchecked
         return Boolean.TRUE.equals(activeOnly);
     }
 
@@ -168,11 +198,9 @@ public class AdminInventoryController {
             first = false;
         }
 
-        // Always explicitly include activeOnly to avoid state drift
         sb.append(first ? "?" : "&").append("activeOnly=").append(activeOnly);
         first = false;
 
-        // Including this keeps filter state stable after redirect
         if (includeActiveOnlyPresent) {
             sb.append(first ? "?" : "&").append("activeOnlyPresent=1");
         }
@@ -206,7 +234,7 @@ public class AdminInventoryController {
     }
 
     @PostMapping("/admin/unresolved/quick-add")
-    public String quickAddAndApply(
+    public Object quickAddAndApply(
             @RequestParam("mappingId") String mappingIdRaw,
             @RequestParam(name = "cpeVendorId", required = false) String cpeVendorIdRaw,
             @RequestParam(name = "cpeProductId", required = false) String cpeProductIdRaw,
@@ -216,19 +244,29 @@ public class AdminInventoryController {
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             @RequestParam(name = "id", required = false) Long id,
-            RedirectAttributes ra
+            RedirectAttributes ra,
+            HttpServletRequest request,
+            Model model
     ) {
         Long mappingId = parseLong(mappingIdRaw);
         Long vendorId = parseLongNullable(cpeVendorIdRaw);
         Long productId = parseLongNullable(cpeProductIdRaw);
 
         boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
+        boolean htmx = isHtmx(request);
 
         if (mappingId == null) {
+            if (htmx) {
+                return htmxError("Invalid mappingId.");
+            }
             ra.addFlashAttribute("error", "Invalid mappingId.");
             return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
         }
+
         if (vendorId == null) {
+            if (htmx) {
+                return htmxError("Vendor ID is required. Please select from candidates.");
+            }
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates.");
             return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
         }
@@ -236,19 +274,113 @@ public class AdminInventoryController {
         try {
             var result = unresolvedQuickAddService.quickAddAndApply(mappingId, vendorId, productId);
 
-            ra.addFlashAttribute("success",
+            String successMessage =
                     "QuickAdd+Applied: mappingId=" + result.apply().mappingId()
                             + " vendorId=" + result.apply().vendorId()
                             + (result.apply().productId() == null ? "" : (" productId=" + result.apply().productId()))
                             + " affectedSoftware=" + result.apply().affectedSoftwareRows()
                             + " status=" + result.apply().status()
                             + " | vendorAlias=" + result.vendorAliasOutcome()
-                            + " productAlias=" + result.productAliasOutcome()
-            );
+                            + " productAlias=" + result.productAliasOutcome();
+
+            if (htmx) {
+                return buildHtmxSuccessResponse(
+                        mappingId,
+                        status,
+                        runId,
+                        q,
+                        active,
+                        activeOnlyPresent,
+                        id,
+                        successMessage,
+                        model
+                );
+            }
+
+            ra.addFlashAttribute("success", successMessage);
         } catch (Exception e) {
-            ra.addFlashAttribute("error", "QuickAdd failed: " + safeMsg(e));
+            String errorMessage = "QuickAdd failed: " + safeMsg(e);
+
+            if (htmx) {
+                return htmxError(errorMessage);
+            }
+
+            ra.addFlashAttribute("error", errorMessage);
         }
 
         return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
+    }
+
+    private Object buildHtmxSuccessResponse(
+            Long mappingId,
+            String status,
+            Long runId,
+            String q,
+            boolean activeOnly,
+            String activeOnlyPresent,
+            Long id,
+            String successMessage,
+            Model model
+    ) {
+        if (shouldRemoveRowForHtmx(status)) {
+            return htmxSuccess(successMessage);
+        }
+
+        UnresolvedMapping mapping = unresolvedMappingRepository.findById(mappingId).orElse(null);
+        if (mapping == null) {
+            return htmxSuccess(successMessage);
+        }
+
+        model.addAttribute("r", mapping);
+        model.addAttribute("status", status);
+        model.addAttribute("runId", runId);
+        model.addAttribute("q", q);
+        model.addAttribute("activeOnly", activeOnly);
+        model.addAttribute("activeOnlyPresent", activeOnlyPresent);
+        model.addAttribute("id", id);
+
+        return "admin/fragments/unresolved_row :: row";
+    }
+
+    private static boolean shouldRemoveRowForHtmx(String status) {
+        return "NEW".equalsIgnoreCase(trimToEmpty(status));
+    }
+
+    private static boolean isHtmx(HttpServletRequest request) {
+        String hxRequest = request.getHeader("HX-Request");
+        return hxRequest != null && "true".equalsIgnoreCase(hxRequest);
+    }
+
+    /**
+     * Return an empty body for hx-target + outerHTML replacement so the resolved row disappears
+     * only when the current filter is NEW.
+     */
+    private static ResponseEntity<String> htmxSuccess(String message) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("HX-Trigger", "{\"unresolvedApplySuccess\":{\"message\":\"" + escapeJson(message) + "\"}}");
+        return new ResponseEntity<>("", headers, HttpStatus.OK);
+    }
+
+    /**
+     * Preserve non-HTMX redirect behavior, but let HTMX callers handle errors without a full reload.
+     * The current row remains unchanged because the response is an error status.
+     */
+    private static ResponseEntity<String> htmxError(String message) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("HX-Trigger", "{\"unresolvedApplyError\":{\"message\":\"" + escapeJson(message) + "\"}}");
+        return new ResponseEntity<>("", headers, HttpStatus.BAD_REQUEST);
+    }
+
+    private static String escapeJson(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"");
+    }
+
+    private static String trimToEmpty(String s) {
+        return s == null ? "" : s.trim();
     }
 }

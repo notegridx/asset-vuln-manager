@@ -171,12 +171,12 @@
 
     .um-table th:nth-child(1),
     .um-table td:nth-child(1) {
-        width: 100px !important;
+        width: 150px !important;
     }
 
     .um-table th:nth-child(2),
     .um-table td:nth-child(2) {
-        width: 320px !important;
+        width: 270px !important;
     }
 
     .um-table th:nth-child(3),
@@ -351,12 +351,25 @@
     tr.row-resolved .badge {
         filter: grayscale(0.6);
     }
+
+    /* =========================================================
+       8) htmx apply state
+       ========================================================= */
+    tr.um-row-loading {
+        opacity: 0.6;
+    }
+
+    tr.um-row-loading .btn,
+    tr.um-row-loading input,
+    tr.um-row-loading select,
+    tr.um-row-loading textarea {
+        pointer-events: none;
+    }
 </style>
 
 <body th:replace="~{layout/base :: layout('Unresolved Mappings', 'admin', ~{::main})}">
 <main>
 
-    <!-- Page header -->
     <div class="page-header um-page-header">
         <div class="page-header__left">
             <h1>Unresolved Mappings</h1>
@@ -366,7 +379,6 @@
         </div>
     </div>
 
-    <!-- flash messages -->
     <div th:if="${success}" class="card um-flash">
         <span class="badge badge--status-open">OK</span>
         <span class="mono" th:text="${success}">success</span>
@@ -376,14 +388,10 @@
         <span class="mono" th:text="${error}">error</span>
     </div>
 
-    <!-- Filter bar -->
     <div class="card um-card">
         <form id="unresolved-filter-form" class="um-filterbar" method="get" th:action="@{/admin/unresolved}">
-            <!-- Keep checkbox semantics aligned with effectiveActiveOnly() -->
             <input type="hidden" name="activeOnlyPresent" value="1"/>
             <input th:if="${id != null}" type="hidden" name="id" th:value="${id}"/>
-
-            <!-- Keep runId as hidden UI state so existing controller behavior is preserved -->
             <input type="hidden" name="runId" th:value="${runId != null ? runId : ''}"/>
 
             <div class="um-filterbar__left">
@@ -407,7 +415,8 @@
 
                 <div class="um-stack-6 um-stack-6--checkbox">
                     <label class="um-checkbox-label">
-                        <input id="activeOnly" type="checkbox" name="activeOnly" value="true" th:checked="${activeOnly}"/>
+                        <input id="activeOnly" type="checkbox" name="activeOnly" value="true"
+                               th:checked="${activeOnly}"/>
                         <span>Active only</span>
                     </label>
                 </div>
@@ -437,7 +446,6 @@
         </div>
     </div>
 
-    <!-- Table -->
     <div class="card um-card">
         <div class="table-wrap">
             <table class="table um-table">
@@ -450,7 +458,7 @@
                 </tr>
                 </thead>
 
-                <tbody>
+                <tbody id="unresolved-table-body">
                 <tr th:each="r : ${mappings}"
                     th:attr="data-row-id=${r.id}"
                     th:id="${'row-' + r.id}"
@@ -483,10 +491,11 @@
                         <form class="js-apply-form"
                               method="post"
                               th:id="${'apply-form-' + r.id}"
-                              th:action="@{/admin/unresolved/apply}">
+                              th:action="@{/admin/unresolved/apply}"
+                              th:attr="hx-post=@{/admin/unresolved/apply},hx-target=${'#row-' + r.id},hx-swap='outerHTML'">
+
                             <input type="hidden" name="mappingId" th:value="${r.id}"/>
 
-                            <!-- UI state passthrough -->
                             <input type="hidden" name="status" th:value="${status}"/>
                             <input type="hidden" name="runId" th:value="${runId}"/>
                             <input type="hidden" name="q" th:value="${q}"/>
@@ -494,7 +503,6 @@
                             <input type="hidden" name="activeOnlyPresent" value="1"/>
                             <input type="hidden" name="activeOnly" th:value="${activeOnly}"/>
 
-                            <!-- hidden submit values (synced from selects) -->
                             <input type="hidden" class="js-submit-vendor-id" name="cpeVendorId" value=""/>
                             <input type="hidden" class="js-submit-product-id" name="cpeProductId" value=""/>
 
@@ -526,14 +534,13 @@
                                         </select>
                                     </div>
                                 </div>
-
                             </div>
                         </form>
                     </td>
 
                     <td class="um-actions-col">
                         <div class="um-actions">
-                            <button class="btn btn-primary um-btn-compact"
+                            <button class="btn btn-primary um-btn-compact js-link-btn"
                                     type="submit"
                                     th:attr="form=${'apply-form-' + r.id}">
                                 Link
@@ -660,6 +667,11 @@
             };
         }
 
+        function focusRow(row) {
+            if (!row) return;
+            row.scrollIntoView({block: 'start', behavior: 'smooth'});
+        }
+
         (function initUnresolvedFilters() {
             const form = document.getElementById('unresolved-filter-form');
             if (!form) return;
@@ -684,7 +696,9 @@
             });
         })();
 
-        document.querySelectorAll('tr[data-row-id]').forEach(row => {
+        function initUnresolvedRow(row) {
+            if (!row) return;
+
             const form = row.querySelector('.js-apply-form');
             const vSel = row.querySelector('.js-vendor-select');
             const pSel = row.querySelector('.js-product-select');
@@ -692,14 +706,16 @@
             const pQ = row.querySelector('.js-product-q');
 
             if (!form || !vSel || !pSel) return;
+            if (form.dataset.initialized === 'true') return;
+            form.dataset.initialized = 'true';
 
             const rowId = row.getAttribute('data-row-id');
             if (rowId) {
                 form.id = 'apply-form-' + rowId;
             }
 
-            if (vQ && vQ.dataset.defaultQ) vQ.value = vQ.dataset.defaultQ;
-            if (pQ && pQ.dataset.defaultQ) pQ.value = pQ.dataset.defaultQ;
+            if (vQ && vQ.dataset.defaultQ && !vQ.value) vQ.value = vQ.dataset.defaultQ;
+            if (pQ && pQ.dataset.defaultQ && !pQ.value) pQ.value = pQ.dataset.defaultQ;
 
             async function runVendorSearch() {
                 const q = (vQ?.value || '').trim();
@@ -727,7 +743,7 @@
             }
 
             async function runProductSearch() {
-                const vendorId = vSel.value;
+                const vendorId = (vSel.value || '').trim();
                 if (!vendorId) return;
 
                 const q = (pQ?.value || '').trim();
@@ -745,12 +761,14 @@
                     appendOptGroup(pSel, 'Quick candidates', uniqById(quick), (it) => `${it.label} (#${it.id})`);
                 }
 
-                syncSubmitHidden(form, vSel.value || null, pSel.value || null);
+                syncSubmitHidden(form, vendorId || null, pSel.value || null);
             }
 
             (async () => {
                 await fillSelectWithQuick(vSel, splitIds(vSel.dataset.candidateIds), '-- Select vendor --', 'vendors');
                 await fillSelectWithQuick(pSel, splitIds(pSel.dataset.candidateIds), '-- Select product --', 'products');
+
+                syncSubmitHidden(form, (vSel.value || '').trim() || null, (pSel.value || '').trim() || null);
 
                 const vDefault = (vQ?.value || '').trim();
                 if (vDefault.length >= 2) {
@@ -761,11 +779,13 @@
                 if ((vSel.value || '').trim() && pDefault.length >= 2) {
                     try { await runProductSearch(); } catch (_) {}
                 }
+
+                syncSubmitHidden(form, (vSel.value || '').trim() || null, (pSel.value || '').trim() || null);
             })();
 
             vSel.addEventListener('change', () => {
                 clearSelect(pSel, '-- Select product --');
-                syncSubmitHidden(form, vSel.value || null, null);
+                syncSubmitHidden(form, (vSel.value || '').trim() || null, null);
 
                 const pDefault = (pQ?.value || '').trim();
                 if (pDefault.length >= 2) {
@@ -774,7 +794,7 @@
             });
 
             pSel.addEventListener('change', () => {
-                syncSubmitHidden(form, vSel.value || null, pSel.value || null);
+                syncSubmitHidden(form, (vSel.value || '').trim() || null, (pSel.value || '').trim() || null);
             });
 
             onEnter(vQ, () => runVendorSearch().catch(() => {}));
@@ -786,7 +806,24 @@
             pQ?.addEventListener('input', productDebounced);
 
             form.addEventListener('submit', (e) => {
-                const vendorId = vSel.value || '';
+                const vendorId = (vSel.value || '').trim();
+                const productId = (pSel.value || '').trim();
+
+                syncSubmitHidden(form, vendorId || null, productId || null);
+
+                if (!vendorId) {
+                    e.preventDefault();
+                    alert('Vendor is required.');
+                    return false;
+                }
+            });
+
+            form.addEventListener('htmx:beforeRequest', (e) => {
+                const vendorId = (vSel.value || '').trim();
+                const productId = (pSel.value || '').trim();
+
+                syncSubmitHidden(form, vendorId || null, productId || null);
+
                 if (!vendorId) {
                     e.preventDefault();
                     alert('Vendor is required.');
@@ -795,20 +832,42 @@
 
                 const next = row.nextElementSibling;
                 const nextId = next?.getAttribute('data-row-id');
-                if (nextId) sessionStorage.setItem('um-next-row', nextId);
+                form.dataset.nextRowId = nextId || '';
 
-                syncSubmitHidden(form, vSel.value || null, pSel.value || null);
+                row.classList.add('um-row-loading');
             });
+
+            form.addEventListener('htmx:afterRequest', () => {
+                row.classList.remove('um-row-loading');
+            });
+
+            form.addEventListener('htmx:responseError', () => {
+                row.classList.remove('um-row-loading');
+            });
+
+            form.addEventListener('htmx:afterSwap', () => {
+                const nextId = form.dataset.nextRowId;
+                if (!nextId) return;
+
+                const nextRow = document.getElementById('row-' + nextId);
+                if (nextRow) {
+                    focusRow(nextRow);
+                }
+            });
+        }
+
+        document.querySelectorAll('tr[data-row-id]').forEach(initUnresolvedRow);
+
+        document.body.addEventListener('htmx:afterSwap', (e) => {
+            const target = e.target;
+            if (!target) return;
+
+            if (target.matches && target.matches('tr[data-row-id]')) {
+                initUnresolvedRow(target);
+            } else if (target.querySelectorAll) {
+                target.querySelectorAll('tr[data-row-id]').forEach(initUnresolvedRow);
+            }
         });
-
-        (function jumpToNextRow() {
-            const jumpId = sessionStorage.getItem('um-next-row');
-            if (!jumpId) return;
-
-            sessionStorage.removeItem('um-next-row');
-            const el = document.getElementById('row-' + jumpId);
-            if (el) el.scrollIntoView({block: 'start', behavior: 'smooth'});
-        })();
     </script>
 
 </main>

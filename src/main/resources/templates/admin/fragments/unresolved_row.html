@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<tr th:fragment="row"
+    th:attr="data-row-id=${r.id}"
+    th:id="${'row-' + r.id}"
+    th:classappend="${r.status != null and r.status.toString() == 'RESOLVED'} ? ' row-resolved' : ''">
+
+    <td>
+        <span class="badge"
+              th:classappend="${r.status != null and r.status.toString() == 'NEW'} ? ' badge--status-open' : ' badge--neutral'"
+              th:text="${r.status}">
+            NEW
+        </span>
+    </td>
+
+    <td>
+        <div class="um-raw-stack">
+            <div>
+                <span class="pill pill--dim" th:text="${r.vendorRaw}">vendor</span>
+            </div>
+            <div>
+                <span class="pill pill--dim" th:text="${r.productRaw}">product</span>
+            </div>
+            <div th:if="${r.versionRaw != null and !#strings.isEmpty(r.versionRaw)}"
+                 class="um-version">
+                <span th:text="${r.versionRaw}">version</span>
+            </div>
+        </div>
+    </td>
+
+    <td>
+        <form class="js-apply-form"
+              method="post"
+              th:id="${'apply-form-' + r.id}"
+              th:action="@{/admin/unresolved/apply}"
+              th:attr="hx-post=@{/admin/unresolved/apply},hx-target=${'#row-' + r.id},hx-swap='outerHTML'">
+
+            <input type="hidden" name="mappingId" th:value="${r.id}"/>
+
+            <input type="hidden" name="status" th:value="${status}"/>
+            <input type="hidden" name="runId" th:value="${runId}"/>
+            <input type="hidden" name="q" th:value="${q}"/>
+            <input type="hidden" name="id" th:value="${id}"/>
+            <input type="hidden" name="activeOnlyPresent" value="1"/>
+            <input type="hidden" name="activeOnly" th:value="${activeOnly}"/>
+
+            <input type="hidden" class="js-submit-vendor-id" name="cpeVendorId" value=""/>
+            <input type="hidden" class="js-submit-product-id" name="cpeProductId" value=""/>
+
+            <div class="um-resolve">
+                <div class="um-resolve-grid">
+                    <div class="um-resolve-col">
+                        <div class="um-label">Vendor</div>
+                        <input class="js-vendor-q"
+                               type="text"
+                               placeholder="search vendor..."
+                               th:attr="data-default-q=${r.normalizedVendor}"/>
+
+                        <select class="js-vendor-select"
+                                th:attr="data-candidate-ids=${r.candidateVendorIds}">
+                            <option value="">-- Select vendor --</option>
+                        </select>
+                    </div>
+
+                    <div class="um-resolve-col">
+                        <div class="um-label">Product</div>
+                        <input class="js-product-q"
+                               type="text"
+                               placeholder="search product..."
+                               th:attr="data-default-q=${r.normalizedProduct}"/>
+
+                        <select class="js-product-select"
+                                th:attr="data-candidate-ids=${r.candidateProductIds}">
+                            <option value="">-- Select product --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </td>
+
+    <td class="um-actions-col">
+        <div class="um-actions">
+            <button class="btn btn-primary um-btn-compact js-link-btn"
+                    type="submit"
+                    th:attr="form=${'apply-form-' + r.id}">
+                Link
+            </button>
+        </div>
+    </td>
+</tr>
+
+</body>
+</html>
