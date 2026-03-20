@@ -1,15 +1,17 @@
-<!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<body>
-
 <tr th:fragment="row"
     th:attr="data-row-id=${r.id}"
     th:id="${'row-' + r.id}"
-    th:classappend="${r.status != null and r.status.toString() == 'RESOLVED'} ? ' row-resolved' : ''">
+    th:classappend="
+        ${r.status != null and r.status.toString() == 'RESOLVED'} ? ' row-resolved um-row--resolved' :
+        (${r.status != null and r.status.toString() == 'NEW'} ? ' um-row--new' : '')
+    ">
 
     <td>
         <span class="badge"
-              th:classappend="${r.status != null and r.status.toString() == 'NEW'} ? ' badge--status-open' : ' badge--neutral'"
+              th:classappend="
+                ${r.status != null and r.status.toString() == 'NEW'} ? ' badge--new' :
+                (${r.status != null and r.status.toString() == 'RESOLVED'} ? ' badge--resolved' : ' badge--neutral')
+              "
               th:text="${r.status}">
             NEW
         </span>
@@ -91,6 +93,3 @@
         </div>
     </td>
 </tr>
-
-</body>
-</html>

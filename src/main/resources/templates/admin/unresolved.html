@@ -365,6 +365,33 @@
     tr.um-row-loading textarea {
         pointer-events: none;
     }
+
+    /* =========================================
+   Unresolved status visibility (minimal)
+   ========================================= */
+
+/* NEW: needs action */
+.um-row--new {
+    border-left: 4px solid #ff4d4f; /* red */
+}
+
+/* RESOLVED: done */
+.um-row--resolved {
+    border-left: 4px solid #52c41a; /* green */
+    opacity: 0.75; /* slightly dim */
+}
+
+/* Badge emphasis */
+.badge--new {
+    background: #ff4d4f;
+    color: #fff;
+    font-weight: 600;
+}
+
+.badge--resolved {
+    background: #52c41a;
+    color: #fff;
+}
 </style>
 
 <body th:replace="~{layout/base :: layout('Unresolved Mappings', 'admin', ~{::main})}">
@@ -462,14 +489,20 @@
                 <tr th:each="r : ${mappings}"
                     th:attr="data-row-id=${r.id}"
                     th:id="${'row-' + r.id}"
-                    th:classappend="${r.status != null and r.status.toString() == 'RESOLVED'} ? ' row-resolved' : ''">
+                    th:classappend="
+        ${r.status != null and r.status.toString() == 'RESOLVED'} ? ' row-resolved um-row--resolved' :
+        (${r.status != null and r.status.toString() == 'NEW'} ? ' um-row--new' : '')
+    ">
 
                     <td>
                         <span class="badge"
-                              th:classappend="${r.status != null and r.status.toString() == 'NEW'} ? ' badge--status-open' : ' badge--neutral'"
+                              th:classappend="
+        ${r.status != null and r.status.toString() == 'NEW'} ? ' badge--new' :
+        (${r.status != null and r.status.toString() == 'RESOLVED'} ? ' badge--resolved' : ' badge--neutral')
+      "
                               th:text="${r.status}">
-                            NEW
-                        </span>
+    NEW
+</span>
                     </td>
 
                     <td>
