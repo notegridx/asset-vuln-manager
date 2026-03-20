@@ -40,6 +40,7 @@ public class AlertController {
 			@RequestParam(name = "assetId", required = false) Long assetId,
 			@RequestParam(name = "softwareId", required = false) Long softwareId,
 			@RequestParam(name = "severity", required = false) String severity,
+			@RequestParam(name = "kevOnly", defaultValue = "false") boolean kevOnly,
 			Model model
 	) {
 		String v = (view == null) ? "FLAT" : view.trim().toUpperCase(Locale.ROOT);
@@ -51,6 +52,7 @@ public class AlertController {
 
 		alerts = applyCertaintyFilter(alerts, c);
 		alerts = applySeverityFilter(alerts, sev);
+		alerts = applyKevFilter(alerts, kevOnly);
 
 		model.addAttribute("status", effective);
 		model.addAttribute("view", v);
@@ -58,6 +60,7 @@ public class AlertController {
 		model.addAttribute("assetId", assetId);
 		model.addAttribute("softwareId", softwareId);
 		model.addAttribute("severity", sev);
+		model.addAttribute("kevOnly", kevOnly);
 
 		if ("ASSET".equals(v)) {
 			model.addAttribute("rows", buildAssetRows(alerts));
@@ -76,18 +79,25 @@ public class AlertController {
 	public String bySoftware(
 			@RequestParam(name = "status", required = false) String status,
 			@RequestParam(name = "certainty", required = false) String certainty,
+			@RequestParam(name = "severity", required = false) String severity,
+			@RequestParam(name = "kevOnly", defaultValue = "false") boolean kevOnly,
 			Model model
 	) {
 		String effective = (status == null) ? "OPEN" : status.trim().toUpperCase(Locale.ROOT);
 		String c = normalizeCertainty(certainty);
+		String sev = normalizeSeverity(severity);
 
 		List<Alert> alerts = alertService.list(effective, null, null);
 		alerts = applyCertaintyFilter(alerts, c);
+		alerts = applySeverityFilter(alerts, sev);
+		alerts = applyKevFilter(alerts, kevOnly);
 
 		model.addAttribute("rows", buildSoftwareRows(alerts));
 		model.addAttribute("status", effective);
 		model.addAttribute("view", "SOFTWARE");
 		model.addAttribute("certainty", c);
+		model.addAttribute("severity", sev);
+		model.addAttribute("kevOnly", kevOnly);
 		model.addAttribute("assetId", null);
 		model.addAttribute("softwareId", null);
 
@@ -116,6 +126,16 @@ public class AlertController {
 		return alerts;
 	}
 
+	private static List<Alert> applyKevFilter(List<Alert> alerts, boolean kevOnly) {
+		if (alerts == null || alerts.isEmpty() || !kevOnly) {
+			return alerts;
+		}
+
+		return alerts.stream()
+				.filter(a -> a.getVulnerability() != null && a.getVulnerability().isKevFlag())
+				.toList();
+	}
+
 	private static List<AssetAggRow> buildAssetRows(List<Alert> alerts) {
 		List<Alert> liveAlerts = alerts.stream()
 				.filter(a -> a.getSoftwareInstall() != null)
@@ -138,6 +158,7 @@ public class AlertController {
 
 			int critical = 0, high = 0, medium = 0, low = 0, none = 0;
 			Severity top = Severity.NONE;
+			boolean kev = false;
 
 			for (Alert a : list) {
 				Severity s = a.getVulnerability() == null ? Severity.NONE : a.getVulnerability().getSeverity();
@@ -151,6 +172,9 @@ public class AlertController {
 					default -> none++;
 				}
 				if (sevRank(s) > sevRank(top)) top = s;
+				if (a.getVulnerability() != null && a.getVulnerability().isKevFlag()) {
+					kev = true;
+				}
 			}
 
 			LocalDateTime lastSeen = list.stream()
@@ -165,7 +189,7 @@ public class AlertController {
 					.count();
 
 			rows.add(new AssetAggRow(assetId, assetName, (int) softwareCount, total, top,
-					critical, high, medium, low, none, lastSeen));
+					critical, high, medium, low, none, kev, lastSeen));
 		}
 
 		return rows.stream()
@@ -208,6 +232,7 @@ public class AlertController {
 
 			int critical = 0, high = 0, medium = 0, low = 0, none = 0;
 			Severity top = Severity.NONE;
+			boolean kev = false;
 
 			for (Alert a : list) {
 				Severity s = a.getVulnerability() == null ? Severity.NONE : a.getVulnerability().getSeverity();
@@ -221,6 +246,9 @@ public class AlertController {
 					default -> none++;
 				}
 				if (sevRank(s) > sevRank(top)) top = s;
+				if (a.getVulnerability() != null && a.getVulnerability().isKevFlag()) {
+					kev = true;
+				}
 			}
 
 			LocalDateTime lastSeen = list.stream()
@@ -231,7 +259,7 @@ public class AlertController {
 
 			rows.add(new SoftwareAggRow(softwareInstallId, assetId, assetName,
 					vendor, product, version, total, top,
-					critical, high, medium, low, none, lastSeen));
+					critical, high, medium, low, none, kev, lastSeen));
 		}
 
 		return rows.stream()
@@ -278,6 +306,7 @@ public class AlertController {
 			int medium,
 			int low,
 			int none,
+			boolean kev,
 			LocalDateTime lastSeenAt
 	) {}
 
@@ -295,6 +324,7 @@ public class AlertController {
 			int medium,
 			int low,
 			int none,
+			boolean kev,
 			LocalDateTime lastSeenAt
 	) {}
 

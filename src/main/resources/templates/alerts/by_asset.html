@@ -19,13 +19,14 @@
       <span class="pill" th:text="'status: ' + ${status}">status: OPEN</span>
       <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}">certainty: ALL</span>
       <span class="pill" th:text="'severity: ' + ${severity != null ? severity : 'ALL'}">severity: ALL</span>
+      <span class="pill" th:text="'kev: ' + (${kevOnly} ? 'ONLY' : 'ALL')">kev: ALL</span>
       <span class="pill" th:text="'rows: ' + ${#lists.size(rows)}">rows: 0</span>
       <span class="pill">view: ASSET</span>
     </div>
   </div>
 
   <!-- Controls -->
-  <div th:replace="~{fragments/alerts_filters :: filters(${status}, ${certainty}, ${severity}, 'ASSET', ${assetId}, ${softwareId})}"></div>
+  <div th:replace="~{fragments/alerts_filters :: filters(${status}, ${certainty}, ${severity}, 'ASSET', ${assetId}, ${softwareId}, ${kevOnly})}"></div>
 
   <!-- Table -->
   <div class="table-wrap">
@@ -36,7 +37,8 @@
         <col style="width:10%;">
         <col style="width:10%;">
         <col style="width:10%;">
-        <col style="width:34%;">
+        <col style="width:8%;">
+        <col style="width:26%;">
         <col style="width:16%;">
         <col style="width:10%;">
       </colgroup>
@@ -47,6 +49,7 @@
         <th>Software</th>
         <th>Alerts</th>
         <th>Top Severity</th>
+        <th>KEV</th>
         <th>Breakdown</th>
         <th>Last Seen</th>
         <th>Actions</th>
@@ -56,7 +59,7 @@
       <tbody>
       <!-- Empty state -->
       <tr th:if="${#lists.isEmpty(rows)}">
-        <td colspan="7" class="muted cell-empty">
+        <td colspan="8" class="muted cell-empty">
           No grouped rows found for the selected status.
         </td>
       </tr>
@@ -82,6 +85,12 @@
                 th:text="${r.topSeverity != null ? r.topSeverity : 'NONE'}">NONE</span>
         </td>
 
+        <td>
+          <span class="badge"
+                th:classappend="${r.kev} ? ' badge--danger' : ' badge--neutral'"
+                th:text="${r.kev} ? 'KEV' : '-'">-</span>
+        </td>
+
         <td class="muted text-12">
           CRIT <span th:text="${r.critical}">0</span>
           / HIGH <span th:text="${r.high}">0</span>
@@ -94,7 +103,7 @@
 
         <td>
           <a class="btn btn-ghost btn-sm"
-             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity}, assetId=${r.assetId})}">
+             th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity}, kevOnly=${kevOnly}, assetId=${r.assetId})}">
             View rows
           </a>
         </td>

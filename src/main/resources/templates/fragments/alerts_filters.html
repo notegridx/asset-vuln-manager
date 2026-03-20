@@ -4,19 +4,19 @@
 
 <!--
   Usage:
-    <div th:replace="~{fragments/alerts_filters :: filters(${status}, ${certainty}, ${severity}, ${view}, ${assetId}, ${softwareId})}"></div>
+    <div th:replace="~{fragments/alerts_filters :: filters(${status}, ${certainty}, ${severity}, ${view}, ${assetId}, ${softwareId}, ${kevOnly})}"></div>
 
   Notes:
-  - Submits GET /alerts with params: status, certainty, severity, view, assetId, softwareId
-  - severity: empty string => treated as "ALL" (controller normalizes)
+  - Submits GET /alerts with params: status, certainty, severity, view, assetId, softwareId, kevOnly
+  - severity: empty string => treated as "ALL" in controller
+  - kevOnly: checked => true, unchecked => omitted (controller default=false)
 -->
-<div th:fragment="filters(status, certainty, severity, view, assetId, softwareId)"
+<div th:fragment="filters(status, certainty, severity, view, assetId, softwareId, kevOnly)"
      class="my-12">
 
   <form method="get" th:action="@{/alerts}">
     <div class="toolbar flex gap-16 flex-wrap items-end">
 
-      <!-- Status -->
       <div class="field">
         <label>Status</label>
         <select name="status" onchange="this.form.submit()">
@@ -26,7 +26,6 @@
         </select>
       </div>
 
-      <!-- Certainty -->
       <div class="field">
         <label>Certainty</label>
         <select name="certainty" onchange="this.form.submit()">
@@ -36,7 +35,6 @@
         </select>
       </div>
 
-      <!-- Severity -->
       <div class="field">
         <label>Severity</label>
         <select name="severity" onchange="this.form.submit()">
@@ -49,7 +47,6 @@
         </select>
       </div>
 
-      <!-- View -->
       <div class="field">
         <label>View</label>
         <select name="view" onchange="this.form.submit()">
@@ -59,7 +56,18 @@
         </select>
       </div>
 
-      <!-- Preserve drilldown context (optional) -->
+      <div class="field">
+        <label style="display:block;">Flags</label>
+        <label class="check-label" style="margin:0; white-space:nowrap;">
+          <input type="checkbox"
+                 name="kevOnly"
+                 value="true"
+                 th:checked="${kevOnly}"
+                 onchange="this.form.submit()">
+          KEV only
+        </label>
+      </div>
+
       <input type="hidden" name="assetId" th:value="${assetId}">
       <input type="hidden" name="softwareId" th:value="${softwareId}">
 

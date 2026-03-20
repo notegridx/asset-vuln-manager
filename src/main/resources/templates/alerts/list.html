@@ -16,7 +16,7 @@
 
       <div class="muted mt-6" th:if="${softwareId != null}">
         Drilldown: softwareId=<b th:text="${softwareId}">1</b>
-        <a th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity})}" class="ml-auto">Clear</a>
+        <a th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity}, kevOnly=${kevOnly})}" class="ml-auto">Clear</a>
       </div>
     </div>
 
@@ -26,10 +26,11 @@
       <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}">certainty: ALL</span>
       <span class="pill" th:text="'view: ' + ${view != null ? view : 'FLAT'}">view: FLAT</span>
       <span class="pill" th:text="'severity: ' + ${severity != null ? severity : 'ALL'}">severity: ALL</span>
+      <span class="pill" th:text="'kev: ' + (${kevOnly} ? 'ONLY' : 'ALL')">kev: ALL</span>
     </div>
   </div>
 
-  <div th:replace="~{fragments/alerts_filters :: filters(${status}, ${certainty}, ${severity}, ${view}, ${assetId}, ${softwareId})}"></div>
+  <div th:replace="~{fragments/alerts_filters :: filters(${status}, ${certainty}, ${severity}, ${view}, ${assetId}, ${softwareId}, ${kevOnly})}"></div>
 
   <div class="card p-0 overflow-auto">
     <div class="table-wrap">
@@ -38,16 +39,17 @@
         <tr>
           <th style="width:5%;">ID</th>
           <th style="width:10%;">Asset</th>
-          <th style="width:40%;">Software</th>
-          <th style="width:13%;">Vulnerability</th>
+          <th style="width:34%;">Software</th>
+          <th style="width:17%;">Vulnerability</th>
+          <th style="width:7%;">KEV</th>
           <th style="width:12%;">Status</th>
-          <th style="width:20%;">Last Seen</th>
+          <th style="width:15%;">Last Seen</th>
         </tr>
         </thead>
 
         <tbody>
         <tr th:if="${#lists.isEmpty(alerts)}">
-          <td colspan="6" class="muted cell-empty">
+          <td colspan="7" class="muted cell-empty">
             No alerts found for the selected filters.
           </td>
         </tr>
@@ -88,7 +90,7 @@
 
             <div class="mt-6" th:if="${a.softwareInstall != null}">
               <a class="btn btn-ghost btn-sm"
-                 th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity}, softwareId=${a.softwareInstall.id})}">
+                 th:href="@{/alerts(view='FLAT', status=${status}, certainty=${certainty}, severity=${severity}, kevOnly=${kevOnly}, softwareId=${a.softwareInstall.id})}">
                 Drilldown
               </a>
             </div>
@@ -115,6 +117,18 @@
                         : ' badge--sev-none'))))
                         : ' badge--sev-none'}"
                     th:text="${a.vulnerability != null && a.vulnerability.severity != null ? a.vulnerability.severity : 'NONE'}">NONE</span>
+            </div>
+          </td>
+
+          <td>
+            <span class="badge"
+                  th:classappend="${a.vulnerability != null and a.vulnerability.kevFlag} ? ' badge--danger' : ' badge--neutral'"
+                  th:text="${a.vulnerability != null and a.vulnerability.kevFlag} ? 'KEV' : '-'">-</span>
+
+            <div class="muted text-12 mt-8"
+                 th:if="${a.vulnerability != null and a.vulnerability.kevFlag and a.vulnerability.kevDateAdded != null}"
+                 th:text="'added: ' + ${a.vulnerability.kevDateAdded}">
+              added: 2026-03-01
             </div>
           </td>
 
