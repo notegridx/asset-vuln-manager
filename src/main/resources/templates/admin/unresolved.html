@@ -110,6 +110,10 @@
         width: 240px;
     }
 
+    .um-th-action {
+        width: 200px;
+    }
+
     /* =========================================================
        3) Filter bar
        ========================================================= */
@@ -171,7 +175,7 @@
 
     .um-table th:nth-child(1),
     .um-table td:nth-child(1) {
-        width: 120px !important;
+        width: 100px !important;
     }
 
     .um-table th:nth-child(2),
@@ -181,7 +185,12 @@
 
     .um-table th:nth-child(3),
     .um-table td:nth-child(3) {
-        min-width: 560px;
+        min-width: 750px;
+    }
+
+    .um-table th:nth-child(4),
+    .um-table td:nth-child(4) {
+        width: 80px !important;
     }
 
     .um-table td:nth-child(2) .pill {
@@ -209,11 +218,20 @@
         max-width: 280px;
     }
 
-    .um-note textarea {
-        max-width: 320px;
+    .um-actions-col {
+        white-space: nowrap;
+        vertical-align: middle !important;
     }
 
-    .um-actions--inline .btn {
+    .um-actions-col .um-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-top: 0;
+        height: 100%;
+    }
+
+    .um-actions-col .btn {
         white-space: nowrap;
     }
 
@@ -260,10 +278,7 @@
     }
 
     .um-note-row {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 10px;
-        align-items: end;
+        display: block;
     }
 
     .um-note {
@@ -278,6 +293,7 @@
         line-height: 1.3;
         resize: none;
         overflow: hidden;
+        max-width: 320px;
     }
 
     .um-btn-compact {
@@ -303,10 +319,6 @@
     }
 
     @media (max-width: 980px) {
-        .um-note-row {
-            grid-template-columns: 1fr;
-        }
-
         .um-actions--inline {
             justify-content: flex-end;
         }
@@ -440,6 +452,7 @@
                     <th class="um-th-status">Status</th>
                     <th class="um-th-raw">Raw</th>
                     <th>Resolve</th>
+                    <th class="um-th-action">Action</th>
                 </tr>
                 </thead>
 
@@ -473,7 +486,10 @@
                     </td>
 
                     <td>
-                        <form class="js-apply-form" method="post" th:action="@{/admin/unresolved/apply}">
+                        <form class="js-apply-form"
+                              method="post"
+                              th:id="${'apply-form-' + r.id}"
+                              th:action="@{/admin/unresolved/apply}">
                             <input type="hidden" name="mappingId" th:value="${r.id}"/>
 
                             <!-- UI state passthrough -->
@@ -489,7 +505,6 @@
                             <input type="hidden" class="js-submit-product-id" name="cpeProductId" value=""/>
 
                             <div class="um-resolve">
-
                                 <div class="um-resolve-grid">
                                     <div class="um-resolve-col">
                                         <div class="um-label">Vendor</div>
@@ -518,27 +533,23 @@
                                     </div>
                                 </div>
 
-                                <div class="um-note-row">
-                                    <div class="um-note">
-                                        <div class="um-label">Note (optional)</div>
-                                        <textarea name="note" placeholder="optional note..."
-                                                  th:text="${r.note}"></textarea>
-                                    </div>
-
-                                    <div class="um-actions um-actions--inline">
-                                        <button class="btn btn-primary um-btn-compact" type="submit">
-                                            Link to Product Dictionary
-                                        </button>
-                                    </div>
-                                </div>
-
                             </div>
                         </form>
+                    </td>
+
+                    <td class="um-actions-col">
+                        <div class="um-actions">
+                            <button class="btn btn-primary um-btn-compact"
+                                    type="submit"
+                                    th:attr="form=${'apply-form-' + r.id}">
+                                Link
+                            </button>
+                        </div>
                     </td>
                 </tr>
 
                 <tr th:if="${#lists.isEmpty(mappings)}">
-                    <td colspan="3" class="muted um-empty">
+                    <td colspan="4" class="muted um-empty">
                         No unresolved mappings.
                     </td>
                 </tr>
@@ -663,6 +674,11 @@
             const pQ = row.querySelector('.js-product-q');
 
             if (!form || !vSel || !pSel) return;
+
+            const rowId = row.getAttribute('data-row-id');
+            if (rowId) {
+                form.id = 'apply-form-' + rowId;
+            }
 
             if (vQ && vQ.dataset.defaultQ) vQ.value = vQ.dataset.defaultQ;
             if (pQ && pQ.dataset.defaultQ) pQ.value = pQ.dataset.defaultQ;
