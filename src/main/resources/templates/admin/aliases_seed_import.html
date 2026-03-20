@@ -6,6 +6,191 @@
 <body th:replace="~{layout/base :: layout('Seed Alias Dictionary (JSON)', 'admin', ~{::main})}">
 <main>
 
+    <style>
+        .seed-result-section-title {
+            margin: 18px 0 8px 0;
+            font-size: 13px;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            color: var(--muted, #9aa4b2);
+        }
+
+        .seed-summary-wrap {
+            margin-top: 10px;
+            overflow-x: auto;
+            border: 1px solid var(--line, rgba(255,255,255,.10));
+            border-radius: 10px;
+            background: rgba(255,255,255,.02);
+        }
+
+        .seed-summary-table {
+            width: 100%;
+            min-width: 760px;
+            border-collapse: collapse;
+        }
+
+        .seed-summary-table th,
+        .seed-summary-table td {
+            padding: 10px 12px;
+            text-align: left;
+            vertical-align: middle;
+            border-bottom: 1px solid var(--line, rgba(255,255,255,.08));
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .seed-summary-table thead th {
+            font-size: 12px;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            color: var(--muted, #9aa4b2);
+            background: rgba(255,255,255,.03);
+            white-space: nowrap;
+        }
+
+        .seed-summary-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .seed-summary-table td.num {
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .seed-summary-foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .seed-summary-foot__item {
+            font-size: 12px;
+            color: var(--muted, #9aa4b2);
+        }
+
+        .seed-summary-foot__value {
+            color: inherit;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .seed-detail-block + .seed-detail-block {
+            margin-top: 10px;
+        }
+
+        .seed-detail-block summary {
+            cursor: pointer;
+        }
+
+        .seed-detail-count {
+            color: var(--muted, #9aa4b2);
+            font-size: 12px;
+            margin-left: 6px;
+        }
+
+        .seed-empty {
+            color: var(--muted, #9aa4b2);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .seed-table-wrap {
+            margin-top: 10px;
+            overflow-x: auto;
+            border: 1px solid var(--line, rgba(255,255,255,.10));
+            border-radius: 10px;
+            background: rgba(255,255,255,.02);
+        }
+
+        .seed-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 980px;
+        }
+
+        .seed-table th,
+        .seed-table td {
+            padding: 10px 12px;
+            text-align: left;
+            vertical-align: top;
+            border-bottom: 1px solid var(--line, rgba(255,255,255,.08));
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .seed-table thead th {
+            font-size: 12px;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            color: var(--muted, #9aa4b2);
+            background: rgba(255,255,255,.03);
+            white-space: nowrap;
+        }
+
+        .seed-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .seed-table td {
+            word-break: break-word;
+        }
+
+        .seed-table td code {
+            font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace);
+            font-size: 12px;
+        }
+
+        .seed-col-type {
+            width: 90px;
+            white-space: nowrap;
+        }
+
+        .seed-col-canonical {
+            width: 240px;
+        }
+
+        .seed-col-alias {
+            width: 220px;
+        }
+
+        .seed-col-raw {
+            width: 220px;
+        }
+
+        .seed-col-detail {
+            min-width: 320px;
+        }
+
+        .seed-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            border: 1px solid var(--line, rgba(255,255,255,.10));
+            background: rgba(255,255,255,.04);
+        }
+
+        .seed-badge--vendor {
+            color: #9ec5ff;
+        }
+
+        .seed-badge--product {
+            color: #9ff0c1;
+        }
+
+        .seed-kv-notes {
+            margin-top: 12px;
+        }
+    </style>
+
     <div class="page-header page-header--split">
         <div>
             <h1>Seed Alias Dictionary (JSON)</h1>
@@ -40,27 +225,431 @@
     </div>
 
     <div th:if="${result != null}" class="card card--section">
-        <h2 class="m-0">Result</h2>
-
-        <div class="kv mt-12 kv--240">
-            <b>vendorInserted</b> <span th:text="${result.vendorInserted}">0</span>
-            <b>vendorSkippedExisting</b> <span th:text="${result.vendorSkippedExisting}">0</span>
-            <b>vendorConflicted</b> <span th:text="${result.vendorConflicted}">0</span>
-            <b>vendorCanonicalNotFound</b> <span th:text="${result.vendorCanonicalNotFound}">0</span>
-
-            <b>productInserted</b> <span th:text="${result.productInserted}">0</span>
-            <b>productSkippedExisting</b> <span th:text="${result.productSkippedExisting}">0</span>
-            <b>productConflicted</b> <span th:text="${result.productConflicted}">0</span>
-            <b>productCanonicalNotFound</b> <span th:text="${result.productCanonicalNotFound}">0</span>
-
-            <b>dedupedAliases</b> <span th:text="${result.dedupedAliases}">0</span>
+        <div class="actions actions--compact">
+            <h2 class="m-0">Result</h2>
+            <div class="muted text-12">
+                Counts plus row-level details for inserted, skipped, conflicted, missing, and deduped aliases.
+            </div>
         </div>
 
-        <details class="mt-12" th:if="${result.notes != null and !result.notes.isEmpty()}">
+        <div class="seed-result-section-title">Summary</div>
+        <div class="seed-summary-wrap">
+            <table class="seed-summary-table">
+                <thead>
+                <tr>
+                    <th style="width:120px;">Scope</th>
+                    <th>Inserted</th>
+                    <th>Skipped existing</th>
+                    <th>Conflicted</th>
+                    <th>Canonical not found</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td><span class="seed-badge seed-badge--vendor">Vendor</span></td>
+                    <td class="num" th:text="${result.vendorInserted}">0</td>
+                    <td class="num" th:text="${result.vendorSkippedExisting}">0</td>
+                    <td class="num" th:text="${result.vendorConflicted}">0</td>
+                    <td class="num" th:text="${result.vendorCanonicalNotFound}">0</td>
+                </tr>
+                <tr>
+                    <td><span class="seed-badge seed-badge--product">Product</span></td>
+                    <td class="num" th:text="${result.productInserted}">0</td>
+                    <td class="num" th:text="${result.productSkippedExisting}">0</td>
+                    <td class="num" th:text="${result.productConflicted}">0</td>
+                    <td class="num" th:text="${result.productCanonicalNotFound}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="seed-summary-foot">
+            <div class="seed-summary-foot__item">
+                Deduped aliases:
+                <span class="seed-summary-foot__value" th:text="${result.dedupedAliases}">0</span>
+            </div>
+            <div class="seed-summary-foot__item"
+                 th:if="${result.notes != null and !result.notes.isEmpty()}">
+                Notes:
+                <span class="seed-summary-foot__value" th:text="${#lists.size(result.notes)}">0</span>
+            </div>
+        </div>
+
+        <div class="seed-result-section-title">Details</div>
+
+        <div class="seed-detail-block">
+            <details th:if="${result.details != null}">
+                <summary class="summary-linklike">
+                    Vendor inserted
+                    <span class="seed-detail-count"
+                          th:text="${#lists.size(result.details.vendorInsertedRows)}">0</span>
+                </summary>
+
+                <div class="seed-table-wrap"
+                     th:if="${result.details.vendorInsertedRows != null and !result.details.vendorInsertedRows.isEmpty()}">
+                    <table class="seed-table">
+                        <thead>
+                        <tr>
+                            <th class="seed-col-type">Type</th>
+                            <th class="seed-col-canonical">Canonical</th>
+                            <th class="seed-col-alias">Alias norm</th>
+                            <th class="seed-col-raw">Raw</th>
+                            <th class="seed-col-detail">Detail</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${result.details.vendorInsertedRows}">
+                            <td><span class="seed-badge seed-badge--vendor" th:text="${row.type}">Vendor</span></td>
+                            <td><code th:text="${row.canonical}">canonical</code></td>
+                            <td><code th:text="${row.aliasNorm}">alias</code></td>
+                            <td><code th:text="${row.raw}">raw</code></td>
+                            <td th:text="${row.detail}">detail</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="seed-empty"
+                     th:if="${result.details.vendorInsertedRows == null or result.details.vendorInsertedRows.isEmpty()}">
+                    No inserted vendor aliases.
+                </div>
+            </details>
+        </div>
+
+        <div class="seed-detail-block">
+            <details th:if="${result.details != null}">
+                <summary class="summary-linklike">
+                    Vendor skipped existing
+                    <span class="seed-detail-count"
+                          th:text="${#lists.size(result.details.vendorSkippedExistingRows)}">0</span>
+                </summary>
+
+                <div class="seed-table-wrap"
+                     th:if="${result.details.vendorSkippedExistingRows != null and !result.details.vendorSkippedExistingRows.isEmpty()}">
+                    <table class="seed-table">
+                        <thead>
+                        <tr>
+                            <th class="seed-col-type">Type</th>
+                            <th class="seed-col-canonical">Canonical</th>
+                            <th class="seed-col-alias">Alias norm</th>
+                            <th class="seed-col-raw">Raw</th>
+                            <th class="seed-col-detail">Detail</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${result.details.vendorSkippedExistingRows}">
+                            <td><span class="seed-badge seed-badge--vendor" th:text="${row.type}">Vendor</span></td>
+                            <td><code th:text="${row.canonical}">canonical</code></td>
+                            <td><code th:text="${row.aliasNorm}">alias</code></td>
+                            <td><code th:text="${row.raw}">raw</code></td>
+                            <td th:text="${row.detail}">detail</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="seed-empty"
+                     th:if="${result.details.vendorSkippedExistingRows == null or result.details.vendorSkippedExistingRows.isEmpty()}">
+                    No skipped vendor aliases.
+                </div>
+            </details>
+        </div>
+
+        <div class="seed-detail-block">
+            <details th:if="${result.details != null}">
+                <summary class="summary-linklike">
+                    Vendor conflicted
+                    <span class="seed-detail-count"
+                          th:text="${#lists.size(result.details.vendorConflictedRows)}">0</span>
+                </summary>
+
+                <div class="seed-table-wrap"
+                     th:if="${result.details.vendorConflictedRows != null and !result.details.vendorConflictedRows.isEmpty()}">
+                    <table class="seed-table">
+                        <thead>
+                        <tr>
+                            <th class="seed-col-type">Type</th>
+                            <th class="seed-col-canonical">Canonical</th>
+                            <th class="seed-col-alias">Alias norm</th>
+                            <th class="seed-col-raw">Raw</th>
+                            <th class="seed-col-detail">Detail</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${result.details.vendorConflictedRows}">
+                            <td><span class="seed-badge seed-badge--vendor" th:text="${row.type}">Vendor</span></td>
+                            <td><code th:text="${row.canonical}">canonical</code></td>
+                            <td><code th:text="${row.aliasNorm}">alias</code></td>
+                            <td><code th:text="${row.raw}">raw</code></td>
+                            <td th:text="${row.detail}">detail</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="seed-empty"
+                     th:if="${result.details.vendorConflictedRows == null or result.details.vendorConflictedRows.isEmpty()}">
+                    No vendor conflicts.
+                </div>
+            </details>
+        </div>
+
+        <div class="seed-detail-block">
+            <details th:if="${result.details != null}">
+                <summary class="summary-linklike">
+                    Vendor canonical not found
+                    <span class="seed-detail-count"
+                          th:text="${#lists.size(result.details.vendorCanonicalNotFoundRows)}">0</span>
+                </summary>
+
+                <div class="seed-table-wrap"
+                     th:if="${result.details.vendorCanonicalNotFoundRows != null and !result.details.vendorCanonicalNotFoundRows.isEmpty()}">
+                    <table class="seed-table">
+                        <thead>
+                        <tr>
+                            <th class="seed-col-type">Type</th>
+                            <th class="seed-col-canonical">Canonical</th>
+                            <th class="seed-col-alias">Alias norm</th>
+                            <th class="seed-col-raw">Raw</th>
+                            <th class="seed-col-detail">Detail</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${result.details.vendorCanonicalNotFoundRows}">
+                            <td><span class="seed-badge seed-badge--vendor" th:text="${row.type}">Vendor</span></td>
+                            <td><code th:text="${row.canonical}">canonical</code></td>
+                            <td><code th:text="${row.aliasNorm}">alias</code></td>
+                            <td><code th:text="${row.raw}">raw</code></td>
+                            <td th:text="${row.detail}">detail</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="seed-empty"
+                     th:if="${result.details.vendorCanonicalNotFoundRows == null or result.details.vendorCanonicalNotFoundRows.isEmpty()}">
+                    No missing vendor canonicals.
+                </div>
+            </details>
+        </div>
+
+        <div class="seed-detail-block">
+            <details th:if="${result.details != null}">
+                <summary class="summary-linklike">
+                    Product inserted
+                    <span class="seed-detail-count"
+                          th:text="${#lists.size(result.details.productInsertedRows)}">0</span>
+                </summary>
+
+                <div class="seed-table-wrap"
+                     th:if="${result.details.productInsertedRows != null and !result.details.productInsertedRows.isEmpty()}">
+                    <table class="seed-table">
+                        <thead>
+                        <tr>
+                            <th class="seed-col-type">Type</th>
+                            <th class="seed-col-canonical">Canonical</th>
+                            <th class="seed-col-alias">Alias norm</th>
+                            <th class="seed-col-raw">Raw</th>
+                            <th class="seed-col-detail">Detail</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${result.details.productInsertedRows}">
+                            <td><span class="seed-badge seed-badge--product" th:text="${row.type}">Product</span></td>
+                            <td><code th:text="${row.canonical}">canonical</code></td>
+                            <td><code th:text="${row.aliasNorm}">alias</code></td>
+                            <td><code th:text="${row.raw}">raw</code></td>
+                            <td th:text="${row.detail}">detail</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="seed-empty"
+                     th:if="${result.details.productInsertedRows == null or result.details.productInsertedRows.isEmpty()}">
+                    No inserted product aliases.
+                </div>
+            </details>
+        </div>
+
+        <div class="seed-detail-block">
+            <details th:if="${result.details != null}">
+                <summary class="summary-linklike">
+                    Product skipped existing
+                    <span class="seed-detail-count"
+                          th:text="${#lists.size(result.details.productSkippedExistingRows)}">0</span>
+                </summary>
+
+                <div class="seed-table-wrap"
+                     th:if="${result.details.productSkippedExistingRows != null and !result.details.productSkippedExistingRows.isEmpty()}">
+                    <table class="seed-table">
+                        <thead>
+                        <tr>
+                            <th class="seed-col-type">Type</th>
+                            <th class="seed-col-canonical">Canonical</th>
+                            <th class="seed-col-alias">Alias norm</th>
+                            <th class="seed-col-raw">Raw</th>
+                            <th class="seed-col-detail">Detail</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${result.details.productSkippedExistingRows}">
+                            <td><span class="seed-badge seed-badge--product" th:text="${row.type}">Product</span></td>
+                            <td><code th:text="${row.canonical}">canonical</code></td>
+                            <td><code th:text="${row.aliasNorm}">alias</code></td>
+                            <td><code th:text="${row.raw}">raw</code></td>
+                            <td th:text="${row.detail}">detail</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="seed-empty"
+                     th:if="${result.details.productSkippedExistingRows == null or result.details.productSkippedExistingRows.isEmpty()}">
+                    No skipped product aliases.
+                </div>
+            </details>
+        </div>
+
+        <div class="seed-detail-block">
+            <details th:if="${result.details != null}">
+                <summary class="summary-linklike">
+                    Product conflicted
+                    <span class="seed-detail-count"
+                          th:text="${#lists.size(result.details.productConflictedRows)}">0</span>
+                </summary>
+
+                <div class="seed-table-wrap"
+                     th:if="${result.details.productConflictedRows != null and !result.details.productConflictedRows.isEmpty()}">
+                    <table class="seed-table">
+                        <thead>
+                        <tr>
+                            <th class="seed-col-type">Type</th>
+                            <th class="seed-col-canonical">Canonical</th>
+                            <th class="seed-col-alias">Alias norm</th>
+                            <th class="seed-col-raw">Raw</th>
+                            <th class="seed-col-detail">Detail</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${result.details.productConflictedRows}">
+                            <td><span class="seed-badge seed-badge--product" th:text="${row.type}">Product</span></td>
+                            <td><code th:text="${row.canonical}">canonical</code></td>
+                            <td><code th:text="${row.aliasNorm}">alias</code></td>
+                            <td><code th:text="${row.raw}">raw</code></td>
+                            <td th:text="${row.detail}">detail</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="seed-empty"
+                     th:if="${result.details.productConflictedRows == null or result.details.productConflictedRows.isEmpty()}">
+                    No product conflicts.
+                </div>
+            </details>
+        </div>
+
+        <div class="seed-detail-block">
+            <details th:if="${result.details != null}">
+                <summary class="summary-linklike">
+                    Product canonical not found
+                    <span class="seed-detail-count"
+                          th:text="${#lists.size(result.details.productCanonicalNotFoundRows)}">0</span>
+                </summary>
+
+                <div class="seed-table-wrap"
+                     th:if="${result.details.productCanonicalNotFoundRows != null and !result.details.productCanonicalNotFoundRows.isEmpty()}">
+                    <table class="seed-table">
+                        <thead>
+                        <tr>
+                            <th class="seed-col-type">Type</th>
+                            <th class="seed-col-canonical">Canonical</th>
+                            <th class="seed-col-alias">Alias norm</th>
+                            <th class="seed-col-raw">Raw</th>
+                            <th class="seed-col-detail">Detail</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${result.details.productCanonicalNotFoundRows}">
+                            <td><span class="seed-badge seed-badge--product" th:text="${row.type}">Product</span></td>
+                            <td><code th:text="${row.canonical}">canonical</code></td>
+                            <td><code th:text="${row.aliasNorm}">alias</code></td>
+                            <td><code th:text="${row.raw}">raw</code></td>
+                            <td th:text="${row.detail}">detail</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="seed-empty"
+                     th:if="${result.details.productCanonicalNotFoundRows == null or result.details.productCanonicalNotFoundRows.isEmpty()}">
+                    No missing product canonicals.
+                </div>
+            </details>
+        </div>
+
+        <div class="seed-detail-block">
+            <details th:if="${result.details != null}">
+                <summary class="summary-linklike">
+                    Deduped aliases
+                    <span class="seed-detail-count"
+                          th:text="${#lists.size(result.details.dedupedAliasRows)}">0</span>
+                </summary>
+
+                <div class="seed-table-wrap"
+                     th:if="${result.details.dedupedAliasRows != null and !result.details.dedupedAliasRows.isEmpty()}">
+                    <table class="seed-table">
+                        <thead>
+                        <tr>
+                            <th class="seed-col-type">Type</th>
+                            <th class="seed-col-canonical">Canonical</th>
+                            <th class="seed-col-alias">Alias norm</th>
+                            <th class="seed-col-raw">Raw</th>
+                            <th class="seed-col-detail">Detail</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${result.details.dedupedAliasRows}">
+                            <td>
+                                <span class="seed-badge"
+                                      th:classappend="${row.type == 'Vendor'} ? ' seed-badge--vendor' : (${row.type == 'Product'} ? ' seed-badge--product' : '')"
+                                      th:text="${row.type}">Alias</span>
+                            </td>
+                            <td><code th:text="${row.canonical}">canonical</code></td>
+                            <td><code th:text="${row.aliasNorm}">alias</code></td>
+                            <td><code th:text="${row.raw}">raw</code></td>
+                            <td th:text="${row.detail}">detail</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="seed-empty"
+                     th:if="${result.details.dedupedAliasRows == null or result.details.dedupedAliasRows.isEmpty()}">
+                    No deduped aliases.
+                </div>
+            </details>
+        </div>
+
+        <details class="seed-kv-notes" th:if="${result.notes != null and !result.notes.isEmpty()}">
             <summary class="summary-linklike">Notes</summary>
-            <ul class="list-indent-md">
-                <li th:each="n : ${result.notes}" th:text="${n}">note</li>
-            </ul>
+            <div class="seed-table-wrap mt-10">
+                <table class="seed-table">
+                    <thead>
+                    <tr>
+                        <th style="width:90px;">Type</th>
+                        <th>Message</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="n : ${result.notes}">
+                        <td><span class="seed-badge">Note</span></td>
+                        <td><code th:text="${n}">note</code></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </details>
     </div>
 
