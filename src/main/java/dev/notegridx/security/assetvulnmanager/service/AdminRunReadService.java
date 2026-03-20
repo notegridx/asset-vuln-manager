@@ -4,16 +4,25 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.notegridx.security.assetvulnmanager.domain.AdminRun;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AdminRunStatus;
 import dev.notegridx.security.assetvulnmanager.repository.AdminRunRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
 @Service
+@Transactional(readOnly = true)
 public class AdminRunReadService {
 
     public enum ParseErrorStyle {
@@ -90,6 +99,113 @@ public class AdminRunReadService {
                         parseJsonToFriendlyMap(run.getResultJson())
                 ))
                 .toList();
+    }
+
+    public Page<AdminRunRow> searchRuns(
+            String jobType,
+            String status,
+            String q,
+            int page,
+            int size
+    ) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.max(size, 1);
+
+        AdminJobType jobTypeEnum = parseJobType(jobType);
+        AdminRunStatus statusEnum = parseStatus(status);
+        String normalizedQ = normalize(q);
+
+        Pageable pageable = PageRequest.of(
+                safePage,
+                safeSize,
+                Sort.by(Sort.Order.desc("startedAt"), Sort.Order.desc("id"))
+        );
+
+        Page<AdminRun> basePage = findBasePage(jobTypeEnum, statusEnum, pageable);
+
+        if (normalizedQ == null) {
+            return basePage.map(run -> new AdminRunRow(
+                    run,
+                    parseJsonToFriendlyMap(run.getParamsJson()),
+                    parseJsonToFriendlyMap(run.getResultJson())
+            ));
+        }
+
+        List<AdminRunRow> filteredRows = basePage.getContent().stream()
+                .filter(run -> matchesQ(run, normalizedQ))
+                .map(run -> new AdminRunRow(
+                        run,
+                        parseJsonToFriendlyMap(run.getParamsJson()),
+                        parseJsonToFriendlyMap(run.getResultJson())
+                ))
+                .toList();
+
+        return new PageImpl<>(filteredRows, pageable, filteredRows.size());
+    }
+
+    private Page<AdminRun> findBasePage(
+            AdminJobType jobType,
+            AdminRunStatus status,
+            Pageable pageable
+    ) {
+        if (jobType != null && status != null) {
+            return adminRunRepository.findByJobTypeAndStatusOrderByStartedAtDescIdDesc(jobType, status, pageable);
+        }
+        if (jobType != null) {
+            return adminRunRepository.findByJobTypeOrderByStartedAtDescIdDesc(jobType, pageable);
+        }
+        if (status != null) {
+            return adminRunRepository.findByStatusOrderByStartedAtDescIdDesc(status, pageable);
+        }
+        return adminRunRepository.findAllByOrderByStartedAtDescIdDesc(pageable);
+    }
+
+    private boolean matchesQ(AdminRun run, String q) {
+        String needle = q.toLowerCase(Locale.ROOT);
+
+        return containsIgnoreCase(run.getParamsJson(), needle)
+                || containsIgnoreCase(run.getResultJson(), needle)
+                || containsIgnoreCase(run.getErrorMessage(), needle)
+                || (run.getJobType() != null && run.getJobType().name().toLowerCase(Locale.ROOT).contains(needle))
+                || (run.getStatus() != null && run.getStatus().name().toLowerCase(Locale.ROOT).contains(needle));
+    }
+
+    private boolean containsIgnoreCase(String value, String needleLower) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(needleLower);
+    }
+
+    private AdminJobType parseJobType(String value) {
+        String normalized = normalize(value);
+        if (normalized == null) {
+            return null;
+        }
+
+        try {
+            return AdminJobType.valueOf(normalized.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private AdminRunStatus parseStatus(String value) {
+        String normalized = normalize(value);
+        if (normalized == null) {
+            return null;
+        }
+
+        try {
+            return AdminRunStatus.valueOf(normalized.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Map<String, Object> parseJsonToMap(String json, ParseErrorStyle parseErrorStyle) {

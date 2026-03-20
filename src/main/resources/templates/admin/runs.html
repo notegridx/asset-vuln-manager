@@ -6,12 +6,127 @@
 <body th:replace="~{layout/base :: layout('Job History', 'admin', ~{::main})}">
 <main>
 
-    <h1>Job History</h1>
-    <p class="muted">
-        Unified job execution history (CPE/CVE sync, delta update, alert recalc, seed import, etc.).
-    </p>
+    <style>
+        .runs-filter-toolbar {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: space-between;
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            padding: 0;
+            margin: 0;
+        }
 
-    <div class="card">
+        .runs-filter-left {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .runs-filter-toolbar .field {
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            padding: 0;
+            margin: 0;
+            min-width: 0;
+        }
+    </style>
+
+    <div class="page-header"
+         style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+        <div class="page-header__left">
+            <h1 style="margin:0;">Job History</h1>
+            <p class="muted" style="margin:6px 0 0 0;">
+                Unified job execution history (CPE/CVE sync, delta update, alert recalc, seed import, etc.).
+            </p>
+        </div>
+
+        <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="pill"
+                  th:text="'Total: ' + ${totalElements != null ? totalElements : (runs != null ? #lists.size(runs) : 0)}">
+                Total: 0
+            </span>
+            <span class="pill"
+                  th:text="'Page: ' + ((page != null ? page : 0) + 1) + ' / ' + (totalPages == null ? 1 : totalPages)">
+                Page: 1 / 1
+            </span>
+        </div>
+    </div>
+
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <form id="runs-filter-form" method="get" th:action="@{/admin/runs}">
+            <div class="runs-filter-toolbar">
+
+                <div class="runs-filter-left">
+
+                    <div class="field" style="min-width:220px;">
+                        <label for="jobType">Job Type</label>
+                        <select id="jobType" name="jobType" onchange="this.form.submit()">
+                            <option value="">All job types</option>
+                            <option th:each="t : ${T(dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType).values()}"
+                                    th:value="${t.name()}"
+                                    th:text="${t.name()}"
+                                    th:selected="${jobType != null and jobType == t.name()}">
+                                CVE_DELTA_UPDATE
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="field" style="min-width:180px;">
+                        <label for="status">Status</label>
+                        <select id="status" name="status" onchange="this.form.submit()">
+                            <option value="">All statuses</option>
+                            <option th:each="s : ${T(dev.notegridx.security.assetvulnmanager.domain.enums.AdminRunStatus).values()}"
+                                    th:value="${s.name()}"
+                                    th:text="${s.name()}"
+                                    th:selected="${status != null and status == s.name()}">
+                                SUCCESS
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="field" style="min-width:320px; flex:1 1 320px;">
+                        <label for="q">Search</label>
+                        <input id="q"
+                               name="q"
+                               type="text"
+                               th:value="${q}"
+                               placeholder="params, result, error">
+                    </div>
+
+                    <div class="field" style="min-width:120px;">
+                        <label for="size">Page Size</label>
+                        <select id="size" name="size" onchange="this.form.submit()">
+                            <option value="25" th:selected="${size != null and size == 25}">25</option>
+                            <option value="50" th:selected="${size == null or size == 50}">50</option>
+                            <option value="100" th:selected="${size != null and size == 100}">100</option>
+                            <option value="200" th:selected="${size != null and size == 200}">200</option>
+                        </select>
+                    </div>
+
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="justify-content:space-between; align-items:center; margin:0 0 10px 0; gap:10px; flex-wrap:wrap;">
+            <div class="muted" style="font-size:12px;">
+                Results are ordered by newest first.
+            </div>
+            <div class="muted" style="font-size:12px;"
+                 th:text="${(totalElements != null ? totalElements : (runs != null ? #lists.size(runs) : 0))} + ' run(s)'">
+                0 run(s)
+            </div>
+        </div>
+
         <div class="table-wrap">
             <table class="table table--fixed">
 
@@ -39,10 +154,9 @@
 
                 <tbody>
                 <tr th:if="${runs == null || #lists.isEmpty(runs)}">
-                    <td colspan="7" class="muted" style="padding:14px;">No admin runs yet.</td>
+                    <td colspan="7" class="muted" style="padding:14px;">No admin runs found for the current filters.</td>
                 </tr>
 
-                <!-- NOTE: runs is List<AdminRunView> -->
                 <tr th:each="row : ${runs}">
                     <td><span class="mono" th:text="${row.run.id}">1</span></td>
 
@@ -51,61 +165,57 @@
                     </td>
 
                     <td>
-            <span class="badge"
-                  th:classappend="${row.run.status != null && row.run.status.name() == 'FAILED'} ? ' badge--sev-critical' : ' badge--sev-low'"
-                  th:text="${row.run.status}">
-              SUCCESS
-            </span>
+                        <span class="badge"
+                              th:classappend="${row.run.status != null && row.run.status.name() == 'FAILED'} ? ' badge--sev-critical' : ' badge--sev-low'"
+                              th:text="${row.run.status}">
+                            SUCCESS
+                        </span>
                     </td>
 
                     <td class="mono"
                         th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).shortFormat(row.run.startedAt)}">
                         2026-03-03 10:00
                     </td>
+
                     <td class="mono"
                         th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).shortFormat(row.run.finishedAt)}">
                         2026-03-03 10:01
                     </td>
 
                     <td class="mono" style="text-align:right;">
-            <span th:if="${row.run.durationMs != null}"
-                  th:text="${T(java.lang.String).format('%.2fs', row.run.durationMs / 1000.0)}">0.12s</span>
+                        <span th:if="${row.run.durationMs != null}"
+                              th:text="${T(java.lang.String).format('%.2fs', row.run.durationMs / 1000.0)}">0.12s</span>
                         <span th:if="${row.run.durationMs == null}" class="muted">-</span>
                     </td>
 
                     <td class="cell-break">
 
-                        <!-- =========================
-                             params (collapsed by default)
-                             ========================= -->
                         <div th:if="${row.params != null}" th:with="
-                 p=${row.params},
-                 pParseErr=${p.containsKey('_parseError')},
-                 pRaw=${p.containsKey('_raw')},
-                 pCount=${p.size() - (pParseErr ? 1 : 0) - (pRaw ? 1 : 0)}
-            ">
+                             p=${row.params},
+                             pParseErr=${p.containsKey('_parseError')},
+                             pRaw=${p.containsKey('_raw')},
+                             pCount=${p.size() - (pParseErr ? 1 : 0) - (pRaw ? 1 : 0)}
+                        ">
                             <details class="run-details"
                                      th:attr="open=${row.run.status != null && row.run.status.name() == 'FAILED'} ? 'open' : null">
 
                                 <summary class="muted run-details__summary">
-  <span class="run-details__left">
-    <span class="run-details__label">params</span>
-    <span class="run-details__meta" th:text="${pCount > 0 ? '(' + pCount + ')' : ''}"></span>
-  </span>
+                                    <span class="run-details__left">
+                                        <span class="run-details__label">params</span>
+                                        <span class="run-details__meta" th:text="${pCount > 0 ? '(' + pCount + ')' : ''}"></span>
+                                    </span>
 
-                                    <!-- 1-line preview text -->
                                     <span class="run-details__preview" th:if="${pCount > 0}">
-    <span class="run-details__preview-text">
-      <span th:each="e, it : ${p.entrySet()}"
-            th:if="${e.key != '_raw' and e.key != '_parseError' and it.index < 3}">
-        <span th:text="${e.key}">k</span>=<span th:text="${e.value}">v</span><span th:if="${it.index < 2}"> · </span>
-      </span>
-      <span th:if="${pCount > 3}"> · …</span>
-    </span>
-  </span>
+                                        <span class="run-details__preview-text">
+                                            <span th:each="e, it : ${p.entrySet()}"
+                                                  th:if="${e.key != '_raw' and e.key != '_parseError' and it.index < 3}">
+                                                <span th:text="${e.key}">k</span>=<span th:text="${e.value}">v</span><span th:if="${it.index < 2}"> · </span>
+                                            </span>
+                                            <span th:if="${pCount > 3}"> · …</span>
+                                        </span>
+                                    </span>
                                 </summary>
 
-                                <!-- expanded body -->
                                 <div style="margin-top:8px;">
                                     <div class="kv-pills">
                                         <div th:each="e : ${p.entrySet()}"
@@ -121,7 +231,6 @@
                                         JSON parse error: <span th:text="${p.get('_parseError')}">Error</span>
                                     </div>
 
-                                    <!-- raw (only if exists) -->
                                     <details class="json-details" th:if="${pRaw}" style="margin-top:8px;">
                                         <summary class="muted">Show raw JSON</summary>
                                         <pre class="json-pre" th:text="${p.get('_raw')}">raw...</pre>
@@ -130,15 +239,12 @@
                             </details>
                         </div>
 
-                        <!-- =========================
-                             result (collapsed by default)
-                             ========================= -->
                         <div th:if="${row.result != null}" style="margin-top:10px;" th:with="
-                 r=${row.result},
-                 rParseErr=${r.containsKey('_parseError')},
-                 rRaw=${r.containsKey('_raw')},
-                 rCount=${r.size() - (rParseErr ? 1 : 0) - (rRaw ? 1 : 0)}
-            ">
+                             r=${row.result},
+                             rParseErr=${r.containsKey('_parseError')},
+                             rRaw=${r.containsKey('_raw')},
+                             rCount=${r.size() - (rParseErr ? 1 : 0) - (rRaw ? 1 : 0)}
+                        ">
                             <details class="run-details"
                                      th:attr="open=${row.run.status != null && row.run.status.name() == 'FAILED'} ? 'open' : null">
                                 <summary class="muted run-details__summary">
@@ -146,20 +252,18 @@
                                     <span class="run-details__meta"
                                           th:text="${rCount > 0 ? '(' + rCount + ')' : ''}"></span>
 
-                                    <!-- small inline preview (first 3) -->
                                     <span class="run-details__preview" th:if="${rCount > 0}">
-                    <span th:each="e, it : ${r.entrySet()}"
-                          th:if="${e.key != '_raw' and e.key != '_parseError' and it.index < 3}">
-                      <span class="run-details__kv">
-                        <span class="k" th:text="${e.key}">k</span>=<code class="v" th:text="${e.value}">v</code>
-                      </span>
-                      <span th:if="${it.index < 2}"> </span>
-                    </span>
-                    <span class="muted" th:if="${rCount > 3}">…</span>
-                  </span>
+                                        <span th:each="e, it : ${r.entrySet()}"
+                                              th:if="${e.key != '_raw' and e.key != '_parseError' and it.index < 3}">
+                                            <span class="run-details__kv">
+                                                <span class="k" th:text="${e.key}">k</span>=<code class="v" th:text="${e.value}">v</code>
+                                            </span>
+                                            <span th:if="${it.index < 2}"> </span>
+                                        </span>
+                                        <span class="muted" th:if="${rCount > 3}">…</span>
+                                    </span>
                                 </summary>
 
-                                <!-- expanded body -->
                                 <div style="margin-top:8px;">
                                     <div class="kv-pills">
                                         <div th:each="e : ${r.entrySet()}"
@@ -175,7 +279,6 @@
                                         JSON parse error: <span th:text="${r.get('_parseError')}">Error</span>
                                     </div>
 
-                                    <!-- raw (only if exists) -->
                                     <details class="json-details" th:if="${rRaw}" style="margin-top:8px;">
                                         <summary class="muted">Show raw JSON</summary>
                                         <pre class="json-pre" th:text="${r.get('_raw')}">raw...</pre>
@@ -184,9 +287,6 @@
                             </details>
                         </div>
 
-                        <!-- =========================
-                             error (FAILED only) - open by default
-                             ========================= -->
                         <div th:if="${row.run.status != null && row.run.status.name() == 'FAILED' && row.run.errorMessage != null}"
                              style="margin-top:10px;">
                             <div class="muted" style="font-size:12px; margin-bottom:4px;">error</div>
@@ -202,6 +302,39 @@
 
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="card" style="padding:12px; margin:12px 0;">
+        <div class="actions" style="justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:0;">
+            <div class="muted" style="font-size:12px;"
+                 th:text="'Showing page ' + ((page != null ? page : 0) + 1) + ' of ' + (totalPages == null ? 1 : totalPages)">
+                Showing page 1 of 1
+            </div>
+
+            <div class="actions" style="margin:0; gap:8px; flex-wrap:wrap;">
+                <a class="btn"
+                   th:if="${hasPrevious != null and hasPrevious}"
+                   th:href="@{/admin/runs(jobType=${jobType}, status=${status}, q=${q}, size=${size}, page=${page - 1})}">
+                    Previous
+                </a>
+                <span class="btn"
+                      th:if="${hasPrevious == null or !hasPrevious}"
+                      style="pointer-events:none; opacity:0.5;">
+                    Previous
+                </span>
+
+                <a class="btn"
+                   th:if="${hasNext != null and hasNext}"
+                   th:href="@{/admin/runs(jobType=${jobType}, status=${status}, q=${q}, size=${size}, page=${page + 1})}">
+                    Next
+                </a>
+                <span class="btn"
+                      th:if="${hasNext == null or !hasNext}"
+                      style="pointer-events:none; opacity:0.5;">
+                    Next
+                </span>
+            </div>
         </div>
     </div>
 
