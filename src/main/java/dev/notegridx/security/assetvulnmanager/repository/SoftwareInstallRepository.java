@@ -47,10 +47,10 @@ public interface SoftwareInstallRepository extends JpaRepository<SoftwareInstall
     List<SoftwareInstall> findNeedsNormalization();
 
     @Query("""
-            select count(s)
-            from SoftwareInstall s
-            where s.cpeName is null or trim(s.cpeName) = ''
-            """)
+        select count(s)
+        from SoftwareInstall s
+        where s.cpeVendorId is null or s.cpeProductId is null
+        """)
     long countUnmappedCpe();
 
     @EntityGraph(attributePaths = {"asset"})
