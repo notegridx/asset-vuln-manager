@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout/base :: head('Synonyms - Vendors')}"></head>
+<head th:replace="~{layout/base :: head('Aliases - Vendors')}"></head>
 
-<body th:replace="~{layout/base :: layout('Synonyms - Vendors', 'admin', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Aliases - Vendors', 'admin', ~{::main})}">
 <main>
 
     <!-- Inline CSS (self-contained for this page) -->
@@ -60,7 +60,7 @@
         }
     </style>
 
-    <h1>Synonyms Workspace</h1>
+    <h1>Alias Workspace</h1>
     <p class="muted">
         Manage <strong>vendor</strong> and <strong>product</strong> alias dictionaries in the same vendor context.
         Pick a canonical vendor first to avoid product mis-linking.
@@ -103,19 +103,19 @@
                 <div id="workspaceVendorSuggestBox" class="suggest-box" style="display:none;">
                     <div id="workspaceVendorSuggestList"></div>
                     <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-                        Select one item to open vendor workspace.
+                        Select one item to open the vendor workspace.
                     </div>
                 </div>
             </div>
 
             <div class="muted text-12 mt-6">
-                Tip: Once a vendor is selected, use the <strong>Product Aliases</strong> tab to add scoped product
-                aliases safely.
+                Tip: Once a vendor is selected, use the <strong>Product Aliases</strong> tab to add vendor-scoped
+                product aliases safely.
             </div>
         </div>
 
         <div class="context-card__right">
-            <div class="tabs" role="tablist" aria-label="Synonyms tabs">
+            <div class="tabs" role="tablist" aria-label="Aliases tabs">
                 <a class="tab"
                    th:classappend="${tab == 'vendors'} ? ' is-active' : ''"
                    th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='vendors', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
@@ -124,13 +124,13 @@
                 <a class="tab"
                    th:classappend="${tab == 'products'} ? ' is-active' : ''"
                    th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='products', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}">
-                    Product Aliases (scoped)
+                    Product Aliases
                 </a>
             </div>
 
             <a class="btn btn-ghost"
                th:href="@{/admin/synonyms/workspace(tab=${tab})}">
-                Clear vendor
+                Clear vendor context
             </a>
         </div>
     </div>
@@ -213,7 +213,7 @@
                 <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
                 <button class="btn" type="submit">Seed Top Aliases</button>
                 <span class="muted" style="font-size:12px;">
-          Inserts/updates curated vendor+product aliases (idempotent).
+          Inserts/updates curated vendor and product aliases (idempotent).
         </span>
             </form>
 
@@ -327,19 +327,19 @@
     </div>
 
     <!-- =========================
-         Product tab (scoped)
+         Product tab (vendor scoped)
          ========================= -->
     <div th:if="${tab == 'products'}">
 
         <div th:if="${vendorId == null}" class="empty-state" style="margin-top:12px;">
-            Select a canonical vendor to manage product aliases in a safe vendor context.
+            Select a canonical vendor to manage product aliases for that vendor.
         </div>
 
         <div th:if="${vendorId != null}">
 
             <!-- Search product aliases -->
             <div class="card" style="padding:12px; margin:12px 0;">
-                <h2 style="margin:0 0 10px 0;">Search product aliases (scoped)</h2>
+                <h2 style="margin:0 0 10px 0;">Search product aliases</h2>
 
                 <form method="get" th:action="@{/admin/synonyms/workspace}" class="actions"
                       style="gap:10px; flex-wrap:wrap;">
@@ -366,7 +366,7 @@
 
             <!-- Add product alias (vendor scoped) -->
             <div class="card" style="padding:12px; margin:12px 0;">
-                <h2 style="margin:0 0 10px 0;">Add product alias (scoped)</h2>
+                <h2 style="margin:0 0 10px 0;">Add product alias</h2>
 
                 <form id="productAliasForm" th:action="@{/admin/aliases/product}" method="post"
                       class="actions" style="gap:10px; flex-wrap:wrap;">
@@ -720,17 +720,15 @@
                 else btn.classList.add('alias-status--inactive');
 
                 const aria = btn.getAttribute('aria-label') || '';
-                // keep it simple; overwrite
                 btn.setAttribute('aria-label', `Toggle status (current=${status})`);
             }
 
             function maybeRemoveRowIfFiltered(form, newStatus) {
-                // If user filters by status, toggling may make row out-of-scope; remove to avoid lying UI.
-                const scope = form.getAttribute('data-scope'); // vendors | products
+                const scope = form.getAttribute('data-scope');
                 const params = new URLSearchParams(window.location.search);
 
                 if (scope === 'vendors') {
-                    const filter = (params.get('status') || '').toUpperCase(); // ACTIVE/INACTIVE/''
+                    const filter = (params.get('status') || '').toUpperCase();
                     if (filter && filter !== (newStatus || '').toUpperCase()) {
                         const tr = form.closest('tr');
                         if (tr) tr.remove();
@@ -751,7 +749,6 @@
                 const form = e.target;
                 if (!form || !form.classList || !form.classList.contains('js-toggle-ajax')) return;
 
-                // Intercept
                 e.preventDefault();
 
                 const btn = form.querySelector('button.alias-status');
@@ -760,13 +757,11 @@
                 const currentStatus = btn.getAttribute('data-status') || '';
                 const optimistic = toggleStatusString(currentStatus);
 
-                // Optimistic UI update first (instant)
                 btn.disabled = true;
                 applyStatusToButton(btn, optimistic);
 
                 try {
                     const fd = new FormData(form);
-                    // Controller expects id (and redirect for non-JS), but redirect is harmless here.
                     const body = new URLSearchParams();
                     for (const [k, v] of fd.entries()) body.append(k, String(v));
 
@@ -778,19 +773,16 @@
                     });
 
                     if (!res.ok) {
-                        // revert and fallback to normal navigation
                         applyStatusToButton(btn, currentStatus);
                         btn.disabled = false;
                         form.submit();
                         return;
                     }
 
-                    // Success: keep optimistic UI and optionally remove row if filtered out
                     btn.disabled = false;
                     maybeRemoveRowIfFiltered(form, optimistic);
 
                 } catch (err) {
-                    // Network error: revert and fallback to normal navigation
                     applyStatusToButton(btn, currentStatus);
                     btn.disabled = false;
                     form.submit();

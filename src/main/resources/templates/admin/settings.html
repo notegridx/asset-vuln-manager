@@ -57,7 +57,7 @@
 
             <h3 class="settings-subsection-title">Normalize policy</h3>
             <p class="muted section-note">
-                Controls how raw vendor/product text is cleaned before synonym lookup, dictionary search,
+                Controls how raw vendor/product text is cleaned before alias lookup, dictionary search,
                 and canonical auto-link resolution. These switches influence matching quality earlier than
                 candidate ranking, so they usually affect both manual review and background linking flows.
             </p>
@@ -469,12 +469,12 @@
                                type="checkbox"
                                th:field="*{canonicalAutolinkUseSynonym}">
                         <label for="canonicalAutolinkUseSynonym">
-                            Use synonym mapping
+                            Use alias mapping
                         </label>
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
-                            When enabled, resolution first uses synonym/alias normalization before direct canonical lookup.
+                            When enabled, resolution first uses alias normalization before direct canonical lookup.
                         </div>
                         <div class="help">
                             Affects software canonical linking during resolve/import/backfill.
