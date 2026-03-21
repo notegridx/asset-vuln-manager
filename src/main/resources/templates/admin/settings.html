@@ -8,10 +8,10 @@
         <div>
             <h1 style="margin:0;">Settings</h1>
             <p class="muted settings-top-note">
-                Centralized controls for canonical normalization policy, canonical candidate display,
-                canonical auto-link behavior, vulnerability-side unresolved suggestions, and explainability.
-                Each setting below explains where it is used, what behavior changes, and whether it is already active
-                in the current implementation.
+                Centralized controls for canonical normalization, candidate display, candidate scoring,
+                canonical auto-link behavior, explainability, and authentication policy.
+                Related canonical decision settings are grouped together so users can review the full
+                matching flow in one place.
             </p>
         </div>
     </div>
@@ -45,9 +45,10 @@
                         Admin &gt; Canonical Mapping,
                         unresolved mapping review flows,
                         software create/edit screens that use dictionary suggestions,
+                        Vulnerability detail candidate suggestions,
                         and software resolve/import/backfill processing.
-                        These settings affect normalization, candidate display shown to users,
-                        or automatic canonical resolution behavior behind the scenes.
+                        These settings affect how raw values are normalized, how candidates are shown and ranked,
+                        how automatic linking behaves, and how the UI explains the result.
                     </p>
                 </div>
             </div>
@@ -304,6 +305,175 @@
 
             <hr class="settings-divider">
 
+            <h3 class="settings-subsection-title">Candidate scoring</h3>
+            <p class="muted section-note">
+                Controls how vendor/product candidates are scored, ranked, filtered, and explained across
+                Vulnerability detail, Unresolved Mappings, and related suggestion panels.
+                These values do not change normalization itself; they change which candidates rise to the top
+                once matching candidates exist.
+            </p>
+
+            <div class="settings-grid-sm">
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionMaxItems">Maximum displayed rows</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionMaxItems"
+                               type="number"
+                               min="1"
+                               max="100"
+                               th:field="*{vulnerabilitySuggestionMaxItems}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Maximum number of unresolved mapping candidates shown on Vulnerabilities &gt; Detail.
+                        </div>
+                        <div class="help">
+                            Lower values keep the panel focused; higher values expose more alternatives for manual review.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionVendorExactScore">Vendor exact score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionVendorExactScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionVendorExactScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Score added when the unresolved vendor matches the affected CPE vendor exactly.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionVendorPartialScore">Vendor partial score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionVendorPartialScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionVendorPartialScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Score added when vendor names are not exact matches but still partially align.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionProductExactScore">Product exact score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionProductExactScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionProductExactScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Score added when the unresolved product matches the affected CPE product exactly.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionTokenOverlapScore">Token overlap score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionTokenOverlapScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionTokenOverlapScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Score added when product names share multiple meaningful tokens.
+                        </div>
+                        <div class="help">
+                            Useful for longer names where exact equality is too strict.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item">
+                    <div class="settings-item__head">
+                        <label for="vulnerabilitySuggestionPartialMatchScore">Partial match score</label>
+                        <span class="badge badge--active">active</span>
+                    </div>
+                    <div class="settings-item__control">
+                        <input id="vulnerabilitySuggestionPartialMatchScore"
+                               type="number"
+                               min="0"
+                               max="1000"
+                               th:field="*{vulnerabilitySuggestionPartialMatchScore}">
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Smaller fallback score used when only a weaker similarity is found.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="vulnerabilitySuggestionActiveOnly"
+                               type="checkbox"
+                               th:field="*{vulnerabilitySuggestionActiveOnly}">
+                        <label for="vulnerabilitySuggestionActiveOnly">
+                            Only active unresolved rows
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            When enabled, the suggestion panel only considers unresolved mappings that are still active.
+                        </div>
+                        <div class="help">
+                            Disable this only when you intentionally want inactive or historical unresolved rows included.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="vulnerabilitySuggestionShowReasons"
+                               type="checkbox"
+                               th:field="*{vulnerabilitySuggestionShowReasons}">
+                        <label for="vulnerabilitySuggestionShowReasons">
+                            Show reasons
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Shows why each candidate received its score, helping users understand and tune the ranking behavior.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="settings-divider">
+
             <h3 class="settings-subsection-title">Auto-link policy</h3>
             <p class="muted section-note">
                 Controls how raw vendor/product values may be resolved to canonical CPE vendor/product IDs during
@@ -514,174 +684,6 @@
                     <div class="muted settings-item__body">
                         <div class="help">
                             Displays why resolution was skipped, for example because canonical linking was disabled or no usable normalized key was available.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Vulnerability Suggestions -->
-        <div class="card settings-card">
-            <h2 class="settings-section-title">Candidate Scoring</h2>
-            <p class="muted section-note">
-                Applies to: Vulnerability detail, Unresolved Mappings, and other candidate suggestion features.
-                These settings control how vendor/product candidates are scored, ranked, and limited across the system.
-            </p>
-
-            <div class="settings-grid-sm">
-                <div class="field settings-item">
-                    <div class="settings-item__head">
-                        <label for="vulnerabilitySuggestionMaxItems">Maximum displayed rows</label>
-                        <span class="badge badge--active">active</span>
-                    </div>
-                    <div class="settings-item__control">
-                        <input id="vulnerabilitySuggestionMaxItems"
-                               type="number"
-                               min="1"
-                               max="100"
-                               th:field="*{vulnerabilitySuggestionMaxItems}">
-                    </div>
-                    <div class="muted settings-item__body">
-                        <div class="help">
-                            Maximum number of unresolved mapping candidates shown on Vulnerabilities &gt; Detail.
-                        </div>
-                        <div class="help">
-                            Lower values keep the panel focused; higher values expose more alternatives for manual review.
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field settings-item">
-                    <div class="settings-item__head">
-                        <label for="vulnerabilitySuggestionVendorExactScore">Vendor exact score</label>
-                        <span class="badge badge--active">active</span>
-                    </div>
-                    <div class="settings-item__control">
-                        <input id="vulnerabilitySuggestionVendorExactScore"
-                               type="number"
-                               min="0"
-                               max="1000"
-                               th:field="*{vulnerabilitySuggestionVendorExactScore}">
-                    </div>
-                    <div class="muted settings-item__body">
-                        <div class="help">
-                            Score added when the unresolved vendor matches the affected CPE vendor exactly.
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field settings-item">
-                    <div class="settings-item__head">
-                        <label for="vulnerabilitySuggestionVendorPartialScore">Vendor partial score</label>
-                        <span class="badge badge--active">active</span>
-                    </div>
-                    <div class="settings-item__control">
-                        <input id="vulnerabilitySuggestionVendorPartialScore"
-                               type="number"
-                               min="0"
-                               max="1000"
-                               th:field="*{vulnerabilitySuggestionVendorPartialScore}">
-                    </div>
-                    <div class="muted settings-item__body">
-                        <div class="help">
-                            Score added when vendor names are not exact matches but still partially align.
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field settings-item">
-                    <div class="settings-item__head">
-                        <label for="vulnerabilitySuggestionProductExactScore">Product exact score</label>
-                        <span class="badge badge--active">active</span>
-                    </div>
-                    <div class="settings-item__control">
-                        <input id="vulnerabilitySuggestionProductExactScore"
-                               type="number"
-                               min="0"
-                               max="1000"
-                               th:field="*{vulnerabilitySuggestionProductExactScore}">
-                    </div>
-                    <div class="muted settings-item__body">
-                        <div class="help">
-                            Score added when the unresolved product matches the affected CPE product exactly.
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field settings-item">
-                    <div class="settings-item__head">
-                        <label for="vulnerabilitySuggestionTokenOverlapScore">Token overlap score</label>
-                        <span class="badge badge--active">active</span>
-                    </div>
-                    <div class="settings-item__control">
-                        <input id="vulnerabilitySuggestionTokenOverlapScore"
-                               type="number"
-                               min="0"
-                               max="1000"
-                               th:field="*{vulnerabilitySuggestionTokenOverlapScore}">
-                    </div>
-                    <div class="muted settings-item__body">
-                        <div class="help">
-                            Score added when product names share multiple meaningful tokens.
-                        </div>
-                        <div class="help">
-                            Useful for longer names where exact equality is too strict.
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field settings-item">
-                    <div class="settings-item__head">
-                        <label for="vulnerabilitySuggestionPartialMatchScore">Partial match score</label>
-                        <span class="badge badge--active">active</span>
-                    </div>
-                    <div class="settings-item__control">
-                        <input id="vulnerabilitySuggestionPartialMatchScore"
-                               type="number"
-                               min="0"
-                               max="1000"
-                               th:field="*{vulnerabilitySuggestionPartialMatchScore}">
-                    </div>
-                    <div class="muted settings-item__body">
-                        <div class="help">
-                            Smaller fallback score used when only a weaker similarity is found.
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field settings-item settings-item--checkbox">
-                    <div class="settings-item__control settings-item__control--check">
-                        <input id="vulnerabilitySuggestionActiveOnly"
-                               type="checkbox"
-                               th:field="*{vulnerabilitySuggestionActiveOnly}">
-                        <label for="vulnerabilitySuggestionActiveOnly">
-                            Only active unresolved rows
-                            <span class="badge badge--active">active</span>
-                        </label>
-                    </div>
-                    <div class="muted settings-item__body">
-                        <div class="help">
-                            When enabled, the suggestion panel only considers unresolved mappings that are still active.
-                        </div>
-                        <div class="help">
-                            Disable this only when you intentionally want inactive or historical unresolved rows included.
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field settings-item settings-item--checkbox">
-                    <div class="settings-item__control settings-item__control--check">
-                        <input id="vulnerabilitySuggestionShowReasons"
-                               type="checkbox"
-                               th:field="*{vulnerabilitySuggestionShowReasons}">
-                        <label for="vulnerabilitySuggestionShowReasons">
-                            Show reasons
-                            <span class="badge badge--active">active</span>
-                        </label>
-                    </div>
-                    <div class="muted settings-item__body">
-                        <div class="help">
-                            Shows why each candidate received its score, helping users understand and tune the ranking behavior.
                         </div>
                     </div>
                 </div>
