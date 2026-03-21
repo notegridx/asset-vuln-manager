@@ -15,23 +15,12 @@
             </div>
         </div>
 
-        <div class="page-header__right page-header__right--pills">
-            <span class="pill" th:text="'Assets: ' + ${assets}">Assets: 0</span>
-            <span class="pill" th:text="'Vulns: ' + ${vulns}">Vulns: 0</span>
-            <span class="pill"
-                  th:text="'Open alerts: ' + ${openAlerts} + ' (Confirmed ' + ${openAlertsConfirmed} + ')'">
-                Open alerts: 0 (Confirmed 0)
-            </span>
-        </div>
     </div>
 
     <!-- OPEN Alerts by Severity -->
     <div class="card" style="padding:12px; margin:12px 0;">
-        <div class="toolbar"
-             style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
-            <div class="toolbar__left" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <span class="muted" style="font-size:12px;">Open alerts by severity</span>
-            </div>
+        <div class="toolbar__left" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="muted" style="font-size:12px;">Open alerts by severity</span>
         </div>
 
         <div class="stat-grid" style="margin-top:10px;">
@@ -174,8 +163,10 @@
                     Import assets and installed software from assets.csv and software.csv.
                 </div>
                 <div style="margin-top:6px;">
-                    <a class="btn btn-ghost" style="padding:6px 10px; font-size:12px; border-radius:10px;" th:href="@{/admin/import/csv}">CSV</a>
-                    <a class="btn btn-ghost" style="padding:6px 10px; font-size:12px; border-radius:10px;" th:href="@{/admin/import/json}">JSON</a>
+                    <a class="btn btn-ghost" style="padding:6px 10px; font-size:12px; border-radius:10px;"
+                       th:href="@{/admin/import/csv}">CSV</a>
+                    <a class="btn btn-ghost" style="padding:6px 10px; font-size:12px; border-radius:10px;"
+                       th:href="@{/admin/import/json}">JSON</a>
                 </div>
             </div>
 
@@ -229,7 +220,7 @@
                     0.0%
                 </span>
                 <span class="muted"
-                      th:text="'(' + ${installs - unmappedInstalls} + '/' + ${installs} + ' linked)'">
+                      th:text="'(' + ${installs - unmappedInstalls} + '/' + ${installs} + ')'">
                     (0/0 linked)
                 </span>
             </div>
@@ -300,7 +291,8 @@
 
                 <div class="muted" style="font-size:12px; margin-left:auto;">
                     Current:
-                    <span id="topRangeCurrentPill" class="pill" th:text="${topRangeLabel != null ? topRangeLabel : 'All time'}">All time</span>
+                    <span id="topRangeCurrentPill" class="pill"
+                          th:text="${topRangeLabel != null ? topRangeLabel : 'All time'}">All time</span>
                 </div>
             </div>
         </form>
@@ -634,7 +626,8 @@
                         <div th:text="${v.cvssScore != null ? v.cvssScore : '-'}">-</div>
                         <div class="muted" style="font-size:12px;"
                              th:if="${v.cvssVersion != null && !v.cvssVersion.isBlank()}"
-                             th:text="${v.cvssVersion}">3.1</div>
+                             th:text="${v.cvssVersion}">3.1
+                        </div>
                     </td>
 
                     <td class="muted"
