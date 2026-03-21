@@ -152,6 +152,16 @@
             width: 100%;
             max-width: 560px;
         }
+
+        .workspace-vendor-card {
+        padding: 12px;
+        margin: 12px 0;
+        }
+
+        .workspace-vendor-select {
+        width: 100%;
+        max-width: 360px;
+        }
     </style>
 
     <div class="workspace-toolbar">
@@ -190,7 +200,7 @@
             <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
         </div>
 
-        <div class="workspace-contextbar__right">
+        <div class="workspace-contextbar__right vendor-select">
             <select id="workspaceVendorSelectInline"
                     class="input workspace-managed-select"
                     aria-label="Switch managed vendor">
@@ -211,14 +221,11 @@
     </div>
 
     <!-- Vendor not selected: picker card -->
-    <div class="card workspace-picker-card" th:if="${vendorId == null}">
-        <div class="workspace-picker-card__title">
-            <h2>Select vendor</h2>
-            <span class="muted">Aliases are managed per vendor to ensure correct product mapping.</span>
-        </div>
+    <div class="card workspace-vendor-card" th:if="${vendorId == null}">
+        <h2 style="margin:0 0 10px 0;">Select vendor</h2>
 
         <select id="workspaceVendorSelectCard"
-                class="input workspace-managed-select workspace-managed-select--wide"
+                class="input workspace-vendor-select"
                 aria-label="Select managed vendor">
             <option value="">Select vendor...</option>
             <option th:each="v : ${workspaceVendors}"
@@ -230,7 +237,7 @@
         </select>
 
         <div class="muted text-12 mt-8">
-            After selecting a vendor, you can define product aliases for that vendor.
+            Select a vendor to manage its product aliases.
         </div>
     </div>
 
@@ -242,79 +249,51 @@
         <div class="card" style="padding:12px; margin:12px 0;">
             <h2 style="margin:0 0 10px 0;">Add vendor alias</h2>
 
-            <form id="vendorAliasForm" th:action="@{/admin/aliases/vendor}" method="post"
-                  class="actions" style="gap:10px; flex-wrap:wrap;">
+            <form id="vendorAliasForm"
+                  th:action="@{/admin/aliases/vendor}"
+                  method="post"
+                  style="display:flex; flex-direction:column; gap:10px;">
 
                 <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
 
-                <input class="input" name="aliasNorm" placeholder="Alias name (e.g. 'microsoft', 'ms corp')" style="min-width:260px;"
-                       required>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
 
-                <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
-                    <input id="vendorSearchInput" class="input" type="text"
-                           placeholder="Select canonical vendor (search by name)" autocomplete="off" required>
-                    <input id="cpeVendorId" type="hidden" name="cpeVendorId" required>
-
-                    <div id="vendorSuggestBox" class="suggest-box" style="display:none;">
-                        <div id="vendorSuggestList"></div>
-                        <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-                            Select one item to confirm the vendor.
-                        </div>
+                    <!-- Alias input -->
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                    <input class="input"
+                           name="aliasNorm"
+                           placeholder="Alias name"
+                           required>
                     </div>
 
-                    <div id="vendorSelectedHint" class="muted" style="font-size:12px;"></div>
+                    <!-- Canonical vendor select -->
+                    <div style="position:relative; display:flex; flex-direction:column; gap:6px;">
+                        <input id="vendorSearchInput"
+                               class="input"
+                               type="text"
+                               placeholder="Canonical vendor"
+                               autocomplete="off"
+                               required>
+
+                        <input id="cpeVendorId" type="hidden" name="cpeVendorId" required>
+
+                        <div id="vendorSuggestBox" class="suggest-box" style="display:none;">
+                            <div id="vendorSuggestList"></div>
+                        </div>
+
+                        <div id="vendorSelectedHint" class="muted" style="font-size:12px;"></div>
+                    </div>
+
                 </div>
 
-                <button class="btn btn-primary" type="submit">Save</button>
-                <a class="btn btn-ghost" th:href="@{/admin/unresolved(status='NEW')}">Open Unresolved</a>
+                <div>
+                    <button class="btn btn-primary" type="submit">Save</button>
+                </div>
             </form>
 
             <div class="muted text-12 mt-8" style="line-height:1.6;">
                 Save updates the dictionary and clears caches. Run Canonical Backfill when you want to relink
                 SoftwareInstalls.
-            </div>
-
-            <form th:action="@{/admin/aliases/seed-top}" method="post"
-                  class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
-                <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
-                <button class="btn" type="submit">Seed Top Aliases</button>
-                <span class="muted" style="font-size:12px;">
-                    Inserts/updates curated vendor and product aliases (idempotent).
-                </span>
-            </form>
-
-            <div class="card" th:if="${seedReport != null}"
-                 style="padding:12px; margin-top:10px; border:1px solid rgba(255,255,255,0.10);">
-                <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-                    <h3 style="margin:0;">Seed report</h3>
-                    <span class="muted" style="font-size:12px;" th:text="${seedReport.batchName}">seedTopAliases</span>
-                </div>
-
-                <div class="muted" style="margin-top:8px; line-height:1.8;">
-                    <div>
-                        Vendors:
-                        ins=<span class="mono" th:text="${seedReport.vendorInserted}">0</span>,
-                        upd=<span class="mono" th:text="${seedReport.vendorUpdated}">0</span>,
-                        same=<span class="mono" th:text="${seedReport.vendorUnchanged}">0</span>,
-                        skip=<span class="mono" th:text="${seedReport.vendorSkipped}">0</span>
-                    </div>
-                    <div>
-                        Products:
-                        ins=<span class="mono" th:text="${seedReport.productInserted}">0</span>,
-                        upd=<span class="mono" th:text="${seedReport.productUpdated}">0</span>,
-                        same=<span class="mono" th:text="${seedReport.productUnchanged}">0</span>,
-                        skip=<span class="mono" th:text="${seedReport.productSkipped}">0</span>
-                    </div>
-                </div>
-
-                <details style="margin-top:10px;"
-                         th:if="${seedReport.messages != null && !#lists.isEmpty(seedReport.messages)}">
-                    <summary class="btn btn-ghost" style="display:inline-flex;">Show details</summary>
-                    <div style="margin-top:8px;">
-                        <div class="muted mono" th:each="m : ${seedReport.messages}" th:text="${m}"
-                             style="font-size:12px; line-height:1.6; padding:2px 0;"></div>
-                    </div>
-                </details>
             </div>
         </div>
 
@@ -398,35 +377,49 @@
             <div class="card" style="padding:12px; margin:12px 0;">
                 <h2 style="margin:0 0 10px 0;">Add product alias</h2>
 
-                <form id="productAliasForm" th:action="@{/admin/aliases/product}" method="post"
-                      class="actions" style="gap:10px; flex-wrap:wrap;">
+                <form id="productAliasForm"
+                      th:action="@{/admin/aliases/product}"
+                      method="post"
+                      style="display:flex; flex-direction:column; gap:10px;">
 
                     <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
                     <input type="hidden" name="cpeVendorId" th:value="${vendorId}">
 
-                    <input class="input" name="aliasNorm" placeholder="Alias name (e.g. 'vscode', 'visual studio code')" style="min-width:260px;"
-                           required>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:start;">
 
-                    <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
-                        <input id="productSearchInput" class="input" type="text"
-                               placeholder="Select product (search by name)" autocomplete="off" required>
-                        <input id="cpeProductId" type="hidden" name="cpeProductId" required>
+                        <!-- Alias input -->
+                        <input class="input"
+                               name="aliasNorm"
+                               placeholder="Alias name"
+                               required>
 
-                        <div id="productSuggestBox" class="suggest-box" style="display:none;">
-                            <div id="productSuggestList"></div>
-                            <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-                                Select one item to confirm the product.
+                        <!-- Canonical product select -->
+                        <div style="position:relative; display:flex; flex-direction:column; gap:6px;">
+                            <input id="productSearchInput"
+                                   class="input"
+                                   type="text"
+                                   placeholder="Canonical product"
+                                   autocomplete="off"
+                                   required>
+
+                            <input id="cpeProductId" type="hidden" name="cpeProductId" required>
+
+                            <div id="productSuggestBox" class="suggest-box" style="display:none;">
+                                <div id="productSuggestList"></div>
                             </div>
+
+                            <div id="productSelectedHint" class="muted" style="font-size:12px;"></div>
                         </div>
 
-                        <div id="productSelectedHint" class="muted" style="font-size:12px;"></div>
                     </div>
 
-                    <button class="btn btn-primary" type="submit">Save</button>
+                    <div>
+                        <button class="btn btn-primary" type="submit">Save</button>
+                    </div>
                 </form>
 
                 <div class="muted text-12 mt-8" style="line-height:1.6;">
-                    This alias will be linked to the selected vendor to prevent incorrect mappings.
+                    This alias is saved under the current vendor context.
                 </div>
             </div>
 
