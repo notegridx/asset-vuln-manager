@@ -8,6 +8,17 @@ import lombok.Setter;
 public class AdminSettingsForm {
 
     // ------------------------------------------------------------
+    // Canonical Mapping > Normalize policy
+    // ------------------------------------------------------------
+    private boolean canonicalNormalizeVendorExtractDnOrganization;
+    private boolean canonicalNormalizeVendorRemoveCommonPhrases;
+    private boolean canonicalNormalizeVendorRemoveLegalSuffix;
+    private boolean canonicalNormalizeProductRemoveArchParen;
+    private boolean canonicalNormalizeProductRemoveLocaleTag;
+    private boolean canonicalNormalizeProductRemoveJavaUpdateSuffix;
+    private boolean canonicalNormalizeProductRemoveVersionSuffix;
+
+    // ------------------------------------------------------------
     // Canonical Mapping > Candidate display
     // ------------------------------------------------------------
     private Integer canonicalCandidateMinChars;

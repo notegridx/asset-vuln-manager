@@ -8,8 +8,8 @@
         <div>
             <h1 style="margin:0;">Settings</h1>
             <p class="muted settings-top-note">
-                Centralized controls for canonical candidate display, canonical auto-link behavior,
-                vulnerability-side unresolved suggestions, and explainability.
+                Centralized controls for canonical normalization policy, canonical candidate display,
+                canonical auto-link behavior, vulnerability-side unresolved suggestions, and explainability.
                 Each setting below explains where it is used, what behavior changes, and whether it is already active
                 in the current implementation.
             </p>
@@ -46,9 +46,160 @@
                         unresolved mapping review flows,
                         software create/edit screens that use dictionary suggestions,
                         and software resolve/import/backfill processing.
-                        These settings affect either candidate display shown to users,
+                        These settings affect normalization, candidate display shown to users,
                         or automatic canonical resolution behavior behind the scenes.
                     </p>
+                </div>
+            </div>
+
+            <hr class="settings-divider">
+
+            <h3 class="settings-subsection-title">Normalize policy</h3>
+            <p class="muted section-note">
+                Controls how raw vendor/product text is cleaned before synonym lookup, dictionary search,
+                and canonical auto-link resolution. These switches influence matching quality earlier than
+                candidate ranking, so they usually affect both manual review and background linking flows.
+            </p>
+
+            <div class="settings-grid-md">
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalNormalizeVendorExtractDnOrganization"
+                               type="checkbox"
+                               th:field="*{canonicalNormalizeVendorExtractDnOrganization}">
+                        <label for="canonicalNormalizeVendorExtractDnOrganization">
+                            Extract vendor from DN publisher
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            When enabled, publisher values such as certificate-style DN strings may be reduced to a cleaner organization name.
+                        </div>
+                        <div class="help">
+                            Helps normalize raw vendor values like <code>CN=..., O=Microsoft Corporation, ...</code> before alias lookup.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalNormalizeVendorRemoveCommonPhrases"
+                               type="checkbox"
+                               th:field="*{canonicalNormalizeVendorRemoveCommonPhrases}">
+                        <label for="canonicalNormalizeVendorRemoveCommonPhrases">
+                            Remove vendor common phrases
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Removes broad vendor-side filler phrases that do not help distinguish the canonical vendor.
+                        </div>
+                        <div class="help">
+                            Useful for noisy publisher strings that contain extra legal or organizational wording beyond the actual vendor name.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalNormalizeVendorRemoveLegalSuffix"
+                               type="checkbox"
+                               th:field="*{canonicalNormalizeVendorRemoveLegalSuffix}">
+                        <label for="canonicalNormalizeVendorRemoveLegalSuffix">
+                            Remove vendor legal suffix
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Removes suffixes such as <code>Inc</code>, <code>Ltd</code>, <code>LLC</code>, or similar corporate tail text during vendor normalization.
+                        </div>
+                        <div class="help">
+                            Keeps vendor keys closer to the canonical CPE naming style.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalNormalizeProductRemoveArchParen"
+                               type="checkbox"
+                               th:field="*{canonicalNormalizeProductRemoveArchParen}">
+                        <label for="canonicalNormalizeProductRemoveArchParen">
+                            Remove product architecture suffix
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Removes architecture or bitness decorations such as <code>(x64)</code>, <code>(64-bit)</code>, or <code>(arm64)</code>.
+                        </div>
+                        <div class="help">
+                            Helps collapse visually different but semantically equivalent product names into the same normalized key.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalNormalizeProductRemoveLocaleTag"
+                               type="checkbox"
+                               th:field="*{canonicalNormalizeProductRemoveLocaleTag}">
+                        <label for="canonicalNormalizeProductRemoveLocaleTag">
+                            Remove product locale tag
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Removes locale markers such as <code>en-us</code> or similar language-region tags from product text.
+                        </div>
+                        <div class="help">
+                            Useful when locale is packaging noise rather than part of the canonical product identity.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalNormalizeProductRemoveJavaUpdateSuffix"
+                               type="checkbox"
+                               th:field="*{canonicalNormalizeProductRemoveJavaUpdateSuffix}">
+                        <label for="canonicalNormalizeProductRemoveJavaUpdateSuffix">
+                            Remove Java update suffix
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Removes Java-specific update decorations such as <code>Update 321</code> when those create unnecessary fragmentation in product matching.
+                        </div>
+                        <div class="help">
+                            Keeps Java-family product names aligned with canonical dictionary entries more consistently.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="canonicalNormalizeProductRemoveVersionSuffix"
+                               type="checkbox"
+                               th:field="*{canonicalNormalizeProductRemoveVersionSuffix}">
+                        <label for="canonicalNormalizeProductRemoveVersionSuffix">
+                            Remove trailing product version
+                            <span class="badge badge--active">active</span>
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Removes trailing version text from the product name before building the normalized lookup key.
+                        </div>
+                        <div class="help">
+                            This improves candidate grouping when the canonical product identity should not change across installed versions.
+                        </div>
+                    </div>
                 </div>
             </div>
 

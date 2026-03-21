@@ -18,6 +18,21 @@ import java.util.Map;
 @Controller
 public class AdminSettingsController {
 
+    public static final String KEY_CANONICAL_NORMALIZE_VENDOR_EXTRACT_DN_ORGANIZATION =
+            "canonical.normalize.vendor.extract-dn-organization";
+    public static final String KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_COMMON_PHRASES =
+            "canonical.normalize.vendor.remove-common-phrases";
+    public static final String KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_LEGAL_SUFFIX =
+            "canonical.normalize.vendor.remove-legal-suffix";
+    public static final String KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_ARCH_PAREN =
+            "canonical.normalize.product.remove-arch-paren";
+    public static final String KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_LOCALE_TAG =
+            "canonical.normalize.product.remove-locale-tag";
+    public static final String KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_JAVA_UPDATE_SUFFIX =
+            "canonical.normalize.product.remove-java-update-suffix";
+    public static final String KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_VERSION_SUFFIX =
+            "canonical.normalize.product.remove-version-suffix";
+
     public static final String KEY_CANONICAL_CANDIDATE_MIN_CHARS = "canonical.candidate.min-chars";
     public static final String KEY_CANONICAL_CANDIDATE_EXACT_LIMIT = "canonical.candidate.exact-limit";
     public static final String KEY_CANONICAL_CANDIDATE_OTHER_LIMIT = "canonical.candidate.other-limit";
@@ -72,6 +87,42 @@ public class AdminSettingsController {
     ) {
         String username = authentication != null ? authentication.getName() : "unknown";
 
+        putBool(
+                KEY_CANONICAL_NORMALIZE_VENDOR_EXTRACT_DN_ORGANIZATION,
+                form.isCanonicalNormalizeVendorExtractDnOrganization(),
+                username
+        );
+        putBool(
+                KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_COMMON_PHRASES,
+                form.isCanonicalNormalizeVendorRemoveCommonPhrases(),
+                username
+        );
+        putBool(
+                KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_LEGAL_SUFFIX,
+                form.isCanonicalNormalizeVendorRemoveLegalSuffix(),
+                username
+        );
+        putBool(
+                KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_ARCH_PAREN,
+                form.isCanonicalNormalizeProductRemoveArchParen(),
+                username
+        );
+        putBool(
+                KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_LOCALE_TAG,
+                form.isCanonicalNormalizeProductRemoveLocaleTag(),
+                username
+        );
+        putBool(
+                KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_JAVA_UPDATE_SUFFIX,
+                form.isCanonicalNormalizeProductRemoveJavaUpdateSuffix(),
+                username
+        );
+        putBool(
+                KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_VERSION_SUFFIX,
+                form.isCanonicalNormalizeProductRemoveVersionSuffix(),
+                username
+        );
+
         putInt(KEY_CANONICAL_CANDIDATE_MIN_CHARS, clamp(form.getCanonicalCandidateMinChars(), 1, 10, 2), username);
         putInt(KEY_CANONICAL_CANDIDATE_EXACT_LIMIT, clamp(form.getCanonicalCandidateExactLimit(), 1, 50, 5), username);
         putInt(KEY_CANONICAL_CANDIDATE_OTHER_LIMIT, clamp(form.getCanonicalCandidateOtherLimit(), 1, 100, 30), username);
@@ -123,6 +174,28 @@ public class AdminSettingsController {
 
     private AdminSettingsForm loadForm() {
         AdminSettingsForm f = new AdminSettingsForm();
+
+        f.setCanonicalNormalizeVendorExtractDnOrganization(
+                getBool(KEY_CANONICAL_NORMALIZE_VENDOR_EXTRACT_DN_ORGANIZATION, true)
+        );
+        f.setCanonicalNormalizeVendorRemoveCommonPhrases(
+                getBool(KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_COMMON_PHRASES, true)
+        );
+        f.setCanonicalNormalizeVendorRemoveLegalSuffix(
+                getBool(KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_LEGAL_SUFFIX, true)
+        );
+        f.setCanonicalNormalizeProductRemoveArchParen(
+                getBool(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_ARCH_PAREN, true)
+        );
+        f.setCanonicalNormalizeProductRemoveLocaleTag(
+                getBool(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_LOCALE_TAG, true)
+        );
+        f.setCanonicalNormalizeProductRemoveJavaUpdateSuffix(
+                getBool(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_JAVA_UPDATE_SUFFIX, true)
+        );
+        f.setCanonicalNormalizeProductRemoveVersionSuffix(
+                getBool(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_VERSION_SUFFIX, true)
+        );
 
         f.setCanonicalCandidateMinChars(getInt(KEY_CANONICAL_CANDIDATE_MIN_CHARS, 2));
         f.setCanonicalCandidateExactLimit(getInt(KEY_CANONICAL_CANDIDATE_EXACT_LIMIT, 5));
@@ -211,6 +284,14 @@ public class AdminSettingsController {
 
     private static Map<String, String> defaults() {
         Map<String, String> m = new LinkedHashMap<>();
+
+        m.put(KEY_CANONICAL_NORMALIZE_VENDOR_EXTRACT_DN_ORGANIZATION, "true");
+        m.put(KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_COMMON_PHRASES, "true");
+        m.put(KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_LEGAL_SUFFIX, "true");
+        m.put(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_ARCH_PAREN, "true");
+        m.put(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_LOCALE_TAG, "true");
+        m.put(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_JAVA_UPDATE_SUFFIX, "true");
+        m.put(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_VERSION_SUFFIX, "true");
 
         m.put(KEY_CANONICAL_CANDIDATE_MIN_CHARS, "2");
         m.put(KEY_CANONICAL_CANDIDATE_EXACT_LIMIT, "5");

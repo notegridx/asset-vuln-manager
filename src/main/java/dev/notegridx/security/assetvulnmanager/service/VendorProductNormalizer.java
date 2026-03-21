@@ -1,5 +1,7 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
+import dev.notegridx.security.assetvulnmanager.domain.SystemSetting;
+import dev.notegridx.security.assetvulnmanager.repository.SystemSettingRepository;
 import org.springframework.stereotype.Component;
 
 import java.text.Normalizer;
@@ -7,8 +9,22 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_ARCH_PAREN;
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_JAVA_UPDATE_SUFFIX;
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_LOCALE_TAG;
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_VERSION_SUFFIX;
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_NORMALIZE_VENDOR_EXTRACT_DN_ORGANIZATION;
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_COMMON_PHRASES;
+import static dev.notegridx.security.assetvulnmanager.web.AdminSettingsController.KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_LEGAL_SUFFIX;
+
 @Component
 public class VendorProductNormalizer {
+
+    private final SystemSettingRepository systemSettingRepository;
+
+    public VendorProductNormalizer(SystemSettingRepository systemSettingRepository) {
+        this.systemSettingRepository = systemSettingRepository;
+    }
 
     // ------------------------------------------------------------
     // Patterns
@@ -50,16 +66,22 @@ public class VendorProductNormalizer {
         if (x.isEmpty()) return null;
 
         // DN extraction
-        String dn = extractDnOrganization(x);
-        if (dn != null) {
-            x = dn;
+        if (isEnabled(KEY_CANONICAL_NORMALIZE_VENDOR_EXTRACT_DN_ORGANIZATION, true)) {
+            String dn = extractDnOrganization(x);
+            if (dn != null) {
+                x = dn;
+            }
         }
 
         // remove phrases
-        x = VENDOR_PHRASE.matcher(x).replaceAll(" ");
+        if (isEnabled(KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_COMMON_PHRASES, true)) {
+            x = VENDOR_PHRASE.matcher(x).replaceAll(" ");
+        }
 
         // remove legal suffix
-        x = VENDOR_SUFFIX.matcher(x).replaceAll(" ");
+        if (isEnabled(KEY_CANONICAL_NORMALIZE_VENDOR_REMOVE_LEGAL_SUFFIX, true)) {
+            x = VENDOR_SUFFIX.matcher(x).replaceAll(" ");
+        }
 
         x = x.replaceAll("\\s+", " ").trim();
 
@@ -77,16 +99,24 @@ public class VendorProductNormalizer {
         if (x.isEmpty()) return null;
 
         // remove parentheses noise
-        x = PRODUCT_PAREN.matcher(x).replaceAll(" ");
+        if (isEnabled(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_ARCH_PAREN, true)) {
+            x = PRODUCT_PAREN.matcher(x).replaceAll(" ");
+        }
 
         // remove locale
-        x = PRODUCT_LOCALE.matcher(x).replaceAll(" ");
+        if (isEnabled(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_LOCALE_TAG, true)) {
+            x = PRODUCT_LOCALE.matcher(x).replaceAll(" ");
+        }
 
         // remove java update
-        x = PRODUCT_JAVA_UPDATE.matcher(x).replaceAll("");
+        if (isEnabled(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_JAVA_UPDATE_SUFFIX, true)) {
+            x = PRODUCT_JAVA_UPDATE.matcher(x).replaceAll("");
+        }
 
         // remove trailing version
-        x = PRODUCT_VERSION_SUFFIX.matcher(x).replaceAll("");
+        if (isEnabled(KEY_CANONICAL_NORMALIZE_PRODUCT_REMOVE_VERSION_SUFFIX, true)) {
+            x = PRODUCT_VERSION_SUFFIX.matcher(x).replaceAll("");
+        }
 
         x = x.replaceAll("\\s+", " ").trim();
 
@@ -98,7 +128,6 @@ public class VendorProductNormalizer {
     // ------------------------------------------------------------
 
     private String extractDnOrganization(String s) {
-
         if (!s.contains("=")) return null;
 
         Matcher m = DN_O.matcher(s);
@@ -119,7 +148,6 @@ public class VendorProductNormalizer {
     // ------------------------------------------------------------
 
     public String normalizeKey(String s) {
-
         if (s == null) return null;
 
         String t = s.trim();
@@ -133,5 +161,17 @@ public class VendorProductNormalizer {
         x = x.replaceAll("\\s+", " ").trim();
 
         return x.isEmpty() ? null : x;
+    }
+
+    // ------------------------------------------------------------
+    // Settings
+    // ------------------------------------------------------------
+
+    private boolean isEnabled(String key, boolean defaultValue) {
+        String fallback = String.valueOf(defaultValue);
+        return systemSettingRepository.findById(key)
+                .map(SystemSetting::getSettingValue)
+                .map(v -> "true".equalsIgnoreCase(v))
+                .orElse(defaultValue);
     }
 }
