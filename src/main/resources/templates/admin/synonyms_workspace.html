@@ -5,7 +5,6 @@
 <body th:replace="~{layout/base :: layout('Aliases - Vendors', 'admin', ~{::main})}">
 <main>
 
-    <!-- Inline CSS (self-contained for this page) -->
     <style>
         .alias-status {
             border: none;
@@ -58,63 +57,113 @@
         .alias-status-form {
             display: inline;
         }
+
+        .workspace-toolbar {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin: 14px 0 12px 0;
+        }
+
+        .workspace-toolbar__left {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+            flex: 1 1 420px;
+        }
+
+        .workspace-toolbar__right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .workspace-contextbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.10);
+            background: rgba(255,255,255,0.03);
+            margin: 12px 0;
+        }
+
+        .workspace-contextbar__left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .workspace-contextbar__right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .workspace-contextbar__label {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .workspace-picker-card {
+            padding: 14px;
+            margin: 12px 0;
+        }
+
+        .workspace-picker-card__title {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .workspace-picker-card__title h2 {
+            margin: 0;
+        }
+
+        .workspace-backlink {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .workspace-managed-select {
+            min-width: 280px;
+            max-width: 420px;
+        }
+
+        .workspace-managed-select--wide {
+            width: 100%;
+            max-width: 560px;
+        }
     </style>
 
-    <h1>Alias Workspace</h1>
-    <p class="muted">
-        Manage <strong>vendor</strong> and <strong>product</strong> alias dictionaries in the same vendor context.
-        Pick a canonical vendor first to avoid product mis-linking.
-    </p>
-
-    <!-- Workspace Context (always visible when selected) -->
-    <div class="workspace-context" th:if="${vendorId != null}">
-        <span class="muted">Vendor context:</span>
-        <span class="pill pill--accent"
-              th:text="${selectedVendorLabel != null ? selectedVendorLabel : 'vendorId=' + vendorId}">
-      adobe
-    </span>
-        <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
-    </div>
-
-    <!-- Workspace: canonical vendor selector -->
-    <div class="context-card">
-        <div class="context-card__left">
-            <div class="context-card__title">
-                <div class="name">Canonical vendor</div>
-
-                <!-- Selected state (make it obvious) -->
-                <div class="meta" th:if="${vendorId != null}">
-                    <span class="muted">Selected:</span>
-                    <span class="pill pill--accent"
-                          th:text="${selectedVendorLabel != null ? selectedVendorLabel : 'vendorId=' + vendorId}">
-            adobe
-          </span>
-                    <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
-                </div>
-
-                <div class="meta" th:if="${vendorId == null}">
-                    Not selected
-                </div>
-            </div>
-
-            <div style="margin-top:8px; position:relative; max-width: 560px;">
-                <input id="workspaceVendorInput" class="input" type="text"
-                       placeholder="Type to search canonical vendor (e.g. microsoft)" autocomplete="off">
-                <div id="workspaceVendorSuggestBox" class="suggest-box" style="display:none;">
-                    <div id="workspaceVendorSuggestList"></div>
-                    <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-                        Select one item to open the vendor workspace.
-                    </div>
-                </div>
-            </div>
-
-            <div class="muted text-12 mt-6">
-                Tip: Once a vendor is selected, use the <strong>Product Aliases</strong> tab to add vendor-scoped
-                product aliases safely.
-            </div>
+    <div class="workspace-toolbar">
+        <div class="workspace-toolbar__left">
+            <h1 style="margin:0;">Alias Workspace</h1>
+            <p class="muted" style="margin:0;">
+                Define how vendor and product names should be recognized and linked.
+                If software names vary (e.g. "MS", "Microsoft Corp."), add aliases here so they map correctly.
+            </p>
         </div>
 
-        <div class="context-card__right">
+        <div class="workspace-toolbar__right">
             <div class="tabs" role="tablist" aria-label="Aliases tabs">
                 <a class="tab"
                    th:classappend="${tab == 'vendors'} ? ' is-active' : ''"
@@ -127,11 +176,61 @@
                     Product Aliases
                 </a>
             </div>
+        </div>
+    </div>
+
+    <!-- Vendor selected: compact context bar -->
+    <div class="workspace-contextbar" th:if="${vendorId != null}">
+        <div class="workspace-contextbar__left">
+            <span class="workspace-contextbar__label">Current vendor</span>
+            <span class="pill pill--accent"
+                  th:text="${selectedVendorLabel != null ? selectedVendorLabel : 'vendorId=' + vendorId}">
+                adobe
+            </span>
+            <span class="pill pill--dim mono" th:text="${'id=' + vendorId}">id=7</span>
+        </div>
+
+        <div class="workspace-contextbar__right">
+            <select id="workspaceVendorSelectInline"
+                    class="input workspace-managed-select"
+                    aria-label="Switch managed vendor">
+                <option value="">Select vendor...</option>
+                <option th:each="v : ${workspaceVendors}"
+                        th:value="${v.id}"
+                        th:text="${v.label}"
+                        th:selected="${vendorId == v.id}">
+                    Microsoft
+                </option>
+            </select>
 
             <a class="btn btn-ghost"
-               th:href="@{/admin/synonyms/workspace(tab=${tab})}">
-                Clear vendor context
+               th:href="@{/admin/synonyms/workspace(tab='vendors', q=${q}, status=${status})}">
+                Clear vendor
             </a>
+        </div>
+    </div>
+
+    <!-- Vendor not selected: picker card -->
+    <div class="card workspace-picker-card" th:if="${vendorId == null}">
+        <div class="workspace-picker-card__title">
+            <h2>Select vendor</h2>
+            <span class="muted">Aliases are managed per vendor to ensure correct product mapping.</span>
+        </div>
+
+        <select id="workspaceVendorSelectCard"
+                class="input workspace-managed-select workspace-managed-select--wide"
+                aria-label="Select managed vendor">
+            <option value="">Select vendor...</option>
+            <option th:each="v : ${workspaceVendors}"
+                    th:value="${v.id}"
+                    th:text="${v.label}"
+                    th:selected="${vendorId == v.id}">
+                Microsoft
+            </option>
+        </select>
+
+        <div class="muted text-12 mt-8">
+            After selecting a vendor, you can define product aliases for that vendor.
         </div>
     </div>
 
@@ -140,63 +239,31 @@
          ========================= -->
     <div th:if="${tab == 'vendors'}">
 
-        <!-- Search (vendor alias list) -->
-        <div class="card" style="padding:12px; margin:12px 0;">
-            <h2 style="margin:0 0 10px 0;">Search vendor aliases</h2>
-
-            <form method="get" th:action="@{/admin/synonyms/workspace}" class="actions"
-                  style="gap:10px; flex-wrap:wrap;">
-                <input type="hidden" name="vendorId" th:value="${vendorId}">
-                <input type="hidden" name="tab" value="vendors">
-
-                <input class="input" type="text" name="q" placeholder="aliasNorm contains..." th:value="${q}"
-                       style="min-width:260px;">
-                <select name="status">
-                    <option value="" th:selected="${status == null}">All</option>
-                    <option value="ACTIVE" th:selected="${status == 'ACTIVE'}">ACTIVE</option>
-                    <option value="INACTIVE" th:selected="${status == 'INACTIVE'}">INACTIVE</option>
-                </select>
-
-                <button class="btn btn-primary" type="submit">Apply</button>
-                <a class="btn btn-ghost"
-                   th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='vendors')}">Reset</a>
-            </form>
-
-            <div class="muted text-12 mt-8">
-                Showing up to <span th:text="${limit}">500</span> rows (latest first).
-            </div>
-        </div>
-
-        <!-- Add vendor alias -->
         <div class="card" style="padding:12px; margin:12px 0;">
             <h2 style="margin:0 0 10px 0;">Add vendor alias</h2>
 
             <form id="vendorAliasForm" th:action="@{/admin/aliases/vendor}" method="post"
                   class="actions" style="gap:10px; flex-wrap:wrap;">
 
-                <!-- Keep workspace context after POST -->
                 <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
 
-                <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;"
+                <input class="input" name="aliasNorm" placeholder="Alias name (e.g. 'microsoft', 'ms corp')" style="min-width:260px;"
                        required>
 
-                <!-- Canonical vendor selector (reuse existing suggest UX) -->
                 <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
                     <input id="vendorSearchInput" class="input" type="text"
-                           placeholder="Canonical vendor (type to search, e.g. microsoft)" autocomplete="off" required>
+                           placeholder="Select canonical vendor (search by name)" autocomplete="off" required>
                     <input id="cpeVendorId" type="hidden" name="cpeVendorId" required>
 
                     <div id="vendorSuggestBox" class="suggest-box" style="display:none;">
                         <div id="vendorSuggestList"></div>
                         <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-                            Tip: select one item to set vendorId.
+                            Select one item to confirm the vendor.
                         </div>
                     </div>
 
                     <div id="vendorSelectedHint" class="muted" style="font-size:12px;"></div>
                 </div>
-
-                <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
 
                 <button class="btn btn-primary" type="submit">Save</button>
                 <a class="btn btn-ghost" th:href="@{/admin/unresolved(status='NEW')}">Open Unresolved</a>
@@ -207,17 +274,15 @@
                 SoftwareInstalls.
             </div>
 
-            <!-- Batch seed -->
             <form th:action="@{/admin/aliases/seed-top}" method="post"
                   class="actions" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
                 <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
                 <button class="btn" type="submit">Seed Top Aliases</button>
                 <span class="muted" style="font-size:12px;">
-          Inserts/updates curated vendor and product aliases (idempotent).
-        </span>
+                    Inserts/updates curated vendor and product aliases (idempotent).
+                </span>
             </form>
 
-            <!-- Seed report (flash) -->
             <div class="card" th:if="${seedReport != null}"
                  style="padding:12px; margin-top:10px; border:1px solid rgba(255,255,255,0.10);">
                 <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
@@ -253,7 +318,6 @@
             </div>
         </div>
 
-        <!-- Vendor alias list -->
         <div class="card">
             <div class="table-wrap">
                 <table class="table">
@@ -276,17 +340,13 @@
 
                     <tr th:each="r : ${rows}" th:attr="id=${'row-' + r.id}">
                         <td class="mono" th:text="${r.id}">1</td>
-
-                        <!-- aliasNorm: plain text (NOT the navigation trigger) -->
                         <td style="overflow-wrap:anywhere;" th:text="${r.aliasNorm}">alias</td>
-
                         <td class="mono" th:text="${r.cpeVendorId}">123</td>
 
-                        <!-- canonical vendor: click -> switch vendor context + open Product Aliases tab -->
                         <td style="overflow-wrap:anywhere;">
                             <a class="link"
                                th:if="${r.cpeVendorId != null}"
-                               th:href="@{/admin/synonyms/workspace(vendorId=${r.cpeVendorId}, tab='products')}"
+                               th:href="@{/admin/synonyms/workspace(vendorId=${r.cpeVendorId}, tab='products', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}"
                                th:text="${vendorLabels[r.cpeVendorId]}"
                                th:aria-label="${'Open vendor context: ' + vendorLabels[r.cpeVendorId]}">
                                 Microsoft
@@ -294,13 +354,11 @@
                             <span th:if="${r.cpeVendorId == null}" class="muted">-</span>
                         </td>
 
-                        <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
                         <td>
                             <form class="alias-status-form js-toggle-ajax"
                                   th:action="@{/admin/synonyms/workspace/vendors/toggle}" method="post"
                                   data-scope="vendors">
                                 <input type="hidden" name="id" th:value="${r.id}">
-                                <!-- keep for non-JS fallback -->
                                 <input type="hidden" name="redirect"
                                        th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
 
@@ -332,39 +390,11 @@
     <div th:if="${tab == 'products'}">
 
         <div th:if="${vendorId == null}" class="empty-state" style="margin-top:12px;">
-            Select a canonical vendor to manage product aliases for that vendor.
+            Select a vendor first to manage its product aliases.
         </div>
 
         <div th:if="${vendorId != null}">
 
-            <!-- Search product aliases -->
-            <div class="card" style="padding:12px; margin:12px 0;">
-                <h2 style="margin:0 0 10px 0;">Search product aliases</h2>
-
-                <form method="get" th:action="@{/admin/synonyms/workspace}" class="actions"
-                      style="gap:10px; flex-wrap:wrap;">
-                    <input type="hidden" name="vendorId" th:value="${vendorId}">
-                    <input type="hidden" name="tab" value="products">
-
-                    <input class="input" type="text" name="qP" placeholder="aliasNorm contains..." th:value="${qP}"
-                           style="min-width:260px;">
-                    <select name="statusP">
-                        <option value="" th:selected="${statusP == null}">All</option>
-                        <option value="ACTIVE" th:selected="${statusP == 'ACTIVE'}">ACTIVE</option>
-                        <option value="INACTIVE" th:selected="${statusP == 'INACTIVE'}">INACTIVE</option>
-                    </select>
-
-                    <button class="btn btn-primary" type="submit">Apply</button>
-                    <a class="btn btn-ghost"
-                       th:href="@{/admin/synonyms/workspace(vendorId=${vendorId}, tab='products')}">Reset</a>
-                </form>
-
-                <div class="muted text-12 mt-8">
-                    Showing up to <span th:text="${limit}">500</span> rows (latest first).
-                </div>
-            </div>
-
-            <!-- Add product alias (vendor scoped) -->
             <div class="card" style="padding:12px; margin:12px 0;">
                 <h2 style="margin:0 0 10px 0;">Add product alias</h2>
 
@@ -374,37 +404,32 @@
                     <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
                     <input type="hidden" name="cpeVendorId" th:value="${vendorId}">
 
-                    <input class="input" name="aliasNorm" placeholder="aliasNorm (normalized)" style="min-width:260px;"
+                    <input class="input" name="aliasNorm" placeholder="Alias name (e.g. 'vscode', 'visual studio code')" style="min-width:260px;"
                            required>
 
-                    <!-- Canonical product selector (scoped by vendorId) -->
                     <div style="display:flex; flex-direction:column; gap:6px; min-width:360px; position:relative;">
                         <input id="productSearchInput" class="input" type="text"
-                               placeholder="Canonical product (type to search)" autocomplete="off" required>
+                               placeholder="Select product (search by name)" autocomplete="off" required>
                         <input id="cpeProductId" type="hidden" name="cpeProductId" required>
 
                         <div id="productSuggestBox" class="suggest-box" style="display:none;">
                             <div id="productSuggestList"></div>
                             <div class="muted" style="font-size:12px; padding:6px 6px 2px 6px;">
-                                Tip: select one item to set productId.
+                                Select one item to confirm the product.
                             </div>
                         </div>
 
                         <div id="productSelectedHint" class="muted" style="font-size:12px;"></div>
                     </div>
 
-                    <input class="input" name="note" placeholder="note (optional)" style="min-width:260px;">
-
                     <button class="btn btn-primary" type="submit">Save</button>
                 </form>
 
                 <div class="muted text-12 mt-8" style="line-height:1.6;">
-                    This form pins <span class="mono">vendorId</span> to the selected workspace vendor to prevent
-                    cross-vendor mistakes.
+                    This alias will be linked to the selected vendor to prevent incorrect mappings.
                 </div>
             </div>
 
-            <!-- Product alias list -->
             <div class="card">
                 <div class="table-wrap">
                     <table class="table">
@@ -432,13 +457,11 @@
                             <td class="mono" th:text="${r.cpeProductId}">456</td>
                             <td th:text="${productLabels[r.cpeProductId]}">Microsoft Visual Studio Code</td>
 
-                            <!-- Status click -> toggle (AJAX, no redirect, no scroll changes) -->
                             <td>
                                 <form class="alias-status-form js-toggle-ajax"
                                       th:action="@{/admin/synonyms/workspace/products/toggle}" method="post"
                                       data-scope="products">
                                     <input type="hidden" name="id" th:value="${r.id}">
-                                    <!-- keep for non-JS fallback -->
                                     <input type="hidden" name="redirect"
                                            th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
 
@@ -464,9 +487,6 @@
         </div>
     </div>
 
-    <!-- =========================
-         Suggest JS (vendor + product) + Toggle AJAX
-         ========================= -->
     <script th:inline="javascript">
         (function () {
             function escapeHtml(s) {
@@ -536,17 +556,17 @@
                         const label = it.label || '';
                         const norm = it.nameNorm || '';
                         return `
-              <div class="suggest-item"
-                   data-id="${it.id}"
-                   data-label="${escapeHtml(label)}"
-                   data-norm="${escapeHtml(norm)}">
-                <div class="suggest-top">
-                  <div class="suggest-label">${highlight(label, q)}</div>
-                  <div class="suggest-id mono">id=${it.id}</div>
-                </div>
-                <div class="suggest-sub">${highlight(norm, q)}</div>
-              </div>
-            `;
+                  <div class="suggest-item"
+                       data-id="${it.id}"
+                       data-label="${escapeHtml(label)}"
+                       data-norm="${escapeHtml(norm)}">
+                    <div class="suggest-top">
+                      <div class="suggest-label">${highlight(label, q)}</div>
+                      <div class="suggest-id mono">id=${it.id}</div>
+                    </div>
+                    <div class="suggest-sub">${highlight(norm, q)}</div>
+                  </div>
+                `;
                     }).join('');
 
                     list.innerHTML = rows;
@@ -594,22 +614,43 @@
                 });
             }
 
-            // Workspace vendor selector: navigate to vendorId
-            bindSuggest(
-                'workspaceVendorInput',
-                'workspaceVendorSuggestBox',
-                'workspaceVendorSuggestList',
-                function (item) {
-                    const params = new URLSearchParams(window.location.search);
-                    const tab = params.get('tab') || 'vendors';
-                    window.location.href = `/admin/synonyms/workspace?vendorId=${item.id}&tab=${encodeURIComponent(tab)}`;
-                },
-                function (q) {
-                    return `/api/dict/vendors/search2?q=${encodeURIComponent(q)}`;
-                }
-            );
+            function moveToSelectedVendor(item) {
+                const params = new URLSearchParams(window.location.search);
 
-            // Vendor alias add: set hidden vendorId
+                const next = new URLSearchParams();
+                next.set('vendorId', item.id);
+
+                // Always move into the vendor-scoped work area.
+                next.set('tab', 'products');
+
+                const q = params.get('q');
+                const status = params.get('status');
+                const qP = params.get('qP');
+                const statusP = params.get('statusP');
+
+                if (q) next.set('q', q);
+                if (status) next.set('status', status);
+                if (qP) next.set('qP', qP);
+                if (statusP) next.set('statusP', statusP);
+
+                window.location.href = `/admin/synonyms/workspace?${next.toString()}`;
+            }
+
+            function bindWorkspaceVendorSelect(selectId) {
+                const select = document.getElementById(selectId);
+                if (!select) return;
+
+                select.addEventListener('change', () => {
+                    const vendorId = (select.value || '').trim();
+                    if (!vendorId) return;
+
+                    moveToSelectedVendor({id: vendorId});
+                });
+            }
+
+            bindWorkspaceVendorSelect('workspaceVendorSelectInline');
+            bindWorkspaceVendorSelect('workspaceVendorSelectCard');
+
             (function () {
                 const input = document.getElementById('vendorSearchInput');
                 const hiddenId = document.getElementById('cpeVendorId');
@@ -653,9 +694,8 @@
                 }
             })();
 
-            // Product alias add: vendor scoped
             (function () {
-                const vendorId = /*[[${vendorId}]]*/ null; // thymeleaf inline
+                const vendorId = /*[[${vendorId}]]*/ null;
                 const input = document.getElementById('productSearchInput');
                 const hiddenId = document.getElementById('cpeProductId');
                 const hint = document.getElementById('productSelectedHint');
@@ -701,9 +741,6 @@
                 }
             })();
 
-            // =========================
-            // Toggle AJAX (root fix: no redirect, no scroll jitter)
-            // =========================
             function toggleStatusString(s) {
                 const x = (s || '').trim().toUpperCase();
                 return x === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
@@ -716,10 +753,12 @@
                 if (textEl) textEl.textContent = status;
 
                 btn.classList.remove('alias-status--active', 'alias-status--inactive');
-                if (status === 'ACTIVE') btn.classList.add('alias-status--active');
-                else btn.classList.add('alias-status--inactive');
+                if (status === 'ACTIVE') {
+                    btn.classList.add('alias-status--active');
+                } else {
+                    btn.classList.add('alias-status--inactive');
+                }
 
-                const aria = btn.getAttribute('aria-label') || '';
                 btn.setAttribute('aria-label', `Toggle status (current=${status})`);
             }
 
@@ -763,7 +802,9 @@
                 try {
                     const fd = new FormData(form);
                     const body = new URLSearchParams();
-                    for (const [k, v] of fd.entries()) body.append(k, String(v));
+                    for (const [k, v] of fd.entries()) {
+                        body.append(k, String(v));
+                    }
 
                     const res = await fetch(form.action, {
                         method: 'POST',
@@ -788,7 +829,6 @@
                     form.submit();
                 }
             }, true);
-
         })();
     </script>
 

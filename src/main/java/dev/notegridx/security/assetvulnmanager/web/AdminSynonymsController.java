@@ -49,6 +49,9 @@ public class AdminSynonymsController {
         this.synonymService = synonymService;
     }
 
+    public record VendorOption(Long id, String label) {
+    }
+
     // =========================================================
     // Workspace (single canonical URL)
     // =========================================================
@@ -82,6 +85,14 @@ public class AdminSynonymsController {
                         .filter(Objects::nonNull)
                         .collect(Collectors.toSet())
         );
+
+        // Workspace selector options:
+        // only canonical vendors that already have at least one vendor alias.
+        List<Long> workspaceVendorIds = vendorAliasRepo.findDistinctCanonicalVendorIds();
+        Map<Long, String> workspaceVendorLabelMap = loadVendorLabels(new LinkedHashSet<>(workspaceVendorIds));
+        List<VendorOption> workspaceVendors = workspaceVendorIds.stream()
+                .map(id -> new VendorOption(id, workspaceVendorLabelMap.getOrDefault(id, "vendorId=" + id)))
+                .toList();
 
         // selected vendor label (workspace header)
         String selectedVendorLabel = null;
@@ -118,6 +129,8 @@ public class AdminSynonymsController {
         model.addAttribute("tab", safeTab);
         model.addAttribute("vendorId", vendorId);
         model.addAttribute("selectedVendorLabel", selectedVendorLabel);
+
+        model.addAttribute("workspaceVendors", workspaceVendors);
 
         model.addAttribute("rows", rows);
         model.addAttribute("vendorLabels", vendorLabels);

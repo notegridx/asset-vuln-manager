@@ -23,4 +23,12 @@ public interface CpeVendorAliasRepository extends JpaRepository<CpeVendorAlias, 
            order by a.id desc
            """)
     List<CpeVendorAlias> search(@Param("q") String q, @Param("status") String status, Pageable pageable);
+
+    @Query("""
+           select distinct a.cpeVendorId
+           from CpeVendorAlias a
+           where a.cpeVendorId is not null
+           order by a.cpeVendorId
+           """)
+    List<Long> findDistinctCanonicalVendorIds();
 }
