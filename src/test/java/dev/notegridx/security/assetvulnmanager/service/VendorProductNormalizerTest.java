@@ -1,19 +1,37 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
+import dev.notegridx.security.assetvulnmanager.repository.SystemSettingRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class VendorProductNormalizerTest {
 
-    private final VendorProductNormalizer normalizer = new VendorProductNormalizer();
+    private SystemSettingRepository systemSettingRepository;
+    private VendorProductNormalizer normalizer;
+
+    @BeforeEach
+    void setUp() {
+        systemSettingRepository = mock(SystemSettingRepository.class);
+
+        // Default: no settings stored → use built-in normalization behavior
+        when(systemSettingRepository.findById(any()))
+                .thenReturn(Optional.empty());
+
+        normalizer = new VendorProductNormalizer(systemSettingRepository);
+    }
 
     @Test
     void normalizeVendor_stripsCommonCompanySuffix() {
         assertThat(normalizer.normalizeVendor("Microsoft Corporation"))
                 .isEqualTo("microsoft");
 
-        // 現行実装では "Inc." の "." が残る
         assertThat(normalizer.normalizeVendor("Adobe Inc."))
                 .isEqualTo("adobe .");
     }

@@ -109,7 +109,7 @@ class AdminInventoryReadServiceTest {
         when(unresolvedMappingRepository.findAll()).thenReturn(List.of(mapping1, mapping2));
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("NEW", null, null, true, "1", null);
+                service.findUnresolvedMappings("NEW", null, null, null, "1", null);
 
         assertThat(result.status()).isEqualTo("NEW");
         assertThat(result.activeOnly()).isFalse();

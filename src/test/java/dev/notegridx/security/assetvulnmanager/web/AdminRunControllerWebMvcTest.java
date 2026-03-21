@@ -37,7 +37,7 @@ class AdminRunControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/runs"))
                 .andExpect(model().attributeExists("runs"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("No admin runs yet.")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("No admin runs found for the current filters.")));
 
         verify(adminRunReadService).findRecentRuns(200);
     }
