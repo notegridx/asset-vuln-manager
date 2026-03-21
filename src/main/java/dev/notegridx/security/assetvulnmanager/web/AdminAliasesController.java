@@ -108,6 +108,26 @@ public class AdminAliasesController {
         return safeRedirectOrDefault(redirect, "/admin/synonyms/vendors");
     }
 
+    @PostMapping("/admin/aliases/delete-all")
+    public String deleteAllAliases(
+            @RequestParam(name = "redirect", required = false) String redirect,
+            RedirectAttributes ra
+    ) {
+        long vendorAliasCount = vendorAliasRepo.count();
+        long productAliasCount = productAliasRepo.count();
+
+        productAliasRepo.deleteAll();
+        vendorAliasRepo.deleteAll();
+        synonymService.clearCaches();
+
+        ra.addFlashAttribute(
+                "message",
+                "Deleted all aliases. vendorAliases=" + vendorAliasCount + ", productAliases=" + productAliasCount
+        );
+
+        return safeRedirectOrDefault(redirect, "/admin/synonyms/workspace");
+    }
+
     // ====== keep your existing helpers (normalize / safeRedirectOrDefault) ======
     private static String normalize(String s) {
         if (s == null) return null;

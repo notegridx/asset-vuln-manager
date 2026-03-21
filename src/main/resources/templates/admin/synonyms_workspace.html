@@ -154,13 +154,13 @@
         }
 
         .workspace-vendor-card {
-        padding: 12px;
-        margin: 12px 0;
+            padding: 12px;
+            margin: 12px 0;
         }
 
         .workspace-vendor-select {
-        width: 100%;
-        max-width: 360px;
+            width: 100%;
+            max-width: 360px;
         }
     </style>
 
@@ -186,7 +186,19 @@
                     Product Aliases
                 </a>
             </div>
+
+            <form th:action="@{/admin/aliases/delete-all}"
+                  method="post"
+                  onsubmit="return confirm('Delete all vendor and product aliases? This cannot be undone.');"
+                  style="margin:0;">
+                <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
+                <button class="btn btn-ghost" type="submit">Delete All Aliases</button>
+            </form>
         </div>
+    </div>
+
+    <div class="card" th:if="${message}" style="padding:10px 12px; margin:12px 0;">
+        <span th:text="${message}">Done.</span>
     </div>
 
     <!-- Vendor selected: compact context bar -->
@@ -260,10 +272,10 @@
 
                     <!-- Alias input -->
                     <div style="display:flex; flex-direction:column; gap:6px;">
-                    <input class="input"
-                           name="aliasNorm"
-                           placeholder="Alias name"
-                           required>
+                        <input class="input"
+                               name="aliasNorm"
+                               placeholder="Alias name"
+                               required>
                     </div>
 
                     <!-- Canonical vendor select -->
