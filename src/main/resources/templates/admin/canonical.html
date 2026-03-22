@@ -415,6 +415,55 @@
         </div>
     </div>
 
+    <div th:if="${stats != null}" class="card canon-card">
+        <div class="actions" style="margin:0; align-items:flex-end;">
+            <h2 style="margin:0;">Stats</h2>
+            <div class="muted canon-help">
+                Dictionary stats are counted <b>only</b> for <b>Not Linked</b> rows.
+            </div>
+        </div>
+
+        <div style="overflow-x:auto; margin-top:6px;">
+            <table class="stats-table" style="width:100%; border-collapse:collapse; font-size:12.5px; line-height:1.35;">
+                <tbody>
+                <tr style="white-space:nowrap;">
+                    <td class="muted">Total</td>
+                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.total}">0</td>
+
+                    <td class="muted">Fully Linked</td>
+                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.fullyLinkedSql}">0</td>
+
+                    <td class="muted">Vendor Only</td>
+                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.vendorOnlyLinkedSql}">0</td>
+
+                    <td class="muted">Not Linked</td>
+                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.notLinkedSql}">0</td>
+
+                    <td class="muted">Linked Valid</td>
+                    <td class="mono" style="padding:4px 0 4px 6px;" th:text="${stats.linkedValid}">0</td>
+                </tr>
+
+                <tr style="white-space:nowrap; border-top:1px solid var(--line);">
+                    <td class="muted">Linked Stale</td>
+                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.linkedStale}">0</td>
+
+                    <td class="muted">Fully Resolvable</td>
+                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.fullyResolvable}">0</td>
+
+                    <td class="muted">Vendor Resolvable</td>
+                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.vendorResolvableOnly}">0</td>
+
+                    <td class="muted">Unresolvable</td>
+                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.unresolvable}">0</td>
+
+                    <td class="muted">Needs Norm</td>
+                    <td class="mono" style="padding:6px 0 4px 6px;" th:text="${stats.needsNormalization}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <div class="card canon-card">
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Filters</h2>
@@ -485,55 +534,6 @@
                 </div>
             </div>
         </form>
-    </div>
-
-    <div th:if="${stats != null}" class="card canon-card">
-        <div class="actions" style="margin:0; align-items:flex-end;">
-            <h2 style="margin:0;">Stats</h2>
-            <div class="muted canon-help">
-                Dictionary stats are counted <b>only</b> for <b>Not Linked</b> rows.
-            </div>
-        </div>
-
-        <div style="overflow-x:auto; margin-top:6px;">
-            <table class="stats-table" style="width:100%; border-collapse:collapse; font-size:12.5px; line-height:1.35;">
-                <tbody>
-                <tr style="white-space:nowrap;">
-                    <td class="muted">Total</td>
-                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.total}">0</td>
-
-                    <td class="muted">Fully Linked</td>
-                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.fullyLinkedSql}">0</td>
-
-                    <td class="muted">Vendor Only</td>
-                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.vendorOnlyLinkedSql}">0</td>
-
-                    <td class="muted">Not Linked</td>
-                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.notLinkedSql}">0</td>
-
-                    <td class="muted">Linked Valid</td>
-                    <td class="mono" style="padding:4px 0 4px 6px;" th:text="${stats.linkedValid}">0</td>
-                </tr>
-
-                <tr style="white-space:nowrap; border-top:1px solid var(--line);">
-                    <td class="muted">Linked Stale</td>
-                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.linkedStale}">0</td>
-
-                    <td class="muted">Fully Resolvable</td>
-                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.fullyResolvable}">0</td>
-
-                    <td class="muted">Vendor Resolvable</td>
-                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.vendorResolvableOnly}">0</td>
-
-                    <td class="muted">Unresolvable</td>
-                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.unresolvable}">0</td>
-
-                    <td class="muted">Needs Norm</td>
-                    <td class="mono" style="padding:6px 0 4px 6px;" th:text="${stats.needsNormalization}">0</td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
     </div>
 
     <div id="canonical-table-region"
