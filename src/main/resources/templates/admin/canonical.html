@@ -60,9 +60,28 @@
 
     .canon-filter-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr 180px;
-        gap: 12px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px 12px;
         align-items: end;
+    }
+
+    .canon-filter-grid .field {
+        min-width: 0;
+    }
+
+    .canon-filter-grid .field label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.2;
+        text-transform: none;
+    }
+
+    .canon-filter-grid .field input,
+    .canon-filter-grid .field select {
+        width: 100%;
+        min-width: 0;
     }
 
     .canon-asset-cell,
@@ -281,11 +300,9 @@
         .canon-backfill-grid {
             grid-template-columns: repeat(3, minmax(0, 1fr));
         }
-    }
 
-    @media (max-width: 980px) {
         .canon-filter-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
 
@@ -304,6 +321,10 @@
             width: auto;
             max-width: none;
         }
+
+        .canon-filter-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     @media (max-width: 520px) {
@@ -313,11 +334,11 @@
     }
 
     .stats-table tr:hover {
-    background: transparent !important;
+        background: transparent !important;
     }
 
     .stats-table .mono {
-    text-align: right;
+        text-align: right;
     }
 </style>
 
@@ -467,6 +488,9 @@
     <div class="card canon-card">
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Filters</h2>
+            <div class="muted canon-help">
+                Select fields apply on change. Press Enter in Search to apply.
+            </div>
         </div>
 
         <form method="get"
@@ -477,10 +501,10 @@
               hx-push-url="true">
             <input type="hidden" name="page" value="0">
 
-            <div class="grid canon-filter-grid">
+            <div class="canon-filter-grid">
                 <div class="field">
-                    <label>filter</label>
-                    <select name="filter" onchange="this.form.requestSubmit()">
+                    <label for="filter">Status</label>
+                    <select id="filter" name="filter" onchange="this.form.requestSubmit()">
                         <option value="all" th:selected="${filter == 'all'}">All</option>
                         <option value="fullyLinked" th:selected="${filter == 'fullyLinked'}">Fully Linked</option>
                         <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">Vendor Only Linked</option>
@@ -495,8 +519,8 @@
                 </div>
 
                 <div class="field">
-                    <label>asset</label>
-                    <select name="asset" onchange="this.form.requestSubmit()">
+                    <label for="asset">Asset</label>
+                    <select id="asset" name="asset" onchange="this.form.requestSubmit()">
                         <option value="">All Assets</option>
                         <option th:each="a : ${assets}"
                                 th:value="${a.id}"
@@ -508,16 +532,17 @@
                 </div>
 
                 <div class="field">
-                    <label>keyword</label>
-                    <input type="text"
+                    <label for="q">Search</label>
+                    <input id="q"
+                           type="text"
                            name="q"
-                           placeholder="vendor/product/version/normalized..."
+                           placeholder="vendor / product / version / normalized"
                            th:value="${q}">
                 </div>
 
                 <div class="field">
-                    <label>Rows per page</label>
-                    <select name="size" onchange="this.form.requestSubmit()">
+                    <label for="size">Rows</label>
+                    <select id="size" name="size" onchange="this.form.requestSubmit()">
                         <option th:each="opt : ${sizeOptions}"
                                 th:value="${opt}"
                                 th:text="${opt}"
@@ -525,12 +550,6 @@
                             50
                         </option>
                     </select>
-                </div>
-            </div>
-
-            <div class="actions canon-section-top" style="justify-content:flex-start; align-items:center;">
-                <div class="muted canon-help">
-                    Asset Name is a partial match. Press Enter in keyword to apply.
                 </div>
             </div>
         </form>
