@@ -15,10 +15,10 @@ INSERT INTO cpe_products (
       (1022, 121, 'appb21', 'AppB21', 'TEST');
 
 INSERT INTO vulnerabilities (
-    id, source, external_id, title, description,
+    id, source, external_id, description,
     severity, cvss_version, cvss_score
 ) VALUES
-    (2021, 'NVD', 'CVE-2099-0021', 'CASE-21', 'A OR B', 'HIGH', '3.1', 8.0);
+    (2021, 'NVD', 'CVE-2099-0021',  'A OR B', 'HIGH', '3.1', 8.0);
 
 INSERT INTO software_installs (
     id, asset_id, type, source,

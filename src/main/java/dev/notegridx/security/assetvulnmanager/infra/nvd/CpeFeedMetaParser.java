@@ -116,7 +116,7 @@ public class CpeFeedMetaParser {
                     }
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             return null;
         }
 

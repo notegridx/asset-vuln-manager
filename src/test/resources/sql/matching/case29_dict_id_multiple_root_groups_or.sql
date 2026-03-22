@@ -16,10 +16,10 @@ INSERT INTO cpe_products (
       (1041, 129, 'appd29', 'AppD29', 'TEST');
 
 INSERT INTO vulnerabilities (
-    id, source, external_id, title, description,
+    id, source, external_id, description,
     severity, cvss_version, cvss_score
 ) VALUES
-    (2029, 'NVD', 'CVE-2099-0029', 'CASE-29', '(A AND B) OR D', 'CRITICAL', '3.1', 9.4);
+    (2029, 'NVD', 'CVE-2099-0029',  '(A AND B) OR D', 'CRITICAL', '3.1', 9.4);
 
 INSERT INTO software_installs (
     id, asset_id, type, source,

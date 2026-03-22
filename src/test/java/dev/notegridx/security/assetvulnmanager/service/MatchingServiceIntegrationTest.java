@@ -88,7 +88,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0001");
         vuln.applyNvdDetails(
-                "Test vulnerability",
                 "Test description",
                 "3.1",
                 new BigDecimal("9.8"),
@@ -141,7 +140,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0002");
         vuln.applyNvdDetails(
-                "Test vulnerability 2",
                 "Test description 2",
                 "3.1",
                 new BigDecimal("7.5"),
@@ -194,7 +192,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0003");
         vuln.applyNvdDetails(
-                "Test vulnerability 3",
                 "Test description 3",
                 "3.1",
                 new BigDecimal("5.0"),
@@ -247,7 +244,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0004");
         vuln.applyNvdDetails(
-                "Test vulnerability 4",
                 "Test description 4",
                 "3.1",
                 new BigDecimal("8.1"),
@@ -298,7 +294,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0005");
         vuln.applyNvdDetails(
-                "Test vulnerability 5",
                 "Test description 5",
                 "3.1",
                 new BigDecimal("6.5"),
@@ -354,7 +349,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0006");
         vuln.applyNvdDetails(
-                "Test vulnerability 6",
                 "Test description 6",
                 "3.1",
                 new BigDecimal("9.0"),
@@ -424,7 +418,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0007");
         vuln.applyNvdDetails(
-                "Test vulnerability 7",
                 "Test description 7",
                 "3.1",
                 new BigDecimal("8.8"),
@@ -498,7 +491,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0008");
         vuln.applyNvdDetails(
-                "Test vulnerability 8",
                 "Test description 8",
                 "3.1",
                 new BigDecimal("8.8"),
@@ -567,7 +559,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-0009");
         vuln.applyNvdDetails(
-                "Test vulnerability 9",
                 "Test description 9",
                 "3.1",
                 new BigDecimal("8.8"),
@@ -672,11 +663,10 @@ class MatchingServiceIntegrationTest {
         return softwareInstallRepository.save(sw);
     }
 
-    private Vulnerability saveVulnerability(String cveId, String title, BigDecimal score) {
+    private Vulnerability saveVulnerability(String cveId, String description, BigDecimal score) {
         Vulnerability vuln = new Vulnerability("NVD", cveId);
         vuln.applyNvdDetails(
-                title,
-                title + " description",
+                description + " description",
                 "3.1",
                 score,
                 null,
@@ -1294,8 +1284,6 @@ class MatchingServiceIntegrationTest {
                 ""
         );
 
-        // Flat candidate rows intentionally include both installs so that the asset-level
-        // candidate bundle contains extra rows. Criteria should still pick only swA.
         saveAffectedFlat(
                 vuln,
                 "cpe:2.3:a:vendor31:appa31:*:*:*:*:*:*:*:*",
@@ -1366,7 +1354,6 @@ class MatchingServiceIntegrationTest {
 
         Vulnerability vuln = new Vulnerability("NVD", "CVE-2099-9001");
         vuln.applyNvdDetails(
-                "Exact pair canonical preload regression",
                 "Should not match when only same-vendor different-product affected row exists",
                 "3.1",
                 new BigDecimal("7.5"),
@@ -1375,8 +1362,6 @@ class MatchingServiceIntegrationTest {
         );
         vuln = vulnerabilityRepository.save(vuln);
 
-        // Intentionally register only AppB as affected.
-        // With broad vendor-only preload, this could be loaded for AppA as well and cause a false positive.
         affectedCpeRepository.save(new VulnerabilityAffectedCpe(
                 vuln,
                 "cpe:2.3:a:vendor_exact_pair:appb_exact_pair:*:*:*:*:*:*:*:*",

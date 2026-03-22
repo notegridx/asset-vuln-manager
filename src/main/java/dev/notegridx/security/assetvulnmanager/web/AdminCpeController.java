@@ -89,16 +89,24 @@ public class AdminCpeController {
 
     private static String buildUploadSuccessMessage(MultipartFile file, CpeFeedSyncService.SyncResult result) {
         String filename = "uploaded archive";
-        if (file != null && file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank()) {
-            filename = file.getOriginalFilename().trim();
-        } else if (result.sourceFilename() != null && !result.sourceFilename().isBlank()) {
-            filename = result.sourceFilename().trim();
+
+        String originalFilename = (file == null) ? null : file.getOriginalFilename();
+        String sourceFilename = (result == null) ? null : result.sourceFilename();
+
+        if (originalFilename != null && !originalFilename.isBlank()) {
+            filename = originalFilename.trim();
+        } else if (sourceFilename != null && !sourceFilename.isBlank()) {
+            filename = sourceFilename.trim();
         }
 
         StringBuilder sb = new StringBuilder();
         sb.append("Uploaded archive processed and product dictionary updated successfully. ");
         sb.append("File: ").append(filename).append(". ");
-        appendCommonStats(sb, result);
+
+        if (result != null) {
+            appendCommonStats(sb, result);
+        }
+
         return sb.toString().trim();
     }
 

@@ -1,8 +1,8 @@
 INSERT INTO vulnerabilities (
-    id, source, external_id, title, description,
+    id, source, external_id, description,
     severity, cvss_version, cvss_score
 ) VALUES
-    (2011, 'NVD', 'CVE-2099-0011', 'CASE-11', 'cpe_name match', 'CRITICAL', '3.1', 9.8);
+    (2011, 'NVD', 'CVE-2099-0011',  'cpe_name match', 'CRITICAL', '3.1', 9.8);
 
 INSERT INTO software_installs (
     id, asset_id, type, source,

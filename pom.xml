@@ -5,14 +5,16 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.10</version>
+        <version>3.5.12</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>dev.notegridx.security</groupId>
     <artifactId>asset-vuln-manager</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>asset-vuln-manager</name>
-    <description>練習用</description>
+    <description>
+        Open-source asset and vulnerability manager with CPE-based normalization, automated CVE linking, and operational dashboards.
+    </description>
     <url/>
     <licenses>
         <license/>
@@ -28,7 +30,6 @@
     </scm>
     <properties>
         <java.version>21</java.version>
-        <assertj.version>3.27.7</assertj.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -142,6 +143,35 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.8.6.6</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Medium</threshold>
+                    <failOnError>false</failOnError>
+                    <xmlOutput>true</xmlOutput>
+                    <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>12.2.0</version>
+                <configuration>
+                    <format>HTML</format>
+                    <failBuildOnCVSS>9</failBuildOnCVSS>
                 </configuration>
             </plugin>
         </plugins>

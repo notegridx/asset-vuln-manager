@@ -43,13 +43,8 @@ public class CriteriaTreeLoader {
         List<VulnerabilityCriteriaCpe> cpes =
                 cpeRepository.findByVulnerabilityIdOrderByNodeIdAscIdAsc(vulnerabilityId);
 
-        Map<Long, VulnerabilityCriteriaNode> nodeById = new HashMap<>();
         Map<Long, List<VulnerabilityCriteriaNode>> childrenByParentId = new HashMap<>();
         Map<Long, List<VulnerabilityCriteriaCpe>> cpesByNodeId = new HashMap<>();
-
-        for (VulnerabilityCriteriaNode n : nodes) {
-            nodeById.put(n.getId(), n);
-        }
 
         for (VulnerabilityCriteriaNode n : nodes) {
             if (n.getParentId() != null) {

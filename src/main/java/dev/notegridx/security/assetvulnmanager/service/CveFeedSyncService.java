@@ -418,7 +418,6 @@ public class CveFeedSyncService {
 
         ParsedVulnerability out = new ParsedVulnerability();
         out.cveId = cveId;
-        out.title = null;
         out.description = description;
         out.cvssVersion = cvssVersion;
         out.cvssScore = cvssScore;
@@ -788,7 +787,6 @@ public class CveFeedSyncService {
             }
 
             v.applyNvdDetails(
-                    pv.title,
                     pv.description,
                     pv.cvssVersion,
                     pv.cvssScore,
@@ -1277,7 +1275,6 @@ public class CveFeedSyncService {
 
     private static final class ParsedVulnerability {
         String cveId;
-        String title;
         String description;
         String cvssVersion;
         BigDecimal cvssScore;

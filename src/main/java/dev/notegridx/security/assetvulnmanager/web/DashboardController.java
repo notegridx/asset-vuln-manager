@@ -153,7 +153,6 @@ public class DashboardController {
         model.addAttribute("criticalNoCpe", criticalNoCpe);
 
         TopRange tr = TopRange.parse(range);
-        RangeWindow w = computeWindow(tr, from, to);
 
         model.addAttribute("topRange", tr.name());
         model.addAttribute("topRangeLabel", tr.label);

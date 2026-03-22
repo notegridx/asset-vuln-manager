@@ -14,10 +14,10 @@ INSERT INTO cpe_products (
     (1010, 110, 'edge', 'Edge', 'TEST');
 
 INSERT INTO vulnerabilities (
-    id, source, external_id, title, description,
+    id, source, external_id, description,
     severity, cvss_version, cvss_score
 ) VALUES
-    (2018, 'NVD', 'CVE-2099-0018', 'CASE-18', 'edge windows only', 'CRITICAL', '3.1', 9.8);
+    (2018, 'NVD', 'CVE-2099-0018',  'edge windows only', 'CRITICAL', '3.1', 9.8);
 
 INSERT INTO software_installs (
     id, asset_id, type, source,

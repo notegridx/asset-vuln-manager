@@ -105,7 +105,7 @@
             </div>
 
             <div class="muted text-12" th:if="${a.vulnerability != null}"
-                 th:text="${a.vulnerability.title != null && !a.vulnerability.title.isBlank() ? a.vulnerability.title : '(no title)'}">title</div>
+                 th:text="${a.vulnerability.description != null && !a.vulnerability.description.isBlank() ? a.vulnerability.description : '(no description)'}">description</div>
 
             <div class="mt-6">
               <span class="badge"

@@ -406,7 +406,6 @@ CREATE TABLE IF NOT EXISTS vulnerabilities
     source VARCHAR(32) NOT NULL DEFAULT 'NVD',
     external_id VARCHAR(64) NOT NULL,
 
-    title VARCHAR(1024),
     description CLOB,
 
     severity VARCHAR(16),

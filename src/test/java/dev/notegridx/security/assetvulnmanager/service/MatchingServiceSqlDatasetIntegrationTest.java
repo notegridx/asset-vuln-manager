@@ -828,9 +828,9 @@ class MatchingServiceSqlDatasetIntegrationTest {
                     "UPDATE assets SET platform = 'windows', os_name = 'Windows 11' WHERE id = 1",
 
                     "INSERT INTO vulnerabilities (" +
-                            "id, source, external_id, title, description, severity, cvss_version, cvss_score" +
+                            "id, source, external_id, description, severity, cvss_version, cvss_score" +
                             ") VALUES (" +
-                            "2901, 'NVD', 'CVE-2099-9901', 'CASE-NORM-EXACT-PAIR', 'norm exact pair should not false positive', 'HIGH', '3.1', 8.0" +
+                            "2901, 'NVD', 'CVE-2099-9901', 'norm exact pair should not false positive', 'HIGH', '3.1', 8.0" +
                             ")",
 
                     "INSERT INTO software_installs (" +

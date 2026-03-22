@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.MediaType;
@@ -27,9 +29,10 @@ public class NvdCveFeedClient {
     private final String recentMetaPath;
     private final String recentGzPath;
 
-    // ★追加：年次パターン
     private final String yearMetaPathPattern;
     private final String yearGzPathPattern;
+
+    private static final Logger log = LoggerFactory.getLogger(NvdCveFeedClient.class);
 
     public NvdCveFeedClient(
             WebClient.Builder builder,
@@ -113,9 +116,14 @@ public class NvdCveFeedClient {
             return tmp;
 
         } catch (Exception e) {
-            try { Files.deleteIfExists(tmp); } catch (Exception ignore) {}
-            if (e instanceof IOException io) throw io;
-            throw new IOException("Failed to download json.gz. kind=" + kind + " year=" + year + " err=" + e.getMessage(), e);
+            safeDelete(tmp);
+            if (e instanceof IOException io) {
+                throw io;
+            }
+            throw new IOException(
+                    "Failed to download json.gz. kind=" + kind + " year=" + year + " err=" + e.getMessage(),
+                    e
+            );
         }
     }
 
@@ -140,5 +148,16 @@ public class NvdCveFeedClient {
         // 雑に防御（必要なら範囲は後で調整）
         if (year < 1999 || year > 2100) throw new IOException("invalid year=" + year);
         return year;
+    }
+
+    private static void safeDelete(Path path) {
+        if (path == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ex) {
+            log.warn("Failed to delete temp file. path={}, err={}", path, ex.getMessage());
+        }
     }
 }

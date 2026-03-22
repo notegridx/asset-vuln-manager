@@ -168,7 +168,6 @@ public class VendorProductNormalizer {
     // ------------------------------------------------------------
 
     private boolean isEnabled(String key, boolean defaultValue) {
-        String fallback = String.valueOf(defaultValue);
         return systemSettingRepository.findById(key)
                 .map(SystemSetting::getSettingValue)
                 .map(v -> "true".equalsIgnoreCase(v))

@@ -94,7 +94,6 @@ public class NvdImportService {
 			LocalDateTime lastModifiedAt = parseNvdDateTime(item.cve().lastModified());
 
 			v.applyNvdDetails(
-					null,
 					desc,
 					cvss.version(),
 					cvss.score(),

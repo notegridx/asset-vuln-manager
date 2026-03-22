@@ -14,10 +14,10 @@ INSERT INTO cpe_products (
     (1020, 120, 'firefox', 'Firefox', 'TEST');
 
 INSERT INTO vulnerabilities (
-    id, source, external_id, title, description,
+    id, source, external_id, description,
     severity, cvss_version, cvss_score
 ) VALUES
-    (2020, 'NVD', 'CVE-2099-0020', 'CASE-20', 'firefox iphone only', 'HIGH', '3.1', 8.1);
+    (2020, 'NVD', 'CVE-2099-0020',  'firefox iphone only', 'HIGH', '3.1', 8.1);
 
 INSERT INTO software_installs (
     id, asset_id, type, source,

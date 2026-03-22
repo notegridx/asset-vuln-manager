@@ -311,6 +311,14 @@
             grid-template-columns: 1fr;
         }
     }
+
+    .stats-table tr:hover {
+    background: transparent !important;
+    }
+
+    .stats-table .mono {
+    text-align: right;
+    }
 </style>
 
 <body th:replace="~{layout/base :: layout('Review Product Mapping', 'canonical', ~{::main})}">
@@ -320,8 +328,7 @@
         <div class="page-header__left">
             <h1>Review Product Mapping</h1>
             <div class="muted mt-6">
-                Inspect SQL link completeness, mapping quality, and dictionary resolution.
-                <b>Dictionary resolution stats are counted only for not linked rows.</b>
+                Check linking status and find unresolved or partially matched entries.
             </div>
         </div>
     </div>
@@ -350,48 +357,31 @@
             Detailed result is aligned with console log and admin run result_json.
         </div>
 
-        <div class="canon-backfill-grid">
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">scanned</div>
-                <div class="canon-backfill-value mono" th:text="${backfillResult.scanned}">0</div>
+        <div class="canon-backfill-grid"
+             style="display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12.5px; line-height:1.3;">
+
+            <div><span class="muted">scanned</span> <span class="mono" th:text="${backfillResult.scanned}">0</span></div>
+
+            <div><span class="muted">fullyLinked</span> <span class="mono" th:text="${backfillResult.fullyLinked}">0</span></div>
+
+            <div><span class="muted">vendorOnly</span> <span class="mono" th:text="${backfillResult.vendorOnly}">0</span></div>
+
+            <div><span class="muted">pureMiss</span> <span class="mono" th:text="${backfillResult.pureMiss}">0</span></div>
+
+            <div><span class="muted">linkedTotal</span> <span class="mono" th:text="${backfillResult.linkedTotal}">0</span></div>
+
+            <div><span class="muted">unresolvedTotal</span> <span class="mono" th:text="${backfillResult.unresolvedTotal}">0</span></div>
+
+            <div><span class="muted">elapsedMs</span> <span class="mono" th:text="${backfillResult.elapsedMs}">0</span></div>
+
+            <div><span class="muted">elapsedSec</span> <span class="mono" th:text="${backfillResult.elapsedSec}">0</span></div>
+
+            <div><span class="muted">rowsPerSec</span> <span class="mono" th:text="${backfillResult.rowsPerSec}">0</span></div>
+
+            <div><span class="muted">relink</span>
+                <span class="mono" th:text="${backfillResult.forceRebuild} ? 'true' : 'false'">false</span>
             </div>
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">fullyLinked</div>
-                <div class="canon-backfill-value mono" th:text="${backfillResult.fullyLinked}">0</div>
-            </div>
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">vendorOnly</div>
-                <div class="canon-backfill-value mono" th:text="${backfillResult.vendorOnly}">0</div>
-            </div>
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">pureMiss</div>
-                <div class="canon-backfill-value mono" th:text="${backfillResult.pureMiss}">0</div>
-            </div>
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">linkedTotal</div>
-                <div class="canon-backfill-value mono" th:text="${backfillResult.linkedTotal}">0</div>
-            </div>
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">unresolvedTotal</div>
-                <div class="canon-backfill-value mono" th:text="${backfillResult.unresolvedTotal}">0</div>
-            </div>
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">elapsedMs</div>
-                <div class="canon-backfill-value mono" th:text="${backfillResult.elapsedMs}">0</div>
-            </div>
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">elapsedSec</div>
-                <div class="canon-backfill-value mono" th:text="${backfillResult.elapsedSec}">0</div>
-            </div>
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">rowsPerSec</div>
-                <div class="canon-backfill-value mono" th:text="${backfillResult.rowsPerSec}">0</div>
-            </div>
-            <div class="canon-backfill-item">
-                <div class="canon-backfill-label">relink</div>
-                <div class="canon-backfill-value mono"
-                     th:text="${backfillResult.forceRebuild} ? 'true' : 'false'">false</div>
-            </div>
+
         </div>
     </div>
 
@@ -428,11 +418,6 @@
     <div class="card canon-card">
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Filters</h2>
-            <div class="muted canon-help">
-                Review by SQL link: <b>fullyLinked</b> / <b>vendorOnlyLinked</b> / <b>notLinked</b>,
-                by quality: <b>linkedValid</b> / <b>linkedStale</b>,
-                or (not linked only) by dictionary: <b>fullyResolvable</b> / <b>vendorResolvableOnly</b> / <b>unresolvable</b>.
-            </div>
         </div>
 
         <form method="get"
@@ -446,23 +431,23 @@
             <div class="grid canon-filter-grid">
                 <div class="field">
                     <label>filter</label>
-                    <select name="filter">
-                        <option value="all" th:selected="${filter == 'all'}">all</option>
-                        <option value="fullyLinked" th:selected="${filter == 'fullyLinked'}">fullyLinked</option>
-                        <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">vendorOnlyLinked</option>
-                        <option value="notLinked" th:selected="${filter == 'notLinked'}">notLinked</option>
-                        <option value="linkedValid" th:selected="${filter == 'linkedValid'}">linkedValid</option>
-                        <option value="linkedStale" th:selected="${filter == 'linkedStale'}">linkedStale</option>
-                        <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">fullyResolvable</option>
-                        <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">vendorResolvableOnly</option>
-                        <option value="unresolvable" th:selected="${filter == 'unresolvable'}">unresolvable</option>
-                        <option value="needsNormalization" th:selected="${filter == 'needsNormalization'}">needsNormalization</option>
+                    <select name="filter" onchange="this.form.requestSubmit()">
+                        <option value="all" th:selected="${filter == 'all'}">All</option>
+                        <option value="fullyLinked" th:selected="${filter == 'fullyLinked'}">Fully Linked</option>
+                        <option value="vendorOnlyLinked" th:selected="${filter == 'vendorOnlyLinked'}">Vendor Only Linked</option>
+                        <option value="notLinked" th:selected="${filter == 'notLinked'}">Not Linked</option>
+                        <option value="linkedValid" th:selected="${filter == 'linkedValid'}">Linked (Valid)</option>
+                        <option value="linkedStale" th:selected="${filter == 'linkedStale'}">Linked (Stale)</option>
+                        <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">Fully Resolvable</option>
+                        <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">Vendor Resolvable Only</option>
+                        <option value="unresolvable" th:selected="${filter == 'unresolvable'}">Unresolvable</option>
+                        <option value="needsNormalization" th:selected="${filter == 'needsNormalization'}">Needs Normalization</option>
                     </select>
                 </div>
 
                 <div class="field">
                     <label>asset</label>
-                    <select name="asset">
+                    <select name="asset" onchange="this.form.requestSubmit()">
                         <option value="">All Assets</option>
                         <option th:each="a : ${assets}"
                                 th:value="${a.id}"
@@ -483,7 +468,7 @@
 
                 <div class="field">
                     <label>Rows per page</label>
-                    <select name="size">
+                    <select name="size" onchange="this.form.requestSubmit()">
                         <option th:each="opt : ${sizeOptions}"
                                 th:value="${opt}"
                                 th:text="${opt}"
@@ -494,17 +479,9 @@
                 </div>
             </div>
 
-            <div class="actions canon-section-top" style="justify-content:space-between; align-items:center;">
+            <div class="actions canon-section-top" style="justify-content:flex-start; align-items:center;">
                 <div class="muted canon-help">
-                    Asset Name is a partial match. Default is 50 rows.
-                </div>
-                <div class="actions" style="margin:0;">
-                    <button class="btn btn-primary" type="submit">Apply</button>
-                    <a class="btn"
-                       th:href="@{/admin/canonical}"
-                       th:attr="hx-get=@{/admin/canonical/table},hx-target='#canonical-table-region',hx-push-url='true'">
-                        Reset
-                    </a>
+                    Asset Name is a partial match. Press Enter in keyword to apply.
                 </div>
             </div>
         </form>
@@ -514,125 +491,53 @@
         <div class="actions" style="margin:0; align-items:flex-end;">
             <h2 style="margin:0;">Stats</h2>
             <div class="muted canon-help">
-                Dictionary stats are counted <b>only</b> for <b>notLinked</b> rows.
+                Dictionary stats are counted <b>only</b> for <b>Not Linked</b> rows.
             </div>
         </div>
 
-        <div class="canon-stats-grid">
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'all' or filter == 'all'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='all', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='all', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">total</div>
-                <div class="canon-stat-value" th:text="${stats.total}">0</div>
-                <div class="canon-stat-tooltip">Rows currently loaded across all software rows.</div>
-            </a>
+        <div style="overflow-x:auto; margin-top:6px;">
+            <table class="stats-table" style="width:100%; border-collapse:collapse; font-size:12.5px; line-height:1.35;">
+                <tbody>
+                <tr style="white-space:nowrap;">
+                    <td class="muted">Total</td>
+                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.total}">0</td>
 
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'fullyLinked' or selectedFilterParam == 'fullyLinkedSql' or filter == 'fullyLinked'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='fullyLinkedSql', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='fullyLinkedSql', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">fullyLinkedSql</div>
-                <div class="canon-stat-value" th:text="${stats.fullyLinkedSql}">0</div>
-                <div class="canon-stat-tooltip">Both <code>cpe_vendor_id</code> and <code>cpe_product_id</code> are set.</div>
-            </a>
+                    <td class="muted">Fully Linked</td>
+                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.fullyLinkedSql}">0</td>
 
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'vendorOnlyLinked' or selectedFilterParam == 'vendorOnlyLinkedSql' or filter == 'vendorOnlyLinked'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='vendorOnlyLinkedSql', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='vendorOnlyLinkedSql', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">vendorOnlyLinkedSql</div>
-                <div class="canon-stat-value" th:text="${stats.vendorOnlyLinkedSql}">0</div>
-                <div class="canon-stat-tooltip"><code>cpe_vendor_id</code> is set but <code>cpe_product_id</code> is null.</div>
-            </a>
+                    <td class="muted">Vendor Only</td>
+                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.vendorOnlyLinkedSql}">0</td>
 
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'notLinked' or selectedFilterParam == 'notLinkedSql' or filter == 'notLinked'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='notLinkedSql', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='notLinkedSql', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">notLinkedSql</div>
-                <div class="canon-stat-value" th:text="${stats.notLinkedSql}">0</div>
-                <div class="canon-stat-tooltip">Neither <code>cpe_vendor_id</code> nor <code>cpe_product_id</code> is set.</div>
-            </a>
+                    <td class="muted">Not Linked</td>
+                    <td class="mono" style="padding:4px 14px 4px 6px;" th:text="${stats.notLinkedSql}">0</td>
 
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'linkedValid' or filter == 'linkedValid'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='linkedValid', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='linkedValid', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">linkedValid</div>
-                <div class="canon-stat-value" th:text="${stats.linkedValid}">0</div>
-                <div class="canon-stat-tooltip">Fully linked and IDs are valid. Referenced dictionary rows exist.</div>
-            </a>
+                    <td class="muted">Linked Valid</td>
+                    <td class="mono" style="padding:4px 0 4px 6px;" th:text="${stats.linkedValid}">0</td>
+                </tr>
 
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'linkedStale' or filter == 'linkedStale'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='linkedStale', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='linkedStale', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">linkedStale</div>
-                <div class="canon-stat-value" th:text="${stats.linkedStale}">0</div>
-                <div class="canon-stat-tooltip">Fully linked but referenced dictionary rows are missing.</div>
-            </a>
+                <tr style="white-space:nowrap; border-top:1px solid var(--line);">
+                    <td class="muted">Linked Stale</td>
+                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.linkedStale}">0</td>
 
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'fullyResolvable' or filter == 'fullyResolvable'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='fullyResolvable', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='fullyResolvable', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">fullyResolvable</div>
-                <div class="canon-stat-value" th:text="${stats.fullyResolvable}">0</div>
-                <div class="canon-stat-tooltip"><b>(not linked only)</b> Dictionary can resolve both vendor and product.</div>
-            </a>
+                    <td class="muted">Fully Resolvable</td>
+                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.fullyResolvable}">0</td>
 
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'vendorResolvableOnly' or filter == 'vendorResolvableOnly'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='vendorResolvableOnly', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='vendorResolvableOnly', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">vendorResolvableOnly</div>
-                <div class="canon-stat-value" th:text="${stats.vendorResolvableOnly}">0</div>
-                <div class="canon-stat-tooltip"><b>(not linked only)</b> Vendor is resolvable, but product is not.</div>
-            </a>
+                    <td class="muted">Vendor Resolvable</td>
+                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.vendorResolvableOnly}">0</td>
 
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'unresolvable' or filter == 'unresolvable'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='unresolvable', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='unresolvable', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">unresolvable</div>
-                <div class="canon-stat-value" th:text="${stats.unresolvable}">0</div>
-                <div class="canon-stat-tooltip"><b>(not linked only)</b> Neither vendor nor product can be resolved.</div>
-            </a>
+                    <td class="muted">Unresolvable</td>
+                    <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.unresolvable}">0</td>
 
-            <a class="canon-stat-item"
-               th:classappend="${selectedFilterParam == 'needsNormalization' or filter == 'needsNormalization'} ? ' is-active' : ''"
-               th:href="@{/admin/canonical(asset=${asset}, filter='needsNormalization', q=${q}, page=0, size=${size})}"
-               th:attr="hx-get=@{/admin/canonical/table(asset=${asset}, filter='needsNormalization', q=${q}, page=0, size=${size})}"
-               hx-target="#canonical-table-region"
-               hx-push-url="true">
-                <div class="canon-stat-label">needsNormalization</div>
-                <div class="canon-stat-value" th:text="${stats.needsNormalization}">0</div>
-                <div class="canon-stat-tooltip">Row has not been normalized, or normalized fields are blank.</div>
-            </a>
+                    <td class="muted">Needs Norm</td>
+                    <td class="mono" style="padding:6px 0 4px 6px;" th:text="${stats.needsNormalization}">0</td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
     <div id="canonical-table-region"
-         th:replace="~{admin/fragments/canonical_table :: canonicalTable}">
+         th:insert="~{admin/fragments/canonical_table :: canonicalTable}">
     </div>
 
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>

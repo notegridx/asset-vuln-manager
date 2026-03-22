@@ -298,10 +298,15 @@ public class SoftwareDictionaryValidator {
 
             double ratio = overlap / (double) Math.max(tokens.size(), ct.size());
 
-            if (overlap > bestOverlap
-                    || (overlap == bestOverlap && ratio > bestRatio)
-                    || (overlap == bestOverlap && ratio == bestRatio
-                    && best != null && candNorm.length() < best.getNameNorm().length())) {
+            boolean betterOverlap = overlap > bestOverlap;
+            boolean betterRatio = overlap == bestOverlap && ratio > bestRatio;
+            boolean sameRatioShorterName =
+                    overlap == bestOverlap
+                            && Double.compare(ratio, bestRatio) == 0
+                            && best != null
+                            && candNorm.length() < best.getNameNorm().length();
+
+            if (betterOverlap || betterRatio || sameRatioShorterName) {
                 best = p;
                 bestOverlap = overlap;
                 bestRatio = ratio;

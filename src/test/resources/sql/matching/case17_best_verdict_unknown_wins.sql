@@ -1,8 +1,8 @@
 INSERT INTO vulnerabilities (
-    id, source, external_id, title, description,
+    id, source, external_id, description,
     severity, cvss_version, cvss_score
 ) VALUES
-    (2017, 'NVD', 'CVE-2099-0017', 'CASE-17', 'best verdict UNKNOWN wins', 'MEDIUM', '3.1', 6.4);
+    (2017, 'NVD', 'CVE-2099-0017',  'best verdict UNKNOWN wins', 'MEDIUM', '3.1', 6.4);
 
 INSERT INTO software_installs (
     id, asset_id, type, source,

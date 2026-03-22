@@ -299,16 +299,6 @@
         if (busyMessage) {
           busyMessage.style.display = '';
         }
-
-        const controls = form.querySelectorAll('input, select, textarea, button');
-        controls.forEach(function (el) {
-          if (el === submitButton) return;
-
-          // Keep hidden inputs enabled so CSRF token is still submitted.
-          if (el.tagName === 'INPUT' && el.type === 'hidden') return;
-
-          el.disabled = true;
-        });
       }
 
       kindEl.addEventListener('change', toggleYear);
