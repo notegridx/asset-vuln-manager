@@ -95,7 +95,7 @@
                     <th style="width:10%;">Enabled</th>
                     <th style="width:10%;">Roles</th>
                     <th style="width:15%;">Created</th>
-                    <th style="width:35%;">Actions</th>
+                    <th style="width:45%;">Actions</th>
                 </tr>
                 </thead>
                 <tbody id="users-table-body">
@@ -135,55 +135,61 @@
                     </td>
 
                     <td>
-                        <div class="actions" style="margin:0; gap:10px; align-items:flex-start; flex-direction:column;">
+                        <div style="display:flex; flex-direction:column; gap:12px;">
 
-                            <div class="js-account-state" style="display:flex; gap:6px; flex-wrap:wrap;">
-                                <span class="pill"
-                                      th:if="${!u.accountNonLocked}">
-                                    Locked
-                                </span>
-                                <span class="pill"
-                                      th:if="${u.passwordChangeRequired}">
-                                    Password change required
-                                </span>
-                                <span class="pill"
-                                      th:if="${u.failedLoginCount != null and u.failedLoginCount > 0}"
-                                      th:text="'Failed: ' + ${u.failedLoginCount}">
-                                    Failed: 0
-                                </span>
+                            <div class="card" style="padding:10px;">
+                                <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                                    <div style="min-width:180px; flex:1 1 180px;">
+                                        <div class="muted" style="font-size:12px; margin-bottom:6px;">Account</div>
+
+                                        <div class="js-account-state" style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <span class="pill"
+                                                  th:if="${!u.accountNonLocked}">
+                                                Locked
+                                            </span>
+                                            <span class="pill"
+                                                  th:if="${u.passwordChangeRequired}">
+                                                Password change required
+                                            </span>
+                                            <span class="pill"
+                                                  th:if="${u.failedLoginCount != null and u.failedLoginCount > 0}"
+                                                  th:text="'Failed: ' + ${u.failedLoginCount}">
+                                                Failed: 0
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <form class="unlock-form"
+                                          th:action="@{/admin/users/{id}/unlock(id=${u.id})}"
+                                          method="post"
+                                          style="margin:0;">
+                                        <input type="hidden"
+                                               th:if="${_csrf != null}"
+                                               th:name="${_csrf.parameterName}"
+                                               th:value="${_csrf.token}">
+                                        <button type="submit"
+                                                class="btn btn-sm"
+                                                th:disabled="${u.accountNonLocked}">
+                                            Unlock
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
 
-                            <div class="actions" style="margin:0; gap:8px; align-items:center; flex-wrap:wrap;">
-                                <form class="unlock-form"
-                                      th:action="@{/admin/users/{id}/unlock(id=${u.id})}"
+                            <div class="card" style="padding:10px;">
+                                <form class="reset-password-form"
+                                      th:action="@{/admin/users/{id}/reset-password(id=${u.id})}"
                                       method="post"
                                       style="margin:0;">
                                     <input type="hidden"
                                            th:if="${_csrf != null}"
                                            th:name="${_csrf.parameterName}"
                                            th:value="${_csrf.token}">
-                                    <button type="submit"
-                                            class="btn btn-sm"
-                                            th:disabled="${u.accountNonLocked}">
-                                        Unlock
-                                    </button>
-                                </form>
-                            </div>
 
-                            <form class="reset-password-form"
-                                  th:action="@{/admin/users/{id}/reset-password(id=${u.id})}"
-                                  method="post"
-                                  style="width:100%;">
-                                <input type="hidden"
-                                       th:if="${_csrf != null}"
-                                       th:name="${_csrf.parameterName}"
-                                       th:value="${_csrf.token}">
+                                    <div class="muted" style="font-size:12px; margin-bottom:6px;">Reset Password</div>
 
-                                <div class="field" style="margin:0;">
-                                    <label style="font-size:12px;">Reset Password</label>
-
-                                    <div class="form-row" style="margin-top:8px;">
-                                        <div class="field" style="min-width:180px; flex:1 1 180px; margin:0;">
+                                    <div class="form-row" style="margin-top:0;">
+                                        <div class="field" style="min-width:160px; flex:1 1 160px; margin:0;">
                                             <input type="password"
                                                    name="newPassword"
                                                    placeholder="Temporary password"
@@ -191,7 +197,7 @@
                                                    required>
                                         </div>
 
-                                        <div class="field" style="min-width:180px; flex:1 1 180px; margin:0;">
+                                        <div class="field" style="min-width:160px; flex:1 1 160px; margin:0;">
                                             <input type="password"
                                                    name="confirmPassword"
                                                    placeholder="Confirm password"
@@ -199,31 +205,27 @@
                                                    required>
                                         </div>
 
-                                        <div class="field" style="min-width:120px; margin:0;">
+                                        <div class="field" style="min-width:140px; margin:0;">
                                             <button type="submit" class="btn">Reset Password</button>
                                         </div>
                                     </div>
+                                </form>
+                            </div>
 
-                                    <div class="muted" style="font-size:12px; margin-top:6px;">
-                                        Sets a temporary password, clears lock state, and forces password change at next login.
-                                    </div>
-                                </div>
-                            </form>
+                            <div class="card" style="padding:10px;">
+                                <form class="roles-form"
+                                      th:action="@{/admin/users/{id}/roles(id=${u.id})}"
+                                      method="post"
+                                      style="margin:0;">
+                                    <input type="hidden"
+                                           th:if="${_csrf != null}"
+                                           th:name="${_csrf.parameterName}"
+                                           th:value="${_csrf.token}">
 
-                            <form class="roles-form"
-                                  th:action="@{/admin/users/{id}/roles(id=${u.id})}"
-                                  method="post"
-                                  style="width:100%;">
-                                <input type="hidden"
-                                       th:if="${_csrf != null}"
-                                       th:name="${_csrf.parameterName}"
-                                       th:value="${_csrf.token}">
+                                    <div class="muted" style="font-size:12px; margin-bottom:6px;">Roles</div>
 
-                                <div class="field" style="margin:0;">
-                                    <label style="font-size:12px;">Update Roles</label>
-
-                                    <div class="actions" style="margin:0; gap:10px; align-items:center;">
-                                        <div class="card" style="padding:10px; flex:1;">
+                                    <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                                        <div class="card" style="padding:10px; flex:1 1 260px; min-width:220px;">
                                             <label th:each="r : ${roles}"
                                                    style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
                                                 <input type="checkbox"
@@ -236,8 +238,8 @@
 
                                         <button type="submit" class="btn btn-primary">Apply</button>
                                     </div>
-                                </div>
-                            </form>
+                                </form>
+                            </div>
 
                         </div>
                     </td>
@@ -279,24 +281,30 @@
             </td>
 
             <td>
-                <div class="actions" style="margin:0; gap:10px; align-items:flex-start; flex-direction:column;">
+                <div style="display:flex; flex-direction:column; gap:12px;">
 
-                    <div class="js-account-state" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+                    <div class="card" style="padding:10px;">
+                        <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                            <div style="min-width:180px; flex:1 1 180px;">
+                                <div class="muted" style="font-size:12px; margin-bottom:6px;">Account</div>
+                                <div class="js-account-state" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+                            </div>
 
-                    <div class="actions" style="margin:0; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <form class="unlock-form" method="post" style="margin:0;">
-                            <input type="hidden" class="js-csrf-field" name="" value="">
-                            <button type="submit" class="btn btn-sm js-unlock-button" disabled>Unlock</button>
-                        </form>
+                            <form class="unlock-form" method="post" style="margin:0;">
+                                <input type="hidden" class="js-csrf-field" name="" value="">
+                                <button type="submit" class="btn btn-sm js-unlock-button" disabled>Unlock</button>
+                            </form>
+                        </div>
                     </div>
 
-                    <form class="reset-password-form" method="post" style="width:100%;">
-                        <input type="hidden" class="js-csrf-field" name="" value="">
-                        <div class="field" style="margin:0;">
-                            <label style="font-size:12px;">Reset Password</label>
+                    <div class="card" style="padding:10px;">
+                        <form class="reset-password-form" method="post" style="margin:0;">
+                            <input type="hidden" class="js-csrf-field" name="" value="">
 
-                            <div class="form-row" style="margin-top:8px;">
-                                <div class="field" style="min-width:180px; flex:1 1 180px; margin:0;">
+                            <div class="muted" style="font-size:12px; margin-bottom:6px;">Reset Password</div>
+
+                            <div class="form-row" style="margin-top:0;">
+                                <div class="field" style="min-width:160px; flex:1 1 160px; margin:0;">
                                     <input type="password"
                                            name="newPassword"
                                            placeholder="Temporary password"
@@ -304,7 +312,7 @@
                                            required>
                                 </div>
 
-                                <div class="field" style="min-width:180px; flex:1 1 180px; margin:0;">
+                                <div class="field" style="min-width:160px; flex:1 1 160px; margin:0;">
                                     <input type="password"
                                            name="confirmPassword"
                                            placeholder="Confirm password"
@@ -312,28 +320,26 @@
                                            required>
                                 </div>
 
-                                <div class="field" style="min-width:120px; margin:0;">
+                                <div class="field" style="min-width:140px; margin:0;">
                                     <button type="submit" class="btn">Reset Password</button>
                                 </div>
                             </div>
+                        </form>
+                    </div>
 
-                            <div class="muted" style="font-size:12px; margin-top:6px;">
-                                Sets a temporary password, clears lock state, and forces password change at next login.
-                            </div>
-                        </div>
-                    </form>
+                    <div class="card" style="padding:10px;">
+                        <form class="roles-form" method="post" style="margin:0;">
+                            <input type="hidden" class="js-csrf-field" name="" value="">
 
-                    <form class="roles-form" method="post" style="width:100%;">
-                        <input type="hidden" class="js-csrf-field" name="" value="">
-                        <div class="field" style="margin:0;">
-                            <label style="font-size:12px;">Update Roles</label>
+                            <div class="muted" style="font-size:12px; margin-bottom:6px;">Roles</div>
 
-                            <div class="actions" style="margin:0; gap:10px; align-items:center;">
-                                <div class="card js-roles-editor" style="padding:10px; flex:1;"></div>
+                            <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                                <div class="card js-roles-editor" style="padding:10px; flex:1 1 260px; min-width:220px;"></div>
                                 <button type="submit" class="btn btn-primary">Apply</button>
                             </div>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
+
                 </div>
             </td>
         </tr>
