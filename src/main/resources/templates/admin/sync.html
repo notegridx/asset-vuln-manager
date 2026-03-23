@@ -138,6 +138,10 @@
             </div>
         </div>
 
+        <div th:if="${demoMode}" class="muted" style="font-size: 12px; margin-top: 10px; line-height: 1.6;">
+            Read only in demo mode. CVE delta update is disabled.
+        </div>
+
         <div th:if="${error != null}" class="admin-error-box">
             <strong>⚠ Error</strong>
             <span th:text="${error}">CVE delta update is already running.</span>
@@ -147,7 +151,8 @@
             <div class="field">
                 <label>Days back (NVD lastModified window)</label>
                 <input type="number" name="daysBack" min="1" max="120"
-                       th:value="${daysBack != null ? daysBack : 1}">
+                       th:value="${daysBack != null ? daysBack : 1}"
+                       th:disabled="${demoMode}">
                 <div class="muted" style="font-size: 12px;">
                     Fetches CVEs whose <code>lastModified</code> is within (now - daysBack) … now.
                     Smaller values = faster; larger values = more catch-up.
@@ -157,7 +162,8 @@
             <div class="field">
                 <label>Max results (API cap per run)</label>
                 <input type="number" name="maxResults" min="1" max="2000"
-                       th:value="${maxResults != null ? maxResults : 200}">
+                       th:value="${maxResults != null ? maxResults : 200}"
+                       th:disabled="${demoMode}">
                 <div class="muted" style="font-size: 12px;">
                     Limits how many CVE items are fetched from the API in one run.
                     If the window contains more items than this cap, rerun with a smaller window or run multiple times.
@@ -165,7 +171,7 @@
             </div>
 
             <div class="actions" style="margin-top: 14px;">
-                <button type="submit" class="btn btn-primary">Run CVE Delta Update</button>
+                <button type="submit" class="btn btn-primary" th:disabled="${demoMode}">Run CVE Delta Update</button>
             </div>
         </form>
     </div>

@@ -21,6 +21,10 @@
         </div>
     </div>
 
+    <div th:if="${demoMode}" class="card" style="padding:10px 12px; margin:12px 0;">
+        <span>Demo mode: changes are disabled.</span>
+    </div>
+
     <div class="toolbar"
          style="padding:12px; margin:12px 0; display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
 
@@ -31,7 +35,12 @@
         <div class="toolbar__right"
              sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
              style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <a class="btn" th:href="@{/assets/new}">Register new asset</a>
+            <th:block th:if="${!demoMode}">
+                <a class="btn" th:href="@{/assets/new}">Register new asset</a>
+            </th:block>
+            <th:block th:if="${demoMode}">
+                <span class="muted">Read only in demo mode</span>
+            </th:block>
         </div>
     </div>
 
@@ -80,13 +89,19 @@
                 <td>
                     <div sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
                          style="display:flex; gap:8px; align-items:center;">
-                        <a class="btn" th:href="@{/assets/{id}/edit(id=${a.id})}">Edit</a>
+                        <th:block th:if="${!demoMode}">
+                            <a class="btn" th:href="@{/assets/{id}/edit(id=${a.id})}">Edit</a>
 
-                        <form th:action="@{/assets/{id}/delete(id=${a.id})}"
-                              method="post"
-                              onsubmit="return confirm('Delete this asset? This will also delete installed software and related alerts.');">
-                            <button class="btn btn--danger" type="submit">Delete</button>
-                        </form>
+                            <form th:action="@{/assets/{id}/delete(id=${a.id})}"
+                                  method="post"
+                                  onsubmit="return confirm('Delete this asset? This will also delete installed software and related alerts.');">
+                                <button class="btn btn--danger" type="submit">Delete</button>
+                            </form>
+                        </th:block>
+
+                        <th:block th:if="${demoMode}">
+                            <span class="muted">Read only in demo mode</span>
+                        </th:block>
                     </div>
 
                     <span sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>

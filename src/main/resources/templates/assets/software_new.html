@@ -17,6 +17,10 @@
     Add a new software install for this asset.
   </p>
 
+  <div class="muted" th:if="${demoMode}" style="margin:10px 0 14px 0;">
+    Read only in demo mode. Software creation is disabled.
+  </div>
+
   <form th:action="@{/assets/{id}/software(id=${asset.id})}"
         th:object="${softwareInstallForm}"
         method="post">
@@ -29,7 +33,7 @@
 
     <div class="field">
       <label>Type</label>
-      <select th:field="*{type}">
+      <select th:field="*{type}" th:disabled="${demoMode}">
         <option value="">APPLICATION</option>
         <option value="APPLICATION">APPLICATION</option>
         <option value="OPERATING_SYSTEM">OPERATING_SYSTEM</option>
@@ -38,12 +42,12 @@
 
     <div class="field">
       <label>Source</label>
-      <input type="text" th:field="*{source}" placeholder="e.g. MANUAL / JSON_UPLOAD / CSV_UPLOAD">
+      <input type="text" th:field="*{source}" placeholder="e.g. MANUAL / JSON_UPLOAD / CSV_UPLOAD" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Source Type</label>
-      <input type="text" th:field="*{sourceType}" placeholder="e.g. OSQUERY_PROGRAMS / JSON_UPLOAD / WINGET">
+      <input type="text" th:field="*{sourceType}" placeholder="e.g. OSQUERY_PROGRAMS / JSON_UPLOAD / WINGET" th:disabled="${demoMode}">
     </div>
 
     <!-- Hidden canonical selection -->
@@ -56,7 +60,8 @@
              type="text"
              th:field="*{vendor}"
              placeholder="e.g. microsoft"
-             autocomplete="off">
+             autocomplete="off"
+             th:disabled="${demoMode}">
 
       <div id="vendor-suggest-box"
            class="card"
@@ -89,7 +94,8 @@
              type="text"
              th:field="*{product}"
              placeholder="e.g. edge"
-             autocomplete="off">
+             autocomplete="off"
+             th:disabled="${demoMode}">
 
       <div id="product-suggest-box"
            class="card"
@@ -118,103 +124,108 @@
 
     <div class="field">
       <label>Version</label>
-      <input type="text" th:field="*{version}" placeholder="e.g. 120.0.2210.61">
+      <input type="text" th:field="*{version}" placeholder="e.g. 120.0.2210.61" th:disabled="${demoMode}">
       <div class="error" th:if="${#fields.hasErrors('version')}" th:errors="*{version}">Version error</div>
     </div>
 
     <div class="field">
       <label>CPE (cpeName)</label>
-      <input type="text" th:field="*{cpeName}" placeholder="cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*">
+      <input type="text" th:field="*{cpeName}" placeholder="cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*" th:disabled="${demoMode}">
       <div class="error" th:if="${#fields.hasErrors('cpeName')}" th:errors="*{cpeName}">CPE error</div>
     </div>
 
     <div class="field">
       <label>Vendor Raw</label>
-      <input type="text" th:field="*{vendorRaw}" placeholder="raw vendor from inventory source">
+      <input type="text" th:field="*{vendorRaw}" placeholder="raw vendor from inventory source" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Product Raw</label>
-      <input type="text" th:field="*{productRaw}" placeholder="raw product from inventory source">
+      <input type="text" th:field="*{productRaw}" placeholder="raw product from inventory source" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Version Raw</label>
-      <input type="text" th:field="*{versionRaw}" placeholder="raw version from inventory source">
+      <input type="text" th:field="*{versionRaw}" placeholder="raw version from inventory source" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Last Seen At</label>
-      <input type="datetime-local" th:field="*{lastSeenAt}">
+      <input type="datetime-local" th:field="*{lastSeenAt}" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Installed At</label>
-      <input type="datetime-local" th:field="*{installedAt}">
+      <input type="datetime-local" th:field="*{installedAt}" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Install Location</label>
-      <input type="text" th:field="*{installLocation}" placeholder="e.g. C:\Program Files\App">
+      <input type="text" th:field="*{installLocation}" placeholder="e.g. C:\Program Files\App" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Package Identifier</label>
-      <input type="text" th:field="*{packageIdentifier}" placeholder="e.g. com.microsoft.Edge">
+      <input type="text" th:field="*{packageIdentifier}" placeholder="e.g. com.microsoft.Edge" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Architecture</label>
-      <input type="text" th:field="*{arch}" placeholder="e.g. x64 / arm64">
+      <input type="text" th:field="*{arch}" placeholder="e.g. x64 / arm64" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Publisher</label>
-      <input type="text" th:field="*{publisher}" placeholder="e.g. Microsoft Corporation">
+      <input type="text" th:field="*{publisher}" placeholder="e.g. Microsoft Corporation" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Bundle ID</label>
-      <input type="text" th:field="*{bundleId}" placeholder="e.g. com.apple.Safari">
+      <input type="text" th:field="*{bundleId}" placeholder="e.g. com.apple.Safari" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Package Manager</label>
-      <input type="text" th:field="*{packageManager}" placeholder="e.g. winget / brew / apt">
+      <input type="text" th:field="*{packageManager}" placeholder="e.g. winget / brew / apt" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Install Source</label>
-      <input type="text" th:field="*{installSource}" placeholder="e.g. STORE / MSI / PKG">
+      <input type="text" th:field="*{installSource}" placeholder="e.g. STORE / MSI / PKG" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Edition</label>
-      <input type="text" th:field="*{edition}" placeholder="e.g. Professional">
+      <input type="text" th:field="*{edition}" placeholder="e.g. Professional" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Channel</label>
-      <input type="text" th:field="*{channel}" placeholder="e.g. stable / beta / dev">
+      <input type="text" th:field="*{channel}" placeholder="e.g. stable / beta / dev" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>Release</label>
-      <input type="text" th:field="*{release}" placeholder="e.g. 24H2">
+      <input type="text" th:field="*{release}" placeholder="e.g. 24H2" th:disabled="${demoMode}">
     </div>
 
     <div class="field">
       <label>PURL</label>
-      <input type="text" th:field="*{purl}" placeholder="pkg:...">
+      <input type="text" th:field="*{purl}" placeholder="pkg:..." th:disabled="${demoMode}">
     </div>
 
     <div class="actions" style="margin-top:14px;">
       <a class="btn btn-ghost" th:href="@{/assets/{id}(id=${asset.id})}">Cancel</a>
-      <button type="submit" class="btn btn-primary">Create</button>
+      <button type="submit" class="btn btn-primary" th:disabled="${demoMode}">Create</button>
     </div>
 
-    <script>
+    <script th:inline="javascript">
       (function () {
+          const demoMode = /*[[${demoMode}]]*/ false;
+          if (demoMode) {
+              return;
+          }
+
           const MIN_CHARS = 2;
 
           const vendorEl = document.getElementById('vendor');
@@ -455,7 +466,6 @@
               }
           });
 
-          // Initial hint for edit-back / validation error re-render
           if ((cpeVendorIdEl.value || '').trim()) {
               vendorState.textContent = 'Canonical vendor is selected: #' + cpeVendorIdEl.value;
           }

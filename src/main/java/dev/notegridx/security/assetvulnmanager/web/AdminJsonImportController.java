@@ -3,11 +3,6 @@ package dev.notegridx.security.assetvulnmanager.web;
 import java.io.IOException;
 import java.util.List;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
 import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingAsset;
 import dev.notegridx.security.assetvulnmanager.domain.ImportStagingSoftware;
@@ -15,12 +10,18 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareImportMode;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportStagingAssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportStagingSoftwareRepository;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.JsonStagedImportService;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @Controller
 public class AdminJsonImportController {
 
     private final JsonStagedImportService jsonStagedImportService;
+    private final DemoModeService demoModeService;
 
     private final ImportRunRepository importRunRepository;
     private final ImportStagingAssetRepository stagingAssetRepository;
@@ -30,12 +31,14 @@ public class AdminJsonImportController {
             JsonStagedImportService jsonStagedImportService,
             ImportRunRepository importRunRepository,
             ImportStagingAssetRepository stagingAssetRepository,
-            ImportStagingSoftwareRepository stagingSoftwareRepository
+            ImportStagingSoftwareRepository stagingSoftwareRepository,
+            DemoModeService demoModeService
     ) {
         this.jsonStagedImportService = jsonStagedImportService;
         this.importRunRepository = importRunRepository;
         this.stagingAssetRepository = stagingAssetRepository;
         this.stagingSoftwareRepository = stagingSoftwareRepository;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping("/admin/import/json")
@@ -45,6 +48,7 @@ public class AdminJsonImportController {
 
     @PostMapping("/admin/import/json/assets/upload")
     public String uploadAssets(@RequestParam("file") MultipartFile file) throws IOException {
+        demoModeService.assertWritable();
         byte[] bytes = file.getBytes();
         ImportRun run = jsonStagedImportService.stageAssets(file.getOriginalFilename(), bytes);
         return "redirect:/admin/import/json/assets/" + run.getId() + "/preview";
@@ -64,12 +68,14 @@ public class AdminJsonImportController {
 
     @PostMapping("/admin/import/json/assets/{runId}/import")
     public String importAssets(@PathVariable("runId") Long runId) {
+        demoModeService.assertWritable();
         jsonStagedImportService.importAssets(runId);
         return "redirect:/admin/import/json/result/" + runId;
     }
 
     @PostMapping("/admin/import/json/software/upload")
     public String uploadSoftware(@RequestParam("file") MultipartFile file) throws IOException {
+        demoModeService.assertWritable();
         byte[] bytes = file.getBytes();
         ImportRun run = jsonStagedImportService.stageSoftware(file.getOriginalFilename(), bytes);
         return "redirect:/admin/import/json/software/" + run.getId() + "/preview";
@@ -93,6 +99,7 @@ public class AdminJsonImportController {
             @PathVariable("runId") Long runId,
             @RequestParam(name = "mode", defaultValue = "REPLACE_ASSET_SOFTWARE") String mode
     ) {
+        demoModeService.assertWritable();
         jsonStagedImportService.importSoftware(runId, parseMode(mode));
         return "redirect:/admin/import/json/result/" + runId;
     }

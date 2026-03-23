@@ -192,13 +192,21 @@
                   onsubmit="return confirm('Delete all vendor and product aliases? This cannot be undone.');"
                   style="margin:0;">
                 <input type="hidden" name="redirect" th:value="@{'/admin/synonyms/workspace' + ${currentQuery}}">
-                <button class="btn btn-ghost" type="submit">Delete All Aliases</button>
+                <button class="btn btn-ghost" type="submit"
+                        th:disabled="${demoMode}"
+                        th:title="${demoMode ? 'Disabled in demo mode' : null}">
+                    Delete All Aliases
+                </button>
             </form>
         </div>
     </div>
 
     <div class="card" th:if="${message}" style="padding:10px 12px; margin:12px 0;">
         <span th:text="${message}">Done.</span>
+    </div>
+
+    <div class="card" th:if="${demoMode}" style="padding:10px 12px; margin:12px 0;">
+        <span>Demo mode: changes are disabled.</span>
     </div>
 
     <!-- Vendor selected: compact context bar -->
@@ -215,7 +223,8 @@
         <div class="workspace-contextbar__right vendor-select">
             <select id="workspaceVendorSelectInline"
                     class="input workspace-managed-select"
-                    aria-label="Switch managed vendor">
+                    aria-label="Switch managed vendor"
+                    th:disabled="${demoMode}">
                 <option value="">Select vendor...</option>
                 <option th:each="v : ${workspaceVendors}"
                         th:value="${v.id}"
@@ -238,7 +247,8 @@
 
         <select id="workspaceVendorSelectCard"
                 class="input workspace-vendor-select"
-                aria-label="Select managed vendor">
+                aria-label="Select managed vendor"
+                th:disabled="${demoMode}">
             <option value="">Select vendor...</option>
             <option th:each="v : ${workspaceVendors}"
                     th:value="${v.id}"
@@ -275,7 +285,8 @@
                         <input class="input"
                                name="aliasNorm"
                                placeholder="Alias name"
-                               required>
+                               required
+                               th:disabled="${demoMode}">
                     </div>
 
                     <!-- Canonical vendor select -->
@@ -285,7 +296,8 @@
                                type="text"
                                placeholder="Canonical vendor"
                                autocomplete="off"
-                               required>
+                               required
+                               th:disabled="${demoMode}">
 
                         <input id="cpeVendorId" type="hidden" name="cpeVendorId" required>
 
@@ -299,7 +311,11 @@
                 </div>
 
                 <div>
-                    <button class="btn btn-primary" type="submit">Save</button>
+                    <button class="btn btn-primary" type="submit"
+                            th:disabled="${demoMode}"
+                            th:title="${demoMode ? 'Disabled in demo mode' : null}">
+                        Save
+                    </button>
                 </div>
             </form>
 
@@ -356,8 +372,8 @@
                                 <button type="submit"
                                         class="alias-status"
                                         th:classappend="${r.status == 'ACTIVE'} ? ' alias-status--active' : ' alias-status--inactive'"
-                                        th:attr="data-status=${r.status}"
-                                        th:aria-label="${'Toggle status (current=' + r.status + ')'}">
+                                        th:attr="data-status=${r.status},aria-label=${demoMode ? 'Disabled in demo mode' : ('Toggle status (current=' + r.status + ')')}"
+                                        th:disabled="${demoMode}">
                                     <span class="alias-status__dot" aria-hidden="true"></span>
                                     <span class="alias-status__text" th:text="${r.status}">ACTIVE</span>
                                 </button>
@@ -403,7 +419,8 @@
                         <input class="input"
                                name="aliasNorm"
                                placeholder="Alias name"
-                               required>
+                               required
+                               th:disabled="${demoMode}">
 
                         <!-- Canonical product select -->
                         <div style="position:relative; display:flex; flex-direction:column; gap:6px;">
@@ -412,7 +429,8 @@
                                    type="text"
                                    placeholder="Canonical product"
                                    autocomplete="off"
-                                   required>
+                                   required
+                                   th:disabled="${demoMode}">
 
                             <input id="cpeProductId" type="hidden" name="cpeProductId" required>
 
@@ -426,7 +444,11 @@
                     </div>
 
                     <div>
-                        <button class="btn btn-primary" type="submit">Save</button>
+                        <button class="btn btn-primary" type="submit"
+                                th:disabled="${demoMode}"
+                                th:title="${demoMode ? 'Disabled in demo mode' : null}">
+                            Save
+                        </button>
                     </div>
                 </form>
 
@@ -473,8 +495,8 @@
                                     <button type="submit"
                                             class="alias-status"
                                             th:classappend="${r.status == 'ACTIVE'} ? ' alias-status--active' : ' alias-status--inactive'"
-                                            th:attr="data-status=${r.status}"
-                                            th:aria-label="${'Toggle status (current=' + r.status + ')'}">
+                                            th:attr="data-status=${r.status},aria-label=${demoMode ? 'Disabled in demo mode' : ('Toggle status (current=' + r.status + ')')}"
+                                            th:disabled="${demoMode}">
                                         <span class="alias-status__dot" aria-hidden="true"></span>
                                         <span class="alias-status__text" th:text="${r.status}">ACTIVE</span>
                                     </button>
@@ -494,6 +516,8 @@
 
     <script th:inline="javascript">
         (function () {
+            const demoMode = /*[[${demoMode}]]*/ false;
+
             function escapeHtml(s) {
                 return (s ?? '').replace(/[&<>"']/g, (c) => ({
                     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -534,6 +558,7 @@
                 const box = document.getElementById(boxId);
                 const list = document.getElementById(listId);
                 if (!input || !box || !list) return;
+                if (demoMode) return;
 
                 let timer = null;
                 let lastQuery = '';
@@ -625,7 +650,6 @@
                 const next = new URLSearchParams();
                 next.set('vendorId', item.id);
 
-                // Always move into the vendor-scoped work area.
                 next.set('tab', 'products');
 
                 const q = params.get('q');
@@ -644,6 +668,7 @@
             function bindWorkspaceVendorSelect(selectId) {
                 const select = document.getElementById(selectId);
                 if (!select) return;
+                if (demoMode) return;
 
                 select.addEventListener('change', () => {
                     const vendorId = (select.value || '').trim();
@@ -688,7 +713,7 @@
 
                 if (input) input.addEventListener('input', clearSelectionIfTextChanged);
 
-                if (form) {
+                if (form && !demoMode) {
                     form.addEventListener('submit', (e) => {
                         if (!hiddenId.value) {
                             e.preventDefault();
@@ -735,7 +760,7 @@
 
                 input.addEventListener('input', clearSelectionIfTextChanged);
 
-                if (form) {
+                if (form && !demoMode) {
                     form.addEventListener('submit', (e) => {
                         if (!hiddenId.value) {
                             e.preventDefault();
@@ -792,6 +817,7 @@
             document.addEventListener('submit', async (e) => {
                 const form = e.target;
                 if (!form || !form.classList || !form.classList.contains('js-toggle-ajax')) return;
+                if (demoMode) return;
 
                 e.preventDefault();
 

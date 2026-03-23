@@ -367,8 +367,8 @@
     }
 
     /* =========================================
-   Unresolved status visibility (minimal)
-   ========================================= */
+       Unresolved status visibility (minimal)
+       ========================================= */
 
     /* UNRESOLVED: needs action */
     .um-row--new {
@@ -413,6 +413,10 @@
     <div th:if="${error}" class="card um-flash">
         <span class="badge badge--warn">Error</span>
         <span class="mono" th:text="${error}">error</span>
+    </div>
+
+    <div th:if="${demoMode}" class="card um-flash">
+        <span>Demo mode: changes are disabled.</span>
     </div>
 
     <div class="card um-card">
@@ -550,10 +554,12 @@
                                         <input class="js-vendor-q"
                                                type="text"
                                                placeholder="search vendor..."
-                                               th:attr="data-default-q=${r.normalizedVendor}"/>
+                                               th:attr="data-default-q=${r.normalizedVendor}"
+                                               th:disabled="${demoMode}"/>
 
                                         <select class="js-vendor-select"
-                                                th:attr="data-candidate-ids=${r.candidateVendorIds}">
+                                                th:attr="data-candidate-ids=${r.candidateVendorIds}"
+                                                th:disabled="${demoMode}">
                                             <option value="">-- Select vendor --</option>
                                         </select>
                                     </div>
@@ -563,10 +569,12 @@
                                         <input class="js-product-q"
                                                type="text"
                                                placeholder="search product..."
-                                               th:attr="data-default-q=${r.normalizedProduct}"/>
+                                               th:attr="data-default-q=${r.normalizedProduct}"
+                                               th:disabled="${demoMode}"/>
 
                                         <select class="js-product-select"
-                                                th:attr="data-candidate-ids=${r.candidateProductIds}">
+                                                th:attr="data-candidate-ids=${r.candidateProductIds}"
+                                                th:disabled="${demoMode}">
                                             <option value="">-- Select product --</option>
                                         </select>
                                     </div>
@@ -579,7 +587,9 @@
                         <div class="um-actions">
                             <button class="btn btn-primary um-btn-compact js-link-btn"
                                     type="submit"
-                                    th:attr="form=${'apply-form-' + r.id}">
+                                    th:attr="form=${'apply-form-' + r.id}"
+                                    th:disabled="${demoMode}"
+                                    th:title="${demoMode ? 'Disabled in demo mode' : null}">
                                 Link
                             </button>
                         </div>
@@ -596,7 +606,9 @@
         </div>
     </div>
 
-    <script>
+    <script th:inline="javascript">
+        const demoMode = /*[[${demoMode}]]*/ false;
+
         function splitIds(csv) {
             if (!csv) return [];
             return csv.split(',')
@@ -745,6 +757,8 @@
             if (!form || !vSel || !pSel) return;
             if (form.dataset.initialized === 'true') return;
             form.dataset.initialized = 'true';
+
+            if (demoMode) return;
 
             const rowId = row.getAttribute('data-row-id');
             if (rowId) {

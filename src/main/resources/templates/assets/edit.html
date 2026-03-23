@@ -11,6 +11,10 @@
         Asset ID
     </div>
 
+    <div class="muted" th:if="${demoMode}" style="margin-top:10px;">
+        Read only in demo mode. Changes are disabled.
+    </div>
+
     <form th:action="@{/assets/{id}/edit(id=${asset.id})}"
           th:object="${assetForm}"
           method="post"
@@ -18,7 +22,7 @@
 
         <div class="field">
             <label>External Key</label>
-            <input type="text" th:field="*{externalKey}" placeholder="e.g. ASSET-001">
+            <input type="text" th:field="*{externalKey}" placeholder="e.g. ASSET-001" th:disabled="${demoMode}">
             <div class="error" th:if="${#fields.hasErrors('externalKey')}" th:errors="*{externalKey}">
                 External Key error
             </div>
@@ -26,7 +30,7 @@
 
         <div class="field">
             <label>Name *</label>
-            <input type="text" th:field="*{name}">
+            <input type="text" th:field="*{name}" th:disabled="${demoMode}">
             <div class="error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">
                 Name error
             </div>
@@ -34,159 +38,159 @@
 
         <div class="field">
             <label>Asset Type</label>
-            <input type="text" th:field="*{assetType}">
+            <input type="text" th:field="*{assetType}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Owner</label>
-            <input type="text" th:field="*{owner}">
+            <input type="text" th:field="*{owner}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Note</label>
-            <textarea th:field="*{note}"></textarea>
+            <textarea th:field="*{note}" th:disabled="${demoMode}"></textarea>
         </div>
 
         <div class="field">
             <label>Source</label>
-            <input type="text" th:field="*{source}" placeholder="e.g. MANUAL / OSQUERY / FLEET"/>
+            <input type="text" th:field="*{source}" placeholder="e.g. MANUAL / OSQUERY / FLEET" th:disabled="${demoMode}"/>
         </div>
 
         <div class="field">
             <label>Platform</label>
-            <input type="text" th:field="*{platform}" placeholder="e.g. Windows / Linux / macOS"/>
+            <input type="text" th:field="*{platform}" placeholder="e.g. Windows / Linux / macOS" th:disabled="${demoMode}"/>
         </div>
 
         <div class="field">
             <label>OS Version</label>
-            <input type="text" th:field="*{osVersion}" placeholder="e.g. 11.0.22631"/>
+            <input type="text" th:field="*{osVersion}" placeholder="e.g. 11.0.22631" th:disabled="${demoMode}"/>
         </div>
 
         <hr style="margin:20px 0; border:none; border-top:1px solid rgba(255,255,255,0.08);">
 
         <div class="field">
             <label>System UUID</label>
-            <input type="text" th:field="*{systemUuid}">
+            <input type="text" th:field="*{systemUuid}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Serial Number</label>
-            <input type="text" th:field="*{serialNumber}">
+            <input type="text" th:field="*{serialNumber}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Hardware Vendor</label>
-            <input type="text" th:field="*{hardwareVendor}">
+            <input type="text" th:field="*{hardwareVendor}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Hardware Model</label>
-            <input type="text" th:field="*{hardwareModel}">
+            <input type="text" th:field="*{hardwareModel}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Hardware Version</label>
-            <input type="text" th:field="*{hardwareVersion}">
+            <input type="text" th:field="*{hardwareVersion}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Computer Name</label>
-            <input type="text" th:field="*{computerName}">
+            <input type="text" th:field="*{computerName}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Local Hostname</label>
-            <input type="text" th:field="*{localHostname}">
+            <input type="text" th:field="*{localHostname}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Hostname</label>
-            <input type="text" th:field="*{hostname}">
+            <input type="text" th:field="*{hostname}" th:disabled="${demoMode}">
         </div>
 
         <hr style="margin:20px 0; border:none; border-top:1px solid rgba(255,255,255,0.08);">
 
         <div class="field">
             <label>CPU Brand</label>
-            <input type="text" th:field="*{cpuBrand}">
+            <input type="text" th:field="*{cpuBrand}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>CPU Physical Cores</label>
-            <input type="number" th:field="*{cpuPhysicalCores}">
+            <input type="number" th:field="*{cpuPhysicalCores}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>CPU Logical Cores</label>
-            <input type="number" th:field="*{cpuLogicalCores}">
+            <input type="number" th:field="*{cpuLogicalCores}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>CPU Sockets</label>
-            <input type="number" th:field="*{cpuSockets}">
+            <input type="number" th:field="*{cpuSockets}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Physical Memory</label>
-            <input type="number" th:field="*{physicalMemory}">
+            <input type="number" th:field="*{physicalMemory}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Architecture</label>
-            <input type="text" th:field="*{arch}">
+            <input type="text" th:field="*{arch}" th:disabled="${demoMode}">
         </div>
 
         <hr style="margin:20px 0; border:none; border-top:1px solid rgba(255,255,255,0.08);">
 
         <div class="field">
             <label>Board Vendor</label>
-            <input type="text" th:field="*{boardVendor}">
+            <input type="text" th:field="*{boardVendor}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Board Model</label>
-            <input type="text" th:field="*{boardModel}">
+            <input type="text" th:field="*{boardModel}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Board Version</label>
-            <input type="text" th:field="*{boardVersion}">
+            <input type="text" th:field="*{boardVersion}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>Board Serial</label>
-            <input type="text" th:field="*{boardSerial}">
+            <input type="text" th:field="*{boardSerial}" th:disabled="${demoMode}">
         </div>
 
         <hr style="margin:20px 0; border:none; border-top:1px solid rgba(255,255,255,0.08);">
 
         <div class="field">
             <label>OS Name</label>
-            <input type="text" th:field="*{osName}">
+            <input type="text" th:field="*{osName}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>OS Build</label>
-            <input type="text" th:field="*{osBuild}">
+            <input type="text" th:field="*{osBuild}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>OS Major</label>
-            <input type="number" th:field="*{osMajor}">
+            <input type="number" th:field="*{osMajor}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>OS Minor</label>
-            <input type="number" th:field="*{osMinor}">
+            <input type="number" th:field="*{osMinor}" th:disabled="${demoMode}">
         </div>
 
         <div class="field">
             <label>OS Patch</label>
-            <input type="number" th:field="*{osPatch}">
+            <input type="number" th:field="*{osPatch}" th:disabled="${demoMode}">
         </div>
 
         <div class="actions" style="margin-top:14px;">
-            <button class="btn" type="submit">Save</button>
+            <button class="btn" type="submit" th:disabled="${demoMode}">Save</button>
             <a class="btn btn-ghost" th:href="@{/assets/{id}(id=${asset.id})}">Cancel</a>
         </div>
 

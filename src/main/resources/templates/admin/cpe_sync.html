@@ -46,6 +46,10 @@
             </div>
         </div>
 
+        <div th:if="${demoMode}" class="muted text-12 mt-6">
+            Disabled in demo mode.
+        </div>
+
         <!-- Error -->
         <div th:if="${error != null}" class="admin-error-box">
             <strong>⚠ Error</strong>
@@ -70,13 +74,15 @@
                 <div style="display:flex; gap:18px; flex-wrap:wrap; margin-top:6px;">
                     <label>
                         <input type="radio" name="mode" value="DOWNLOAD"
-                               th:checked="${mode == null or mode == 'DOWNLOAD'}">
+                               th:checked="${mode == null or mode == 'DOWNLOAD'}"
+                               th:disabled="${demoMode}">
                         Download from NVD
                     </label>
 
                     <label>
                         <input type="radio" name="mode" value="UPLOAD"
-                               th:checked="${mode == 'UPLOAD'}">
+                               th:checked="${mode == 'UPLOAD'}"
+                               th:disabled="${demoMode}">
                         Upload local tar.gz
                     </label>
                 </div>
@@ -91,7 +97,8 @@
 
                 <div class="field">
                     <label>
-                        <input type="checkbox" name="force" th:checked="${force != null and force}">
+                        <input type="checkbox" name="force" th:checked="${force != null and force}"
+                               th:disabled="${demoMode}">
                         Force update (download mode only)
                     </label>
                     <div class="muted text-12" style="margin-top:4px;">
@@ -109,7 +116,8 @@
                     <label>Local tar.gz file (used only in upload mode)</label>
                     <input type="file"
                            name="file"
-                           accept=".tar.gz,.tgz,application/gzip,application/x-gzip">
+                           accept=".tar.gz,.tgz,application/gzip,application/x-gzip"
+                           th:disabled="${demoMode}">
                     <div class="muted text-12" style="margin-top:4px;">
                         Select a local NVD CPE Dictionary archive when using upload mode.
                     </div>
@@ -120,14 +128,16 @@
             <div class="field">
                 <label>Maximum items to process</label>
                 <input type="number" name="maxItems" min="1" max="5000000"
-                       th:value="${maxItems != null ? maxItems : 2000000}">
+                       th:value="${maxItems != null ? maxItems : 2000000}"
+                       th:disabled="${demoMode}">
                 <div class="muted text-12" style="margin-top:4px;">
                     Safety cap for processing. Increase only if you intentionally want to ingest more entries.
                 </div>
             </div>
 
             <div class="actions actions--mt-14" style="align-items:center; gap:10px;">
-                <button id="cpeSyncSubmitButton" type="submit" class="btn btn-primary">
+                <button id="cpeSyncSubmitButton" type="submit" class="btn btn-primary"
+                        th:disabled="${demoMode}">
                     <span id="cpeSyncSubmitLabel">Update Product Dictionary</span>
                 </button>
                 <span id="cpeSyncBusyMessage"

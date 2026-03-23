@@ -4,6 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.AppRole;
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppRoleRepository;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.PasswordPolicyService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,19 +32,22 @@ public class AdminUsersController {
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
     private final SecurityAuditService securityAuditService;
+    private final DemoModeService demoModeService;
 
     public AdminUsersController(
             AppUserRepository appUserRepository,
             AppRoleRepository appRoleRepository,
             PasswordEncoder passwordEncoder,
             PasswordPolicyService passwordPolicyService,
-            SecurityAuditService securityAuditService
+            SecurityAuditService securityAuditService,
+            DemoModeService demoModeService
     ) {
         this.appUserRepository = appUserRepository;
         this.appRoleRepository = appRoleRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
         this.securityAuditService = securityAuditService;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping
@@ -64,6 +68,8 @@ public class AdminUsersController {
             Principal principal,
             HttpServletRequest request
     ) {
+        demoModeService.assertWritable();
+
         String u = safe(username);
         String p = safe(password);
 
@@ -109,6 +115,8 @@ public class AdminUsersController {
             Principal principal,
             HttpServletRequest request
     ) {
+        demoModeService.assertWritable();
+
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
             return error("User not found.");
@@ -137,6 +145,8 @@ public class AdminUsersController {
             Principal principal,
             HttpServletRequest request
     ) {
+        demoModeService.assertWritable();
+
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
             return error("User not found.");
@@ -170,6 +180,8 @@ public class AdminUsersController {
             Principal principal,
             HttpServletRequest request
     ) {
+        demoModeService.assertWritable();
+
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
             return error("User not found.");
@@ -200,6 +212,8 @@ public class AdminUsersController {
             Principal principal,
             HttpServletRequest request
     ) {
+        demoModeService.assertWritable();
+
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
             return error("User not found.");
@@ -250,6 +264,8 @@ public class AdminUsersController {
             Principal principal,
             HttpServletRequest request
     ) {
+        demoModeService.assertWritable();
+
         AppUser user = appUserRepository.findById(id).orElse(null);
         if (user == null) {
             return error("User not found.");

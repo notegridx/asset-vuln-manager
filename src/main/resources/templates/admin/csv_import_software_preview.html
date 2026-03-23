@@ -25,7 +25,9 @@
             method="post"
             onsubmit="return confirm('Import valid rows? Replace mode will close related alerts, keep alert history, delete current software rows for target assets, and rebuild current state from this snapshot.');">
         <label class="muted text-12" style="display:block; margin-bottom:6px;">Import mode</label>
-        <select name="mode" style="min-width:320px;">
+        <select name="mode"
+                style="min-width:320px;"
+                th:disabled="${demoMode}">
           <option value="REPLACE_ASSET_SOFTWARE"
                   th:selected="${defaultMode == 'REPLACE_ASSET_SOFTWARE'}">
             Replace asset software (recommended for full snapshots)
@@ -39,8 +41,16 @@
           Replace is intended for full asset snapshots. If the snapshot is incomplete,
           software not included in the file will be removed from current state for the target assets.
         </div>
+        <div th:if="${demoMode}" class="muted text-12" style="margin-top:6px;">
+          Disabled in demo mode.
+        </div>
         <div class="mt-10">
-          <button class="btn btn-primary" type="submit">Import Software</button>
+          <button class="btn btn-primary"
+                  type="submit"
+                  th:disabled="${demoMode}"
+                  th:title="${demoMode ? 'Disabled in demo mode' : null}">
+            Import Software
+          </button>
         </div>
       </form>
     </div>

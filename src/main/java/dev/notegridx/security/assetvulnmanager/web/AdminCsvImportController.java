@@ -1,16 +1,16 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
 import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.enums.SoftwareImportMode;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportStagingAssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportStagingSoftwareRepository;
 import dev.notegridx.security.assetvulnmanager.service.CsvStagedImportService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @Controller
 @RequestMapping("/admin/import/csv")
@@ -20,17 +20,20 @@ public class AdminCsvImportController {
     private final ImportRunRepository importRunRepository;
     private final ImportStagingAssetRepository stagingAssetRepository;
     private final ImportStagingSoftwareRepository stagingSoftwareRepository;
+    private final DemoModeService demoModeService;
 
     public AdminCsvImportController(
             CsvStagedImportService csvStagedImportService,
             ImportRunRepository importRunRepository,
             ImportStagingAssetRepository stagingAssetRepository,
-            ImportStagingSoftwareRepository stagingSoftwareRepository
+            ImportStagingSoftwareRepository stagingSoftwareRepository,
+            DemoModeService demoModeService
     ) {
         this.csvStagedImportService = csvStagedImportService;
         this.importRunRepository = importRunRepository;
         this.stagingAssetRepository = stagingAssetRepository;
         this.stagingSoftwareRepository = stagingSoftwareRepository;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping
@@ -38,9 +41,9 @@ public class AdminCsvImportController {
         return "admin/csv_import";
     }
 
-    // ---------- Assets ----------
     @PostMapping("/assets/stage")
     public String stageAssets(@RequestParam("file") MultipartFile file) throws Exception {
+        demoModeService.assertWritable();
         ImportRun run = csvStagedImportService.stageAssets(file.getOriginalFilename(), file.getBytes());
         return "redirect:/admin/import/csv/assets/" + run.getId();
     }
@@ -55,13 +58,14 @@ public class AdminCsvImportController {
 
     @PostMapping("/assets/{runId}/import")
     public String importAssets(@PathVariable Long runId) {
+        demoModeService.assertWritable();
         csvStagedImportService.importAssets(runId);
         return "redirect:/admin/import-runs";
     }
 
-    // ---------- Software ----------
     @PostMapping("/software/stage")
     public String stageSoftware(@RequestParam("file") MultipartFile file) throws Exception {
+        demoModeService.assertWritable();
         ImportRun run = csvStagedImportService.stageSoftware(file.getOriginalFilename(), file.getBytes());
         return "redirect:/admin/import/csv/software/" + run.getId();
     }
@@ -80,6 +84,7 @@ public class AdminCsvImportController {
             @PathVariable Long runId,
             @RequestParam(name = "mode", defaultValue = "REPLACE_ASSET_SOFTWARE") String mode
     ) {
+        demoModeService.assertWritable();
         csvStagedImportService.importSoftware(runId, parseMode(mode));
         return "redirect:/admin/import-runs";
     }

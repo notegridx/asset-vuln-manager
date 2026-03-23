@@ -3,6 +3,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminInventoryReadService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedQuickAddService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedResolutionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,17 +27,20 @@ public class AdminInventoryController {
     private final UnresolvedMappingRepository unresolvedMappingRepository;
     private final UnresolvedResolutionService unresolvedResolutionService;
     private final UnresolvedQuickAddService unresolvedQuickAddService;
+    private final DemoModeService demoModeService;
 
     public AdminInventoryController(
             AdminInventoryReadService adminInventoryReadService,
             UnresolvedMappingRepository unresolvedMappingRepository,
             UnresolvedResolutionService unresolvedResolutionService,
-            UnresolvedQuickAddService unresolvedQuickAddService
+            UnresolvedQuickAddService unresolvedQuickAddService,
+            DemoModeService demoModeService
     ) {
         this.adminInventoryReadService = adminInventoryReadService;
         this.unresolvedMappingRepository = unresolvedMappingRepository;
         this.unresolvedResolutionService = unresolvedResolutionService;
         this.unresolvedQuickAddService = unresolvedQuickAddService;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping("/admin/import-runs")
@@ -92,6 +96,8 @@ public class AdminInventoryController {
             HttpServletRequest request,
             Model model
     ) {
+        demoModeService.assertWritable();
+
         Long mappingId = parseLong(mappingIdRaw);
         Long vendorId = parseLongNullable(cpeVendorIdRaw);
         Long productId = parseLongNullable(cpeProductIdRaw);
@@ -250,6 +256,8 @@ public class AdminInventoryController {
             HttpServletRequest request,
             Model model
     ) {
+        demoModeService.assertWritable();
+
         Long mappingId = parseLong(mappingIdRaw);
         Long vendorId = parseLongNullable(cpeVendorIdRaw);
         Long productId = parseLongNullable(cpeProductIdRaw);

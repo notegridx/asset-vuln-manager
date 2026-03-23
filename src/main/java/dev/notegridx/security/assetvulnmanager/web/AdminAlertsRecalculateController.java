@@ -4,6 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminAlertsRecalculateService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,13 +17,16 @@ public class AdminAlertsRecalculateController {
 
     private final AdminAlertsRecalculateService adminAlertsRecalculateService;
     private final SoftwareInstallRepository softwareInstallRepository;
+    private final DemoModeService demoModeService;
 
     public AdminAlertsRecalculateController(
             AdminAlertsRecalculateService adminAlertsRecalculateService,
-            SoftwareInstallRepository softwareInstallRepository
+            SoftwareInstallRepository softwareInstallRepository,
+            DemoModeService demoModeService
     ) {
         this.adminAlertsRecalculateService = adminAlertsRecalculateService;
         this.softwareInstallRepository = softwareInstallRepository;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping("/admin/alerts/recalculate")
@@ -33,6 +37,8 @@ public class AdminAlertsRecalculateController {
 
     @PostMapping("/admin/alerts/recalculate")
     public String run(Model model) {
+
+        demoModeService.assertWritable();
 
         try {
             var matchResult = adminAlertsRecalculateService.runRecalculate();

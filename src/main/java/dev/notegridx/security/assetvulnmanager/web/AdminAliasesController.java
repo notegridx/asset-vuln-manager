@@ -8,6 +8,7 @@ import dev.notegridx.security.assetvulnmanager.repository.CpeProductAliasReposit
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorAliasRepository;
 import dev.notegridx.security.assetvulnmanager.service.AliasBatchService;
 import dev.notegridx.security.assetvulnmanager.service.CanonicalBackfillService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.SynonymService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,19 +25,22 @@ public class AdminAliasesController {
     private final CanonicalBackfillService backfillService;
     private final SynonymService synonymService;
     private final AliasBatchService aliasBatchService;
+    private final DemoModeService demoModeService;
 
     public AdminAliasesController(
             CpeVendorAliasRepository vendorAliasRepo,
             CpeProductAliasRepository productAliasRepo,
             CanonicalBackfillService backfillService,
             SynonymService synonymService,
-            AliasBatchService aliasBatchService
+            AliasBatchService aliasBatchService,
+            DemoModeService demoModeService
     ) {
         this.vendorAliasRepo = vendorAliasRepo;
         this.productAliasRepo = productAliasRepo;
         this.backfillService = backfillService;
         this.synonymService = synonymService;
         this.aliasBatchService = aliasBatchService;
+        this.demoModeService = demoModeService;
     }
 
     @PostMapping("/admin/aliases/vendor")
@@ -46,6 +50,8 @@ public class AdminAliasesController {
             @RequestParam(value = "note", required = false) String note,
             @RequestParam(name = "redirect", required = false) String redirect
     ) {
+        demoModeService.assertWritable();
+
         String a = normalize(aliasNorm);
         if (a == null) {
             return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
@@ -75,6 +81,8 @@ public class AdminAliasesController {
             @RequestParam(value = "note", required = false) String note,
             @RequestParam(name = "redirect", required = false) String redirect
     ) {
+        demoModeService.assertWritable();
+
         String a = normalize(aliasNorm);
         if (a == null) {
             return safeRedirectOrDefault(redirect, "/admin/unresolved?status=NEW");
@@ -102,6 +110,8 @@ public class AdminAliasesController {
             @RequestParam(name = "redirect", required = false) String redirect,
             RedirectAttributes ra
     ) {
+        demoModeService.assertWritable();
+
         AliasBatchService.BatchReport report = aliasBatchService.seedTopAliases();
         ra.addFlashAttribute("seedReport", report);
 
@@ -113,6 +123,8 @@ public class AdminAliasesController {
             @RequestParam(name = "redirect", required = false) String redirect,
             RedirectAttributes ra
     ) {
+        demoModeService.assertWritable();
+
         long vendorAliasCount = vendorAliasRepo.count();
         long productAliasCount = productAliasRepo.count();
 
@@ -128,13 +140,14 @@ public class AdminAliasesController {
         return safeRedirectOrDefault(redirect, "/admin/synonyms/workspace");
     }
 
-    // ====== keep your existing helpers (normalize / safeRedirectOrDefault) ======
+    // Keep existing normalization behavior for manual alias input.
     private static String normalize(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
 
+    // Allow only application-local redirects and fall back safely.
     private static String safeRedirectOrDefault(String redirect, String fallback) {
         if (redirect == null || redirect.isBlank()) return "redirect:" + fallback;
         // assume redirect is already "redirect:/..." or "/..."

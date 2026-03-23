@@ -2,6 +2,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.PasswordPolicyService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,17 +27,20 @@ public class ChangePasswordController {
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
     private final SecurityAuditService securityAuditService;
+    private final DemoModeService demoModeService;
 
     public ChangePasswordController(
             AppUserRepository appUserRepository,
             PasswordEncoder passwordEncoder,
             PasswordPolicyService passwordPolicyService,
-            SecurityAuditService securityAuditService
+            SecurityAuditService securityAuditService,
+            DemoModeService demoModeService
     ) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
         this.securityAuditService = securityAuditService;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping
@@ -54,6 +58,7 @@ public class ChangePasswordController {
         model.addAttribute("passwordChangeRequired", user.isPasswordChangeRequired());
         model.addAttribute("bootstrapAdmin", user.isBootstrapAdmin());
         model.addAttribute("passwordPolicy", passwordPolicyService.loadPolicy());
+        model.addAttribute("demoMode", demoModeService.isReadOnly());
         return "account/change_password";
     }
 
@@ -67,6 +72,8 @@ public class ChangePasswordController {
             RedirectAttributes ra,
             HttpServletRequest request
     ) {
+        demoModeService.assertWritable();
+
         if (authentication == null || !authentication.isAuthenticated()) {
             return "redirect:/login";
         }

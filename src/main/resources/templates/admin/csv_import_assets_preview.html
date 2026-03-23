@@ -17,7 +17,10 @@
         </div>
 
         <form th:action="@{|/admin/import/csv/assets/${run.id}/import|}" method="post">
-            <button class="btn btn-primary" type="submit" th:disabled="${run.validRows == 0}">
+            <button class="btn btn-primary"
+                    type="submit"
+                    th:disabled="${run.validRows == 0 or demoMode}"
+                    th:title="${demoMode ? 'Disabled in demo mode' : null}">
                 Import (Upsert)
             </button>
         </form>
@@ -30,6 +33,9 @@
                 <li><b>external_key</b> required</li>
                 <li><b>name</b> required</li>
             </ul>
+        </div>
+        <div th:if="${demoMode}" class="muted text-12" style="margin-top:8px;">
+            Disabled in demo mode.
         </div>
     </div>
 

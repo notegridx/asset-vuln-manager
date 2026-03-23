@@ -67,7 +67,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalNormalizeVendorExtractDnOrganization"
                                type="checkbox"
-                               th:field="*{canonicalNormalizeVendorExtractDnOrganization}">
+                               th:field="*{canonicalNormalizeVendorExtractDnOrganization}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalNormalizeVendorExtractDnOrganization">
                             Extract vendor from DN publisher
                         </label>
@@ -86,7 +87,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalNormalizeVendorRemoveCommonPhrases"
                                type="checkbox"
-                               th:field="*{canonicalNormalizeVendorRemoveCommonPhrases}">
+                               th:field="*{canonicalNormalizeVendorRemoveCommonPhrases}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalNormalizeVendorRemoveCommonPhrases">
                             Remove vendor common phrases
                         </label>
@@ -105,7 +107,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalNormalizeVendorRemoveLegalSuffix"
                                type="checkbox"
-                               th:field="*{canonicalNormalizeVendorRemoveLegalSuffix}">
+                               th:field="*{canonicalNormalizeVendorRemoveLegalSuffix}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalNormalizeVendorRemoveLegalSuffix">
                             Remove vendor legal suffix
                         </label>
@@ -124,7 +127,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalNormalizeProductRemoveArchParen"
                                type="checkbox"
-                               th:field="*{canonicalNormalizeProductRemoveArchParen}">
+                               th:field="*{canonicalNormalizeProductRemoveArchParen}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalNormalizeProductRemoveArchParen">
                             Remove product architecture suffix
                         </label>
@@ -143,7 +147,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalNormalizeProductRemoveLocaleTag"
                                type="checkbox"
-                               th:field="*{canonicalNormalizeProductRemoveLocaleTag}">
+                               th:field="*{canonicalNormalizeProductRemoveLocaleTag}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalNormalizeProductRemoveLocaleTag">
                             Remove product locale tag
                         </label>
@@ -162,7 +167,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalNormalizeProductRemoveJavaUpdateSuffix"
                                type="checkbox"
-                               th:field="*{canonicalNormalizeProductRemoveJavaUpdateSuffix}">
+                               th:field="*{canonicalNormalizeProductRemoveJavaUpdateSuffix}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalNormalizeProductRemoveJavaUpdateSuffix">
                             Remove Java update suffix
                         </label>
@@ -181,7 +187,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalNormalizeProductRemoveVersionSuffix"
                                type="checkbox"
-                               th:field="*{canonicalNormalizeProductRemoveVersionSuffix}">
+                               th:field="*{canonicalNormalizeProductRemoveVersionSuffix}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalNormalizeProductRemoveVersionSuffix">
                             Remove trailing product version
                         </label>
@@ -215,7 +222,8 @@
                                type="number"
                                min="1"
                                max="10"
-                               th:field="*{canonicalCandidateMinChars}">
+                               th:field="*{canonicalCandidateMinChars}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -237,7 +245,8 @@
                                type="number"
                                min="1"
                                max="50"
-                               th:field="*{canonicalCandidateExactLimit}">
+                               th:field="*{canonicalCandidateExactLimit}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -258,7 +267,8 @@
                                type="number"
                                min="1"
                                max="100"
-                               th:field="*{canonicalCandidateOtherLimit}">
+                               th:field="*{canonicalCandidateOtherLimit}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -279,7 +289,8 @@
                                type="number"
                                min="1"
                                max="100"
-                               th:field="*{canonicalCandidateUnresolvedLimit}">
+                               th:field="*{canonicalCandidateUnresolvedLimit}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -312,7 +323,8 @@
                                type="number"
                                min="1"
                                max="100"
-                               th:field="*{vulnerabilitySuggestionMaxItems}">
+                               th:field="*{vulnerabilitySuggestionMaxItems}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -333,7 +345,8 @@
                                type="number"
                                min="0"
                                max="1000"
-                               th:field="*{vulnerabilitySuggestionVendorExactScore}">
+                               th:field="*{vulnerabilitySuggestionVendorExactScore}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -351,7 +364,8 @@
                                type="number"
                                min="0"
                                max="1000"
-                               th:field="*{vulnerabilitySuggestionVendorPartialScore}">
+                               th:field="*{vulnerabilitySuggestionVendorPartialScore}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -369,7 +383,8 @@
                                type="number"
                                min="0"
                                max="1000"
-                               th:field="*{vulnerabilitySuggestionProductExactScore}">
+                               th:field="*{vulnerabilitySuggestionProductExactScore}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -387,7 +402,8 @@
                                type="number"
                                min="0"
                                max="1000"
-                               th:field="*{vulnerabilitySuggestionTokenOverlapScore}">
+                               th:field="*{vulnerabilitySuggestionTokenOverlapScore}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -408,7 +424,8 @@
                                type="number"
                                min="0"
                                max="1000"
-                               th:field="*{vulnerabilitySuggestionPartialMatchScore}">
+                               th:field="*{vulnerabilitySuggestionPartialMatchScore}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -421,7 +438,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="vulnerabilitySuggestionActiveOnly"
                                type="checkbox"
-                               th:field="*{vulnerabilitySuggestionActiveOnly}">
+                               th:field="*{vulnerabilitySuggestionActiveOnly}"
+                               th:disabled="${demoMode}">
                         <label for="vulnerabilitySuggestionActiveOnly">
                             Only active unresolved rows
                         </label>
@@ -440,7 +458,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="vulnerabilitySuggestionShowReasons"
                                type="checkbox"
-                               th:field="*{vulnerabilitySuggestionShowReasons}">
+                               th:field="*{vulnerabilitySuggestionShowReasons}"
+                               th:disabled="${demoMode}">
                         <label for="vulnerabilitySuggestionShowReasons">
                             Show reasons
                         </label>
@@ -467,7 +486,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalAutolinkUseSynonym"
                                type="checkbox"
-                               th:field="*{canonicalAutolinkUseSynonym}">
+                               th:field="*{canonicalAutolinkUseSynonym}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalAutolinkUseSynonym">
                             Use alias mapping
                         </label>
@@ -486,7 +506,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalAutolinkUseTokenFallback"
                                type="checkbox"
-                               th:field="*{canonicalAutolinkUseTokenFallback}">
+                               th:field="*{canonicalAutolinkUseTokenFallback}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalAutolinkUseTokenFallback">
                             Use token fallback
                         </label>
@@ -505,7 +526,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalAutolinkContainsMatch"
                                type="checkbox"
-                               th:field="*{canonicalAutolinkContainsMatch}">
+                               th:field="*{canonicalAutolinkContainsMatch}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalAutolinkContainsMatch">
                             Allow contains match
                             <span class="badge badge--future">stored for future wiring</span>
@@ -525,7 +547,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalAutolinkVendorUniqueRequired"
                                type="checkbox"
-                               th:field="*{canonicalAutolinkVendorUniqueRequired}">
+                               th:field="*{canonicalAutolinkVendorUniqueRequired}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalAutolinkVendorUniqueRequired">
                             Require unique vendor hit
                             <span class="badge badge--future">stored for future wiring</span>
@@ -545,7 +568,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalAutolinkProductUniqueRequired"
                                type="checkbox"
-                               th:field="*{canonicalAutolinkProductUniqueRequired}">
+                               th:field="*{canonicalAutolinkProductUniqueRequired}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalAutolinkProductUniqueRequired">
                             Require unique product hit
                             <span class="badge badge--future">stored for future wiring</span>
@@ -565,7 +589,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalAutolinkSkipDisabledRow"
                                type="checkbox"
-                               th:field="*{canonicalAutolinkSkipDisabledRow}">
+                               th:field="*{canonicalAutolinkSkipDisabledRow}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalAutolinkSkipDisabledRow">
                             Skip disabled rows
                         </label>
@@ -590,7 +615,8 @@
                                type="number"
                                min="0"
                                max="1000"
-                               th:field="*{canonicalAutolinkMinScore}">
+                               th:field="*{canonicalAutolinkMinScore}"
+                               th:disabled="${demoMode}">
                     </div>
                     <div class="muted settings-item__body">
                         <div class="help">
@@ -616,7 +642,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalExplainShowReason"
                                type="checkbox"
-                               th:field="*{canonicalExplainShowReason}">
+                               th:field="*{canonicalExplainShowReason}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalExplainShowReason">
                             Show decision reason
                             <span class="badge badge--ui">UI-facing</span>
@@ -633,7 +660,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalExplainShowScoreBreakdown"
                                type="checkbox"
-                               th:field="*{canonicalExplainShowScoreBreakdown}">
+                               th:field="*{canonicalExplainShowScoreBreakdown}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalExplainShowScoreBreakdown">
                             Show score breakdown
                             <span class="badge badge--future">stored for future UI wiring</span>
@@ -653,7 +681,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="canonicalExplainShowSkipReason"
                                type="checkbox"
-                               th:field="*{canonicalExplainShowSkipReason}">
+                               th:field="*{canonicalExplainShowSkipReason}"
+                               th:disabled="${demoMode}">
                         <label for="canonicalExplainShowSkipReason">
                             Show skip reason
                             <span class="badge badge--ui">UI-facing</span>
@@ -684,7 +713,8 @@
                            type="number"
                            min="8"
                            max="256"
-                           th:field="*{authPasswordMinLength}">
+                           th:field="*{authPasswordMinLength}"
+                           th:disabled="${demoMode}">
                     <div class="muted settings-item__body">
                         <div class="help">
                             Minimum number of characters required for a new password.
@@ -699,7 +729,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="authPasswordRequireUpper"
                                type="checkbox"
-                               th:field="*{authPasswordRequireUpper}">
+                               th:field="*{authPasswordRequireUpper}"
+                               th:disabled="${demoMode}">
                         <label for="authPasswordRequireUpper">
                             Require uppercase letter
                         </label>
@@ -715,7 +746,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="authPasswordRequireLower"
                                type="checkbox"
-                               th:field="*{authPasswordRequireLower}">
+                               th:field="*{authPasswordRequireLower}"
+                               th:disabled="${demoMode}">
                         <label for="authPasswordRequireLower">
                             Require lowercase letter
                         </label>
@@ -731,7 +763,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="authPasswordRequireDigit"
                                type="checkbox"
-                               th:field="*{authPasswordRequireDigit}">
+                               th:field="*{authPasswordRequireDigit}"
+                               th:disabled="${demoMode}">
                         <label for="authPasswordRequireDigit">
                             Require digit
                         </label>
@@ -747,7 +780,8 @@
                     <div class="settings-item__control settings-item__control--check">
                         <input id="authPasswordRequireSymbol"
                                type="checkbox"
-                               th:field="*{authPasswordRequireSymbol}">
+                               th:field="*{authPasswordRequireSymbol}"
+                               th:disabled="${demoMode}">
                         <label for="authPasswordRequireSymbol">
                             Require symbol
                         </label>
@@ -783,13 +817,23 @@
             </p>
 
             <div class="settings-actions">
-                <button type="submit" class="btn">Save Settings</button>
+                <button type="submit" class="btn"
+                        th:disabled="${demoMode}"
+                        th:title="${demoMode ? 'Disabled in demo mode' : null}">
+                    Save Settings
+                </button>
             </div>
+
+            <div class="muted mt-6" th:if="${demoMode}">Disabled in demo mode.</div>
         </div>
     </form>
 
     <form th:action="@{/admin/settings/reset}" method="post" class="settings-reset-form">
-        <button type="submit" class="btn btn-ghost">Reset to Default</button>
+        <button type="submit" class="btn btn-ghost"
+                th:disabled="${demoMode}"
+                th:title="${demoMode ? 'Disabled in demo mode' : null}">
+            Reset to Default
+        </button>
     </form>
 </main>
 </body>

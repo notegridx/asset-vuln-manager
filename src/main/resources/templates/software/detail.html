@@ -8,7 +8,6 @@
 <body th:replace="~{layout/base :: layout('Software Details', 'assets', ~{::main})}">
 <main>
 
-  <!-- Header -->
   <div class="actions">
     <div>
       <h1 style="margin:0;">Software Details</h1>
@@ -26,22 +25,24 @@
         View OPEN alerts
       </a>
 
-      <a sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+      <a th:if="${!demoMode}"
+         sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
          class="btn"
          th:href="@{/software/{id}/edit(id=${software.id})}">Edit</a>
 
-      <form sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+      <form th:if="${!demoMode}"
+            sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
             th:action="@{/software/{id}/delete(id=${software.id})}" method="post"
             onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
         <input type="hidden" name="assetId" th:value="${assetId}">
         <button class="btn btn--danger" type="submit">Delete</button>
       </form>
 
-      <span sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>
+      <span th:if="${demoMode}" class="muted">Read only in demo mode</span>
+      <span th:if="${!demoMode}" sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>
     </div>
   </div>
 
-  <!-- Summary -->
   <div class="card" style="padding:12px; margin-top:12px;">
     <div style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
       <div>
@@ -55,7 +56,6 @@
     </div>
   </div>
 
-  <!-- Details -->
   <div class="card" style="padding:12px; margin-top:12px;">
     <div class="kv" style="grid-template-columns: 160px 1fr 160px 1fr; gap:8px 12px;">
 

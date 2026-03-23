@@ -203,13 +203,18 @@
     </div>
 
     <div class="card card--section">
+        <div th:if="${demoMode}" class="muted text-12 mt-6">
+            Disabled in demo mode.
+        </div>
+
         <form th:action="@{/admin/aliases/seed/import}" method="post">
             <div class="field">
                 <label>Seed JSON</label>
                 <textarea name="json"
                           rows="18"
                           class="w-full font-mono-ui"
-                          th:text="${json}"></textarea>
+                          th:text="${json}"
+                          th:disabled="${demoMode}"></textarea>
                 <div class="muted help-text--tight mt-6">
                     - <b>canonicalVendor</b>/<b>canonicalProduct</b> must match CPE dictionary <code>name_norm</code>.<br>
                     - Aliases are normalized. ACTIVE only. Conflicts are skipped.<br>
@@ -218,7 +223,7 @@
             </div>
 
             <div class="actions mt-12">
-                <button type="submit" class="btn btn-primary">Import Seed</button>
+                <button type="submit" class="btn btn-primary" th:disabled="${demoMode}">Import Seed</button>
                 <a class="btn btn-ghost" th:href="@{/admin/aliases/seed/import}">Reset</a>
             </div>
         </form>

@@ -1,5 +1,6 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.SynonymService;
 import dev.notegridx.security.assetvulnmanager.service.seed.AliasSeedImportService;
 import org.springframework.stereotype.Controller;
@@ -13,13 +14,16 @@ public class AdminAliasSeedController {
 
     private final AliasSeedImportService seedImportService;
     private final SynonymService synonymService;
+    private final DemoModeService demoModeService;
 
     public AdminAliasSeedController(
             AliasSeedImportService seedImportService,
-            SynonymService synonymService
+            SynonymService synonymService,
+            DemoModeService demoModeService
     ) {
         this.seedImportService = seedImportService;
         this.synonymService = synonymService;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping("/admin/aliases/seed/import")
@@ -33,9 +37,10 @@ public class AdminAliasSeedController {
             @RequestParam("json") String json,
             Model model
     ) {
+        demoModeService.assertWritable();
+
         var report = seedImportService.importFromJson(json);
 
-        // seed 投入直後に解決へ反映（キャッシュがあるなら必須）
         synonymService.clearCaches();
 
         model.addAttribute("json", json);

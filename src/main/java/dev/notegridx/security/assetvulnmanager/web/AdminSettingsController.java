@@ -2,6 +2,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.SystemSetting;
 import dev.notegridx.security.assetvulnmanager.repository.SystemSettingRepository;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.web.form.AdminSettingsForm;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -66,9 +67,14 @@ public class AdminSettingsController {
     public static final String KEY_AUTH_PASSWORD_REQUIRE_SYMBOL = "auth.password.require-symbol";
 
     private final SystemSettingRepository systemSettingRepository;
+    private final DemoModeService demoModeService;
 
-    public AdminSettingsController(SystemSettingRepository systemSettingRepository) {
+    public AdminSettingsController(
+            SystemSettingRepository systemSettingRepository,
+            DemoModeService demoModeService
+    ) {
         this.systemSettingRepository = systemSettingRepository;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping("/admin/settings")
@@ -85,6 +91,8 @@ public class AdminSettingsController {
             Authentication authentication,
             RedirectAttributes ra
     ) {
+        demoModeService.assertWritable();
+
         String username = authentication != null ? authentication.getName() : "unknown";
 
         putBool(
@@ -162,6 +170,8 @@ public class AdminSettingsController {
     @PostMapping("/admin/settings/reset")
     @Transactional
     public String reset(Authentication authentication, RedirectAttributes ra) {
+        demoModeService.assertWritable();
+
         String username = authentication != null ? authentication.getName() : "unknown";
 
         for (Map.Entry<String, String> e : defaults().entrySet()) {

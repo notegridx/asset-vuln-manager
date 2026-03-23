@@ -8,6 +8,7 @@ import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.service.AssetService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.DictionaryValidationException;
 import dev.notegridx.security.assetvulnmanager.service.SoftwareInstallService;
 import dev.notegridx.security.assetvulnmanager.web.form.AssetForm;
@@ -36,24 +37,28 @@ public class AssetController {
     private final AlertRepository alertRepository;
     private final CpeVendorRepository cpeVendorRepository;
     private final CpeProductRepository cpeProductRepository;
+    private final DemoModeService demoModeService;
 
     public AssetController(
             AssetService assetService,
             SoftwareInstallService softwareInstallService,
             AlertRepository alertRepository,
             CpeVendorRepository cpeVendorRepository,
-            CpeProductRepository cpeProductRepository
+            CpeProductRepository cpeProductRepository,
+            DemoModeService demoModeService
     ) {
         this.assetService = assetService;
         this.softwareInstallService = softwareInstallService;
         this.alertRepository = alertRepository;
         this.cpeVendorRepository = cpeVendorRepository;
         this.cpeProductRepository = cpeProductRepository;
+        this.demoModeService = demoModeService;
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     @PostMapping("/assets/{id}/delete")
     public String deleteAsset(@PathVariable("id") Long id) {
+        demoModeService.assertWritable();
         assetService.deleteCascade(id);
         return "redirect:/assets";
     }
@@ -78,6 +83,8 @@ public class AssetController {
             @Valid @ModelAttribute("assetForm") AssetForm form,
             BindingResult bindingResult
     ) {
+        demoModeService.assertWritable();
+
         if (bindingResult.hasErrors()) {
             return "assets/new";
         }
@@ -192,6 +199,8 @@ public class AssetController {
             BindingResult bindingResult,
             Model model
     ) {
+        demoModeService.assertWritable();
+
         Asset asset = assetService.getRequired(assetId);
 
         if (bindingResult.hasErrors()) {
@@ -278,6 +287,7 @@ public class AssetController {
                               @Valid @ModelAttribute("assetForm") AssetForm form,
                               BindingResult binding,
                               Model model) {
+        demoModeService.assertWritable();
 
         if (binding.hasErrors()) {
             model.addAttribute("asset", assetService.getRequired(id));

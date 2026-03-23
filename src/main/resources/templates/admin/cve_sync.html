@@ -47,11 +47,15 @@
       </div>
     </div>
 
+    <div th:if="${demoMode}" class="muted" style="font-size:12px; margin-top:6px;">
+      Disabled in demo mode.
+    </div>
+
     <form id="cveSyncForm" th:action="@{/admin/cve/sync}" method="post" style="margin-top:12px;">
 
       <div class="field">
         <label>Feed selection</label>
-        <select name="kind" id="feedKind">
+        <select name="kind" id="feedKind" th:disabled="${demoMode}">
           <option value="MODIFIED" th:selected="${kind == null or kind == 'MODIFIED'}">
             MODIFIED (latest changes)
           </option>
@@ -72,7 +76,8 @@
         <input type="number" name="year" id="yearInput"
                min="1999" max="2100"
                list="yearCandidates"
-               th:value="${year}">
+               th:value="${year}"
+               th:disabled="${demoMode}">
         <datalist id="yearCandidates"></datalist>
         <div class="muted" style="font-size:12px; margin-top:4px;">
           Type a year (e.g., 2026). Suggestions are provided.
@@ -91,7 +96,8 @@
       <div class="field">
         <label>
           <input type="checkbox" name="force"
-                 th:checked="${force != null and force}">
+                 th:checked="${force != null and force}"
+                 th:disabled="${demoMode}">
           Force update (ignore previous sync state)
         </label>
         <div class="muted" style="font-size:12px; margin-top:4px;">
@@ -103,14 +109,16 @@
       <div class="field">
         <label>Maximum items to process</label>
         <input type="number" name="maxItems" min="1" max="5000000"
-               th:value="${maxItems != null ? maxItems : 2000000}">
+               th:value="${maxItems != null ? maxItems : 2000000}"
+               th:disabled="${demoMode}">
         <div class="muted" style="font-size:12px; margin-top:4px;">
           Safety cap for processing.
         </div>
       </div>
 
       <div class="actions" style="margin-top:14px; align-items:center; gap:10px;">
-        <button id="cveSyncSubmitButton" type="submit" class="btn btn-primary">
+        <button id="cveSyncSubmitButton" type="submit" class="btn btn-primary"
+                th:disabled="${demoMode}">
           <span id="cveSyncSubmitLabel">Update Vulnerability Data</span>
         </button>
         <span id="cveSyncBusyMessage"

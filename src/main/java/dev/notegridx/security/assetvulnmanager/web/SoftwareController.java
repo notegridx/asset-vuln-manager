@@ -2,6 +2,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.DictionaryValidationException;
 import dev.notegridx.security.assetvulnmanager.service.SoftwareInstallService;
 import dev.notegridx.security.assetvulnmanager.web.form.SoftwareInstallForm;
@@ -26,6 +27,7 @@ public class SoftwareController {
 
     private final SoftwareInstallRepository softwareInstallRepository;
     private final SoftwareInstallService softwareInstallService;
+    private final DemoModeService demoModeService;
 
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, Model model) {
@@ -43,6 +45,8 @@ public class SoftwareController {
             @PathVariable("id") Long id,
             @RequestParam(name = "assetId", required = false) Long assetId
     ) {
+        demoModeService.assertWritable();
+
         softwareInstallService.deleteCascade(id);
         if (assetId != null) {
             return "redirect:/assets/" + assetId;
@@ -69,6 +73,8 @@ public class SoftwareController {
             BindingResult bindingResult,
             Model model
     ) {
+        demoModeService.assertWritable();
+
         SoftwareInstall s = softwareInstallRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("SoftwareInstall not found. id=" + id));
 

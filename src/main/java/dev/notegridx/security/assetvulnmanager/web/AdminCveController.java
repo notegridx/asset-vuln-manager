@@ -5,6 +5,7 @@ import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient;
 import dev.notegridx.security.assetvulnmanager.service.AdminCveFeedSyncService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.AdminRunReadService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,13 +19,16 @@ public class AdminCveController {
 
     private final AdminCveFeedSyncService adminCveFeedSyncService;
     private final AdminRunReadService adminRunReadService;
+    private final DemoModeService demoModeService;
 
     public AdminCveController(
             AdminCveFeedSyncService adminCveFeedSyncService,
-            AdminRunReadService adminRunReadService
+            AdminRunReadService adminRunReadService,
+            DemoModeService demoModeService
     ) {
         this.adminCveFeedSyncService = adminCveFeedSyncService;
         this.adminRunReadService = adminRunReadService;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping("/admin/cve/sync")
@@ -51,6 +55,8 @@ public class AdminCveController {
             @RequestParam(name = "maxItems", defaultValue = "2000000") int maxItems,
             Model model
     ) throws IOException {
+
+        demoModeService.assertWritable();
 
         NvdCveFeedClient.FeedKind k;
         try {

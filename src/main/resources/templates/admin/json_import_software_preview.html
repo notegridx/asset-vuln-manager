@@ -24,23 +24,37 @@
 
         <div class="actions" style="margin:0;">
             <a class="btn" th:href="@{/admin/import/json}">Back</a>
+
             <form th:if="${run.validRows > 0}"
                   th:action="@{/admin/import/json/software/{runId}/import(runId=${run.id})}"
                   method="post"
                   onsubmit="return confirm('Import valid rows? Replace mode will close related alerts, keep alert history, delete current software rows for target assets, and rebuild current state from this snapshot.');">
+
                 <label class="muted" style="display:block; font-size:12px; margin-bottom:6px;">Import mode</label>
-                <select name="mode" style="min-width:320px;">
+
+                <select name="mode"
+                        style="min-width:320px;"
+                        th:disabled="${demoMode}">
                     <option value="REPLACE_ASSET_SOFTWARE" selected>
                         Replace asset software (recommended for full snapshots)
                     </option>
                     <option value="APPEND">Append rows</option>
                 </select>
+
                 <div class="muted" style="font-size:12px; margin-top:8px; max-width:420px;">
                     Replace is intended for full asset snapshots. If the snapshot is incomplete,
                     software not included in the file will be removed from current state for the target assets.
                 </div>
+
+                <div th:if="${demoMode}" class="muted" style="font-size:12px; margin-top:6px;">
+                    Disabled in demo mode.
+                </div>
+
                 <div style="margin-top:10px;">
-                    <button class="btn btn-primary" type="submit">
+                    <button class="btn btn-primary"
+                            type="submit"
+                            th:disabled="${demoMode}"
+                            th:title="${demoMode ? 'Disabled in demo mode' : null}">
                         Import Software
                     </button>
                 </div>

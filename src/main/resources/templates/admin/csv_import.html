@@ -44,7 +44,11 @@
     <form th:action="@{/admin/import/csv/assets/stage}" method="post" enctype="multipart/form-data">
       <div class="field">
         <label>assets.csv</label>
-        <input type="file" name="file" accept=".csv,text/csv" required>
+        <input type="file"
+               name="file"
+               accept=".csv,text/csv"
+               required
+               th:disabled="${demoMode}">
         <div class="muted text-12" style="margin-top:4px;">
           Required headers: <b>external_key</b>, <b>name</b>
         </div>
@@ -58,10 +62,18 @@
           <code>os_build</code>, <code>os_major</code>, <code>os_minor</code>,
           <code>os_patch</code>, and <code>last_seen_at</code>.
         </div>
+        <div th:if="${demoMode}" class="muted text-12" style="margin-top:4px;">
+          Disabled in demo mode.
+        </div>
       </div>
 
       <div class="actions actions--mt-14">
-        <button type="submit" class="btn btn-primary">Upload and Preview Assets</button>
+        <button type="submit"
+                class="btn btn-primary"
+                th:disabled="${demoMode}"
+                th:title="${demoMode ? 'Disabled in demo mode' : null}">
+          Upload and Preview Assets
+        </button>
       </div>
     </form>
   </div>
@@ -73,7 +85,11 @@
     <form th:action="@{/admin/import/csv/software/stage}" method="post" enctype="multipart/form-data">
       <div class="field">
         <label>software.csv</label>
-        <input type="file" name="file" accept=".csv,text/csv" required>
+        <input type="file"
+               name="file"
+               accept=".csv,text/csv"
+               required
+               th:disabled="${demoMode}">
         <div class="muted text-12" style="margin-top:4px;">
           Required headers: <b>external_key</b>, <b>product</b> (version is optional)
         </div>
@@ -93,10 +109,18 @@
         <div class="muted text-12" style="margin-top:4px;">
           For full inventory snapshots, choose <b>Replace asset software</b> in the preview step. Use append/upsert only when you are intentionally adding incremental rows.
         </div>
+        <div th:if="${demoMode}" class="muted text-12" style="margin-top:4px;">
+          Disabled in demo mode.
+        </div>
       </div>
 
       <div class="actions actions--mt-14">
-        <button type="submit" class="btn btn-primary">Upload and Preview Software</button>
+        <button type="submit"
+                class="btn btn-primary"
+                th:disabled="${demoMode}"
+                th:title="${demoMode ? 'Disabled in demo mode' : null}">
+          Upload and Preview Software
+        </button>
       </div>
     </form>
   </div>

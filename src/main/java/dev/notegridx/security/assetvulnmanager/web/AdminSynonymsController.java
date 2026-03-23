@@ -8,6 +8,7 @@ import dev.notegridx.security.assetvulnmanager.repository.CpeProductAliasReposit
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorAliasRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.SynonymService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
@@ -34,19 +35,22 @@ public class AdminSynonymsController {
     private final CpeVendorRepository vendorRepo;
     private final CpeProductRepository productRepo;
     private final SynonymService synonymService;
+    private final DemoModeService demoModeService;
 
     public AdminSynonymsController(
             CpeVendorAliasRepository vendorAliasRepo,
             CpeProductAliasRepository productAliasRepo,
             CpeVendorRepository vendorRepo,
             CpeProductRepository productRepo,
-            SynonymService synonymService
+            SynonymService synonymService,
+            DemoModeService demoModeService
     ) {
         this.vendorAliasRepo = vendorAliasRepo;
         this.productAliasRepo = productAliasRepo;
         this.vendorRepo = vendorRepo;
         this.productRepo = productRepo;
         this.synonymService = synonymService;
+        this.demoModeService = demoModeService;
     }
 
     public record VendorOption(Long id, String label) {
@@ -61,11 +65,11 @@ public class AdminSynonymsController {
             @RequestParam(name = "vendorId", required = false) Long vendorId,
             @RequestParam(name = "tab", required = false) String tab,
 
-            // vendor alias search (global)
+            // Vendor alias search (global)
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "status", required = false) String status,
 
-            // product alias search (scoped)
+            // Product alias search (scoped)
             @RequestParam(name = "qP", required = false) String qP,
             @RequestParam(name = "statusP", required = false) String statusP,
 
@@ -73,7 +77,7 @@ public class AdminSynonymsController {
     ) {
         String safeTab = normalizeTab(tab);
 
-        // vendor aliases list (global)
+        // Vendor aliases list (global)
         List<CpeVendorAlias> rows = vendorAliasRepo.search(
                 safe(q),
                 safe(status),
@@ -94,7 +98,7 @@ public class AdminSynonymsController {
                 .map(id -> new VendorOption(id, workspaceVendorLabelMap.getOrDefault(id, "vendorId=" + id)))
                 .toList();
 
-        // selected vendor label (workspace header)
+        // Selected vendor label (workspace header)
         String selectedVendorLabel = null;
         if (vendorId != null) {
             selectedVendorLabel = vendorRepo.findById(vendorId)
@@ -104,7 +108,7 @@ public class AdminSynonymsController {
                     .orElse(null);
         }
 
-        // product aliases list (vendor scoped) - only when products tab + vendor selected
+        // Product aliases list (vendor-scoped) - only when products tab + vendor selected
         List<CpeProductAlias> productRows = List.of();
         Map<Long, String> productLabels = Map.of();
 
@@ -158,6 +162,8 @@ public class AdminSynonymsController {
             @RequestParam("id") Long id,
             @RequestParam(name = "redirect", required = false) String redirect
     ) {
+        demoModeService.assertWritable();
+
         vendorAliasRepo.findById(id).ifPresent(a -> {
             a.setStatus(toggle(a.getStatus()));
             vendorAliasRepo.save(a);
@@ -172,6 +178,8 @@ public class AdminSynonymsController {
             @RequestParam("id") Long id,
             @RequestParam(name = "redirect", required = false) String redirect
     ) {
+        demoModeService.assertWritable();
+
         productAliasRepo.findById(id).ifPresent(a -> {
             a.setStatus(toggle(a.getStatus()));
             productAliasRepo.save(a);

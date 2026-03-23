@@ -10,6 +10,7 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
 import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import dev.notegridx.security.assetvulnmanager.domain.enums.Severity;
 import dev.notegridx.security.assetvulnmanager.service.AlertService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.web.form.AlertCloseForm;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -27,9 +28,11 @@ public class AlertController {
 	private static final Set<String> ALLOWED_CERTAINTY = Set.of("ALL", "CONFIRMED", "UNCONFIRMED");
 
 	private final AlertService alertService;
+	private final DemoModeService demoModeService;
 
-	public AlertController(AlertService alertService) {
+	public AlertController(AlertService alertService, DemoModeService demoModeService) {
 		this.alertService = alertService;
+		this.demoModeService = demoModeService;
 	}
 
 	@GetMapping("/alerts")
@@ -350,6 +353,8 @@ public class AlertController {
 			BindingResult bindingResult,
 			Model model
 	) {
+		demoModeService.assertWritable();
+
 		Alert alert = alertService.getRequired(id);
 
 		if (bindingResult.hasErrors()) {
@@ -364,6 +369,7 @@ public class AlertController {
 
 	@PostMapping("/alerts/{id}/reopen")
 	public String reopen(@PathVariable Long id) {
+		demoModeService.assertWritable();
 		alertService.reopen(id);
 		return "redirect:/alerts/" + id;
 	}

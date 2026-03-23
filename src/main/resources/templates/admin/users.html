@@ -42,12 +42,14 @@
             <div class="form-row">
                 <div class="field" style="min-width:220px; flex:1 1 220px;">
                     <label for="username">Username</label>
-                    <input id="username" name="username" type="text" required maxlength="100">
+                    <input id="username" name="username" type="text" required maxlength="100"
+                           th:disabled="${demoMode}">
                 </div>
 
                 <div class="field" style="min-width:220px; flex:1 1 220px;">
                     <label for="password">Password</label>
-                    <input id="password" name="password" type="password" required>
+                    <input id="password" name="password" type="password" required
+                           th:disabled="${demoMode}">
                 </div>
 
                 <div class="field" style="min-width:220px; flex:1 1 260px;">
@@ -55,7 +57,8 @@
                     <div class="card" style="padding:10px;">
                         <label th:each="r : ${roles}"
                                style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
-                            <input type="checkbox" name="roles" th:value="${r.roleName}">
+                            <input type="checkbox" name="roles" th:value="${r.roleName}"
+                                   th:disabled="${demoMode}">
                             <span th:text="${r.roleName}">ADMIN</span>
                         </label>
                     </div>
@@ -63,15 +66,20 @@
 
                 <div class="field" style="min-width:120px;">
                     <label style="display:inline-flex; align-items:center; gap:8px;">
-                        <input type="checkbox" name="enabled" value="true">
+                        <input type="checkbox" name="enabled" value="true"
+                               th:disabled="${demoMode}">
                         <span>Enabled</span>
                     </label>
                 </div>
             </div>
 
             <div class="actions" style="margin-top:14px;">
-                <button type="submit" class="btn btn-primary">Create User</button>
+                <button type="submit" class="btn btn-primary"
+                        th:disabled="${demoMode}"
+                        th:title="${demoMode ? 'Disabled in demo mode' : null}">Create User</button>
             </div>
+
+            <div class="muted mt-6" th:if="${demoMode}">Disabled in demo mode.</div>
         </form>
     </div>
 
@@ -117,7 +125,8 @@
                         <button type="button"
                                 class="js-enabled-toggle btn btn-sm"
                                 th:classappend="${u.enabled} ? ' btn-primary' : ' btn-danger'"
-                                th:attr="data-user-id=${u.id},data-enabled=${u.enabled},title=${u.enabled} ? 'Click to disable' : 'Click to enable'">
+                                th:attr="data-user-id=${u.id},data-enabled=${u.enabled},title=${demoMode ? 'Disabled in demo mode' : (u.enabled ? 'Click to disable' : 'Click to enable')}"
+                                th:disabled="${demoMode}">
                             <span th:text="${u.enabled} ? 'Enabled' : 'Disabled'">Enabled</span>
                         </button>
                     </td>
@@ -169,7 +178,8 @@
                                                th:value="${_csrf.token}">
                                         <button type="submit"
                                                 class="btn btn-sm"
-                                                th:disabled="${u.accountNonLocked}">
+                                                th:disabled="${demoMode or u.accountNonLocked}"
+                                                th:title="${demoMode ? 'Disabled in demo mode' : null}">
                                             Unlock
                                         </button>
                                     </form>
@@ -194,7 +204,8 @@
                                                    name="newPassword"
                                                    placeholder="Temporary password"
                                                    autocomplete="new-password"
-                                                   required>
+                                                   required
+                                                   th:disabled="${demoMode}">
                                         </div>
 
                                         <div class="field" style="min-width:160px; flex:1 1 160px; margin:0;">
@@ -202,11 +213,14 @@
                                                    name="confirmPassword"
                                                    placeholder="Confirm password"
                                                    autocomplete="new-password"
-                                                   required>
+                                                   required
+                                                   th:disabled="${demoMode}">
                                         </div>
 
                                         <div class="field" style="min-width:140px; margin:0;">
-                                            <button type="submit" class="btn">Reset Password</button>
+                                            <button type="submit" class="btn"
+                                                    th:disabled="${demoMode}"
+                                                    th:title="${demoMode ? 'Disabled in demo mode' : null}">Reset Password</button>
                                         </div>
                                     </div>
                                 </form>
@@ -231,12 +245,15 @@
                                                 <input type="checkbox"
                                                        name="roles"
                                                        th:value="${r.roleName}"
-                                                       th:checked="${u.roles.contains(r)}">
+                                                       th:checked="${u.roles.contains(r)}"
+                                                       th:disabled="${demoMode}">
                                                 <span th:text="${r.roleName}">ADMIN</span>
                                             </label>
                                         </div>
 
-                                        <button type="submit" class="btn btn-primary">Apply</button>
+                                        <button type="submit" class="btn btn-primary"
+                                                th:disabled="${demoMode}"
+                                                th:title="${demoMode ? 'Disabled in demo mode' : null}">Apply</button>
                                     </div>
                                 </form>
                             </div>
@@ -352,6 +369,7 @@
             const pageMessage = document.getElementById("users-page-message");
             const createUserForm = document.getElementById("create-user-form");
             const userRowTemplate = document.getElementById("user-row-template");
+            const demoMode = /*[[${demoMode}]]*/ false;
 
             const allRoles = /*[[${roles.![roleName]}]]*/ [];
 
@@ -419,7 +437,11 @@
                         button.textContent = busyText;
                     }
                 } else {
-                    button.disabled = false;
+                    if (demoMode) {
+                        button.disabled = true;
+                    } else {
+                        button.disabled = false;
+                    }
                     if (button.dataset.originalText) {
                         button.textContent = button.dataset.originalText;
                         delete button.dataset.originalText;
@@ -468,7 +490,10 @@
                     ? "js-enabled-toggle btn btn-primary btn-sm"
                     : "js-enabled-toggle btn btn-danger btn-sm";
                 toggle.textContent = enabled ? "Enabled" : "Disabled";
-                toggle.title = enabled ? "Click to disable" : "Click to enable";
+                toggle.title = demoMode
+                    ? "Disabled in demo mode"
+                    : (enabled ? "Click to disable" : "Click to enable");
+                toggle.disabled = demoMode;
             }
 
             function updateUnlockButton(row, payload) {
@@ -481,7 +506,8 @@
                 }
 
                 const locked = payload && payload.accountNonLocked === false;
-                button.disabled = !locked;
+                button.disabled = demoMode || !locked;
+                button.title = demoMode ? "Disabled in demo mode" : "";
             }
 
             function updateUserRow(row, payload) {
@@ -662,7 +688,11 @@
                         return;
                     }
 
-                    button.disabled = false;
+                    if (demoMode) {
+                        button.disabled = true;
+                    } else {
+                        button.disabled = false;
+                    }
                     delete button.dataset.originalText;
 
                     updateUserRow(row, json);
@@ -785,9 +815,10 @@
             function buildRolesEditorHtml(selectedRoles) {
                 return allRoles.map(role => {
                     const checked = selectedRoles.includes(role) ? " checked" : "";
+                    const disabled = demoMode ? " disabled" : "";
                     return `
                         <label style="display:inline-flex; align-items:center; gap:8px; margin-right:14px; margin-bottom:8px;">
-                            <input type="checkbox" name="roles" value="${escapeHtml(role)}"${checked}>
+                            <input type="checkbox" name="roles" value="${escapeHtml(role)}"${checked}${disabled}>
                             <span>${escapeHtml(role)}</span>
                         </label>
                     `;
@@ -849,6 +880,23 @@
                 const accountState = row.querySelector(".js-account-state");
                 if (accountState) {
                     accountState.innerHTML = buildAccountStateHtml(payload);
+                }
+
+                const resetPasswordInputs = row.querySelectorAll('.reset-password-form input[type="password"]');
+                resetPasswordInputs.forEach(input => {
+                    input.disabled = demoMode;
+                });
+
+                const resetPasswordButton = row.querySelector('.reset-password-form button[type="submit"]');
+                if (resetPasswordButton) {
+                    resetPasswordButton.disabled = demoMode;
+                    resetPasswordButton.title = demoMode ? "Disabled in demo mode" : "";
+                }
+
+                const rolesApplyButton = row.querySelector('.roles-form button[type="submit"]');
+                if (rolesApplyButton) {
+                    rolesApplyButton.disabled = demoMode;
+                    rolesApplyButton.title = demoMode ? "Disabled in demo mode" : "";
                 }
 
                 updateUnlockButton(row, payload);

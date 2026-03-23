@@ -424,13 +424,20 @@
                 <div class="actions canon-inline-actions" style="margin:0;">
                     <label class="muted canon-help"
                            style="display:flex; align-items:center; gap:8px; user-select:none;">
-                        <input type="checkbox" name="relink" value="true">
+                        <input type="checkbox" name="relink" value="true"
+                               th:disabled="${demoMode}">
                         Re-link already linked products
                     </label>
 
-                    <button class="btn btn-primary" type="submit">
+                    <button class="btn btn-primary" type="submit"
+                            th:disabled="${demoMode}"
+                            th:title="${demoMode ? 'Disabled in demo mode' : null}">
                         Run Linking
                     </button>
+                </div>
+
+                <div class="muted canon-help mt-6" th:if="${demoMode}">
+                    Disabled in demo mode.
                 </div>
             </form>
         </div>

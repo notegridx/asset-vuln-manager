@@ -37,13 +37,40 @@
     <div th:replace="~{fragments/nav :: nav(${active})}"></div>
   </header>
 
+  <div th:if="${demoMode}"
+       style="margin:12px 0 0 0; padding:10px 12px; border:1px solid rgba(255,180,80,.35); border-radius:10px; background:rgba(255,180,80,.12); color:#ffd08a;">
+    <b>⚠ Demo mode</b>
+    <span style="margin-left:8px;">Changes are disabled in this public demo.</span>
+  </div>
+
   <div th:replace="${content}"></div>
 
   <footer></footer>
 </div>
 
+<div id="demo-toast"
+     style="position:fixed; right:16px; bottom:16px; z-index:9999; max-width:360px; display:none; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,180,80,.35); background:rgba(24,24,24,.96); color:#ffd08a; box-shadow:0 10px 30px rgba(0,0,0,.35);">
+  <div id="demo-toast-message">This public demo is read-only.</div>
+</div>
+
 <script>
   (function () {
+    function showDemoToast(message) {
+      var toast = document.getElementById('demo-toast');
+      var msg = document.getElementById('demo-toast-message');
+      if (!toast || !msg) return;
+
+      msg.textContent = message || 'This public demo is read-only.';
+      toast.style.display = 'block';
+
+      clearTimeout(showDemoToast._timer);
+      showDemoToast._timer = setTimeout(function () {
+        toast.style.display = 'none';
+      }, 3200);
+    }
+
+    window.showDemoToast = showDemoToast;
+
     // Close open NAV dropdowns when clicking outside
     document.addEventListener('click', function (e) {
       if (e.target.closest('details.nav-admin')) return;
@@ -71,6 +98,14 @@
         if (other !== d) other.removeAttribute('open');
       });
     }, true);
+
+    // HTMX-triggered demo error
+    document.body.addEventListener('demoError', function (e) {
+      var message = e && e.detail && e.detail.message
+              ? e.detail.message
+              : 'This public demo is read-only.';
+      showDemoToast(message);
+    });
   })();
 </script>
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>

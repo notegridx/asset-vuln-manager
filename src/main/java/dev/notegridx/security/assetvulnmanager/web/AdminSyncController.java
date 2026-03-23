@@ -4,6 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.service.AdminCveDeltaUpdateService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.AdminRunReadService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,13 +16,16 @@ public class AdminSyncController {
 
 	private final AdminCveDeltaUpdateService deltaUpdateService;
 	private final AdminRunReadService adminRunReadService;
+	private final DemoModeService demoModeService;
 
 	public AdminSyncController(
 			AdminCveDeltaUpdateService deltaUpdateService,
-			AdminRunReadService adminRunReadService
+			AdminRunReadService adminRunReadService,
+			DemoModeService demoModeService
 	) {
 		this.deltaUpdateService = deltaUpdateService;
 		this.adminRunReadService = adminRunReadService;
+		this.demoModeService = demoModeService;
 	}
 
 	@GetMapping("/admin/sync")
@@ -40,6 +44,8 @@ public class AdminSyncController {
 			@RequestParam(name = "maxResults", defaultValue = "200") int maxResults,
 			Model model
 	) {
+		demoModeService.assertWritable();
+
 		try {
 			var result = deltaUpdateService.runDeltaUpdate(daysBack, maxResults);
 			model.addAttribute("result", result);

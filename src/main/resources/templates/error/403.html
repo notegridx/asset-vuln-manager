@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>403 Forbidden</title>
+    <link rel="stylesheet" th:href="@{/styles.css}">
+</head>
+<body>
+<div class="container" style="max-width:720px; padding-top:64px;">
+    <main>
+        <div class="card" style="padding:24px; text-align:center;">
+
+            <div style="font-size:28px; margin-bottom:12px;">
+                ⚠ 403 Forbidden
+            </div>
+
+            <div style="margin-bottom:16px; font-size:14px; color:var(--muted);">
+                This action is not allowed.
+            </div>
+
+            <div class="card" style="padding:14px; margin-bottom:16px;">
+                <div style="font-weight:600; margin-bottom:6px;">Access denied</div>
+                <div class="muted" style="font-size:13px; line-height:1.6;">
+                    You do not have permission to perform this action.
+                </div>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <a class="btn btn-primary" th:href="@{/dashboard}">Back to Dashboard</a>
+                <a class="btn btn-soft" th:href="@{/}">Home</a>
+            </div>
+
+        </div>
+    </main>
+</div>
+</body>
+</html>

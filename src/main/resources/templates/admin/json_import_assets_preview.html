@@ -27,7 +27,10 @@
       <form th:if="${run.validRows > 0}"
             th:action="@{/admin/import/json/assets/{runId}/import(runId=${run.id})}"
             method="post">
-        <button class="btn btn-primary" type="submit"
+        <button class="btn btn-primary"
+                type="submit"
+                th:disabled="${demoMode}"
+                th:title="${demoMode ? 'Disabled in demo mode' : null}"
                 onclick="return confirm('Import valid rows? This will upsert assets and update last_seen_at.');">
           Import Assets (Upsert)
         </button>
@@ -42,6 +45,9 @@
         <li><b>externalKey</b> required</li>
         <li><b>name</b> required</li>
       </ul>
+    </div>
+    <div th:if="${demoMode}" class="muted" style="font-size:12px; margin-top:8px;">
+      Disabled in demo mode.
     </div>
   </div>
 

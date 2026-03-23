@@ -7,6 +7,7 @@ import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallReposit
 import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +39,7 @@ public class AdminCanonicalController {
     private final SoftwareInstallRepository softwareRepo;
     private final CanonicalCpeLinkingService linker;
     private final AdminCanonicalBackfillService adminCanonicalBackfillService;
+    private final DemoModeService demoModeService;
 
     private volatile CanonicalCpeLinkingService.MappingStats cachedStats;
     private volatile long cachedStatsAtMillis;
@@ -49,12 +51,14 @@ public class AdminCanonicalController {
             AssetRepository assetRepo,
             SoftwareInstallRepository softwareRepo,
             CanonicalCpeLinkingService linker,
-            AdminCanonicalBackfillService adminCanonicalBackfillService
+            AdminCanonicalBackfillService adminCanonicalBackfillService,
+            DemoModeService demoModeService
     ) {
         this.assetRepo = assetRepo;
         this.softwareRepo = softwareRepo;
         this.linker = linker;
         this.adminCanonicalBackfillService = adminCanonicalBackfillService;
+        this.demoModeService = demoModeService;
     }
 
     public enum Filter {
@@ -222,6 +226,8 @@ public class AdminCanonicalController {
             @RequestParam(name = "redirect", required = false) String redirect,
             RedirectAttributes ra
     ) {
+        demoModeService.assertWritable();
+
         try {
             var result = adminCanonicalBackfillService.runBackfill(maxRows, relink);
             invalidateCaches();
@@ -247,6 +253,8 @@ public class AdminCanonicalController {
             Model model,
             RedirectAttributes ra
     ) {
+        demoModeService.assertWritable();
+
         SoftwareInstall s = softwareRepo.findById(softwareId).orElse(null);
         if (s == null) {
             if (isHtmxRequest(hxRequest)) {

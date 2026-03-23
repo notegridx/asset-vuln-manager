@@ -4,6 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.AdminKevSyncService;
 import dev.notegridx.security.assetvulnmanager.service.AdminRunReadService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.KevSyncService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,13 +17,16 @@ public class AdminKevController {
 
     private final AdminKevSyncService adminKevSyncService;
     private final AdminRunReadService adminRunReadService;
+    private final DemoModeService demoModeService;
 
     public AdminKevController(
             AdminKevSyncService adminKevSyncService,
-            AdminRunReadService adminRunReadService
+            AdminRunReadService adminRunReadService,
+            DemoModeService demoModeService
     ) {
         this.adminKevSyncService = adminKevSyncService;
         this.adminRunReadService = adminRunReadService;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping("/admin/kev/sync")
@@ -45,6 +49,8 @@ public class AdminKevController {
             @RequestParam(name = "maxItems", defaultValue = "50000") int maxItems,
             Model model
     ) {
+        demoModeService.assertWritable();
+
         try {
             KevSyncService.SyncResult result = adminKevSyncService.run(force, maxItems);
             model.addAttribute("result", result);

@@ -124,9 +124,11 @@
 
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <a class="btn btn-ghost" th:href="@{/assets}">Back to Assets</a>
-            <a sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+            <a th:if="${!demoMode}"
+               sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
                class="btn"
                th:href="@{/assets/{id}/edit(id=${asset.id})}">Edit Asset</a>
+            <span th:if="${demoMode}" class="muted">Read only in demo mode</span>
         </div>
     </div>
 
@@ -296,9 +298,11 @@
         <h2 style="margin:0;">Installed Software</h2>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <a class="btn btn-ghost" th:href="@{/software}">Open Software Inventory</a>
-            <a sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+            <a th:if="${!demoMode}"
+               sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
                class="btn"
                th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
+            <span th:if="${demoMode}" class="muted">Read only in demo mode</span>
         </div>
     </div>
 
@@ -404,7 +408,9 @@
                 </td>
 
                 <td>
-                    <div sec:authorize="hasAnyRole('ADMIN','OPERATOR')" class="asset-sw-actions">
+                    <div th:if="${!demoMode}"
+                         sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+                         class="asset-sw-actions">
                         <a th:href="@{/software/{id}/edit(id=${s.id})}" class="btn btn-sm">Edit</a>
 
                         <form th:action="@{/software/{id}/delete(id=${s.id})}"
@@ -415,7 +421,8 @@
                         </form>
                     </div>
 
-                    <span sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>
+                    <span th:if="${demoMode}" class="muted">Read only</span>
+                    <span th:if="${!demoMode}" sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>
                 </td>
             </tr>
             </tbody>

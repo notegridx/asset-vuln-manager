@@ -18,8 +18,6 @@
     </div>
   </div>
 
-
-
   <!-- When to use (card rhythm) -->
   <div class="card card--section">
     <div class="muted text-12">
@@ -36,6 +34,10 @@
   <div class="card card--section">
     <h2 class="m-0 mt-0" style="margin:0 0 10px 0;">Execute</h2>
 
+    <div th:if="${demoMode}" class="muted text-12 mt-6">
+      Disabled in demo mode.
+    </div>
+
     <div th:if="${error != null}" class="admin-error-box">
       <strong>⚠ Error</strong>
       <span th:text="${error}">Alert generation is already running.</span>
@@ -43,7 +45,7 @@
 
     <form th:action="@{/admin/alerts/recalculate}" method="post">
       <div class="actions actions--mt-14">
-        <button type="submit" class="btn btn-primary">Generate Alerts</button>
+        <button type="submit" class="btn btn-primary" th:disabled="${demoMode}">Generate Alerts</button>
       </div>
     </form>
   </div>

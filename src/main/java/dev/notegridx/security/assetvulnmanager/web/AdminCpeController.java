@@ -3,6 +3,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 import dev.notegridx.security.assetvulnmanager.service.AdminCpeSyncService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.CpeFeedSyncService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,9 +17,14 @@ import java.io.IOException;
 public class AdminCpeController {
 
     private final AdminCpeSyncService adminCpeSyncService;
+    private final DemoModeService demoModeService;
 
-    public AdminCpeController(AdminCpeSyncService adminCpeSyncService) {
+    public AdminCpeController(
+            AdminCpeSyncService adminCpeSyncService,
+            DemoModeService demoModeService
+    ) {
         this.adminCpeSyncService = adminCpeSyncService;
+        this.demoModeService = demoModeService;
     }
 
     @GetMapping("/admin/cpe/sync")
@@ -37,6 +43,8 @@ public class AdminCpeController {
             @RequestParam(name = "file", required = false) MultipartFile file,
             Model model
     ) throws IOException {
+
+        demoModeService.assertWritable();
 
         String safeMode = normalizeMode(mode);
 
