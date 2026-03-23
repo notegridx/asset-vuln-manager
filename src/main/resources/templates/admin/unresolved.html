@@ -434,8 +434,9 @@
                 <div class="um-stack-6">
                     <label for="status">Status</label>
                     <select id="status" name="status">
-                        <option value="ALL" th:selected="${status == 'ALL'}">ALL</option>
+                        <option value="ALL" th:selected="${status == null or status == '' or status == 'ALL'}">ALL</option>
                         <option value="NEW" th:selected="${status == 'NEW'}">UNRESOLVED</option>
+                        <option value="VENDOR_LINKED" th:selected="${status == 'VENDOR_LINKED'}">VENDOR LINKED</option>
                         <option value="RESOLVED" th:selected="${status == 'RESOLVED'}">LINKED</option>
                     </select>
                 </div>

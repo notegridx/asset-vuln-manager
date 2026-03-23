@@ -55,8 +55,10 @@ public class AdminInventoryController {
             @RequestParam(name = "id", required = false) Long id,
             Model model
     ) {
+        String effectiveStatus = (status == null || status.isBlank()) ? "ALL" : status;
+
         var view = adminInventoryReadService.findUnresolvedMappings(
-                status,
+                effectiveStatus,
                 runId,
                 q,
                 activeOnly,
