@@ -370,28 +370,28 @@
    Unresolved status visibility (minimal)
    ========================================= */
 
-/* NEW: needs action */
-.um-row--new {
-    border-left: 4px solid #ff4d4f; /* red */
-}
+    /* UNRESOLVED: needs action */
+    .um-row--new {
+        border-left: 4px solid #ff4d4f; /* red */
+    }
 
-/* RESOLVED: done */
-.um-row--resolved {
-    border-left: 4px solid #52c41a; /* green */
-    opacity: 0.75; /* slightly dim */
-}
+    /* LINKED: done */
+    .um-row--resolved {
+        border-left: 4px solid #52c41a; /* green */
+        opacity: 0.75; /* slightly dim */
+    }
 
-/* Badge emphasis */
-.badge--new {
-    background: #ff4d4f;
-    color: #fff;
-    font-weight: 600;
-}
+    /* Badge emphasis */
+    .badge--new {
+        background: #ff4d4f;
+        color: #fff;
+        font-weight: 600;
+    }
 
-.badge--resolved {
-    background: #52c41a;
-    color: #fff;
-}
+    .badge--resolved {
+        background: #52c41a;
+        color: #fff;
+    }
 </style>
 
 <body th:replace="~{layout/base :: layout('Unresolved Mappings', 'admin', ~{::main})}">
@@ -435,8 +435,8 @@
                     <label for="status">Status</label>
                     <select id="status" name="status">
                         <option value="ALL" th:selected="${status == 'ALL'}">ALL</option>
-                        <option value="NEW" th:selected="${status == 'NEW'}">NEW</option>
-                        <option value="RESOLVED" th:selected="${status == 'RESOLVED'}">RESOLVED</option>
+                        <option value="NEW" th:selected="${status == 'NEW'}">UNRESOLVED</option>
+                        <option value="RESOLVED" th:selected="${status == 'RESOLVED'}">LINKED</option>
                     </select>
                 </div>
 
@@ -453,8 +453,8 @@
                 <span class="pill" th:text="'Total: ' + ${#lists.size(mappings)}">Total: 0</span>
 
                 <div class="um-viewing">
-        <span th:text="'Viewing: status=' + ${status} + ' / activeOnly=' + ${activeOnly}">
-            Viewing: status=NEW / activeOnly=true
+        <span th:text="'Viewing: status=' + (${status == 'NEW'} ? 'UNRESOLVED' : (${status == 'RESOLVED'} ? 'LINKED' : ${status})) + ' / activeOnly=' + ${activeOnly}">
+            Viewing: status=UNRESOLVED / activeOnly=true
         </span>
                     <span th:if="${q != null and !#strings.isEmpty(q)}"
                           th:text="' / q=' + ${q}">
@@ -500,8 +500,11 @@
         ${r.status != null and r.status.toString() == 'NEW'} ? ' badge--new' :
         (${r.status != null and r.status.toString() == 'RESOLVED'} ? ' badge--resolved' : ' badge--neutral')
       "
-                              th:text="${r.status}">
-    NEW
+                              th:text="${
+        r.status != null and r.status.toString() == 'NEW' ? 'UNRESOLVED' :
+        (r.status != null and r.status.toString() == 'RESOLVED' ? 'LINKED' : r.status)
+      }">
+    UNRESOLVED
 </span>
                     </td>
 
