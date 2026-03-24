@@ -25,11 +25,12 @@ public class AdminScheduleController {
     @GetMapping("/admin/system/schedule")
     public String view(Model model) {
         model.addAttribute("schedule", adminScheduleService.getCveDeltaSchedule());
+        model.addAttribute("generateAlertsSchedule", adminScheduleService.getGenerateAlertsSchedule());
         return "admin/schedule";
     }
 
     @PostMapping("/admin/system/schedule/cve-delta")
-    public String save(
+    public String saveCveDelta(
             @RequestParam(name = "enabled", defaultValue = "false") boolean enabled,
             @RequestParam(name = "intervalHours", defaultValue = "24") int intervalHours,
             @RequestParam(name = "daysBack", defaultValue = "1") int daysBack,
@@ -48,7 +49,8 @@ public class AdminScheduleController {
                     );
 
             model.addAttribute("schedule", schedule);
-            model.addAttribute("message", "Schedule saved.");
+            model.addAttribute("generateAlertsSchedule", adminScheduleService.getGenerateAlertsSchedule());
+            model.addAttribute("message", "CVE Delta Update schedule saved.");
             return "admin/schedule";
 
         } catch (IllegalArgumentException ex) {
@@ -59,6 +61,44 @@ public class AdminScheduleController {
                             intervalHours,
                             daysBack,
                             maxResults,
+                            null,
+                            null,
+                            null
+                    )
+            );
+            model.addAttribute("generateAlertsSchedule", adminScheduleService.getGenerateAlertsSchedule());
+            model.addAttribute("error", ex.getMessage());
+            return "admin/schedule";
+        }
+    }
+
+    @PostMapping("/admin/system/schedule/generate-alerts")
+    public String saveGenerateAlerts(
+            @RequestParam(name = "enabled", defaultValue = "false") boolean enabled,
+            @RequestParam(name = "intervalHours", defaultValue = "24") int intervalHours,
+            Model model
+    ) {
+        demoModeService.assertWritable();
+
+        try {
+            AdminScheduleService.GenerateAlertsScheduleView schedule =
+                    adminScheduleService.saveGenerateAlertsSchedule(
+                            enabled,
+                            intervalHours
+                    );
+
+            model.addAttribute("schedule", adminScheduleService.getCveDeltaSchedule());
+            model.addAttribute("generateAlertsSchedule", schedule);
+            model.addAttribute("message", "Generate Alerts schedule saved.");
+            return "admin/schedule";
+
+        } catch (IllegalArgumentException ex) {
+            model.addAttribute("schedule", adminScheduleService.getCveDeltaSchedule());
+            model.addAttribute(
+                    "generateAlertsSchedule",
+                    new AdminScheduleService.GenerateAlertsScheduleView(
+                            enabled,
+                            intervalHours,
                             null,
                             null,
                             null

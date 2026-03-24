@@ -19,6 +19,12 @@ public class AdminScheduleService {
     public static final String KEY_CVE_DELTA_LAST_RUN_AT = "schedule.cveDelta.lastRunAt";
     public static final String KEY_CVE_DELTA_LAST_STATUS = "schedule.cveDelta.lastStatus";
 
+    public static final String KEY_GENERATE_ALERTS_ENABLED = "schedule.generateAlerts.enabled";
+    public static final String KEY_GENERATE_ALERTS_INTERVAL_HOURS = "schedule.generateAlerts.intervalHours";
+    public static final String KEY_GENERATE_ALERTS_NEXT_RUN_AT = "schedule.generateAlerts.nextRunAt";
+    public static final String KEY_GENERATE_ALERTS_LAST_RUN_AT = "schedule.generateAlerts.lastRunAt";
+    public static final String KEY_GENERATE_ALERTS_LAST_STATUS = "schedule.generateAlerts.lastStatus";
+
     private static final int DEFAULT_INTERVAL_HOURS = 24;
     private static final int DEFAULT_DAYS_BACK = 1;
     private static final int DEFAULT_MAX_RESULTS = 200;
@@ -53,7 +59,7 @@ public class AdminScheduleService {
             int daysBack,
             int maxResults
     ) {
-        validate(intervalHours, daysBack, maxResults);
+        validateCveDelta(intervalHours, daysBack, maxResults);
 
         LocalDateTime now = DbTime.now();
         LocalDateTime nextRunAt = enabled ? now.plusHours(intervalHours) : null;
@@ -120,7 +126,86 @@ public class AdminScheduleService {
         }
     }
 
-    private void validate(int intervalHours, int daysBack, int maxResults) {
+    @Transactional(readOnly = true)
+    public GenerateAlertsScheduleView getGenerateAlertsSchedule() {
+        return new GenerateAlertsScheduleView(
+                getBool(KEY_GENERATE_ALERTS_ENABLED, false),
+                getInt(KEY_GENERATE_ALERTS_INTERVAL_HOURS, DEFAULT_INTERVAL_HOURS),
+                getDateTime(KEY_GENERATE_ALERTS_NEXT_RUN_AT),
+                getDateTime(KEY_GENERATE_ALERTS_LAST_RUN_AT),
+                getString(KEY_GENERATE_ALERTS_LAST_STATUS)
+        );
+    }
+
+    @Transactional
+    public GenerateAlertsScheduleView saveGenerateAlertsSchedule(
+            boolean enabled,
+            int intervalHours
+    ) {
+        validateGenerateAlerts(intervalHours);
+
+        LocalDateTime now = DbTime.now();
+        LocalDateTime nextRunAt = enabled ? now.plusHours(intervalHours) : null;
+
+        putBool(KEY_GENERATE_ALERTS_ENABLED, enabled, UPDATED_BY_UI);
+        putInt(KEY_GENERATE_ALERTS_INTERVAL_HOURS, intervalHours, UPDATED_BY_UI);
+        putDateTime(KEY_GENERATE_ALERTS_NEXT_RUN_AT, nextRunAt, UPDATED_BY_UI);
+
+        return new GenerateAlertsScheduleView(
+                enabled,
+                intervalHours,
+                nextRunAt,
+                getDateTime(KEY_GENERATE_ALERTS_LAST_RUN_AT),
+                getString(KEY_GENERATE_ALERTS_LAST_STATUS)
+        );
+    }
+
+    @Transactional
+    public void markGenerateAlertsSuccess() {
+        GenerateAlertsScheduleView current = getGenerateAlertsSchedule();
+        LocalDateTime now = DbTime.now();
+
+        putDateTime(KEY_GENERATE_ALERTS_LAST_RUN_AT, now, UPDATED_BY_SCHEDULER);
+        putString(KEY_GENERATE_ALERTS_LAST_STATUS, "SUCCESS", UPDATED_BY_SCHEDULER);
+        putDateTime(
+                KEY_GENERATE_ALERTS_NEXT_RUN_AT,
+                current.enabled() ? now.plusHours(current.intervalHours()) : null,
+                UPDATED_BY_SCHEDULER
+        );
+    }
+
+    @Transactional
+    public void markGenerateAlertsFailure() {
+        GenerateAlertsScheduleView current = getGenerateAlertsSchedule();
+        LocalDateTime now = DbTime.now();
+
+        putDateTime(KEY_GENERATE_ALERTS_LAST_RUN_AT, now, UPDATED_BY_SCHEDULER);
+        putString(KEY_GENERATE_ALERTS_LAST_STATUS, "FAILED", UPDATED_BY_SCHEDULER);
+        putDateTime(
+                KEY_GENERATE_ALERTS_NEXT_RUN_AT,
+                current.enabled() ? now.plusHours(current.intervalHours()) : null,
+                UPDATED_BY_SCHEDULER
+        );
+    }
+
+    @Transactional
+    public void touchGenerateAlertsAfterManualRun() {
+        GenerateAlertsScheduleView current = getGenerateAlertsSchedule();
+        LocalDateTime now = DbTime.now();
+
+        putDateTime(KEY_GENERATE_ALERTS_LAST_RUN_AT, now, UPDATED_BY_MANUAL);
+        putString(KEY_GENERATE_ALERTS_LAST_STATUS, "SUCCESS", UPDATED_BY_MANUAL);
+
+        if (current.enabled()) {
+            putDateTime(
+                    KEY_GENERATE_ALERTS_NEXT_RUN_AT,
+                    now.plusHours(current.intervalHours()),
+                    UPDATED_BY_MANUAL
+            );
+        }
+    }
+
+    private void validateCveDelta(int intervalHours, int daysBack, int maxResults) {
         if (intervalHours < 1 || intervalHours > 24) {
             throw new IllegalArgumentException("Interval hours must be between 1 and 24.");
         }
@@ -129,6 +214,12 @@ public class AdminScheduleService {
         }
         if (maxResults < 1 || maxResults > 2000) {
             throw new IllegalArgumentException("Max results must be between 1 and 2000.");
+        }
+    }
+
+    private void validateGenerateAlerts(int intervalHours) {
+        if (intervalHours < 1 || intervalHours > 24) {
+            throw new IllegalArgumentException("Interval hours must be between 1 and 24.");
         }
     }
 
@@ -199,6 +290,15 @@ public class AdminScheduleService {
             int intervalHours,
             int daysBack,
             int maxResults,
+            LocalDateTime nextRunAt,
+            LocalDateTime lastRunAt,
+            String lastStatus
+    ) {
+    }
+
+    public record GenerateAlertsScheduleView(
+            boolean enabled,
+            int intervalHours,
             LocalDateTime nextRunAt,
             LocalDateTime lastRunAt,
             String lastStatus
