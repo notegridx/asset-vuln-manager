@@ -261,7 +261,21 @@
                             </th:block>
 
                             <th:block th:if="${demoMode}">
-                                <span class="muted">Read only in demo mode</span>
+                                <a class="btn btn--small"
+                                   href="#"
+                                   aria-disabled="true"
+                                   tabindex="-1"
+                                   onclick="return false;"
+                                   >
+                                    Edit
+                                </a>
+
+                                <form action="#"
+                                      method="post"
+                                      style="display:inline;"
+                                      onsubmit="return false;">
+                                    <button class="btn btn--small btn--danger" type="submit" disabled>Delete</button>
+                                </form>
                             </th:block>
                         </div>
 

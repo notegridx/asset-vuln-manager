@@ -124,11 +124,17 @@
 
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <a class="btn btn-ghost" th:href="@{/assets}">Back to Assets</a>
-            <a th:if="${!demoMode}"
-               sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
-               class="btn"
-               th:href="@{/assets/{id}/edit(id=${asset.id})}">Edit Asset</a>
-            <span th:if="${demoMode}" class="muted">Read only in demo mode</span>
+
+            <th:block sec:authorize="hasAnyRole('ADMIN','OPERATOR')">
+                <a th:if="${!demoMode}"
+                   class="btn"
+                   th:href="@{/assets/{id}/edit(id=${asset.id})}">Edit Asset</a>
+
+                <a th:if="${demoMode}"
+                   class="btn"
+                   href="#"
+                   onclick="return false;">Edit Asset</a>
+            </th:block>
         </div>
     </div>
 
@@ -298,11 +304,17 @@
         <h2 style="margin:0;">Installed Software</h2>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <a class="btn btn-ghost" th:href="@{/software}">Open Software Inventory</a>
-            <a th:if="${!demoMode}"
-               sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
-               class="btn"
-               th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
-            <span th:if="${demoMode}" class="muted">Read only in demo mode</span>
+
+            <th:block sec:authorize="hasAnyRole('ADMIN','OPERATOR')">
+                <a th:if="${!demoMode}"
+                   class="btn"
+                   th:href="@{/assets/{id}/software/new(id=${asset.id})}">+ Add installed software</a>
+
+                <a th:if="${demoMode}"
+                   class="btn"
+                   href="#"
+                   onclick="return false;">+ Add installed software</a>
+            </th:block>
         </div>
     </div>
 
@@ -408,21 +420,34 @@
                 </td>
 
                 <td>
-                    <div th:if="${!demoMode}"
-                         sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
+                    <div sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
                          class="asset-sw-actions">
-                        <a th:href="@{/software/{id}/edit(id=${s.id})}" class="btn btn-sm">Edit</a>
+                        <th:block th:if="${!demoMode}">
+                            <a th:href="@{/software/{id}/edit(id=${s.id})}" class="btn btn-sm">Edit</a>
 
-                        <form th:action="@{/software/{id}/delete(id=${s.id})}"
-                              method="post"
-                              onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
-                            <input type="hidden" name="assetId" th:value="${asset.id}">
-                            <button class="btn btn-danger btn-sm" type="submit">Delete</button>
-                        </form>
+                            <form th:action="@{/software/{id}/delete(id=${s.id})}"
+                                  method="post"
+                                  onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
+                                <input type="hidden" name="assetId" th:value="${asset.id}">
+                                <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                            </form>
+                        </th:block>
+
+                        <th:block th:if="${demoMode}">
+                            <a href="#"
+                               onclick="return false;"
+                               class="btn btn-sm">Edit</a>
+
+                            <form action="#"
+                                  method="post"
+                                  onsubmit="return false;">
+                                <input type="hidden" name="assetId" th:value="${asset.id}">
+                                <button class="btn btn-danger btn-sm" type="submit" disabled>Delete</button>
+                            </form>
+                        </th:block>
                     </div>
 
-                    <span th:if="${demoMode}" class="muted">Read only</span>
-                    <span th:if="${!demoMode}" sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>
+                    <span sec:authorize="hasRole('VIEWER')" class="muted">Read only</span>
                 </td>
             </tr>
             </tbody>

@@ -39,7 +39,14 @@
                 <a class="btn" th:href="@{/assets/new}">Register new asset</a>
             </th:block>
             <th:block th:if="${demoMode}">
-                <span class="muted">Read only in demo mode</span>
+                <a class="btn"
+                   href="#"
+                   aria-disabled="true"
+                   tabindex="-1"
+                   onclick="return false;"
+                   >
+                    Register new asset
+                </a>
             </th:block>
         </div>
     </div>
@@ -100,7 +107,20 @@
                         </th:block>
 
                         <th:block th:if="${demoMode}">
-                            <span class="muted">Read only in demo mode</span>
+                            <a class="btn"
+                               href="#"
+                               aria-disabled="true"
+                               tabindex="-1"
+                               onclick="return false;"
+                               >
+                                Edit
+                            </a>
+
+                            <form action="#"
+                                  method="post"
+                                  onsubmit="return false;">
+                                <button class="btn btn--danger" type="submit" disabled>Delete</button>
+                            </form>
                         </th:block>
                     </div>
 
