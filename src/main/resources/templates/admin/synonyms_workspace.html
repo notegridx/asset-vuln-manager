@@ -187,6 +187,11 @@
                 </a>
             </div>
 
+            <a class="btn btn-ghost"
+               th:href="@{/admin/aliases/seed/export}">
+                Export Alias Seed (JSON)
+            </a>
+
             <form th:action="@{/admin/aliases/delete-all}"
                   method="post"
                   onsubmit="return confirm('Delete all vendor and product aliases? This cannot be undone.');"
