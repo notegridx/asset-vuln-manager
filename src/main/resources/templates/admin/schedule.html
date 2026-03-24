@@ -54,68 +54,112 @@
             Read only in demo mode. Schedule changes are disabled.
         </div>
 
-        <form th:action="@{/admin/system/schedule/cve-delta}" method="post" style="margin-top:12px;">
-            <div class="field">
-                <label style="display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox"
-                           name="enabled"
-                           value="true"
-                           th:checked="${schedule.enabled}"
-                           th:disabled="${demoMode}">
-                    <span>Enable schedule</span>
-                </label>
-                <div class="muted" style="font-size:12px; margin-top:6px;">
-                    When enabled, the scheduler will run when <code>nextRunAt</code> is reached.
-                </div>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; margin-top:12px;">
+            <div style="flex:2 1 420px; min-width:320px;">
+                <form th:action="@{/admin/system/schedule/cve-delta}" method="post" style="margin-top:0;">
+                    <div class="field">
+                        <label style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox"
+                                   name="enabled"
+                                   value="true"
+                                   th:checked="${schedule.enabled}"
+                                   th:disabled="${demoMode}">
+                            <span>Enable schedule</span>
+                        </label>
+                        <div class="muted" style="font-size:12px; margin-top:6px;">
+                            When enabled, the scheduler will run when <code>nextRunAt</code> is reached.
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="intervalHours">Interval hours</label>
+                        <select id="intervalHours" name="intervalHours" th:disabled="${demoMode}">
+                            <option value="1" th:selected="${schedule.intervalHours == 1}">1</option>
+                            <option value="2" th:selected="${schedule.intervalHours == 2}">2</option>
+                            <option value="3" th:selected="${schedule.intervalHours == 3}">3</option>
+                            <option value="6" th:selected="${schedule.intervalHours == 6}">6</option>
+                            <option value="12" th:selected="${schedule.intervalHours == 12}">12</option>
+                            <option value="24" th:selected="${schedule.intervalHours == 24}">24</option>
+                        </select>
+                        <div class="muted" style="font-size:12px;">
+                            Minimum 1 hour, maximum 24 hours.
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="daysBack">Days back</label>
+                        <input id="daysBack"
+                               type="number"
+                               name="daysBack"
+                               min="1"
+                               max="30"
+                               th:value="${schedule.daysBack}"
+                               th:disabled="${demoMode}">
+                        <div class="muted" style="font-size:12px;">
+                            Passed to the NVD lastModified window for each scheduled run.
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="maxResults">Max results</label>
+                        <input id="maxResults"
+                               type="number"
+                               name="maxResults"
+                               min="1"
+                               max="2000"
+                               th:value="${schedule.maxResults}"
+                               th:disabled="${demoMode}">
+                        <div class="muted" style="font-size:12px;">
+                            Maximum number of CVE items fetched in one scheduled run.
+                        </div>
+                    </div>
+
+                    <div class="actions" style="margin-top:14px;">
+                        <button type="submit" class="btn btn-primary" th:disabled="${demoMode}">Save</button>
+                    </div>
+                </form>
             </div>
 
-            <div class="field">
-                <label for="intervalHours">Interval hours</label>
-                <select id="intervalHours" name="intervalHours" th:disabled="${demoMode}">
-                    <option value="1" th:selected="${schedule.intervalHours == 1}">1</option>
-                    <option value="2" th:selected="${schedule.intervalHours == 2}">2</option>
-                    <option value="3" th:selected="${schedule.intervalHours == 3}">3</option>
-                    <option value="6" th:selected="${schedule.intervalHours == 6}">6</option>
-                    <option value="12" th:selected="${schedule.intervalHours == 12}">12</option>
-                    <option value="24" th:selected="${schedule.intervalHours == 24}">24</option>
-                </select>
-                <div class="muted" style="font-size:12px;">
-                    Minimum 1 hour, maximum 24 hours.
+            <div style="flex:1 1 320px; min-width:280px;">
+                <div class="card" style="padding:12px; margin:0;">
+                    <h3 style="margin:0 0 10px 0;">Status</h3>
+
+                    <div class="table-wrap">
+                        <table style="margin-top:0;">
+                            <thead>
+                            <tr>
+                                <th style="width:160px;">Field</th>
+                                <th>Value</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td>Enabled</td>
+                                <td th:text="${schedule.enabled ? 'Yes' : 'No'}">No</td>
+                            </tr>
+                            <tr>
+                                <td>Last run</td>
+                                <td th:text="${schedule.lastRunAt != null ? T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(schedule.lastRunAt) : '-'}">-</td>
+                            </tr>
+                            <tr>
+                                <td>Last status</td>
+                                <td th:text="${schedule.lastStatus != null ? schedule.lastStatus : '-'}">-</td>
+                            </tr>
+                            <tr>
+                                <td>Next run</td>
+                                <td th:text="${schedule.nextRunAt != null ? T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(schedule.nextRunAt) : '-'}">-</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
+                        <code>nextRunAt</code> is the authoritative schedule timestamp. It is updated when the schedule is saved,
+                        after each scheduled run, and after successful manual execution.
+                    </div>
                 </div>
             </div>
-
-            <div class="field">
-                <label for="daysBack">Days back</label>
-                <input id="daysBack"
-                       type="number"
-                       name="daysBack"
-                       min="1"
-                       max="30"
-                       th:value="${schedule.daysBack}"
-                       th:disabled="${demoMode}">
-                <div class="muted" style="font-size:12px;">
-                    Passed to the NVD lastModified window for each scheduled run.
-                </div>
-            </div>
-
-            <div class="field">
-                <label for="maxResults">Max results</label>
-                <input id="maxResults"
-                       type="number"
-                       name="maxResults"
-                       min="1"
-                       max="2000"
-                       th:value="${schedule.maxResults}"
-                       th:disabled="${demoMode}">
-                <div class="muted" style="font-size:12px;">
-                    Maximum number of CVE items fetched in one scheduled run.
-                </div>
-            </div>
-
-            <div class="actions" style="margin-top:14px;">
-                <button type="submit" class="btn btn-primary" th:disabled="${demoMode}">Save</button>
-            </div>
-        </form>
+        </div>
     </div>
 
     <div class="card" style="padding:12px; margin:12px 0;">
@@ -146,115 +190,83 @@
             Read only in demo mode. Schedule changes are disabled.
         </div>
 
-        <form th:action="@{/admin/system/schedule/generate-alerts}" method="post" style="margin-top:12px;">
-            <div class="field">
-                <label style="display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox"
-                           name="enabled"
-                           value="true"
-                           th:checked="${generateAlertsSchedule.enabled}"
-                           th:disabled="${demoMode}">
-                    <span>Enable schedule</span>
-                </label>
-                <div class="muted" style="font-size:12px; margin-top:6px;">
-                    When enabled, the scheduler will run when <code>nextRunAt</code> is reached.
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; margin-top:12px;">
+            <div style="flex:2 1 420px; min-width:320px;">
+                <form th:action="@{/admin/system/schedule/generate-alerts}" method="post" style="margin-top:0;">
+                    <div class="field">
+                        <label style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox"
+                                   name="enabled"
+                                   value="true"
+                                   th:checked="${generateAlertsSchedule.enabled}"
+                                   th:disabled="${demoMode}">
+                            <span>Enable schedule</span>
+                        </label>
+                        <div class="muted" style="font-size:12px; margin-top:6px;">
+                            When enabled, the scheduler will run when <code>nextRunAt</code> is reached.
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="generateAlertsIntervalHours">Interval hours</label>
+                        <select id="generateAlertsIntervalHours" name="intervalHours" th:disabled="${demoMode}">
+                            <option value="1" th:selected="${generateAlertsSchedule.intervalHours == 1}">1</option>
+                            <option value="2" th:selected="${generateAlertsSchedule.intervalHours == 2}">2</option>
+                            <option value="3" th:selected="${generateAlertsSchedule.intervalHours == 3}">3</option>
+                            <option value="6" th:selected="${generateAlertsSchedule.intervalHours == 6}">6</option>
+                            <option value="12" th:selected="${generateAlertsSchedule.intervalHours == 12}">12</option>
+                            <option value="24" th:selected="${generateAlertsSchedule.intervalHours == 24}">24</option>
+                        </select>
+                        <div class="muted" style="font-size:12px;">
+                            Minimum 1 hour, maximum 24 hours.
+                        </div>
+                    </div>
+
+                    <div class="actions" style="margin-top:14px;">
+                        <button type="submit" class="btn btn-primary" th:disabled="${demoMode}">Save</button>
+                    </div>
+                </form>
+            </div>
+
+            <div style="flex:1 1 320px; min-width:280px;">
+                <div class="card" style="padding:12px; margin:0;">
+                    <h3 style="margin:0 0 10px 0;">Status</h3>
+
+                    <div class="table-wrap">
+                        <table style="margin-top:0;">
+                            <thead>
+                            <tr>
+                                <th style="width:160px;">Field</th>
+                                <th>Value</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td>Enabled</td>
+                                <td th:text="${generateAlertsSchedule.enabled ? 'Yes' : 'No'}">No</td>
+                            </tr>
+                            <tr>
+                                <td>Last run</td>
+                                <td th:text="${generateAlertsSchedule.lastRunAt != null ? T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(generateAlertsSchedule.lastRunAt) : '-'}">-</td>
+                            </tr>
+                            <tr>
+                                <td>Last status</td>
+                                <td th:text="${generateAlertsSchedule.lastStatus != null ? generateAlertsSchedule.lastStatus : '-'}">-</td>
+                            </tr>
+                            <tr>
+                                <td>Next run</td>
+                                <td th:text="${generateAlertsSchedule.nextRunAt != null ? T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(generateAlertsSchedule.nextRunAt) : '-'}">-</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
+                        <code>nextRunAt</code> is the authoritative schedule timestamp. It is updated when the schedule is saved,
+                        after each scheduled run, and after successful manual execution.
+                    </div>
                 </div>
             </div>
-
-            <div class="field">
-                <label for="generateAlertsIntervalHours">Interval hours</label>
-                <select id="generateAlertsIntervalHours" name="intervalHours" th:disabled="${demoMode}">
-                    <option value="1" th:selected="${generateAlertsSchedule.intervalHours == 1}">1</option>
-                    <option value="2" th:selected="${generateAlertsSchedule.intervalHours == 2}">2</option>
-                    <option value="3" th:selected="${generateAlertsSchedule.intervalHours == 3}">3</option>
-                    <option value="6" th:selected="${generateAlertsSchedule.intervalHours == 6}">6</option>
-                    <option value="12" th:selected="${generateAlertsSchedule.intervalHours == 12}">12</option>
-                    <option value="24" th:selected="${generateAlertsSchedule.intervalHours == 24}">24</option>
-                </select>
-                <div class="muted" style="font-size:12px;">
-                    Minimum 1 hour, maximum 24 hours.
-                </div>
-            </div>
-
-            <div class="actions" style="margin-top:14px;">
-                <button type="submit" class="btn btn-primary" th:disabled="${demoMode}">Save</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="card" style="padding:12px; margin:12px 0;">
-        <h2 style="margin:0 0 10px 0;">Status</h2>
-
-        <div class="table-wrap">
-            <table style="margin-top:0;">
-                <thead>
-                <tr>
-                    <th style="width:220px;">Field</th>
-                    <th>Value</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td>Enabled</td>
-                    <td th:text="${schedule.enabled ? 'Yes' : 'No'}">No</td>
-                </tr>
-                <tr>
-                    <td>Last run</td>
-                    <td th:text="${schedule.lastRunAt != null ? T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(schedule.lastRunAt) : '-'}">-</td>
-                </tr>
-                <tr>
-                    <td>Last status</td>
-                    <td th:text="${schedule.lastStatus != null ? schedule.lastStatus : '-'}">-</td>
-                </tr>
-                <tr>
-                    <td>Next run</td>
-                    <td th:text="${schedule.nextRunAt != null ? T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(schedule.nextRunAt) : '-'}">-</td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
-            <code>nextRunAt</code> is the authoritative schedule timestamp. It is updated when the schedule is saved,
-            after each scheduled run, and after successful manual execution.
-        </div>
-    </div>
-
-    <div class="card" style="padding:12px; margin:12px 0;">
-        <h2 style="margin:0 0 10px 0;">Generate Alerts Status</h2>
-
-        <div class="table-wrap">
-            <table style="margin-top:0;">
-                <thead>
-                <tr>
-                    <th style="width:220px;">Field</th>
-                    <th>Value</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td>Enabled</td>
-                    <td th:text="${generateAlertsSchedule.enabled ? 'Yes' : 'No'}">No</td>
-                </tr>
-                <tr>
-                    <td>Last run</td>
-                    <td th:text="${generateAlertsSchedule.lastRunAt != null ? T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(generateAlertsSchedule.lastRunAt) : '-'}">-</td>
-                </tr>
-                <tr>
-                    <td>Last status</td>
-                    <td th:text="${generateAlertsSchedule.lastStatus != null ? generateAlertsSchedule.lastStatus : '-'}">-</td>
-                </tr>
-                <tr>
-                    <td>Next run</td>
-                    <td th:text="${generateAlertsSchedule.nextRunAt != null ? T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(generateAlertsSchedule.nextRunAt) : '-'}">-</td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="muted" style="font-size:12px; margin-top:10px; line-height:1.6;">
-            <code>nextRunAt</code> is the authoritative schedule timestamp. It is updated when the schedule is saved,
-            after each scheduled run, and after successful manual execution.
         </div>
     </div>
 
