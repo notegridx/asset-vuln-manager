@@ -3,7 +3,9 @@ package dev.notegridx.security.assetvulnmanager.web;
 import dev.notegridx.security.assetvulnmanager.domain.Alert;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertStatus;
 import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
+import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.service.AlertService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,12 @@ class AlertControllerWebMvcTest {
 
     @MockitoBean
     private AlertService alertService;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
+
+    @MockitoBean
+    private VulnerabilityAffectedCpeRepository vulnerabilityAffectedCpeRepository;
 
     // =========================
     // LIST

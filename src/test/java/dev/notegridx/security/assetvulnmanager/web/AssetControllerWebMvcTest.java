@@ -5,6 +5,7 @@ import dev.notegridx.security.assetvulnmanager.repository.AlertRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.service.AssetService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.SoftwareInstallService;
 import dev.notegridx.security.assetvulnmanager.web.form.SoftwareInstallForm;
 import jakarta.persistence.EntityNotFoundException;
@@ -49,6 +50,9 @@ class AssetControllerWebMvcTest {
 
     @MockitoBean
     private CpeProductRepository cpeProductRepository;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     @Test
     @DisplayName("GET /assets returns asset list page")

@@ -3,6 +3,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 import dev.notegridx.security.assetvulnmanager.domain.Vulnerability;
 import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityRepository;
 import dev.notegridx.security.assetvulnmanager.service.DashboardStatsService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,9 @@ class DashboardControllerWebMvcTest {
 
     @MockitoBean
     private VulnerabilityRepository vulnerabilityRepository;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     @Test
     @DisplayName("GET / redirects to /dashboard")

@@ -4,10 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
-import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
-import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
-import dev.notegridx.security.assetvulnmanager.service.CanonicalBackfillService;
-import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
+import dev.notegridx.security.assetvulnmanager.service.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +61,9 @@ class AdminCanonicalControllerWebMvcTest {
 
     @MockitoBean
     private AdminCanonicalBackfillService adminCanonicalBackfillService;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     @BeforeEach
     void setUpControllerCaches() {

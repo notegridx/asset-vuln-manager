@@ -2,10 +2,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.AdminRun;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
-import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
-import dev.notegridx.security.assetvulnmanager.service.AdminKevSyncService;
-import dev.notegridx.security.assetvulnmanager.service.AdminRunReadService;
-import dev.notegridx.security.assetvulnmanager.service.KevSyncService;
+import dev.notegridx.security.assetvulnmanager.service.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +35,9 @@ class AdminKevControllerWebMvcTest {
 
     @MockitoBean
     private AdminRunReadService adminRunReadService;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     @Test
     @DisplayName("GET /admin/kev/sync returns page with defaults and last run")

@@ -4,6 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.AppRole;
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppRoleRepository;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.PasswordPolicyService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import org.junit.jupiter.api.DisplayName;
@@ -68,6 +69,9 @@ class AdminUsersControllerWebMvcTest {
 
     @MockitoBean
     private SecurityAuditService securityAuditService;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     @Test
     @DisplayName("GET /admin/users returns users page")

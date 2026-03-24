@@ -1,6 +1,7 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.service.AdminRunReadService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ class AdminRunControllerWebMvcTest {
 
     @MockitoBean
     private AdminRunReadService adminRunReadService;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     @Test
     @DisplayName("GET /admin/runs returns admin runs page")

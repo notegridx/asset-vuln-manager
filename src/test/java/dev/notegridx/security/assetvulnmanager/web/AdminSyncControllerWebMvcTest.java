@@ -5,6 +5,7 @@ import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.service.AdminCveDeltaUpdateService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
 import dev.notegridx.security.assetvulnmanager.service.AdminRunReadService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,9 @@ class AdminSyncControllerWebMvcTest {
 
     @MockitoBean
     private AdminRunReadService adminRunReadService;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     @Test
     @DisplayName("GET /admin/sync returns page with last run")

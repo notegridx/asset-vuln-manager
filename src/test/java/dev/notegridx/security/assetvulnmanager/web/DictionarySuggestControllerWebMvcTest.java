@@ -6,6 +6,7 @@ import dev.notegridx.security.assetvulnmanager.domain.SystemSetting;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SystemSettingRepository;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.SynonymService;
 import dev.notegridx.security.assetvulnmanager.service.VendorProductNormalizer;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +52,9 @@ class DictionarySuggestControllerWebMvcTest {
 
     @MockitoBean
     private SystemSettingRepository systemSettingRepository;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     // =========================================================
     // Vendor suggestion (/api/dict/vendors)

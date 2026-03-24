@@ -4,6 +4,7 @@ import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminInventoryReadService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedQuickAddService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedResolutionService;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +19,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -42,6 +46,9 @@ class AdminInventoryControllerWebMvcTest {
     @MockitoBean
     private UnresolvedQuickAddService unresolvedQuickAddService;
 
+    @MockitoBean
+    private DemoModeService demoModeService;
+
     @Test
     @DisplayName("GET /admin/import-runs returns import run list")
     void importRuns_ok() throws Exception {
@@ -64,16 +71,17 @@ class AdminInventoryControllerWebMvcTest {
         UnresolvedMapping mapping1 = mock(UnresolvedMapping.class);
         UnresolvedMapping mapping2 = mock(UnresolvedMapping.class);
 
-        when(adminInventoryReadService.findUnresolvedMappings(null, null, null, null, null, null))
-                .thenReturn(new AdminInventoryReadService.UnresolvedListView(
-                        List.of(mapping1, mapping2),
-                        "NEW",
-                        null,
-                        null,
-                        true,
-                        null,
-                        null
-                ));
+        when(adminInventoryReadService.findUnresolvedMappings(
+                any(), any(), any(), any(), any(), any()
+        )).thenReturn(new AdminInventoryReadService.UnresolvedListView(
+                List.of(mapping1, mapping2),
+                "NEW",
+                null,
+                null,
+                true,
+                null,
+                null
+        ));
 
         mockMvc.perform(get("/admin/unresolved"))
                 .andExpect(status().isOk())
@@ -84,6 +92,5 @@ class AdminInventoryControllerWebMvcTest {
                 .andExpect(model().attribute("activeOnly", true))
                 .andExpect(model().attribute("activeOnlyPresent", nullValue()));
 
-        verify(adminInventoryReadService).findUnresolvedMappings(null, null, null, null, null, null);
-    }
+        verify(adminInventoryReadService).findUnresolvedMappings(eq("ALL"), isNull(), isNull(), isNull(), isNull(), isNull());    }
 }

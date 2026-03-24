@@ -2,6 +2,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.PasswordPolicyService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import org.junit.jupiter.api.DisplayName;
@@ -52,6 +53,9 @@ class ChangePasswordControllerWebMvcTest {
 
     @MockitoBean
     private SecurityAuditService securityAuditService;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     @Test
     @DisplayName("GET /account/change-password redirects to login when unauthenticated")

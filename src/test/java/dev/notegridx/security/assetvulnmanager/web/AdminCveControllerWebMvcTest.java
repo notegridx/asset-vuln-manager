@@ -3,10 +3,7 @@ package dev.notegridx.security.assetvulnmanager.web;
 import dev.notegridx.security.assetvulnmanager.domain.AdminRun;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.infra.nvd.NvdCveFeedClient;
-import dev.notegridx.security.assetvulnmanager.service.AdminCveFeedSyncService;
-import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
-import dev.notegridx.security.assetvulnmanager.service.AdminRunReadService;
-import dev.notegridx.security.assetvulnmanager.service.CveFeedSyncService;
+import dev.notegridx.security.assetvulnmanager.service.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +36,9 @@ class AdminCveControllerWebMvcTest {
 
     @MockitoBean
     private AdminRunReadService adminRunReadService;
+
+    @MockitoBean
+    private DemoModeService demoModeService;
 
     @Test
     @DisplayName("GET /admin/cve/sync returns page with defaults and last run")
