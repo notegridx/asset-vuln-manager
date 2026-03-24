@@ -6,9 +6,11 @@ import java.util.stream.Collectors;
 
 import dev.notegridx.security.assetvulnmanager.domain.Alert;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.domain.VulnerabilityAffectedCpe;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AlertCertainty;
 import dev.notegridx.security.assetvulnmanager.domain.enums.CloseReason;
 import dev.notegridx.security.assetvulnmanager.domain.enums.Severity;
+import dev.notegridx.security.assetvulnmanager.repository.VulnerabilityAffectedCpeRepository;
 import dev.notegridx.security.assetvulnmanager.service.AlertService;
 import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.web.form.AlertCloseForm;
@@ -29,10 +31,16 @@ public class AlertController {
 
 	private final AlertService alertService;
 	private final DemoModeService demoModeService;
+	private final VulnerabilityAffectedCpeRepository affectedCpeRepository;
 
-	public AlertController(AlertService alertService, DemoModeService demoModeService) {
+	public AlertController(
+			AlertService alertService,
+			DemoModeService demoModeService,
+			VulnerabilityAffectedCpeRepository affectedCpeRepository
+	) {
 		this.alertService = alertService;
 		this.demoModeService = demoModeService;
+		this.affectedCpeRepository = affectedCpeRepository;
 	}
 
 	@GetMapping("/alerts")
@@ -298,6 +306,13 @@ public class AlertController {
 				.toList();
 	}
 
+	private List<VulnerabilityAffectedCpe> findAffectedCpes(Alert alert) {
+		if (alert == null || alert.getVulnerability() == null || alert.getVulnerability().getId() == null) {
+			return Collections.emptyList();
+		}
+		return affectedCpeRepository.findByVulnerabilityIdOrderByCpeNameAsc(alert.getVulnerability().getId());
+	}
+
 	public record AssetAggRow(
 			Long assetId,
 			String assetName,
@@ -341,6 +356,7 @@ public class AlertController {
 		}
 
 		model.addAttribute("alert", alert);
+		model.addAttribute("cpes", findAffectedCpes(alert));
 		model.addAttribute("closeForm", new AlertCloseForm());
 		model.addAttribute("closeReasons", manualCloseReasons());
 		return "alerts/detail";
@@ -359,6 +375,7 @@ public class AlertController {
 
 		if (bindingResult.hasErrors()) {
 			model.addAttribute("alert", alert);
+			model.addAttribute("cpes", findAffectedCpes(alert));
 			model.addAttribute("closeReasons", manualCloseReasons());
 			return "alerts/detail";
 		}
