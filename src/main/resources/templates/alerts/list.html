@@ -21,7 +21,8 @@
     </div>
 
     <div class="page-header__right kpi">
-      <span class="pill" th:text="'count: ' + ${#lists.size(alerts)}">count: 0</span>
+      <span class="pill"
+            th:text="'count: ' + ${(totalItems != null) ? totalItems : #lists.size(alerts)}">count: 0</span>
       <span class="pill" th:text="'status: ' + ${status}">status: OPEN</span>
       <span class="pill" th:text="'certainty: ' + ${certainty != null ? certainty : 'ALL'}">certainty: ALL</span>
       <span class="pill" th:text="'view: ' + ${view != null ? view : 'FLAT'}">view: FLAT</span>
@@ -156,6 +157,121 @@
         </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <div class="card mt-12" th:if="${totalPages != null and totalPages > 1}">
+    <div class="flex items-center justify-between gap-12 flex-wrap">
+      <div class="muted text-12">
+        Page <b th:text="${page}">1</b> / <b th:text="${totalPages}">1</b>
+        <span class="ml-8">
+          Total <b th:text="${totalItems}">0</b>
+        </span>
+      </div>
+
+      <div class="actions m-0 gap-6 flex-wrap">
+
+  <span class="btn btn-sm"
+        th:if="${!hasPrev}"
+        style="pointer-events:none; opacity:0.5;">
+    Prev
+  </span>
+        <a class="btn btn-sm"
+           th:if="${hasPrev}"
+           th:href="@{/alerts(
+       view=${view},
+       status=${status},
+       certainty=${certainty},
+       severity=${severity},
+       kevOnly=${kevOnly},
+       assetId=${assetId},
+       softwareId=${softwareId},
+       page=${page - 1},
+       size=${size}
+     )}">
+          Prev
+        </a>
+
+        <a class="btn btn-sm btn-ghost"
+           th:if="${startPage > 1}"
+           th:href="@{/alerts(
+       view=${view},
+       status=${status},
+       certainty=${certainty},
+       severity=${severity},
+       kevOnly=${kevOnly},
+       assetId=${assetId},
+       softwareId=${softwareId},
+       page=${1},
+       size=${size}
+     )}">
+          1
+        </a>
+
+        <span class="muted text-12" th:if="${startPage > 2}">...</span>
+
+        <th:block th:each="p : ${#numbers.sequence(startPage, endPage)}">
+    <span class="pill"
+          th:if="${p == page}"
+          th:text="${p}">1</span>
+          <a class="btn btn-sm btn-ghost"
+             th:if="${p != page}"
+             th:text="${p}"
+             th:href="@{/alerts(
+         view=${view},
+         status=${status},
+         certainty=${certainty},
+         severity=${severity},
+         kevOnly=${kevOnly},
+         assetId=${assetId},
+         softwareId=${softwareId},
+         page=${p},
+         size=${size}
+       )}">
+            1
+          </a>
+        </th:block>
+
+        <span class="muted text-12" th:if="${endPage < totalPages - 1}">...</span>
+
+        <a class="btn btn-sm btn-ghost"
+           th:if="${endPage < totalPages}"
+           th:text="${totalPages}"
+           th:href="@{/alerts(
+       view=${view},
+       status=${status},
+       certainty=${certainty},
+       severity=${severity},
+       kevOnly=${kevOnly},
+       assetId=${assetId},
+       softwareId=${softwareId},
+       page=${totalPages},
+       size=${size}
+     )}">
+          29
+        </a>
+
+        <a class="btn btn-sm"
+           th:if="${hasNext}"
+           th:href="@{/alerts(
+       view=${view},
+       status=${status},
+       certainty=${certainty},
+       severity=${severity},
+       kevOnly=${kevOnly},
+       assetId=${assetId},
+       softwareId=${softwareId},
+       page=${page + 1},
+       size=${size}
+     )}">
+          Next
+        </a>
+        <span class="btn btn-sm"
+              th:if="${!hasNext}"
+              style="pointer-events:none; opacity:0.5;">
+    Next
+  </span>
+      </div>
     </div>
   </div>
 

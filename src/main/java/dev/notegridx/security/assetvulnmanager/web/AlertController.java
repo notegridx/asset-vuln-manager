@@ -52,6 +52,8 @@ public class AlertController {
 			@RequestParam(name = "softwareId", required = false) Long softwareId,
 			@RequestParam(name = "severity", required = false) String severity,
 			@RequestParam(name = "kevOnly", defaultValue = "false") boolean kevOnly,
+			@RequestParam(name = "page", defaultValue = "1") int page,
+			@RequestParam(name = "size", defaultValue = "50") int size,
 			Model model
 	) {
 		String v = (view == null) ? "FLAT" : view.trim().toUpperCase(Locale.ROOT);
@@ -60,7 +62,6 @@ public class AlertController {
 		String sev = normalizeSeverity(severity);
 
 		List<Alert> alerts = alertService.list(effective, assetId, softwareId);
-
 		alerts = applyCertaintyFilter(alerts, c);
 		alerts = applySeverityFilter(alerts, sev);
 		alerts = applyKevFilter(alerts, kevOnly);
@@ -82,7 +83,29 @@ public class AlertController {
 			return "alerts/by_software";
 		}
 
-		model.addAttribute("alerts", alerts);
+		int safeSize = Math.max(10, Math.min(size, 200));
+		int totalItems = alerts.size();
+		int totalPages = Math.max(1, (int) Math.ceil((double) totalItems / safeSize));
+		int currentPage = Math.max(1, Math.min(page, totalPages));
+
+		int fromIndex = Math.min((currentPage - 1) * safeSize, totalItems);
+		int toIndex = Math.min(fromIndex + safeSize, totalItems);
+
+		List<Alert> pageAlerts = alerts.subList(fromIndex, toIndex);
+
+		int startPage = Math.max(1, currentPage - 2);
+		int endPage = Math.min(totalPages, currentPage + 2);
+
+		model.addAttribute("alerts", pageAlerts);
+		model.addAttribute("page", currentPage);
+		model.addAttribute("size", safeSize);
+		model.addAttribute("totalItems", totalItems);
+		model.addAttribute("totalPages", totalPages);
+		model.addAttribute("hasPrev", currentPage > 1);
+		model.addAttribute("hasNext", currentPage < totalPages);
+		model.addAttribute("startPage", startPage);
+		model.addAttribute("endPage", endPage);
+
 		return "alerts/list";
 	}
 
