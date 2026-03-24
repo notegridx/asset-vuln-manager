@@ -222,7 +222,7 @@
         </div>
     </div>
 
-    <script>
+    <script th:inline="javascript">
         (() => {
             const form = document.getElementById('cpeSyncForm');
             const modeRadios = document.querySelectorAll('input[name="mode"]');
@@ -233,6 +233,7 @@
             const submitButton = document.getElementById('cpeSyncSubmitButton');
             const submitLabel = document.getElementById('cpeSyncSubmitLabel');
             const busyMessage = document.getElementById('cpeSyncBusyMessage');
+            const isDemoMode = /*[[${demoMode}]]*/ false;
 
             if (!modeRadios.length || !downloadModeFields || !uploadModeFields) {
                 return;
@@ -249,14 +250,14 @@
                 uploadModeFields.style.display = isUpload ? '' : 'none';
 
                 if (forceCheckbox) {
-                    forceCheckbox.disabled = isUpload;
+                    forceCheckbox.disabled = isDemoMode || isUpload;
                     if (isUpload) {
                         forceCheckbox.checked = false;
                     }
                 }
 
                 if (fileInput) {
-                    fileInput.disabled = isDownload;
+                    fileInput.disabled = isDemoMode || isDownload;
                     fileInput.required = isUpload;
                     if (isDownload) {
                         fileInput.value = '';
