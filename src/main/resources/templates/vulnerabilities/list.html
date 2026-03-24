@@ -74,6 +74,56 @@
         font-size: 12px;
     }
 
+    .vuln-pagination {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+
+    .vuln-pagination__link,
+    .vuln-pagination__current,
+    .vuln-pagination__ellipsis {
+        min-width: 36px;
+        height: 36px;
+        padding: 0 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        font-size: 13px;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+
+    .vuln-pagination__link {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: inherit;
+    }
+
+    .vuln-pagination__link:hover {
+        background: var(--panel-2);
+    }
+
+    .vuln-pagination__current {
+        border: 1px solid var(--text);
+        background: var(--text);
+        color: var(--bg);
+        font-weight: 600;
+    }
+
+    .vuln-pagination__ellipsis {
+        color: var(--muted);
+    }
+
+    .vuln-pagination__link.is-disabled {
+        pointer-events: none;
+        opacity: 0.5;
+    }
+
     @media (max-width: 1180px) {
         .vuln-filter-row {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -91,6 +141,10 @@
 
         .vuln-filter-pair {
             grid-template-columns: 92px minmax(0, 1fr);
+        }
+
+        .vuln-pagination {
+            justify-content: flex-start;
         }
     }
 </style>
@@ -358,6 +412,152 @@
             </tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="vuln-pagination" th:if="${vulns.totalPages > 1}">
+        <a class="vuln-pagination__link"
+           th:classappend="${vulns.first} ? ' is-disabled' : ''"
+           th:href="${vulns.first} ? '#' : @{/vulnerabilities(
+                page=${vulns.number - 1},
+                size=${size},
+                sort=${sort},
+                q=${q},
+                vendor=${vendor},
+                product=${product},
+                publishedFrom=${publishedFrom},
+                publishedTo=${publishedTo},
+                lastModifiedFrom=${lastModifiedFrom},
+                lastModifiedTo=${lastModifiedTo},
+                severity=${severity},
+                minCvss=${minCvss},
+                maxCvss=${maxCvss},
+                includeNoCvss=${includeNoCvss},
+                withCpe=${withCpe},
+                withRange=${withRange},
+                kevOnly=${kevOnly},
+                hasAlerts=${hasAlerts},
+                openOnly=${openOnly}
+           )}">
+            Prev
+        </a>
+
+        <a class="vuln-pagination__link"
+           th:if="${!#lists.isEmpty(pagerItems) and pagerItems[0] > 0}"
+           th:href="@{/vulnerabilities(
+                page=0,
+                size=${size},
+                sort=${sort},
+                q=${q},
+                vendor=${vendor},
+                product=${product},
+                publishedFrom=${publishedFrom},
+                publishedTo=${publishedTo},
+                lastModifiedFrom=${lastModifiedFrom},
+                lastModifiedTo=${lastModifiedTo},
+                severity=${severity},
+                minCvss=${minCvss},
+                maxCvss=${maxCvss},
+                includeNoCvss=${includeNoCvss},
+                withCpe=${withCpe},
+                withRange=${withRange},
+                kevOnly=${kevOnly},
+                hasAlerts=${hasAlerts},
+                openOnly=${openOnly}
+           )}">
+            1
+        </a>
+
+        <span class="vuln-pagination__ellipsis"
+              th:if="${!#lists.isEmpty(pagerItems) and pagerItems[0] > 1}">…</span>
+
+        <th:block th:each="p : ${pagerItems}">
+            <span class="vuln-pagination__current"
+                  th:if="${p == vulns.number}"
+                  th:text="${p + 1}">1</span>
+
+            <a class="vuln-pagination__link"
+               th:if="${p != vulns.number}"
+               th:text="${p + 1}"
+               th:href="@{/vulnerabilities(
+                    page=${p},
+                    size=${size},
+                    sort=${sort},
+                    q=${q},
+                    vendor=${vendor},
+                    product=${product},
+                    publishedFrom=${publishedFrom},
+                    publishedTo=${publishedTo},
+                    lastModifiedFrom=${lastModifiedFrom},
+                    lastModifiedTo=${lastModifiedTo},
+                    severity=${severity},
+                    minCvss=${minCvss},
+                    maxCvss=${maxCvss},
+                    includeNoCvss=${includeNoCvss},
+                    withCpe=${withCpe},
+                    withRange=${withRange},
+                    kevOnly=${kevOnly},
+                    hasAlerts=${hasAlerts},
+                    openOnly=${openOnly}
+               )}">
+                1
+            </a>
+        </th:block>
+
+        <span class="vuln-pagination__ellipsis"
+              th:if="${!#lists.isEmpty(pagerItems) and pagerItems[#lists.size(pagerItems) - 1] < vulns.totalPages - 2}">…</span>
+
+        <a class="vuln-pagination__link"
+           th:if="${!#lists.isEmpty(pagerItems) and pagerItems[#lists.size(pagerItems) - 1] < vulns.totalPages - 1}"
+           th:href="@{/vulnerabilities(
+                page=${vulns.totalPages - 1},
+                size=${size},
+                sort=${sort},
+                q=${q},
+                vendor=${vendor},
+                product=${product},
+                publishedFrom=${publishedFrom},
+                publishedTo=${publishedTo},
+                lastModifiedFrom=${lastModifiedFrom},
+                lastModifiedTo=${lastModifiedTo},
+                severity=${severity},
+                minCvss=${minCvss},
+                maxCvss=${maxCvss},
+                includeNoCvss=${includeNoCvss},
+                withCpe=${withCpe},
+                withRange=${withRange},
+                kevOnly=${kevOnly},
+                hasAlerts=${hasAlerts},
+                openOnly=${openOnly}
+           )}"
+           th:text="${vulns.totalPages}">
+            1
+        </a>
+
+        <a class="vuln-pagination__link"
+           th:classappend="${vulns.last} ? ' is-disabled' : ''"
+           th:href="${vulns.last} ? '#' : @{/vulnerabilities(
+                page=${vulns.number + 1},
+                size=${size},
+                sort=${sort},
+                q=${q},
+                vendor=${vendor},
+                product=${product},
+                publishedFrom=${publishedFrom},
+                publishedTo=${publishedTo},
+                lastModifiedFrom=${lastModifiedFrom},
+                lastModifiedTo=${lastModifiedTo},
+                severity=${severity},
+                minCvss=${minCvss},
+                maxCvss=${maxCvss},
+                includeNoCvss=${includeNoCvss},
+                withCpe=${withCpe},
+                withRange=${withRange},
+                kevOnly=${kevOnly},
+                hasAlerts=${hasAlerts},
+                openOnly=${openOnly}
+           )}">
+            Next
+        </a>
     </div>
 
     <script>
