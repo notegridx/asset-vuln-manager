@@ -201,8 +201,8 @@
             </div>
 
             <div class="muted" style="margin-top:8px;"
-                 th:text="${alert.vulnerability != null && alert.vulnerability.title != null ? alert.vulnerability.title : '-'}">
-                title
+                 th:text="${alert.vulnerability != null && alert.vulnerability.description != null ? alert.vulnerability.description : '-'}">
+                description
             </div>
 
             <div style="margin-top:10px;">
