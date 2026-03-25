@@ -4,6 +4,64 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout/base :: head('Asset Inventory')}"></head>
 
+<style>
+    .asset-pagination {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+
+    .asset-pagination__link,
+    .asset-pagination__current,
+    .asset-pagination__ellipsis {
+        min-width: 36px;
+        height: 36px;
+        padding: 0 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        font-size: 13px;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+
+    .asset-pagination__link {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: inherit;
+    }
+
+    .asset-pagination__link:hover {
+        background: var(--panel-2);
+    }
+
+    .asset-pagination__current {
+        border: 1px solid var(--text);
+        background: var(--text);
+        color: var(--bg);
+        font-weight: 600;
+    }
+
+    .asset-pagination__ellipsis {
+        color: var(--muted);
+    }
+
+    .asset-pagination__link.is-disabled {
+        pointer-events: none;
+        opacity: 0.5;
+    }
+
+    @media (max-width: 760px) {
+        .asset-pagination {
+            justify-content: flex-start;
+        }
+    }
+</style>
+
 <body th:replace="~{layout/base :: layout('Asset Inventory', 'assets', ~{::main})}">
 <main>
 
@@ -17,7 +75,7 @@
         </div>
 
         <div class="page-header__right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <span class="pill" th:text="'Total: ' + ${#lists.size(assets)}">Total: 0</span>
+            <span class="pill" th:text="'Total: ' + ${assets.totalElements}">Total: 0</span>
         </div>
     </div>
 
@@ -43,8 +101,7 @@
                    href="#"
                    aria-disabled="true"
                    tabindex="-1"
-                   onclick="return false;"
-                   >
+                   onclick="return false;">
                     Register new asset
                 </a>
             </th:block>
@@ -68,13 +125,13 @@
             </thead>
 
             <tbody>
-            <tr th:if="${#lists.isEmpty(assets)}">
+            <tr th:if="${assets.totalElements == 0}">
                 <td colspan="9" class="muted">
                     No assets registered yet. Start by registering your first asset.
                 </td>
             </tr>
 
-            <tr th:each="a : ${assets}">
+            <tr th:each="a : ${assets.content}">
                 <td th:text="${a.id}">1</td>
 
                 <td>
@@ -111,8 +168,7 @@
                                href="#"
                                aria-disabled="true"
                                tabindex="-1"
-                               onclick="return false;"
-                               >
+                               onclick="return false;">
                                 Edit
                             </a>
 
@@ -129,6 +185,67 @@
             </tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="asset-pagination" th:if="${assets.totalPages > 1}">
+        <a class="asset-pagination__link"
+           th:classappend="${assets.first} ? ' is-disabled' : ''"
+           th:href="${assets.first} ? '#' : @{/assets(
+                page=${assets.number - 1},
+                size=${assets.size}
+           )}">
+            Prev
+        </a>
+
+        <a class="asset-pagination__link"
+           th:if="${!#lists.isEmpty(pagerItems) and pagerItems[0] > 0}"
+           th:href="@{/assets(
+                page=0,
+                size=${assets.size}
+           )}">
+            1
+        </a>
+
+        <span class="asset-pagination__ellipsis"
+              th:if="${!#lists.isEmpty(pagerItems) and pagerItems[0] > 1}">…</span>
+
+        <th:block th:each="p : ${pagerItems}">
+            <span class="asset-pagination__current"
+                  th:if="${p == assets.number}"
+                  th:text="${p + 1}">1</span>
+
+            <a class="asset-pagination__link"
+               th:if="${p != assets.number}"
+               th:text="${p + 1}"
+               th:href="@{/assets(
+                    page=${p},
+                    size=${assets.size}
+               )}">
+                1
+            </a>
+        </th:block>
+
+        <span class="asset-pagination__ellipsis"
+              th:if="${!#lists.isEmpty(pagerItems) and pagerItems[#lists.size(pagerItems) - 1] < assets.totalPages - 2}">…</span>
+
+        <a class="asset-pagination__link"
+           th:if="${!#lists.isEmpty(pagerItems) and pagerItems[#lists.size(pagerItems) - 1] < assets.totalPages - 1}"
+           th:href="@{/assets(
+                page=${assets.totalPages - 1},
+                size=${assets.size}
+           )}"
+           th:text="${assets.totalPages}">
+            1
+        </a>
+
+        <a class="asset-pagination__link"
+           th:classappend="${assets.last} ? ' is-disabled' : ''"
+           th:href="${assets.last} ? '#' : @{/assets(
+                page=${assets.number + 1},
+                size=${assets.size}
+           )}">
+            Next
+        </a>
     </div>
 
 </main>

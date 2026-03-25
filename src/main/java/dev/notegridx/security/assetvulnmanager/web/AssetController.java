@@ -16,6 +16,9 @@ import dev.notegridx.security.assetvulnmanager.web.form.SoftwareInstallForm;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -23,6 +26,7 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -64,9 +68,13 @@ public class AssetController {
     }
 
     @GetMapping("/assets")
-    public String list(Model model) {
-        List<Asset> assets = assetService.findAll();
+    public String list(
+            @PageableDefault(size = 50) Pageable pageable,
+            Model model
+    ) {
+        Page<Asset> assets = assetService.findAll(pageable);
         model.addAttribute("assets", assets);
+        model.addAttribute("pagerItems", buildPagerItems(assets));
         return "assets/list";
     }
 
@@ -347,6 +355,23 @@ public class AssetController {
     public String notFound(EntityNotFoundException ex, Model model) {
         model.addAttribute("message", ex.getMessage());
         return "error/404";
+    }
+
+    private static List<Integer> buildPagerItems(Page<?> page) {
+        List<Integer> items = new ArrayList<>();
+        int totalPages = page.getTotalPages();
+        if (totalPages <= 1) {
+            return items;
+        }
+
+        int current = page.getNumber();
+        int start = Math.max(0, current - 2);
+        int end = Math.min(totalPages - 1, current + 2);
+
+        for (int i = start; i <= end; i++) {
+            items.add(i);
+        }
+        return items;
     }
 
     private static String firstNonBlank(String a, String b, String fallback) {
