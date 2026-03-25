@@ -4,9 +4,9 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 /**
- * DB依存を避けるため、アプリ側で時刻精度を統一する。
- * - MICROS: MySQL DATETIME(6)/TIMESTAMP(6) と相性がよい
- * - もっと保守的にするなら MILLIS に変更してもOK
+ * Standardizes timestamp precision at the application layer to avoid DB-specific differences.
+ * - MICROS: aligns well with MySQL DATETIME(6)/TIMESTAMP(6)
+ * - Can be switched to MILLIS for more conservative precision if needed
  */
 public final class DbTime {
 

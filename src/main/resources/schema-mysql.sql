@@ -1182,11 +1182,12 @@ SET @ddl = IF (EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_s
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- =========================================================
--- Alias metadata extension (Top20 auto-seeding)
+-- Alias metadata extension note
 -- =========================================================
--- H2 版では ALTER TABLE ... ADD COLUMN IF NOT EXISTS で後付けしているが、
--- MySQL repeat-safe 版では CREATE TABLE に最初から含める。
--- ここでは対応する index だけ repeat-safe に作る。
+-- In the H2 schema, additional alias columns are added via ALTER TABLE.
+-- In this MySQL repeat-safe schema, those columns are included directly
+-- in CREATE TABLE definitions to avoid conditional ALTER logic.
+-- Only indexes are created using the repeat-safe pattern.
 
 SET @ddl = IF (EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'cpe_vendor_aliases' AND index_name = 'idx_cpe_vendor_aliases_review_state'), 'SELECT 1', 'CREATE INDEX idx_cpe_vendor_aliases_review_state ON cpe_vendor_aliases(review_state)');
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;

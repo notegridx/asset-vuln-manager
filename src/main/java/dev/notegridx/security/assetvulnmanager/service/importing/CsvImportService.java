@@ -117,7 +117,7 @@ public class CsvImportService {
                 String owner = normalizeNullable(get(cols, idx, "owner"));
                 String note = normalizeNullable(get(cols, idx, "note"));
 
-                // optional inventory fields
+                // Optional inventory attributes
                 String platform = normalizeNullable(get(cols, idx, "platform"));
                 String osVersion = normalizeNullable(get(cols, idx, "os_version"));
 
@@ -181,8 +181,8 @@ public class CsvImportService {
                             a = new Asset(name);
                         } else {
                             a = ex;
-                            // 既存方針が「nameは更新しない」ならここは触らない。
-                            // nameを更新したい場合は Asset に setter/メソッドを追加してここで更新。
+                            // Current behavior: do not update name.
+                            // If name update is required, add a setter/method in Asset and update here.
                         }
 
                         a.updateDetails(externalKey, assetType, owner, note);
@@ -215,12 +215,12 @@ public class CsvImportService {
                                 osPatch
                         );
 
-                        // ingestion metadata
+                        // Mark ingestion source
                         a.markSeen(SOURCE_CSV);
 
                         assetRepository.save(a);
 
-                        // run counts
+                        // Update run counters
                         runFinal.setAssetsUpserted(runFinal.getAssetsUpserted() + 1);
 
                         return null;
@@ -258,8 +258,9 @@ public class CsvImportService {
     }
 
     /**
-     * overrideLineNos: その行番号は、たとえ辞書/正規化が不完全でも登録を許可したい、などの運用用。
-     * （この実装では “落とす” 処理は入れていないので、将来拡張用の入口として保持）
+     * overrideLineNos:
+     * Allows specific line numbers to be accepted even if normalization/dictionary resolution is incomplete.
+     * Currently no rejection logic is implemented; reserved for future extensions.
      */
     public ImportResult importSoftwareCsv(InputStream in, boolean commit, Set<Integer> overrideLineNos) throws IOException {
         List<ImportError> errors = new ArrayList<>();
@@ -321,7 +322,7 @@ public class CsvImportService {
                     continue;
                 }
 
-                // asset lookup
+                // Lookup asset by external_key
                 Asset asset = assetRepository.findByExternalKey(externalKey).orElse(null);
                 if (asset == null) {
                     errors.add(new ImportError(lineNo, "ASSET_NOT_FOUND",
@@ -329,7 +330,7 @@ public class CsvImportService {
                     continue;
                 }
 
-                // existing check (current UNIQUE strategy)
+                // Check existing record based on current UNIQUE constraint
                 SoftwareInstall existing = softwareInstallRepository
                         .findByAssetIdAndVendorAndProductAndVersion(asset.getId(), vendor, product, version)
                         .orElse(null);
@@ -348,7 +349,7 @@ public class CsvImportService {
                     final ImportRun runFinal = run;
 
                     rowTx.execute(status -> {
-                        // Asset is also "seen" if software arrives
+                        // Mark asset as seen when software is ingested
                         asset.markSeen(SOURCE_CSV);
                         assetRepository.save(asset);
 
@@ -359,10 +360,10 @@ public class CsvImportService {
                             si = ex;
                         }
 
-                        // display/matching key update (existing behavior)
+                        // Update display and matching keys
                         si.updateDetails(vendor, product, version, cpeName);
 
-                        // ingestion metadata (new columns)
+                        // Set ingestion metadata
                         si.markSeen(SOURCE_CSV);
                         si.captureRaw(vendor, product, version);
                         if (runFinal != null) {
@@ -371,12 +372,10 @@ public class CsvImportService {
 
                         softwareInstallRepository.save(si);
 
-                        // run counts
+                        // Update run counters
                         runFinal.setSoftwareUpserted(runFinal.getSoftwareUpserted() + 1);
 
-                        // unresolved mapping queue:
-                        // 最低限の運用：cpe_name が空、かつ canonical (vendor/product id) が未解決のままならキューへ
-                        // （厳密な “辞書miss判定” は後段で resolve ロジックを差し込める）
+                        // Queue unresolved mapping when canonical link is missing
                         if (shouldQueueUnresolved(si, overrideThisLine)) {
                             upsertUnresolvedMapping(SOURCE_CSV, vendor, product, version);
                             runFinal.setUnresolvedCount(runFinal.getUnresolvedCount() + 1);
@@ -389,7 +388,7 @@ public class CsvImportService {
                     if (existing == null) inserted++;
                     else updated++;
 
-                    // unresolvedUpserts は“試行回数”として加算（正確な upsert 数は run.unresolvedCount を参照）
+                    // Count unresolved attempts (actual count tracked in run.unresolvedCount)
                     if (!overrideThisLine && cpeName == null) unresolvedUpserts++;
 
                 } catch (DataIntegrityViolationException e) {
@@ -414,7 +413,7 @@ public class CsvImportService {
         if (overrideThisLine) return true;
         if (si.getCpeName() != null && !si.getCpeName().isBlank()) return false;
 
-        // canonical ids が未設定なら unresolved へ
+        // Queue as unresolved when canonical IDs are not assigned
         return si.getCpeVendorId() == null || si.getCpeProductId() == null;
     }
 
@@ -438,7 +437,7 @@ public class CsvImportService {
     private void finishImportRun(ImportRun run, int inserted, int updated, int unresolvedUpserts, int errorCount, String summaryNote) {
         run.setFinishedAt(LocalDateTime.now());
 
-        // counts are already incremented inside rowTx; set errorCount here
+        // Error count is finalized here
         run.setErrorCount(errorCount);
 
         if (summaryNote != null) {
@@ -459,7 +458,7 @@ public class CsvImportService {
         String src = normalizeNullable(source);
         if (src == null) src = SOURCE_CSV;
 
-        // 新仕様: unresolved の論理キーは vendor_raw + product_raw
+        // Logical key for unresolved mapping: vendor_raw + product_raw
         if (v == null || p == null) return;
 
         LocalDateTime now = LocalDateTime.now();
@@ -470,8 +469,8 @@ public class CsvImportService {
         if (existing.isPresent()) {
             UnresolvedMapping um = existing.get();
             um.setLastSeenAt(now);
-            um.setSource(src);       // reference only
-            um.setVersionRaw(ver);   // reference only
+            um.setSource(src);
+            um.setVersionRaw(ver);
             unresolvedMappingRepository.save(um);
             return;
         }
@@ -549,8 +548,8 @@ public class CsvImportService {
 
     /**
      * Minimal CSV parser supporting:
-     * - comma separated
-     * - quoted fields with "" escape
+     * - comma-separated values
+     * - quoted fields with "" escaping
      */
     private static List<String> parseCsvLine(String line) {
         List<String> out = new ArrayList<>();

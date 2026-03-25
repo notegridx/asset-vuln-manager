@@ -60,12 +60,12 @@ public class DictionarySuggestController {
     ) {}
 
     // =========================================================
-    // Existing APIs (keep backward compatibility)
+    // Existing APIs (backward compatible)
     // =========================================================
 
     /**
-     * Vendor suggestions for ID selector UI.
-     * Search order: exact -> prefix -> contains
+     * Returns vendor suggestions for ID selector UI.
+     * Search order: exact -> prefix -> contains.
      */
     @GetMapping("/api/dict/vendors/search")
     public List<SuggestIdItem> searchVendorsById(
@@ -95,9 +95,8 @@ public class DictionarySuggestController {
     }
 
     /**
-     * Product suggestions for ID selector UI.
-     * Search within the selected vendor using prefix match,
-     * then fall back to contains match when no prefix hit exists.
+     * Returns product suggestions for ID selector UI within a specific vendor.
+     * Uses prefix search first, then falls back to contains search.
      */
     @GetMapping("/api/dict/products/search")
     public List<SuggestIdItem> searchProductsById(
@@ -115,7 +114,7 @@ public class DictionarySuggestController {
         List<CpeProduct> rows = productRepo
                 .findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(vendorId, p0);
 
-        // Fallback to contains search when no prefix match exists.
+        // Fallback to contains search if no prefix match exists
         if (rows.isEmpty()) {
             rows = productRepo
                     .findTop20ByVendorIdAndNameNormContainingOrderByNameNormAsc(vendorId, p0);
@@ -132,16 +131,11 @@ public class DictionarySuggestController {
     }
 
     /**
-     * Vendor suggestions for string-based search UI such as unresolved mappings.
-     * Search uses:
+     * Returns vendor suggestions for string-based search UI (e.g., unresolved mappings).
+     * Search strategy:
      *   1) whole-string prefix
      *   2) whole-string contains
      *   3) token fallback (prefix / contains)
-     *
-     * Example:
-     *   "git"           -> git / github / ...
-     *   "the git"       -> fallback token "git"
-     *   "git developer" -> fallback token "git"
      */
     @GetMapping("/api/dict/vendors")
     public List<SuggestItem> suggestVendors(
@@ -165,16 +159,8 @@ public class DictionarySuggestController {
     }
 
     /**
-     * Product suggestions for string-based search UI such as unresolved mappings.
-     * Resolve the vendor first (with token fallback), then search products under
-     * that vendor using:
-     *   1) whole-string prefix
-     *   2) whole-string contains
-     *   3) token fallback (prefix / contains)
-     *
-     * Example:
-     *   vendor="the git", q="desktop"
-     *   -> vendor fallback token "git" can still resolve vendor candidates
+     * Returns product suggestions for string-based search UI.
+     * Resolves vendor first (with token fallback), then searches products.
      */
     @GetMapping("/api/dict/products")
     public List<SuggestItem> suggestProducts(
@@ -202,7 +188,7 @@ public class DictionarySuggestController {
     }
 
     /* =========================================================
-     * Helpers for unresolved string-based suggestion UI
+     * Helper methods for flexible lookup and fallback handling
      * ========================================================= */
 
     private List<CpeVendor> searchVendorsFlexible(String rawNorm, int minChars, int limit) {
@@ -281,10 +267,10 @@ public class DictionarySuggestController {
         String[] parts = normalized.trim().split("\\s+");
         if (parts.length <= 1) return queries;
 
-        // 末尾トークンを優先
+        // Prioritize the last token
         putQuery(queries, parts[parts.length - 1]);
 
-        // 全トークンも追加
+        // Add all tokens
         for (String part : parts) {
             if (part == null) continue;
             String s = part.trim();
@@ -334,7 +320,7 @@ public class DictionarySuggestController {
     }
 
     // =========================================================
-    // New APIs for selector UI (grouped: exact first, then others)
+    // New APIs for selector UI (grouped results)
     // =========================================================
 
     @GetMapping("/api/dict/vendors/search2")
@@ -380,12 +366,11 @@ public class DictionarySuggestController {
     }
 
     // =========================================================
-    // New APIs: resolve labels by IDs (for quick candidates)
+    // Resolve labels by IDs (preserve order)
     // =========================================================
 
     /**
-     * Resolve vendor IDs to label/nameNorm while preserving input order.
-     * Example: GET /api/dict/vendors/by-ids?ids=97,11961,8623
+     * Resolves vendor IDs to labels while preserving input order.
      */
     @GetMapping("/api/dict/vendors/by-ids")
     public List<SuggestIdItem> vendorsByIds(
@@ -409,8 +394,7 @@ public class DictionarySuggestController {
     }
 
     /**
-     * Resolve product IDs to label/nameNorm while preserving input order.
-     * Example: GET /api/dict/products/by-ids?ids=123,456
+     * Resolves product IDs to labels while preserving input order.
      */
     @GetMapping("/api/dict/products/by-ids")
     public List<SuggestIdItem> productsByIds(
@@ -558,7 +542,7 @@ public class DictionarySuggestController {
             try {
                 out.add(Long.parseLong(m.group(1)));
             } catch (NumberFormatException ignore) {
-                // Ignore invalid IDs.
+                // Ignore invalid IDs
             }
         }
         return out;
