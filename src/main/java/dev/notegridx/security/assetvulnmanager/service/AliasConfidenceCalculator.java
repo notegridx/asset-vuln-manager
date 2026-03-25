@@ -13,11 +13,11 @@ public class AliasConfidenceCalculator {
             case NPM -> 82;
             case PYPI -> 82;
             case KEV -> 78;
-            default -> 60; // MANUAL seedはここを使わない想定だが一応
+            default -> 60; // Fallback baseline for sources not explicitly defined (e.g., MANUAL)
         };
 
-        int sim = similarity0to100(raw, canonicalNorm); // 0..100
-        // base主軸 + similarity補正（最大+12 / 最小-20 くらい）
+        int sim = similarity0to100(raw, canonicalNorm); // Range: 0..100
+        // Base score is primary, adjusted by similarity (approx. +12 max / -20 min)
         int adjust = (sim - 80) / 2; // sim=80→0, sim=100→+10, sim=40→-20
         int out = base + adjust;
 
@@ -26,7 +26,7 @@ public class AliasConfidenceCalculator {
         return out;
     }
 
-    // very small implementation: normalized Levenshtein similarity
+    // Lightweight normalized Levenshtein similarity implementation
     private int similarity0to100(String a, String b) {
         String x = safe(a);
         String y = safe(b);

@@ -59,11 +59,22 @@ public class NvdCveFeedClient {
 
     public enum FeedKind { MODIFIED, RECENT, YEAR }
 
-    // 旧呼び出し互換：既存の fetchMeta(kind, parser) を生かす
+    /**
+     * Backward-compatible overload to support legacy callers.
+     * Delegates to the year-aware version with null year.
+     */
     public CveFeedMetaParser.FeedMeta fetchMeta(FeedKind kind, CveFeedMetaParser parser) throws IOException {
         return fetchMeta(kind, null, parser);
     }
 
+    /**
+     * Downloads and parses the meta file for a given feed type.
+     *
+     * @param kind   Feed type (RECENT, MODIFIED, YEAR)
+     * @param year   Required when kind=YEAR
+     * @param parser Parser used to interpret the meta content
+     * @return Parsed FeedMeta object
+     */
     public CveFeedMetaParser.FeedMeta fetchMeta(FeedKind kind, Integer year, CveFeedMetaParser parser) throws IOException {
         String path = resolveMetaPath(kind, year);
 
@@ -74,7 +85,9 @@ public class NvdCveFeedClient {
                 .bodyToMono(byte[].class)
                 .block();
 
-        if (bytes == null) throw new IOException("meta download returned null. kind=" + kind + " year=" + year);
+        if (bytes == null) {
+            throw new IOException("meta download returned null. kind=" + kind + " year=" + year);
+        }
 
         try (InputStream in = new java.io.ByteArrayInputStream(bytes)) {
             return parser.parse(in);
@@ -82,13 +95,21 @@ public class NvdCveFeedClient {
     }
 
     /**
-     * Download json.gz into a temp file. Caller should delete it.
+     * Backward-compatible overload.
+     * Downloads a JSON feed (gzipped) to a temporary file.
      */
-    // 旧呼び出し互換
     public Path downloadJsonGzToTempFile(FeedKind kind) throws IOException {
         return downloadJsonGzToTempFile(kind, null);
     }
 
+    /**
+     * Downloads a JSON feed (gzipped) into a temporary file.
+     * The caller is responsible for deleting the file.
+     *
+     * @param kind Feed type
+     * @param year Required when kind=YEAR
+     * @return Path to the downloaded temporary file
+     */
     public Path downloadJsonGzToTempFile(FeedKind kind, Integer year) throws IOException {
         String path = resolveGzPath(kind, year);
 
@@ -117,9 +138,11 @@ public class NvdCveFeedClient {
 
         } catch (Exception e) {
             safeDelete(tmp);
+
             if (e instanceof IOException io) {
                 throw io;
             }
+
             throw new IOException(
                     "Failed to download json.gz. kind=" + kind + " year=" + year + " err=" + e.getMessage(),
                     e
@@ -127,6 +150,9 @@ public class NvdCveFeedClient {
         }
     }
 
+    /**
+     * Resolves the meta file path based on feed type.
+     */
     private String resolveMetaPath(FeedKind kind, Integer year) throws IOException {
         return switch (kind) {
             case RECENT -> recentMetaPath;
@@ -135,6 +161,9 @@ public class NvdCveFeedClient {
         };
     }
 
+    /**
+     * Resolves the gzipped JSON feed path based on feed type.
+     */
     private String resolveGzPath(FeedKind kind, Integer year) throws IOException {
         return switch (kind) {
             case RECENT -> recentGzPath;
@@ -143,17 +172,31 @@ public class NvdCveFeedClient {
         };
     }
 
+    /**
+     * Validates and returns the year value.
+     * Ensures the year is within a reasonable range.
+     */
     private int requireYear(Integer year) throws IOException {
-        if (year == null) throw new IOException("year is required when kind=YEAR");
-        // 雑に防御（必要なら範囲は後で調整）
-        if (year < 1999 || year > 2100) throw new IOException("invalid year=" + year);
+        if (year == null) {
+            throw new IOException("year is required when kind=YEAR");
+        }
+
+        if (year < 1999 || year > 2100) {
+            throw new IOException("invalid year=" + year);
+        }
+
         return year;
     }
 
+    /**
+     * Safely deletes a temporary file if it exists.
+     * Logs a warning if deletion fails.
+     */
     private static void safeDelete(Path path) {
         if (path == null) {
             return;
         }
+
         try {
             Files.deleteIfExists(path);
         } catch (IOException ex) {

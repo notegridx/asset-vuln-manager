@@ -31,7 +31,7 @@ public class NvdClient {
 	// Page size must be kept modest to avoid huge JSON payloads and in-memory buffering issues.
 	private static final int DEFAULT_RESULTS_PER_PAGE = 50;
 
-	// Be nice to NVD: throttle requests (apiKeyなしはかなり厳しめに)
+	// Be nice to NVD: throttle requests
 	private static final Duration THROTTLE_WITHOUT_KEY = Duration.ofSeconds(7);
 	private static final Duration THROTTLE_WITH_KEY = Duration.ofMillis(750);
 

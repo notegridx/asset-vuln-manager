@@ -29,10 +29,10 @@ public class VersionRangeMatcher {
                         normalize(endIncluding) != null ||
                         normalize(endExcluding) != null;
 
-        // range が無い = 影響範囲が version で絞れていない（要確認）
+        // No range constraints = version is not restricted (requires confirmation)
         if (!hasAnyRange) return Verdict.NO_VERSION_CONSTRAINT;
 
-        // range があるのに version が無い：確定できない
+        // Range exists but version is missing → cannot determine definitively
         if (v == null) return Verdict.UNKNOWN_VERSION;
 
         try {
@@ -50,15 +50,16 @@ public class VersionRangeMatcher {
             }
             return Verdict.MATCH;
         } catch (Exception e) {
-            // 比較不能な version（例: 変な形式、想定外の文字列など）
+            // Version cannot be compared (e.g., malformed or unexpected format)
             return Verdict.UNPARSABLE_VERSION;
         }
     }
 
     /**
-     * 実務向けの簡易比較:
-     * - 区切り（., -, _, +, 空白）で分割し、さらに数字/文字の境界でも分割
-     * - 数字は数値比較、文字は辞書比較（同位置で数値 > 文字）
+     * Practical simplified comparison:
+     * - Split by delimiters (., -, _, +, whitespace), then further split by digit/letter boundaries
+     * - Numeric tokens are compared numerically, string tokens lexicographically
+     * - At the same position, numeric tokens are considered greater than string tokens
      */
     public int compare(String a, String b) {
         String va = Objects.requireNonNull(normalize(a));
@@ -120,7 +121,7 @@ public class VersionRangeMatcher {
         String t = s.trim();
         if (t.isEmpty()) return null;
 
-        // v1.2.3 / V1.2.3 のような先頭 prefix は比較上無視する
+        // Ignore leading prefix such as v1.2.3 / V1.2.3 for comparison purposes
         if (t.length() >= 2) {
             char c0 = t.charAt(0);
             char c1 = t.charAt(1);
@@ -154,7 +155,7 @@ public class VersionRangeMatcher {
         @Override
         public int compareTo(Token o) {
             if (o instanceof Num nn) return this.n.compareTo(nn.n);
-            // 数値 > 文字
+            // Numeric tokens are considered greater than string tokens
             return 1;
         }
     }
@@ -163,7 +164,7 @@ public class VersionRangeMatcher {
         @Override
         public int compareTo(Token o) {
             if (o instanceof Str ss) return this.s.compareTo(ss.s);
-            // 文字 < 数値
+            // String tokens are considered less than numeric tokens
             return -1;
         }
     }

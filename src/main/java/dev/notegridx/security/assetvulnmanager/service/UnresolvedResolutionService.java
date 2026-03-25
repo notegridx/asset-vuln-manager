@@ -55,11 +55,11 @@ public class UnresolvedResolutionService {
 
         UnresolvedMapping um = unresolvedRepo.findById(mappingId).orElseThrow();
 
-        // raw values (used for coalesce-match fallback and alias note)
+        // Raw values (used for coalesce-match fallback and alias note)
         String vendorRaw = safeTrim(um.getVendorRaw());
         String productRaw = safeTrim(um.getProductRaw());
 
-        // normalized values (primary update path; insurance fill for UM only)
+        // Normalized values (primary update path; fallback fill for UnresolvedMapping only)
         String vendorNorm = normalizeVendorFallback(um);
         String productNorm = normalizeProductFallback(um);
 
@@ -124,9 +124,9 @@ public class UnresolvedResolutionService {
         String note = buildNote("applied-from-unresolved", mappingId, vendorRaw, null);
 
         if (existing == null) {
-            // entity has constructor (aliasNorm, cpeVendorId, note)
+            // Entity has constructor (aliasNorm, cpeVendorId, note)
             CpeVendorAlias created = new CpeVendorAlias(aliasNorm, vendorId, note);
-            // Apply action is MANUAL decision
+            // Apply action is treated as MANUAL decision
             created.setSource(AliasSource.MANUAL);
             created.setReviewState(AliasReviewState.MANUAL);
             created.setStatus(CpeVendorAlias.STATUS_ACTIVE);
@@ -134,9 +134,9 @@ public class UnresolvedResolutionService {
             return "CREATED";
         }
 
-        // cannot change cpeVendorId / aliasNorm (no setters) -> only safe updates
+        // Cannot change cpeVendorId / aliasNorm (no setters available) → only safe updates allowed
         if (!existing.getCpeVendorId().equals(vendorId)) {
-            // conflict: aliasNorm already points to different vendor
+            // Conflict: aliasNorm already points to a different vendor
             return "CONFLICT(existingVendorId=" + existing.getCpeVendorId() + ")";
         }
 
@@ -175,7 +175,7 @@ public class UnresolvedResolutionService {
             created.setReviewState(AliasReviewState.MANUAL);
             created.setStatus(CpeProductAlias.STATUS_ACTIVE);
 
-            // ★ DB側がNOT NULLなら必須
+            // Required if DB column is NOT NULL
             created.setConfidence(0);
 
             productAliasRepo.save(created);
@@ -197,7 +197,7 @@ public class UnresolvedResolutionService {
             changed = true;
         }
 
-        // ★ 既存がnullになっているケース（DB定義とズレてる移行途中など）を救済
+        // Recover cases where confidence is unexpectedly null (e.g., schema mismatch during migration)
         if (existing.getConfidence() == null) {
             existing.setConfidence(0);
             changed = true;
@@ -211,7 +211,7 @@ public class UnresolvedResolutionService {
     }
 
     // ---------------------------------------------------------
-    // UM normalization fallback (insurance)
+    // UnresolvedMapping normalization fallback (insurance)
     // ---------------------------------------------------------
     private String normalizeVendorFallback(UnresolvedMapping um) {
         if (!isBlank(um.getNormalizedVendor())) return um.getNormalizedVendor();

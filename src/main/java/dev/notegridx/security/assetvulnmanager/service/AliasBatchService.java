@@ -48,8 +48,8 @@ public class AliasBatchService {
 
     @Transactional
     public BatchReport seedTopAliases() {
-        // 「Top20自動投入」を確定投入として入れる
-        AliasSource source = AliasSource.MANUAL;      // TOP20 専用の enum が無いので運用で選ぶ
+        // Treat the auto-seeded Top20 set as confirmed entries.
+        AliasSource source = AliasSource.MANUAL;      // No dedicated enum exists for Top20 seeding, so this is selected operationally.
         AliasReviewState review = AliasReviewState.AUTO;
 
         List<VendorSeed> vendors = defaultTopVendorSeeds();
@@ -139,7 +139,8 @@ public class AliasBatchService {
             CpeVendorAlias row = existing.get();
             boolean changed = false;
 
-            // vendor mapping differs -> skip (no setter; also safety)
+            // Skip when the alias already points to a different vendor.
+            // This avoids accidental remapping and there is no direct setter-based remap path here.
             if (!cpeVendorId.equals(row.getCpeVendorId())) {
                 return UpsertResult.skipped("vendor alias exists with different cpeVendorId. alias=" + a
                         + " existing=" + row.getCpeVendorId() + " new=" + cpeVendorId);
@@ -182,7 +183,7 @@ public class AliasBatchService {
             return UpsertResult.unchanged("vendor alias unchanged. alias=" + a);
         }
 
-        // ✅ new を使わず seeded で統一（引数順の事故防止）
+        // Use the seeded factory instead of new to keep argument ordering consistent.
         CpeVendorAlias created = CpeVendorAlias.seeded(
                 cpeVendorId,
                 a,
@@ -217,6 +218,7 @@ public class AliasBatchService {
             CpeProductAlias row = existing.get();
             boolean changed = false;
 
+            // Skip when the alias already points to a different product under the same vendor.
             if (!cpeProductId.equals(row.getCpeProductId())) {
                 return UpsertResult.skipped("product alias exists with different cpeProductId. vendorId=" + cpeVendorId
                         + " alias=" + a + " existing=" + row.getCpeProductId() + " new=" + cpeProductId);
@@ -259,7 +261,7 @@ public class AliasBatchService {
             return UpsertResult.unchanged("product alias unchanged. vendorId=" + cpeVendorId + " alias=" + a);
         }
 
-        // ✅ new を使わず seeded で統一（引数順の事故防止）
+        // Use the seeded factory instead of new to keep argument ordering consistent.
         CpeProductAlias created = CpeProductAlias.seeded(
                 cpeVendorId,
                 cpeProductId,

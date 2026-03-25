@@ -54,7 +54,7 @@ public class KevSyncService {
     @Transactional
     public SyncResult sync(boolean force, int maxItems) {
 
-        int safeMax = Math.max(1, Math.min(maxItems, 50_000)); // KEV全件でも安全に
+        int safeMax = Math.max(1, Math.min(maxItems, 50_000)); // Keep the cap safe even when processing the full KEV catalog
         LocalDateTime now = DbTime.now();
 
         KevSyncState state = stateRepo.findByFeedName(FEED_NAME)
@@ -80,7 +80,7 @@ public class KevSyncService {
         String sha256 = sha256Hex(fetched.body());
         Long size = (long) fetched.body().length;
 
-        // parse
+        // Parse the fetched KEV payload
         CisaKevCatalog catalog;
         try {
             catalog = objectMapper.readValue(fetched.body(), CisaKevCatalog.class);
@@ -91,17 +91,17 @@ public class KevSyncService {
         List<CisaKevCatalog.KevItem> items = (catalog.vulnerabilities == null) ? List.of() : catalog.vulnerabilities;
         int total = items.size();
 
-        // apply max cap
+        // Apply the configured maximum item cap
         List<CisaKevCatalog.KevItem> slice = items.stream().limit(safeMax).toList();
 
-        // build CVE list
+        // Build the CVE ID list to resolve existing vulnerabilities in one batch
         List<String> cveIds = slice.stream()
                 .map(i -> normalize(i == null ? null : i.cveID))
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 
-        // batch fetch vulnerabilities from DB
+        // Fetch matching vulnerabilities from the database in batch
         Map<String, Vulnerability> byCve = fetchVulnsByCveIds(cveIds);
 
         int updated = 0;
@@ -127,7 +127,7 @@ public class KevSyncService {
             updated++;
         }
 
-        // update sync state meta
+        // Persist sync metadata after a successful fetch and apply
         state.updateMeta(fetched.etag(), fetched.lastModified(), sha256, size, now);
         stateRepo.save(state);
 
@@ -141,11 +141,13 @@ public class KevSyncService {
         );    }
 
     /**
-     * 既存Repositoryに依存せず、まずは findBySourceAndExternalId を使う素朴実装ではなく、
-     * “IN句でまとめて引く”前提のメソッドを Repository に足すのが理想。
+     * Rather than using a simple implementation based on repeated
+     * findBySourceAndExternalId calls, the preferred approach is to add
+     * a repository method that fetches all target vulnerabilities with a single IN query.
      *
-     * ここでは「VulnerabilityRepositoryに findBySourceAndExternalIdIn(...) がある」想定で呼び出す。
-     * 無ければ追加してください（下に完全版を添付）。
+     * This method assumes VulnerabilityRepository has
+     * findBySourceAndExternalIdIn(...) available.
+     * Add it if it does not already exist.
      */
     private Map<String, Vulnerability> fetchVulnsByCveIds(List<String> cveIds) {
         if (cveIds == null || cveIds.isEmpty()) return new HashMap<>();

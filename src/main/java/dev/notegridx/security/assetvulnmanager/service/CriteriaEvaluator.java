@@ -61,7 +61,7 @@ public class CriteriaEvaluator {
             return EvalResult.noMatch();
         }
 
-        // negate は将来課題。現段階では conservative に false 扱い。
+        // Negation handling is a future enhancement; currently treated conservatively as no match.
         if (expr.negate()) {
             return EvalResult.noMatch();
         }
@@ -488,14 +488,14 @@ public class CriteriaEvaluator {
             return false;
         }
 
-        // AVM 当面方針: application CPE のみ対象
+        // Current AVM policy: only application CPEs are considered
         if (!"a".equals(cpePart)) {
             return false;
         }
 
         String targetSw = normalizeTargetSw(affected.targetSw());
 
-        // wildcard / omitted は共通ビルド扱い
+        // Wildcard or omitted targetSw is treated as generic (applies to all)
         if (targetSw == null || "*".equals(targetSw) || "-".equals(targetSw)) {
             return true;
         }
@@ -643,7 +643,7 @@ public class CriteriaEvaluator {
     }
 
     /**
-     * cpe:2.3:a:vendor:product:version:update:... の version を抜く。
+     * Extracts the version field from cpe:2.3 formatted string.
      */
     private static String extractVersionFromCpe23(String cpe23) {
         if (cpe23 == null) return null;

@@ -66,10 +66,10 @@ public class UnresolvedQuickAddService {
             pOut = upsertProductAlias(productAliasNorm, vendorId, productId, mappingId);
         }
 
-        // alias投入直後に即効かせる
+        // Immediately apply alias changes by clearing synonym caches
         synonymService.clearCaches();
 
-        // 既存の apply をそのまま利用
+        // Reuse existing apply logic as-is
         var apply = unresolvedResolutionService.apply(mappingId, vendorId, productId);
 
         return new QuickAddResult(vOut, pOut, apply);
@@ -81,13 +81,13 @@ public class UnresolvedQuickAddService {
         var existingOpt = vendorAliasRepo.findByAliasNorm(aliasNorm);
 
         if (existingOpt.isEmpty()) {
-            // “提案投入”として seeded を使う
+            // Use seeded factory to register alias as a suggested entry
             CpeVendorAlias a = CpeVendorAlias.seeded(
                     vendorId,
                     aliasNorm,
                     "from unresolved#" + mappingId,
-                    AliasSource.MANUAL,       // enumに UNRESOLVED があれば差し替え
-                    AliasReviewState.AUTO,    // enumに SUGGEST があれば差し替え
+                    AliasSource.MANUAL,       // Replace if a dedicated UNRESOLVED enum is introduced
+                    AliasReviewState.AUTO,    // Replace if a dedicated SUGGEST enum is introduced
                     80,
                     null
             );
@@ -97,7 +97,7 @@ public class UnresolvedQuickAddService {
 
         CpeVendorAlias existing = existingOpt.get();
 
-        // uq_vendor_alias UNIQUE(alias_norm) なので、別vendor紐付けは上書き禁止
+        // UNIQUE(alias_norm): prevent overwriting if already linked to a different vendor
         if (existing.getCpeVendorId() != null && !existing.getCpeVendorId().equals(vendorId)) {
             return AliasOutcome.SKIPPED_CONFLICT;
         }
@@ -109,7 +109,7 @@ public class UnresolvedQuickAddService {
             changed = true;
         }
 
-        // 既存が同vendorの場合、メタを更新したいならここを有効化
+        // If the alias already belongs to the same vendor, metadata updates can be enabled here if needed
         // existing.setReviewState(AliasReviewState.AUTO);
         // existing.setConfidence(Math.max(existing.getConfidence() == null ? 0 : existing.getConfidence(), 80));
 
@@ -131,8 +131,8 @@ public class UnresolvedQuickAddService {
                     productId,
                     aliasNorm,
                     "from unresolved#" + mappingId,
-                    AliasSource.MANUAL,       // enumに UNRESOLVED があれば差し替え
-                    AliasReviewState.AUTO,    // enumに SUGGEST があれば差し替え
+                    AliasSource.MANUAL,       // Replace if a dedicated UNRESOLVED enum is introduced
+                    AliasReviewState.AUTO,    // Replace if a dedicated SUGGEST enum is introduced
                     80,
                     null
             );
@@ -142,7 +142,7 @@ public class UnresolvedQuickAddService {
 
         CpeProductAlias existing = existingOpt.get();
 
-        // uq_product_alias UNIQUE(cpe_vendor_id, alias_norm) で別productに張られてたら上書き禁止
+        // UNIQUE(cpe_vendor_id, alias_norm): prevent overwriting if already linked to a different product
         if (existing.getCpeProductId() != null && !existing.getCpeProductId().equals(productId)) {
             return AliasOutcome.SKIPPED_CONFLICT;
         }

@@ -292,7 +292,7 @@ public class CsvStagedImportService {
             if (asset == null) {
                 asset = new Asset(name);
             } else {
-                // 既存方針に合わせて name は更新しない
+                // Name is intentionally not updated to align with existing policy
             }
 
             asset.updateDetails(externalKey, r.getAssetType(), r.getOwner(), r.getNote());
@@ -543,13 +543,13 @@ public class CsvStagedImportService {
      * Invalid values are ignored without failing the import.
      */
     private static void trySetSoftwareType(SoftwareInstall sw, String type) {
-        // ignore invalid enum values
+        // Ignore invalid enum values
         String t = normNullable(type);
         if (t == null) return;
         try {
             sw.setType(SoftwareType.valueOf(t));
         } catch (IllegalArgumentException ex) {
-            // ignore
+            // Ignore invalid values
         }
     }
 

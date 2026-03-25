@@ -11,28 +11,55 @@ import java.util.Optional;
 
 public interface CpeProductRepository extends JpaRepository<CpeProduct, Long> {
 
+    /**
+     * Finds a product by vendor ID and normalized product name.
+     * Expected to return at most one result.
+     */
     Optional<CpeProduct> findByVendorIdAndNameNorm(Long vendorId, String nameNorm);
 
+    /**
+     * Checks existence of a product for a given vendor and normalized name.
+     */
     boolean existsByVendorIdAndNameNorm(Long vendorId, String nameNorm);
 
+    /**
+     * Bulk lookup for products by vendor and a set of normalized names.
+     */
     List<CpeProduct> findByVendorIdAndNameNormIn(Long vendorId, Collection<String> nameNorms);
 
-    // 前方一致サジェスト用（vendor scope）
+    /**
+     * Prefix-based suggestion (vendor-scoped).
+     * Returns up to 20 results ordered by normalized name.
+     */
     List<CpeProduct> findTop20ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(Long vendorId, String prefix);
 
+    /**
+     * Contains-based suggestion (vendor-scoped).
+     * Returns up to 20 results ordered by normalized name.
+     */
     List<CpeProduct> findTop20ByVendorIdAndNameNormContainingOrderByNameNormAsc(Long vendorId, String q);
 
-    // exact within vendor
+    /**
+     * Exact match within a vendor (case-insensitive).
+     * Used when strict equality is required for candidate resolution.
+     */
     @Query("""
   select p from CpeProduct p
   where p.vendor.id = :vendorId and lower(p.nameNorm) = lower(:nameNorm)
 """)
     List<CpeProduct> findExactByVendorId(@Param("vendorId") Long vendorId, @Param("nameNorm") String nameNorm);
 
-    // prefix more than 20 (for grouping)
+    /**
+     * Extended prefix search (up to 50 results).
+     * Typically used for grouping or secondary candidate expansion.
+     */
     List<CpeProduct> findTop50ByVendorIdAndNameNormStartingWithOrderByNameNormAsc(Long vendorId, String nameNorm);
 
-    // contains (fallback)
+    /**
+     * Fallback contains search using explicit JPQL.
+     * Case-insensitive match with ordering by normalized name.
+     * Returns up to 50 results.
+     */
     @Query("""
   select p from CpeProduct p
   where p.vendor.id = :vendorId and lower(p.nameNorm) like lower(concat('%', :q, '%'))
@@ -40,5 +67,9 @@ public interface CpeProductRepository extends JpaRepository<CpeProduct, Long> {
 """)
     List<CpeProduct> findTop50ByVendorIdAndNameNormContainsOrderByNameNormAsc(@Param("vendorId") Long vendorId, @Param("q") String q);
 
+    /**
+     * Wide contains search (up to 200 results).
+     * Used when broader recall is needed after narrower queries.
+     */
     List<CpeProduct> findTop200ByVendorIdAndNameNormContainingOrderByNameNormAsc(Long vendorId, String q);
 }
