@@ -19,6 +19,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -194,6 +195,7 @@ public class SoftwareListController {
         model.addAttribute("productNameMap", productNameMap);
 
         model.addAttribute("page", result);
+        model.addAttribute("pagerItems", buildPagerItems(result));
 
         // Preserve filter state
         model.addAttribute("assetId", assetId);
@@ -262,6 +264,23 @@ public class SoftwareListController {
         if (v > max) return max;
 
         return v;
+    }
+
+    private static List<Integer> buildPagerItems(Page<?> page) {
+        List<Integer> items = new ArrayList<>();
+        int totalPages = page.getTotalPages();
+        if (totalPages <= 1) {
+            return items;
+        }
+
+        int current = page.getNumber();
+        int start = Math.max(0, current - 2);
+        int end = Math.min(totalPages - 1, current + 2);
+
+        for (int i = start; i <= end; i++) {
+            items.add(i);
+        }
+        return items;
     }
 
     private static String firstNonBlank(String a, String b, String fallback) {
