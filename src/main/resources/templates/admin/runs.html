@@ -72,7 +72,7 @@
                             <option value="">All job types</option>
                             <option th:each="t : ${T(dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType).values()}"
                                     th:value="${t.name()}"
-                                    th:text="${t.name()}"
+                                    th:text="${t.name() == 'ALERT_RECALCULATE' ? 'Generate Alerts' : t.name()}"
                                     th:selected="${jobType != null and jobType == t.name()}">
                                 CVE_DELTA_UPDATE
                             </option>
@@ -161,7 +161,10 @@
                     <td><span class="mono" th:text="${row.run.id}">1</span></td>
 
                     <td>
-                        <span class="badge" th:text="${row.run.jobType}">CVE_DELTA_UPDATE</span>
+                        <span class="badge"
+                              th:text="${row.run.jobType != null && row.run.jobType.name() == 'ALERT_RECALCULATE' ? 'Generate Alerts' : row.run.jobType}">
+                            CVE_DELTA_UPDATE
+                        </span>
                     </td>
 
                     <td>
