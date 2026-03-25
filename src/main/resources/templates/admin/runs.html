@@ -72,9 +72,17 @@
                             <option value="">All job types</option>
                             <option th:each="t : ${T(dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType).values()}"
                                     th:value="${t.name()}"
-                                    th:text="${t.name() == 'ALERT_RECALCULATE' ? 'Generate Alerts' : t.name()}"
+                                    th:text="${
+            t.name() == 'ALERT_RECALCULATE' ? 'Generate Alerts' :
+            t.name() == 'CPE_SYNC' ? 'CPE Sync' :
+            t.name() == 'CVE_FEED_SYNC' ? 'CVE Feed Sync' :
+            t.name() == 'CVE_DELTA_UPDATE' ? 'CVE Delta Update' :
+            t.name() == 'KEV_SYNC' ? 'KEV Sync' :
+            t.name() == 'CANONICAL_BACKFILL' ? 'Run Linking' :
+            t.name() == 'ALIAS_SEED_IMPORT' ? 'Alias Seed Import' :
+            t.name()
+        }"
                                     th:selected="${jobType != null and jobType == t.name()}">
-                                CVE_DELTA_UPDATE
                             </option>
                         </select>
                     </div>
@@ -117,7 +125,8 @@
     </div>
 
     <div class="card" style="padding:12px; margin:12px 0;">
-        <div class="actions" style="justify-content:space-between; align-items:center; margin:0 0 10px 0; gap:10px; flex-wrap:wrap;">
+        <div class="actions"
+             style="justify-content:space-between; align-items:center; margin:0 0 10px 0; gap:10px; flex-wrap:wrap;">
             <div class="muted" style="font-size:12px;">
                 Results are ordered by newest first.
             </div>
@@ -154,17 +163,26 @@
 
                 <tbody>
                 <tr th:if="${runs == null || #lists.isEmpty(runs)}">
-                    <td colspan="7" class="muted" style="padding:14px;">No admin runs found for the current filters.</td>
+                    <td colspan="7" class="muted" style="padding:14px;">No admin runs found for the current filters.
+                    </td>
                 </tr>
 
                 <tr th:each="row : ${runs}">
                     <td><span class="mono" th:text="${row.run.id}">1</span></td>
 
                     <td>
-                        <span class="badge"
-                              th:text="${row.run.jobType != null && row.run.jobType.name() == 'ALERT_RECALCULATE' ? 'Generate Alerts' : row.run.jobType}">
-                            CVE_DELTA_UPDATE
-                        </span>
+<span class="badge"
+      th:text="${
+          row.run.jobType != null && row.run.jobType.name() == 'ALERT_RECALCULATE' ? 'Generate Alerts' :
+          row.run.jobType != null && row.run.jobType.name() == 'CPE_SYNC' ? 'CPE Sync' :
+          row.run.jobType != null && row.run.jobType.name() == 'CVE_FEED_SYNC' ? 'CVE Feed Sync' :
+          row.run.jobType != null && row.run.jobType.name() == 'CVE_DELTA_UPDATE' ? 'CVE Delta Update' :
+          row.run.jobType != null && row.run.jobType.name() == 'KEV_SYNC' ? 'KEV Sync' :
+          row.run.jobType != null && row.run.jobType.name() == 'CANONICAL_BACKFILL' ? 'Run Linking' :
+          row.run.jobType != null && row.run.jobType.name() == 'ALIAS_SEED_IMPORT' ? 'Alias Seed Import' :
+          row.run.jobType
+      }">
+</span>
                     </td>
 
                     <td>
@@ -205,14 +223,17 @@
                                 <summary class="muted run-details__summary">
                                     <span class="run-details__left">
                                         <span class="run-details__label">params</span>
-                                        <span class="run-details__meta" th:text="${pCount > 0 ? '(' + pCount + ')' : ''}"></span>
+                                        <span class="run-details__meta"
+                                              th:text="${pCount > 0 ? '(' + pCount + ')' : ''}"></span>
                                     </span>
 
                                     <span class="run-details__preview" th:if="${pCount > 0}">
                                         <span class="run-details__preview-text">
                                             <span th:each="e, it : ${p.entrySet()}"
                                                   th:if="${e.key != '_raw' and e.key != '_parseError' and it.index < 3}">
-                                                <span th:text="${e.key}">k</span>=<span th:text="${e.value}">v</span><span th:if="${it.index < 2}"> · </span>
+                                                <span th:text="${e.key}">k</span>=<span
+                                                    th:text="${e.value}">v</span><span
+                                                    th:if="${it.index < 2}"> · </span>
                                             </span>
                                             <span th:if="${pCount > 3}"> · …</span>
                                         </span>
@@ -259,7 +280,8 @@
                                         <span th:each="e, it : ${r.entrySet()}"
                                               th:if="${e.key != '_raw' and e.key != '_parseError' and it.index < 3}">
                                             <span class="run-details__kv">
-                                                <span class="k" th:text="${e.key}">k</span>=<code class="v" th:text="${e.value}">v</code>
+                                                <span class="k" th:text="${e.key}">k</span>=<code class="v"
+                                                                                                  th:text="${e.value}">v</code>
                                             </span>
                                             <span th:if="${it.index < 2}"> </span>
                                         </span>
@@ -309,7 +331,8 @@
     </div>
 
     <div class="card" style="padding:12px; margin:12px 0;">
-        <div class="actions" style="justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:0;">
+        <div class="actions"
+             style="justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:0;">
             <div class="muted" style="font-size:12px;"
                  th:text="'Showing page ' + ((page != null ? page : 0) + 1) + ' of ' + (totalPages == null ? 1 : totalPages)">
                 Showing page 1 of 1
