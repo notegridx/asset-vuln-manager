@@ -28,6 +28,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 @WebMvcTest(controllers = AssetController.class)
 @ActiveProfiles("mysqltest")
 @WithMockUser(username = "test", roles = "ADMIN")
@@ -55,14 +60,25 @@ class AssetControllerWebMvcTest {
     private DemoModeService demoModeService;
 
     @Test
-    @DisplayName("GET /assets returns asset list page")
+    @DisplayName("GET /assets returns assets page")
     void list_returnsAssetsPage() throws Exception {
-        when(assetService.findAll()).thenReturn(List.of());
+        Asset asset = mock(Asset.class);
+
+        Page<Asset> page = new PageImpl<>(
+                List.of(asset),
+                PageRequest.of(0, 50),
+                1
+        );
+
+        when(assetService.findAll(any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/assets"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("assets/list"))
-                .andExpect(model().attributeExists("assets"));
+                .andExpect(model().attributeExists("assets"))
+                .andExpect(model().attributeExists("pagerItems"));
+
+        verify(assetService).findAll(any(Pageable.class));
     }
 
     @Test
