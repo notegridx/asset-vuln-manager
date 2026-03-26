@@ -91,9 +91,17 @@ public class AdminSynonymsController {
         );
 
         // Workspace selector options:
-        // only canonical vendors that already have at least one vendor alias.
-        List<Long> workspaceVendorIds = vendorAliasRepo.findDistinctCanonicalVendorIds();
-        Map<Long, String> workspaceVendorLabelMap = loadVendorLabels(new LinkedHashSet<>(workspaceVendorIds));
+        // canonical vendors that already have at least one vendor alias
+        // or at least one product alias.
+        Set<Long> workspaceVendorIds = new LinkedHashSet<>(vendorAliasRepo.findDistinctCanonicalVendorIds());
+        workspaceVendorIds.addAll(
+                productAliasRepo.findAll().stream()
+                        .map(CpeProductAlias::getCpeVendorId)
+                        .filter(Objects::nonNull)
+                        .toList()
+        );
+
+        Map<Long, String> workspaceVendorLabelMap = loadVendorLabels(workspaceVendorIds);
         List<VendorOption> workspaceVendors = workspaceVendorIds.stream()
                 .map(id -> new VendorOption(id, workspaceVendorLabelMap.getOrDefault(id, "vendorId=" + id)))
                 .toList();
