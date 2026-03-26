@@ -69,4 +69,9 @@ public class AdminRunRecorder {
             running.set(false);
         }
     }
+
+    public boolean isRunning(AdminJobType jobType) {
+        AtomicBoolean running = runningMap.get(jobType);
+        return running != null && running.get();
+    }
 }

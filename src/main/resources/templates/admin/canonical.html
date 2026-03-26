@@ -382,27 +382,17 @@
              style="display:flex; flex-wrap:wrap; gap:10px 16px; font-size:12.5px; line-height:1.3;">
 
             <div><span class="muted">scanned</span> <span class="mono" th:text="${backfillResult.scanned}">0</span></div>
-
             <div><span class="muted">fullyLinked</span> <span class="mono" th:text="${backfillResult.fullyLinked}">0</span></div>
-
             <div><span class="muted">vendorOnly</span> <span class="mono" th:text="${backfillResult.vendorOnly}">0</span></div>
-
             <div><span class="muted">pureMiss</span> <span class="mono" th:text="${backfillResult.pureMiss}">0</span></div>
-
             <div><span class="muted">linkedTotal</span> <span class="mono" th:text="${backfillResult.linkedTotal}">0</span></div>
-
             <div><span class="muted">unresolvedTotal</span> <span class="mono" th:text="${backfillResult.unresolvedTotal}">0</span></div>
-
             <div><span class="muted">elapsedMs</span> <span class="mono" th:text="${backfillResult.elapsedMs}">0</span></div>
-
             <div><span class="muted">elapsedSec</span> <span class="mono" th:text="${backfillResult.elapsedSec}">0</span></div>
-
             <div><span class="muted">rowsPerSec</span> <span class="mono" th:text="${backfillResult.rowsPerSec}">0</span></div>
-
             <div><span class="muted">relink</span>
                 <span class="mono" th:text="${backfillResult.forceRebuild} ? 'true' : 'false'">false</span>
             </div>
-
         </div>
     </div>
 
@@ -415,29 +405,45 @@
                 </div>
             </div>
 
-            <form method="post" th:action="@{/admin/canonical/link}" style="margin:0;">
+            <form id="run-linking-form" method="post" th:action="@{/admin/canonical/link}" style="margin:0;">
                 <input type="hidden"
                        th:name="${_csrf.parameterName}"
                        th:value="${_csrf.token}">
                 <input type="hidden" name="redirect"
                        th:value="${'/admin/canonical' + currentQuery}">
+
                 <div class="actions canon-inline-actions" style="margin:0;">
                     <label class="muted canon-help"
                            style="display:flex; align-items:center; gap:8px; user-select:none;">
-                        <input type="checkbox" name="relink" value="true"
-                               th:disabled="${demoMode}">
+                        <input id="run-linking-relink"
+                               type="checkbox"
+                               name="relink"
+                               value="true"
+                               th:disabled="${demoMode or linkingRunning}">
                         Re-link already linked products
                     </label>
 
-                    <button class="btn btn-primary" type="submit"
-                            th:disabled="${demoMode}"
-                            th:title="${demoMode ? 'Disabled in demo mode' : null}">
+                    <button id="run-linking-button"
+                            class="btn btn-primary"
+                            type="submit"
+                            th:disabled="${demoMode or linkingRunning}"
+                            th:title="${
+                                demoMode ? 'Disabled in demo mode' :
+                                (linkingRunning ? 'Run Linking is in progress' : null)
+                            }"
+                            th:text="${linkingRunning ? 'Run Linking...' : 'Run Linking'}">
                         Run Linking
                     </button>
                 </div>
 
-                <div class="muted canon-help mt-6" th:if="${demoMode}">
+                <div id="run-linking-help" class="muted canon-help mt-6" th:if="${demoMode}">
                     Disabled in demo mode.
+                </div>
+
+                <div id="run-linking-running-help"
+                     class="muted canon-help mt-6"
+                     th:if="${!demoMode and linkingRunning}">
+                    Run Linking is currently in progress.
                 </div>
             </form>
         </div>
@@ -567,6 +573,41 @@
     </div>
 
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <script>
+        (function () {
+            const form = document.getElementById("run-linking-form");
+            const button = document.getElementById("run-linking-button");
+            const relink = document.getElementById("run-linking-relink");
+
+            if (!form || !button) {
+                return;
+            }
+
+            form.addEventListener("submit", function () {
+                if (button.disabled) {
+                    return;
+                }
+
+                button.disabled = true;
+                button.textContent = "Run Linking...";
+                button.title = "Run Linking is in progress";
+
+                if (relink) {
+                    relink.disabled = true;
+                }
+
+                const existingHelp = document.getElementById("run-linking-running-help");
+                if (!existingHelp) {
+                    const help = document.createElement("div");
+                    help.id = "run-linking-running-help";
+                    help.className = "muted canon-help mt-6";
+                    help.textContent = "Run Linking is currently in progress.";
+                    form.appendChild(help);
+                }
+            });
+        })();
+    </script>
 </main>
 </body>
 </html>

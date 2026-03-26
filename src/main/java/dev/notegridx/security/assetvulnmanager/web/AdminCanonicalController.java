@@ -4,14 +4,12 @@ import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
 import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
+import dev.notegridx.security.assetvulnmanager.domain.enums.AdminJobType;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
-import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
-import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
-import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
-import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
+import dev.notegridx.security.assetvulnmanager.service.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -55,6 +53,8 @@ public class AdminCanonicalController {
     private volatile List<Asset> cachedAssets;
     private volatile long cachedAssetsAtMillis;
 
+    private final AdminRunRecorder adminRunRecorder;
+
     public AdminCanonicalController(
             AssetRepository assetRepo,
             SoftwareInstallRepository softwareRepo,
@@ -62,7 +62,8 @@ public class AdminCanonicalController {
             AdminCanonicalBackfillService adminCanonicalBackfillService,
             DemoModeService demoModeService,
             CpeVendorRepository cpeVendorRepository,
-            CpeProductRepository cpeProductRepository
+            CpeProductRepository cpeProductRepository,
+            AdminRunRecorder adminRunRecorder
     ) {
         this.assetRepo = assetRepo;
         this.softwareRepo = softwareRepo;
@@ -71,6 +72,7 @@ public class AdminCanonicalController {
         this.demoModeService = demoModeService;
         this.cpeVendorRepository = cpeVendorRepository;
         this.cpeProductRepository = cpeProductRepository;
+        this.adminRunRecorder = adminRunRecorder;
     }
 
     public enum Filter {
@@ -150,6 +152,10 @@ public class AdminCanonicalController {
             Model model
     ) {
         populateViewModel(assetId, filterRaw, q, page, size, model);
+        model.addAttribute(
+                "linkingRunning",
+                adminRunRecorder.isRunning(AdminJobType.CANONICAL_BACKFILL)
+        );
         return "admin/canonical";
     }
 
