@@ -107,7 +107,7 @@
     }
 
     .um-th-status {
-        width: 120px;
+        width: 140px;
     }
 
     .um-th-raw {
@@ -119,7 +119,7 @@
     }
 
     .um-th-action {
-        width: 200px;
+        width: 160px;
     }
 
     /* =========================================================
@@ -512,11 +512,11 @@
                         <option value="linkedStale" th:selected="${status == 'linkedStale'}">LINKED STALE</option>
                         <option value="fullyResolvable" th:selected="${status == 'fullyResolvable'}">RESOLVABLE</option>
                         <option value="vendorResolvableOnly" th:selected="${status == 'vendorResolvableOnly'}">VENDOR
-                            RESOLVABLE ONLY
+                            RESOLVABLE
                         </option>
                         <option value="unresolvable" th:selected="${status == 'unresolvable'}">UNRESOLVABLE</option>
-                        <option value="needsNormalization" th:selected="${status == 'needsNormalization'}">NEEDS
-                            NORMALIZATION
+                        <option value="needsNormalization" th:selected="${status == 'needsNormalization'}">NOT
+                            NORMALIZED
                         </option>
                     </select>
                 </div>

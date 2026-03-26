@@ -602,9 +602,9 @@ public class AdminInventoryReadService {
         VENDOR_ONLY_LINKED("vendorOnlyLinked", "VENDOR ONLY LINKED"),
         NOT_LINKED("notLinked", "NOT LINKED"),
         RESOLVABLE("fullyResolvable", "RESOLVABLE"),
-        VENDOR_RESOLVABLE_ONLY("vendorResolvableOnly", "VENDOR RESOLVABLE ONLY"),
+        VENDOR_RESOLVABLE_ONLY("vendorResolvableOnly", "VENDOR RESOLVABLE"),
         UNRESOLVABLE("unresolvable", "UNRESOLVABLE"),
-        NEEDS_NORMALIZATION("needsNormalization", "NEEDS NORMALIZATION");
+        NEEDS_NORMALIZATION("needsNormalization", "NOT NORMALIZED");
 
         private final String key;
         private final String label;
