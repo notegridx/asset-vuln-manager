@@ -180,6 +180,18 @@ public class AliasSeedImportService {
                     continue;
                 }
 
+                if (Objects.equals(aliasNorm, canonicalVendorNorm)) {
+                    deduped++;
+                    dedupedAliasRows.add(new ResultRow(
+                            "Vendor",
+                            canonicalVendorNorm,
+                            aliasNorm,
+                            safe(raw),
+                            "Skipped self-alias (same as canonical vendor after normalization)."
+                    ));
+                    continue;
+                }
+
                 if (!seen.add(aliasNorm)) {
                     deduped++;
                     dedupedAliasRows.add(new ResultRow(
@@ -313,6 +325,18 @@ public class AliasSeedImportService {
                 String aliasNorm = normalizer.normalizeProduct(raw);
 
                 if (aliasNorm == null) {
+                    continue;
+                }
+
+                if (Objects.equals(aliasNorm, canonicalProductNorm)) {
+                    deduped++;
+                    dedupedAliasRows.add(new ResultRow(
+                            "Product",
+                            canonicalVendorNorm + " / " + canonicalProductNorm,
+                            aliasNorm,
+                            safe(raw),
+                            "Skipped self-alias (same as canonical product after normalization)."
+                    ));
                     continue;
                 }
 
