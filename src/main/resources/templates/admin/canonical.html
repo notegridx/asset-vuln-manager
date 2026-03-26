@@ -478,13 +478,13 @@
                     <td class="muted">Fully Resolvable</td>
                     <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.fullyResolvable}">0</td>
 
-                    <td class="muted">Vendor Resolvable Only</td>
+                    <td class="muted">Vendor Resolvable</td>
                     <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.vendorResolvableOnly}">0</td>
 
                     <td class="muted">Unresolvable</td>
                     <td class="mono" style="padding:6px 14px 4px 6px;" th:text="${stats.unresolvable}">0</td>
 
-                    <td class="muted">Needs Normalization</td>
+                    <td class="muted">Not Normalized</td>
                     <td class="mono" style="padding:6px 0 4px 6px;" th:text="${stats.needsNormalization}">0</td>
                 </tr>
                 </tbody>
@@ -519,9 +519,9 @@
                         <option value="linkedValid" th:selected="${filter == 'linkedValid'}">Linked (Valid)</option>
                         <option value="linkedStale" th:selected="${filter == 'linkedStale'}">Linked (Stale)</option>
                         <option value="fullyResolvable" th:selected="${filter == 'fullyResolvable'}">Fully Resolvable</option>
-                        <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">Vendor Resolvable Only</option>
+                        <option value="vendorResolvableOnly" th:selected="${filter == 'vendorResolvableOnly'}">Vendor Resolvable</option>
                         <option value="unresolvable" th:selected="${filter == 'unresolvable'}">Unresolvable</option>
-                        <option value="needsNormalization" th:selected="${filter == 'needsNormalization'}">Needs Normalization</option>
+                        <option value="needsNormalization" th:selected="${filter == 'needsNormalization'}">Not Normalized</option>
                     </select>
                 </div>
 
