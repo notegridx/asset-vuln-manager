@@ -518,7 +518,7 @@ public class AdminCanonicalController {
             case linkedStale -> a.result() == CanonicalCpeLinkingService.ItemResult.STALE;
             case fullyResolvable -> a.dictFullyResolvable();
             case vendorResolvableOnly -> a.dictVendorResolvableOnly();
-            case unresolvable -> a.dictUnresolvable();
+            case unresolvable -> a.dictUnresolvable() && !a.needsNormalization();
             case needsNormalization -> a.needsNormalization();
         };
     }
