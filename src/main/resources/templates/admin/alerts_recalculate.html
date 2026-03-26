@@ -43,9 +43,16 @@
       <span th:text="${error}">Alert generation is already running.</span>
     </div>
 
-    <form th:action="@{/admin/alerts/recalculate}" method="post">
+    <form th:action="@{/admin/alerts/recalculate}"
+          method="post"
+          onsubmit="return handleGenerateSubmit(this);">
       <div class="actions actions--mt-14">
-        <button type="submit" class="btn btn-primary" th:disabled="${demoMode}">Generate Alerts</button>
+        <button id="generateBtn"
+                type="submit"
+                class="btn btn-primary"
+                th:disabled="${demoMode}">
+          Generate Alerts
+        </button>
       </div>
     </form>
   </div>
@@ -136,6 +143,21 @@
     </div>
   </div>
 
+  <script>
+    function handleGenerateSubmit(form) {
+      const btn = document.getElementById("generateBtn");
+
+      if (!btn) return true;
+      if (btn.disabled) return false;
+
+      btn.disabled = true;
+      btn.innerText = "Processing...";
+      btn.classList.add("is-loading");
+
+      return true;
+    }
+  </script>
 </main>
+
 </body>
 </html>
