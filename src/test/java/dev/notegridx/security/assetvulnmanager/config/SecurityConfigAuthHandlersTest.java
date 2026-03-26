@@ -2,7 +2,9 @@ package dev.notegridx.security.assetvulnmanager.config;
 
 import dev.notegridx.security.assetvulnmanager.domain.AppRole;
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
+import dev.notegridx.security.assetvulnmanager.domain.SystemSetting;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.repository.SystemSettingRepository;
 import dev.notegridx.security.assetvulnmanager.service.AppUserDetailsService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import org.junit.jupiter.api.DisplayName;
@@ -17,7 +19,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -31,12 +32,18 @@ import static org.mockito.Mockito.*;
 
 class SecurityConfigAuthHandlersTest {
 
+    private static final String KEY_AUTH_ACCOUNT_LOCK_ENABLED = "auth.account-lock.enabled";
+    private static final String KEY_AUTH_MAX_FAILED_LOGINS = "auth.max-failed-logins";
+
     @Test
     @DisplayName("authentication failure increments failed login count")
     void failure_incrementsFailedLoginCount() throws Exception {
         AppUserRepository appUserRepository = mock(AppUserRepository.class);
         AppUserDetailsService appUserDetailsService = mock(AppUserDetailsService.class);
         SecurityAuditService securityAuditService = mock(SecurityAuditService.class);
+        SystemSettingRepository systemSettingRepository = mock(SystemSettingRepository.class);
+
+        stubAccountLockSettings(systemSettingRepository, true, 5);
 
         AppUser user = AppUser.of("alice", "hash");
         user.addRole(AppRole.of("ADMIN"));
@@ -44,8 +51,7 @@ class SecurityConfigAuthHandlersTest {
         when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService);
-        ReflectionTestUtils.setField(securityConfig, "maxFailedLogins", 5);
+        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService, systemSettingRepository);
 
         AuthenticationFailureHandler handler = securityConfig.authenticationFailureHandler(
                 providerOf(appUserRepository),
@@ -91,6 +97,9 @@ class SecurityConfigAuthHandlersTest {
         AppUserRepository appUserRepository = mock(AppUserRepository.class);
         AppUserDetailsService appUserDetailsService = mock(AppUserDetailsService.class);
         SecurityAuditService securityAuditService = mock(SecurityAuditService.class);
+        SystemSettingRepository systemSettingRepository = mock(SystemSettingRepository.class);
+
+        stubAccountLockSettings(systemSettingRepository, true, 3);
 
         AppUser user = AppUser.of("alice", "hash");
         user.addRole(AppRole.of("ADMIN"));
@@ -100,8 +109,7 @@ class SecurityConfigAuthHandlersTest {
         when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService);
-        ReflectionTestUtils.setField(securityConfig, "maxFailedLogins", 3);
+        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService, systemSettingRepository);
 
         AuthenticationFailureHandler handler = securityConfig.authenticationFailureHandler(
                 providerOf(appUserRepository),
@@ -147,6 +155,9 @@ class SecurityConfigAuthHandlersTest {
         AppUserRepository appUserRepository = mock(AppUserRepository.class);
         AppUserDetailsService appUserDetailsService = mock(AppUserDetailsService.class);
         SecurityAuditService securityAuditService = mock(SecurityAuditService.class);
+        SystemSettingRepository systemSettingRepository = mock(SystemSettingRepository.class);
+
+        stubAccountLockSettings(systemSettingRepository, true, 5);
 
         AppUser user = AppUser.of("alice", "hash");
         user.addRole(AppRole.of("ADMIN"));
@@ -155,8 +166,7 @@ class SecurityConfigAuthHandlersTest {
         when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService);
-        ReflectionTestUtils.setField(securityConfig, "maxFailedLogins", 5);
+        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService, systemSettingRepository);
 
         AuthenticationFailureHandler handler = securityConfig.authenticationFailureHandler(
                 providerOf(appUserRepository),
@@ -202,6 +212,7 @@ class SecurityConfigAuthHandlersTest {
         AppUserRepository appUserRepository = mock(AppUserRepository.class);
         AppUserDetailsService appUserDetailsService = mock(AppUserDetailsService.class);
         SecurityAuditService securityAuditService = mock(SecurityAuditService.class);
+        SystemSettingRepository systemSettingRepository = mock(SystemSettingRepository.class);
 
         AppUser user = AppUser.of("alice", "hash");
         user.addRole(AppRole.of("ADMIN"));
@@ -211,7 +222,7 @@ class SecurityConfigAuthHandlersTest {
         when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService);
+        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService, systemSettingRepository);
 
         AuthenticationSuccessHandler handler = securityConfig.authenticationSuccessHandler(
                 providerOf(appUserRepository),
@@ -249,6 +260,7 @@ class SecurityConfigAuthHandlersTest {
         AppUserRepository appUserRepository = mock(AppUserRepository.class);
         AppUserDetailsService appUserDetailsService = mock(AppUserDetailsService.class);
         SecurityAuditService securityAuditService = mock(SecurityAuditService.class);
+        SystemSettingRepository systemSettingRepository = mock(SystemSettingRepository.class);
 
         AppUser user = AppUser.of("alice", "hash");
         user.setPasswordChangeRequired(true);
@@ -256,7 +268,7 @@ class SecurityConfigAuthHandlersTest {
         when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService);
+        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService, systemSettingRepository);
 
         AuthenticationSuccessHandler handler = securityConfig.authenticationSuccessHandler(
                 providerOf(appUserRepository),
@@ -289,11 +301,13 @@ class SecurityConfigAuthHandlersTest {
         AppUserRepository appUserRepository = mock(AppUserRepository.class);
         AppUserDetailsService appUserDetailsService = mock(AppUserDetailsService.class);
         SecurityAuditService securityAuditService = mock(SecurityAuditService.class);
+        SystemSettingRepository systemSettingRepository = mock(SystemSettingRepository.class);
+
+        stubAccountLockSettings(systemSettingRepository, true, 5);
 
         when(appUserRepository.findByUsername("ghost")).thenReturn(Optional.empty());
 
-        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService);
-        ReflectionTestUtils.setField(securityConfig, "maxFailedLogins", 5);
+        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService, systemSettingRepository);
 
         AuthenticationFailureHandler handler = securityConfig.authenticationFailureHandler(
                 providerOf(appUserRepository),
@@ -319,6 +333,74 @@ class SecurityConfigAuthHandlersTest {
                 eq("192.168.1.10"),
                 eq("Login failed.")
         );
+    }
+
+    @Test
+    @DisplayName("authentication failure does not lock account when account lock is disabled")
+    void failure_doesNotLock_whenAccountLockDisabled() throws Exception {
+        AppUserRepository appUserRepository = mock(AppUserRepository.class);
+        AppUserDetailsService appUserDetailsService = mock(AppUserDetailsService.class);
+        SecurityAuditService securityAuditService = mock(SecurityAuditService.class);
+        SystemSettingRepository systemSettingRepository = mock(SystemSettingRepository.class);
+
+        stubAccountLockSettings(systemSettingRepository, false, 3);
+
+        AppUser user = AppUser.of("alice", "hash");
+        user.addRole(AppRole.of("ADMIN"));
+        user.incrementFailedLoginCount();
+        user.incrementFailedLoginCount();
+
+        when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(appUserRepository.save(any(AppUser.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SecurityConfig securityConfig = new SecurityConfig(appUserDetailsService, systemSettingRepository);
+
+        AuthenticationFailureHandler handler = securityConfig.authenticationFailureHandler(
+                providerOf(appUserRepository),
+                securityAuditService
+        );
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setContextPath("");
+        request.addParameter("username", "alice");
+        request.setRemoteAddr("10.0.0.5");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        handler.onAuthenticationFailure(request, response, new BadCredentialsException("bad credentials"));
+
+        assertEquals(3, user.getFailedLoginCount());
+        assertTrue(user.isAccountNonLocked());
+        assertNull(user.getLockedAt());
+        assertEquals("/login?error&reason=bad-credentials", response.getRedirectedUrl());
+
+        verify(securityAuditService, never()).log(
+                eq("ACCOUNT_LOCKED"),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+        );
+    }
+
+    private static void stubAccountLockSettings(
+            SystemSettingRepository systemSettingRepository,
+            boolean enabled,
+            int maxFailedLogins
+    ) {
+        when(systemSettingRepository.findById(KEY_AUTH_ACCOUNT_LOCK_ENABLED))
+                .thenReturn(Optional.of(SystemSetting.of(
+                        KEY_AUTH_ACCOUNT_LOCK_ENABLED,
+                        String.valueOf(enabled),
+                        "tester"
+                )));
+        when(systemSettingRepository.findById(KEY_AUTH_MAX_FAILED_LOGINS))
+                .thenReturn(Optional.of(SystemSetting.of(
+                        KEY_AUTH_MAX_FAILED_LOGINS,
+                        String.valueOf(maxFailedLogins),
+                        "tester"
+                )));
     }
 
     private static ObjectProvider<AppUserRepository> providerOf(AppUserRepository appUserRepository) {

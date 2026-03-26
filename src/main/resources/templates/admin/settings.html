@@ -701,12 +701,51 @@
         <div class="card settings-card">
             <h2 class="settings-section-title">Authentication</h2>
             <p class="muted section-note">
-                Controls the password policy used by the authenticated user password change flow.
-                These rules are applied in <code>/account/change-password</code> and define the minimum requirements
+                Controls local authentication behavior, including account lock policy and password policy.
+                Account lock affects login failure handling on <code>/login</code>.
+                Password policy is applied in <code>/account/change-password</code> and defines the minimum requirements
                 for newly chosen passwords.
             </p>
 
             <div class="settings-grid">
+                <div class="field settings-item settings-item--checkbox">
+                    <div class="settings-item__control settings-item__control--check">
+                        <input id="authAccountLockEnabled"
+                               type="checkbox"
+                               th:field="*{authAccountLockEnabled}"
+                               th:disabled="${demoMode}">
+                        <label for="authAccountLockEnabled">
+                            Enable account lock
+                        </label>
+                    </div>
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            When enabled, local accounts are locked after too many consecutive login failures.
+                        </div>
+                        <div class="help">
+                            Failed login count is still recorded even when this is disabled.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field settings-item">
+                    <label for="authMaxFailedLogins">Max failed logins</label>
+                    <input id="authMaxFailedLogins"
+                           type="number"
+                           min="1"
+                           max="1000"
+                           th:field="*{authMaxFailedLogins}"
+                           th:disabled="${demoMode}">
+                    <div class="muted settings-item__body">
+                        <div class="help">
+                            Number of consecutive failed login attempts allowed before the account is locked.
+                        </div>
+                        <div class="help">
+                            This value is used only when account lock is enabled.
+                        </div>
+                    </div>
+                </div>
+
                 <div class="field settings-item">
                     <label for="authPasswordMinLength">Minimum password length</label>
                     <input id="authPasswordMinLength"

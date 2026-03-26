@@ -57,6 +57,12 @@ public class AdminSettingsForm {
     private boolean vulnerabilitySuggestionShowReasons;
 
     // ------------------------------------------------------------
+    // Authentication > Account lock
+    // ------------------------------------------------------------
+    private boolean authAccountLockEnabled;
+    private Integer authMaxFailedLogins;
+
+    // ------------------------------------------------------------
     // Authentication > Password policy
     // ------------------------------------------------------------
     private Integer authPasswordMinLength;

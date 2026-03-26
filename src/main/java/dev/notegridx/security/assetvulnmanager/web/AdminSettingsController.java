@@ -60,6 +60,8 @@ public class AdminSettingsController {
     public static final String KEY_VULN_SUGGEST_ACTIVE_ONLY = "vuln.suggest.active-only";
     public static final String KEY_VULN_SUGGEST_SHOW_REASONS = "vuln.suggest.show-reasons";
 
+    public static final String KEY_AUTH_ACCOUNT_LOCK_ENABLED = "auth.account-lock.enabled";
+    public static final String KEY_AUTH_MAX_FAILED_LOGINS = "auth.max-failed-logins";
     public static final String KEY_AUTH_PASSWORD_MIN_LENGTH = "auth.password.min-length";
     public static final String KEY_AUTH_PASSWORD_REQUIRE_UPPER = "auth.password.require-upper";
     public static final String KEY_AUTH_PASSWORD_REQUIRE_LOWER = "auth.password.require-lower";
@@ -157,6 +159,8 @@ public class AdminSettingsController {
         putBool(KEY_VULN_SUGGEST_ACTIVE_ONLY, form.isVulnerabilitySuggestionActiveOnly(), username);
         putBool(KEY_VULN_SUGGEST_SHOW_REASONS, form.isVulnerabilitySuggestionShowReasons(), username);
 
+        putBool(KEY_AUTH_ACCOUNT_LOCK_ENABLED, form.isAuthAccountLockEnabled(), username);
+        putInt(KEY_AUTH_MAX_FAILED_LOGINS, clamp(form.getAuthMaxFailedLogins(), 1, 1000, 5), username);
         putInt(KEY_AUTH_PASSWORD_MIN_LENGTH, clamp(form.getAuthPasswordMinLength(), 8, 256, 8), username);
         putBool(KEY_AUTH_PASSWORD_REQUIRE_UPPER, form.isAuthPasswordRequireUpper(), username);
         putBool(KEY_AUTH_PASSWORD_REQUIRE_LOWER, form.isAuthPasswordRequireLower(), username);
@@ -233,6 +237,8 @@ public class AdminSettingsController {
         f.setVulnerabilitySuggestionActiveOnly(getBool(KEY_VULN_SUGGEST_ACTIVE_ONLY, true));
         f.setVulnerabilitySuggestionShowReasons(getBool(KEY_VULN_SUGGEST_SHOW_REASONS, true));
 
+        f.setAuthAccountLockEnabled(getBool(KEY_AUTH_ACCOUNT_LOCK_ENABLED, true));
+        f.setAuthMaxFailedLogins(getInt(KEY_AUTH_MAX_FAILED_LOGINS, 5));
         f.setAuthPasswordMinLength(getInt(KEY_AUTH_PASSWORD_MIN_LENGTH, 8));
         f.setAuthPasswordRequireUpper(getBool(KEY_AUTH_PASSWORD_REQUIRE_UPPER, false));
         f.setAuthPasswordRequireLower(getBool(KEY_AUTH_PASSWORD_REQUIRE_LOWER, false));
@@ -329,6 +335,8 @@ public class AdminSettingsController {
         m.put(KEY_VULN_SUGGEST_ACTIVE_ONLY, "true");
         m.put(KEY_VULN_SUGGEST_SHOW_REASONS, "true");
 
+        m.put(KEY_AUTH_ACCOUNT_LOCK_ENABLED, "true");
+        m.put(KEY_AUTH_MAX_FAILED_LOGINS, "5");
         m.put(KEY_AUTH_PASSWORD_MIN_LENGTH, "8");
         m.put(KEY_AUTH_PASSWORD_REQUIRE_UPPER, "false");
         m.put(KEY_AUTH_PASSWORD_REQUIRE_LOWER, "false");

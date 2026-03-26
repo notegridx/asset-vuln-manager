@@ -1,7 +1,9 @@
 package dev.notegridx.security.assetvulnmanager.config;
 
 import dev.notegridx.security.assetvulnmanager.domain.AppUser;
+import dev.notegridx.security.assetvulnmanager.domain.SystemSetting;
 import dev.notegridx.security.assetvulnmanager.repository.AppUserRepository;
+import dev.notegridx.security.assetvulnmanager.repository.SystemSettingRepository;
 import dev.notegridx.security.assetvulnmanager.service.AppUserDetailsService;
 import dev.notegridx.security.assetvulnmanager.service.SecurityAuditService;
 import jakarta.servlet.FilterChain;
@@ -34,13 +36,14 @@ import java.io.IOException;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private static final String KEY_AUTH_ACCOUNT_LOCK_ENABLED = "auth.account-lock.enabled";
+    private static final String KEY_AUTH_MAX_FAILED_LOGINS = "auth.max-failed-logins";
+
     private final AppUserDetailsService appUserDetailsService;
+    private final SystemSettingRepository systemSettingRepository;
 
     @Value("${spring.h2.console.enabled:false}")
     private boolean h2ConsoleEnabled;
-
-    @Value("${app.security.max-failed-logins:5}")
-    private int maxFailedLogins;
 
     @Value("${app.security.remember-me.enabled:false}")
     private boolean rememberMeEnabled;
@@ -51,8 +54,12 @@ public class SecurityConfig {
     @Value("${app.security.remember-me.validity-seconds:1209600}")
     private int rememberMeValiditySeconds;
 
-    public SecurityConfig(AppUserDetailsService appUserDetailsService) {
+    public SecurityConfig(
+            AppUserDetailsService appUserDetailsService,
+            SystemSettingRepository systemSettingRepository
+    ) {
         this.appUserDetailsService = appUserDetailsService;
+        this.systemSettingRepository = systemSettingRepository;
     }
 
     @Bean
@@ -215,7 +222,12 @@ public class SecurityConfig {
                     int count = user.incrementFailedLoginCount();
                     boolean locked = false;
 
-                    if (user.isAccountNonLocked() && count >= Math.max(1, maxFailedLogins)) {
+                    boolean accountLockEnabled = getBool(KEY_AUTH_ACCOUNT_LOCK_ENABLED, true);
+                    int maxFailedLogins = getInt(KEY_AUTH_MAX_FAILED_LOGINS, 5);
+
+                    if (accountLockEnabled
+                            && user.isAccountNonLocked()
+                            && count >= Math.max(1, maxFailedLogins)) {
                         user.lockNow();
                         locked = true;
                     }
@@ -357,6 +369,26 @@ public class SecurityConfig {
             return "locked";
         }
         return "bad-credentials";
+    }
+
+    private int getInt(String key, int defaultValue) {
+        String raw = get(key, String.valueOf(defaultValue));
+        try {
+            return Integer.parseInt(raw);
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
+    private boolean getBool(String key, boolean defaultValue) {
+        String raw = get(key, String.valueOf(defaultValue));
+        return "true".equalsIgnoreCase(raw);
+    }
+
+    private String get(String key, String defaultValue) {
+        return systemSettingRepository.findById(key)
+                .map(SystemSetting::getSettingValue)
+                .orElse(defaultValue);
     }
 
     private static String clientIp(HttpServletRequest request) {
