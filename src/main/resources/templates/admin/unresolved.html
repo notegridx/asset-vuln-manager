@@ -393,27 +393,50 @@
     }
 
     /* =========================================
-       Unresolved status visibility (minimal)
+       Unresolved status visibility
        ========================================= */
 
-    /* Needs action */
-    .um-row--new {
+    /* Needs action / not resolved */
+    .um-row--danger {
         border-left: 4px solid #ff4d4f;
     }
 
-    /* Linked / completed-like */
+    /* Resolvable / normalization needed */
+    .um-row--warning {
+        border-left: 4px solid #faad14;
+    }
+
+    /* Partially linked */
+    .um-row--info {
+        border-left: 4px solid #1677ff;
+    }
+
+    /* Linked / completed */
     .um-row--resolved {
         border-left: 4px solid #52c41a;
         opacity: 0.75;
     }
 
-    /* In-between / warning-like */
-    .um-row--warning {
-        border-left: 4px solid #faad14;
+    /* Linked but stale */
+    .um-row--stale {
+        border-left: 4px solid #8c8c8c;
+        opacity: 0.75;
     }
 
-    .badge--new {
+    .badge--danger {
         background: #ff4d4f;
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .badge--warning {
+        background: #faad14;
+        color: #111;
+        font-weight: 600;
+    }
+
+    .badge--info {
+        background: #1677ff;
         color: #fff;
         font-weight: 600;
     }
@@ -423,15 +446,15 @@
         color: #fff;
     }
 
-    .badge--warning {
-        background: #faad14;
-        color: #111;
+    .badge--stale {
+        background: #8c8c8c;
+        color: #fff;
         font-weight: 600;
     }
 
     .badge {
-    white-space: normal;
-    word-break: break-word;
+        white-space: normal;
+        word-break: break-word;
     }
 </style>
 
@@ -541,16 +564,21 @@
                     th:attr="data-row-id=${r.id}"
                     th:id="${'row-' + r.id}"
                     th:classappend="
-                        ${(r.status == 'fullyLinked' or r.status == 'linkedValid' or r.status == 'linkedStale')} ? ' row-resolved um-row--resolved' :
-                        (${r.status == 'vendorOnlyLinked' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' um-row--warning' :
-                        (${r.status == 'notLinked' or r.status == 'fullyResolvable' or r.status == 'unresolvable'} ? ' um-row--new' : ''))
+                        ${(r.status == 'fullyLinked' or r.status == 'linkedValid')} ? ' row-resolved um-row--resolved' :
+                        (${r.status == 'linkedStale'} ? ' row-resolved um-row--stale' :
+                        (${r.status == 'vendorOnlyLinked'} ? ' um-row--info' :
+                        (${r.status == 'fullyResolvable' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' um-row--warning' :
+                        (${r.status == 'notLinked' or r.status == 'unresolvable'} ? ' um-row--danger' : ''))))
                     ">
 
                     <td>
                         <span class="badge"
                               th:classappend="
-                                ${(r.status == 'fullyLinked' or r.status == 'linkedValid' or r.status == 'linkedStale')} ? ' badge--resolved' :
-                                (${r.status == 'vendorOnlyLinked' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' badge--warning' : ' badge--new')
+                                ${(r.status == 'fullyLinked' or r.status == 'linkedValid')} ? ' badge--resolved' :
+                                (${r.status == 'linkedStale'} ? ' badge--stale' :
+                                (${r.status == 'vendorOnlyLinked'} ? ' badge--info' :
+                                (${r.status == 'fullyResolvable' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' badge--warning' :
+                                ' badge--danger')))
                               "
                               th:text="${r.statusLabel}">
                             UNRESOLVABLE

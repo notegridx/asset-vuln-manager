@@ -2,16 +2,21 @@
     th:attr="data-row-id=${r.id}"
     th:id="${'row-' + r.id}"
     th:classappend="
-        ${(r.status == 'fullyLinked' or r.status == 'linkedValid' or r.status == 'linkedStale')} ? ' row-resolved um-row--resolved' :
-        (${r.status == 'vendorOnlyLinked' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' um-row--warning' :
-        (${r.status == 'notLinked' or r.status == 'fullyResolvable' or r.status == 'unresolvable'} ? ' um-row--new' : ''))
+        ${(r.status == 'fullyLinked' or r.status == 'linkedValid')} ? ' row-resolved um-row--resolved' :
+        (${r.status == 'linkedStale'} ? ' row-resolved um-row--stale' :
+        (${r.status == 'vendorOnlyLinked'} ? ' um-row--info' :
+        (${r.status == 'fullyResolvable' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' um-row--warning' :
+        (${r.status == 'notLinked' or r.status == 'unresolvable'} ? ' um-row--danger' : ''))))
     ">
 
     <td>
         <span class="badge"
               th:classappend="
-                ${(r.status == 'fullyLinked' or r.status == 'linkedValid' or r.status == 'linkedStale')} ? ' badge--resolved' :
-                (${r.status == 'vendorOnlyLinked' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' badge--warning' : ' badge--new')
+                ${(r.status == 'fullyLinked' or r.status == 'linkedValid')} ? ' badge--resolved' :
+                (${r.status == 'linkedStale'} ? ' badge--stale' :
+                (${r.status == 'vendorOnlyLinked'} ? ' badge--info' :
+                (${r.status == 'fullyResolvable' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' badge--warning' :
+                ' badge--danger')))
               "
               th:text="${r.statusLabel}">
             UNRESOLVABLE
