@@ -457,7 +457,6 @@
 
     <div class="card um-card">
         <form id="unresolved-filter-form" class="um-filterbar" method="get" th:action="@{/admin/unresolved}">
-            <input type="hidden" name="activeOnlyPresent" value="1"/>
             <input th:if="${id != null}" type="hidden" name="id" th:value="${id}"/>
             <input type="hidden" name="runId" th:value="${runId != null ? runId : ''}"/>
 
@@ -474,25 +473,24 @@
                 <div class="um-stack-6">
                     <label for="status">Status</label>
                     <select id="status" name="status">
-                        <option value="all" th:selected="${status == null or status == '' or status == 'all'}">ALL</option>
+                        <option value="all" th:selected="${status == null or status == '' or status == 'all'}">ALL
+                        </option>
                         <option value="fullyLinked" th:selected="${status == 'fullyLinked'}">FULLY LINKED</option>
-                        <option value="vendorOnlyLinked" th:selected="${status == 'vendorOnlyLinked'}">VENDOR ONLY LINKED</option>
+                        <option value="vendorOnlyLinked" th:selected="${status == 'vendorOnlyLinked'}">VENDOR ONLY
+                            LINKED
+                        </option>
                         <option value="notLinked" th:selected="${status == 'notLinked'}">NOT LINKED</option>
                         <option value="linkedValid" th:selected="${status == 'linkedValid'}">LINKED</option>
                         <option value="linkedStale" th:selected="${status == 'linkedStale'}">LINKED STALE</option>
                         <option value="fullyResolvable" th:selected="${status == 'fullyResolvable'}">RESOLVABLE</option>
-                        <option value="vendorResolvableOnly" th:selected="${status == 'vendorResolvableOnly'}">VENDOR RESOLVABLE ONLY</option>
+                        <option value="vendorResolvableOnly" th:selected="${status == 'vendorResolvableOnly'}">VENDOR
+                            RESOLVABLE ONLY
+                        </option>
                         <option value="unresolvable" th:selected="${status == 'unresolvable'}">UNRESOLVABLE</option>
-                        <option value="needsNormalization" th:selected="${status == 'needsNormalization'}">NEEDS NORMALIZATION</option>
+                        <option value="needsNormalization" th:selected="${status == 'needsNormalization'}">NEEDS
+                            NORMALIZATION
+                        </option>
                     </select>
-                </div>
-
-                <div class="um-stack-6 um-stack-6--checkbox">
-                    <label class="um-checkbox-label">
-                        <input id="activeOnly" type="checkbox" name="activeOnly" value="true"
-                               th:checked="${activeOnly}"/>
-                        <span>Active only</span>
-                    </label>
                 </div>
             </div>
 
@@ -500,13 +498,13 @@
                 <span class="pill" th:text="'Total: ' + ${#lists.size(mappings)}">Total: 0</span>
 
                 <div class="um-viewing">
-                    <span th:text="'Viewing: status=' + (${status != null and !#strings.isEmpty(status)} ? ${status} : 'all') + ' / activeOnly=' + ${activeOnly}">
-                        Viewing: status=all / activeOnly=true
-                    </span>
+    <span th:text="${'Viewing: status=' + ((status != null and !#strings.isEmpty(status)) ? status : 'all')}">
+        Viewing: status=all
+    </span>
                     <span th:if="${q != null and !#strings.isEmpty(q)}"
-                          th:text="' / q=' + ${q}">
-                        / q=keyword
-                    </span>
+                          th:text="${' / q=' + q}">
+        / q=keyword
+    </span>
                 </div>
             </div>
         </form>
@@ -514,7 +512,7 @@
         <div th:if="${id != null}" class="um-id-scope">
             <span class="pill" th:text="'Reviewing unresolved ID: ' + ${id}">Reviewing unresolved ID: 1</span>
             <a class="btn btn-soft"
-               th:href="@{/admin/unresolved(status='all', activeOnly=true, activeOnlyPresent='1')}">
+               th:href="@{/admin/unresolved(status='all')}">
                 Clear ID Filter
             </a>
         </div>
@@ -586,7 +584,7 @@
                             </div>
 
                             <div class="um-link-meta"
-                                 th:text="'vendorId=' + ${r.linkedCpeVendorId} + (${r.linkedCpeProductId} != null ? ', productId=' + ${r.linkedCpeProductId} : '')">
+                                 th:text="${'vendorId=' + r.linkedCpeVendorId + (r.linkedCpeProductId != null ? ', productId=' + r.linkedCpeProductId : '')}">
                                 vendorId=1, productId=2
                             </div>
                         </div>
@@ -607,8 +605,6 @@
                             <input type="hidden" name="runId" th:value="${runId}"/>
                             <input type="hidden" name="q" th:value="${q}"/>
                             <input type="hidden" name="id" th:value="${id}"/>
-                            <input type="hidden" name="activeOnlyPresent" value="1"/>
-                            <input type="hidden" name="activeOnly" th:value="${activeOnly}"/>
 
                             <input type="hidden" class="js-submit-vendor-id" name="cpeVendorId" value=""/>
                             <input type="hidden" class="js-submit-product-id" name="cpeProductId" value=""/>
@@ -793,13 +789,8 @@
 
             const q = document.getElementById('q');
             const status = document.getElementById('status');
-            const activeOnly = document.getElementById('activeOnly');
 
             status?.addEventListener('change', () => {
-                form.requestSubmit();
-            });
-
-            activeOnly?.addEventListener('change', () => {
                 form.requestSubmit();
             });
 

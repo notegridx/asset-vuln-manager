@@ -66,7 +66,6 @@ public class AdminInventoryReadService {
             String activeOnlyPresent,
             Long id
     ) {
-        boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
         String effectiveQ = normalize(q);
         String effectiveStatus = normalizeStatus(status);
 
@@ -89,17 +88,13 @@ public class AdminInventoryReadService {
                     effectiveStatus,
                     runId,
                     effectiveQ,
-                    active,
-                    activeOnlyPresent,
+                    false,
+                    null,
                     id
             );
         }
 
-        List<UnresolvedMapping> mappings = new ArrayList<>(
-                active
-                        ? unresolvedMappingRepository.findAllActive()
-                        : unresolvedMappingRepository.findAll()
-        );
+        List<UnresolvedMapping> mappings = new ArrayList<>(unresolvedMappingRepository.findAll());
 
         Map<String, UnresolvedMapping> mappingByNormalizedPair = new HashMap<>();
         Map<String, UnresolvedMapping> mappingByRawPair = new HashMap<>();
@@ -152,8 +147,8 @@ public class AdminInventoryReadService {
                 effectiveStatus,
                 runId,
                 effectiveQ,
-                active,
-                activeOnlyPresent,
+                false,
+                null,
                 null
         );
     }
@@ -504,13 +499,6 @@ public class AdminInventoryReadService {
 
             default -> normalized;
         };
-    }
-
-    private static boolean effectiveActiveOnly(Boolean activeOnly, String activeOnlyPresent) {
-        if (activeOnlyPresent == null) {
-            return (activeOnly == null) ? true : activeOnly;
-        }
-        return Boolean.TRUE.equals(activeOnly);
     }
 
     private static boolean containsIgnoreCase(String value, String needleLower) {

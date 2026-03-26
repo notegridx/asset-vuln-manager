@@ -60,8 +60,8 @@ public class AdminInventoryController {
                 effectiveStatus,
                 runId,
                 q,
-                activeOnly,
-                activeOnlyPresent,
+                null,
+                null,
                 id
         );
 
@@ -69,8 +69,8 @@ public class AdminInventoryController {
         model.addAttribute("status", view.status());
         model.addAttribute("runId", view.runId());
         model.addAttribute("q", view.q());
-        model.addAttribute("activeOnly", view.activeOnly());
-        model.addAttribute("activeOnlyPresent", view.activeOnlyPresent());
+        model.addAttribute("activeOnly", null);
+        model.addAttribute("activeOnlyPresent", null);
         model.addAttribute("id", view.id());
 
         return "admin/unresolved";
@@ -97,7 +97,6 @@ public class AdminInventoryController {
         Long vendorId = parseLongNullable(cpeVendorIdRaw);
         Long productId = parseLongNullable(cpeProductIdRaw);
 
-        boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
         boolean htmx = isHtmx(request);
 
         if (mappingId == null) {
@@ -105,7 +104,7 @@ public class AdminInventoryController {
                 return htmxError("Invalid mappingId.");
             }
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
         }
 
         if (vendorId == null) {
@@ -113,7 +112,7 @@ public class AdminInventoryController {
                 return htmxError("Vendor ID is required. Please select from candidates (chips).");
             }
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates (chips).");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
         }
 
         try {
@@ -134,8 +133,6 @@ public class AdminInventoryController {
                         status,
                         runId,
                         q,
-                        active,
-                        activeOnlyPresent,
                         id,
                         successMessage,
                         model
@@ -153,32 +150,13 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", errorMessage);
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
-    }
-
-    /**
-     * Checkbox behavior:
-     *
-     * - When checked, activeOnly=true is sent.
-     * - When unchecked, activeOnly is not sent at all.
-     *
-     * To distinguish this, the form always sends activeOnlyPresent=1.
-     * If activeOnlyPresent exists but activeOnly is missing,
-     * it means the checkbox was unchecked.
-     */
-    private static boolean effectiveActiveOnly(Boolean activeOnly, String activeOnlyPresent) {
-        if (activeOnlyPresent == null) {
-            return (activeOnly == null) ? true : activeOnly;
-        }
-        return Boolean.TRUE.equals(activeOnly);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
     }
 
     private static String redirectQuery(
             String status,
             Long runId,
             String q,
-            boolean activeOnly,
-            boolean includeActiveOnlyPresent,
             Long id
     ) {
         StringBuilder sb = new StringBuilder();
@@ -198,14 +176,6 @@ public class AdminInventoryController {
         }
         if (id != null) {
             sb.append(first ? "?" : "&").append("id=").append(id);
-            first = false;
-        }
-
-        sb.append(first ? "?" : "&").append("activeOnly=").append(activeOnly);
-        first = false;
-
-        if (includeActiveOnlyPresent) {
-            sb.append(first ? "?" : "&").append("activeOnlyPresent=1");
         }
 
         return sb.toString();
@@ -257,7 +227,6 @@ public class AdminInventoryController {
         Long vendorId = parseLongNullable(cpeVendorIdRaw);
         Long productId = parseLongNullable(cpeProductIdRaw);
 
-        boolean active = effectiveActiveOnly(activeOnly, activeOnlyPresent);
         boolean htmx = isHtmx(request);
 
         if (mappingId == null) {
@@ -265,7 +234,7 @@ public class AdminInventoryController {
                 return htmxError("Invalid mappingId.");
             }
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
         }
 
         if (vendorId == null) {
@@ -273,7 +242,7 @@ public class AdminInventoryController {
                 return htmxError("Vendor ID is required. Please select from candidates.");
             }
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
         }
 
         try {
@@ -294,8 +263,6 @@ public class AdminInventoryController {
                         status,
                         runId,
                         q,
-                        active,
-                        activeOnlyPresent,
                         id,
                         successMessage,
                         model
@@ -313,7 +280,7 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", errorMessage);
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, active, true, id);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
     }
 
     private Object buildHtmxSuccessResponse(
@@ -321,8 +288,6 @@ public class AdminInventoryController {
             String status,
             Long runId,
             String q,
-            boolean activeOnly,
-            String activeOnlyPresent,
             Long id,
             String successMessage,
             Model model
@@ -335,8 +300,8 @@ public class AdminInventoryController {
                 status,
                 runId,
                 q,
-                activeOnly,
-                activeOnlyPresent,
+                null,
+                null,
                 mappingId
         );
 
@@ -348,8 +313,8 @@ public class AdminInventoryController {
         model.addAttribute("status", rowView.status());
         model.addAttribute("runId", rowView.runId());
         model.addAttribute("q", rowView.q());
-        model.addAttribute("activeOnly", rowView.activeOnly());
-        model.addAttribute("activeOnlyPresent", rowView.activeOnlyPresent());
+        model.addAttribute("activeOnly", null);
+        model.addAttribute("activeOnlyPresent", null);
         model.addAttribute("id", rowView.id());
 
         return "admin/fragments/unresolved_row :: row";
