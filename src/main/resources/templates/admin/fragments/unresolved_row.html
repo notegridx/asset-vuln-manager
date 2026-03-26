@@ -2,22 +2,19 @@
     th:attr="data-row-id=${r.id}"
     th:id="${'row-' + r.id}"
     th:classappend="
-        ${r.status != null and (r.status.toString() == 'RESOLVED' or r.status.toString() == 'VENDOR_LINKED')} ? ' row-resolved um-row--resolved' :
-        (${r.status != null and r.status.toString() == 'NEW'} ? ' um-row--new' : '')
+        ${(r.status == 'fullyLinked' or r.status == 'linkedValid' or r.status == 'linkedStale')} ? ' row-resolved um-row--resolved' :
+        (${r.status == 'vendorOnlyLinked' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' um-row--warning' :
+        (${r.status == 'notLinked' or r.status == 'fullyResolvable' or r.status == 'unresolvable'} ? ' um-row--new' : ''))
     ">
 
     <td>
         <span class="badge"
               th:classappend="
-                ${r.status != null and r.status.toString() == 'NEW'} ? ' badge--new' :
-                (${r.status != null and (r.status.toString() == 'RESOLVED' or r.status.toString() == 'VENDOR_LINKED')} ? ' badge--resolved' : ' badge--neutral')
+                ${(r.status == 'fullyLinked' or r.status == 'linkedValid' or r.status == 'linkedStale')} ? ' badge--resolved' :
+                (${r.status == 'vendorOnlyLinked' or r.status == 'vendorResolvableOnly' or r.status == 'needsNormalization'} ? ' badge--warning' : ' badge--new')
               "
-              th:text="${
-                r.status != null and r.status.toString() == 'NEW' ? 'UNRESOLVED' :
-                (r.status != null and r.status.toString() == 'RESOLVED' ? 'LINKED' :
-                (r.status != null and r.status.toString() == 'VENDOR_LINKED' ? 'VENDOR LINKED' : r.status))
-              }">
-            UNRESOLVED
+              th:text="${r.statusLabel}">
+            UNRESOLVABLE
         </span>
     </td>
 
@@ -51,6 +48,7 @@
             </div>
 
             <div class="um-link-meta"
+                 th:if="${r.linkedCpeVendorId != null}"
                  th:text="'vendorId=' + ${r.linkedCpeVendorId} + (${r.linkedCpeProductId} != null ? ', productId=' + ${r.linkedCpeProductId} : '')">
                 vendorId=1, productId=2
             </div>

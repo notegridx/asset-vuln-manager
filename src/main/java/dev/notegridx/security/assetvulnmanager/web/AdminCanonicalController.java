@@ -328,8 +328,14 @@ public class AdminCanonicalController {
 
             for (SoftwareInstall s : batch.getContent()) {
                 CanonicalCpeLinkingService.Analysis analysis = linker.analyze(s);
-                Row row = Row.from(s, analysis, null, null);
-
+                Row row = Row.from(
+                        s,
+                        analysis,
+                        s.getCpeVendorId(),
+                        s.getCpeProductId(),
+                        null,
+                        null
+                );
                 if (!matchesFilter(row, filter)) {
                     continue;
                 }
@@ -378,7 +384,14 @@ public class AdminCanonicalController {
                     ? null
                     : productLabelMap.get(s.getCpeProductId());
 
-            rows.add(Row.from(s, analysis, canonicalVendorLabel, canonicalProductLabel));
+            rows.add(Row.from(
+                    s,
+                    analysis,
+                    s.getCpeVendorId(),
+                    s.getCpeProductId(),
+                    canonicalVendorLabel,
+                    canonicalProductLabel
+            ));
         }
         return rows;
     }
@@ -520,6 +533,8 @@ public class AdminCanonicalController {
             String normalizedVendor,
             String normalizedProduct,
             boolean canonicalLinkDisabled,
+            Long canonicalVendorId,
+            Long canonicalProductId,
             String canonicalVendorLabel,
             String canonicalProductLabel,
             CanonicalCpeLinkingService.Analysis analysis
@@ -527,6 +542,8 @@ public class AdminCanonicalController {
         static Row from(
                 SoftwareInstall s,
                 CanonicalCpeLinkingService.Analysis a,
+                Long canonicalVendorId,
+                Long canonicalProductId,
                 String canonicalVendorLabel,
                 String canonicalProductLabel
         ) {
@@ -540,6 +557,8 @@ public class AdminCanonicalController {
                     s.getNormalizedVendor(),
                     s.getNormalizedProduct(),
                     s.isCanonicalLinkDisabled(),
+                    canonicalVendorId,
+                    canonicalProductId,
                     canonicalVendorLabel,
                     canonicalProductLabel,
                     a

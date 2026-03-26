@@ -1,7 +1,5 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
-import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
-import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminInventoryReadService;
 import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import dev.notegridx.security.assetvulnmanager.service.UnresolvedQuickAddService;
@@ -24,20 +22,17 @@ import java.nio.charset.StandardCharsets;
 public class AdminInventoryController {
 
     private final AdminInventoryReadService adminInventoryReadService;
-    private final UnresolvedMappingRepository unresolvedMappingRepository;
     private final UnresolvedResolutionService unresolvedResolutionService;
     private final UnresolvedQuickAddService unresolvedQuickAddService;
     private final DemoModeService demoModeService;
 
     public AdminInventoryController(
             AdminInventoryReadService adminInventoryReadService,
-            UnresolvedMappingRepository unresolvedMappingRepository,
             UnresolvedResolutionService unresolvedResolutionService,
             UnresolvedQuickAddService unresolvedQuickAddService,
             DemoModeService demoModeService
     ) {
         this.adminInventoryReadService = adminInventoryReadService;
-        this.unresolvedMappingRepository = unresolvedMappingRepository;
         this.unresolvedResolutionService = unresolvedResolutionService;
         this.unresolvedQuickAddService = unresolvedQuickAddService;
         this.demoModeService = demoModeService;
@@ -59,7 +54,7 @@ public class AdminInventoryController {
             @RequestParam(name = "id", required = false) Long id,
             Model model
     ) {
-        String effectiveStatus = (status == null || status.isBlank()) ? "ALL" : status;
+        String effectiveStatus = (status == null || status.isBlank()) ? "all" : status;
 
         var view = adminInventoryReadService.findUnresolvedMappings(
                 effectiveStatus,
@@ -336,18 +331,26 @@ public class AdminInventoryController {
             return htmxSuccess(successMessage);
         }
 
-        UnresolvedMapping mapping = unresolvedMappingRepository.findById(mappingId).orElse(null);
-        if (mapping == null) {
+        var rowView = adminInventoryReadService.findUnresolvedMappings(
+                status,
+                runId,
+                q,
+                activeOnly,
+                activeOnlyPresent,
+                mappingId
+        );
+
+        if (rowView.mappings().isEmpty()) {
             return htmxSuccess(successMessage);
         }
 
-        model.addAttribute("r", mapping);
-        model.addAttribute("status", status);
-        model.addAttribute("runId", runId);
-        model.addAttribute("q", q);
-        model.addAttribute("activeOnly", activeOnly);
-        model.addAttribute("activeOnlyPresent", activeOnlyPresent);
-        model.addAttribute("id", id);
+        model.addAttribute("r", rowView.mappings().get(0));
+        model.addAttribute("status", rowView.status());
+        model.addAttribute("runId", rowView.runId());
+        model.addAttribute("q", rowView.q());
+        model.addAttribute("activeOnly", rowView.activeOnly());
+        model.addAttribute("activeOnlyPresent", rowView.activeOnlyPresent());
+        model.addAttribute("id", rowView.id());
 
         return "admin/fragments/unresolved_row :: row";
     }

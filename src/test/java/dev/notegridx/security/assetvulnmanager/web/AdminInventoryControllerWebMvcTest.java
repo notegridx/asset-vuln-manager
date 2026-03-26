@@ -74,14 +74,25 @@ class AdminInventoryControllerWebMvcTest {
         when(adminInventoryReadService.findUnresolvedMappings(
                 any(), any(), any(), any(), any(), any()
         )).thenReturn(new AdminInventoryReadService.UnresolvedListView(
-                List.of(mapping1, mapping2),
-                "NEW",
+                List.of(
+                        new AdminInventoryReadService.UnresolvedReviewRow(
+                                mapping2,
+                                AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE
+                        ),
+                        new AdminInventoryReadService.UnresolvedReviewRow(
+                                mapping1,
+                                AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE
+                        )
+                ),
+                "ALL",
                 null,
                 null,
                 true,
                 null,
                 null
         ));
+
+
 
         mockMvc.perform(get("/admin/unresolved"))
                 .andExpect(status().isOk())
