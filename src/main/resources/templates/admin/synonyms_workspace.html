@@ -187,10 +187,14 @@
                 </a>
             </div>
 
-            <a class="btn btn-ghost"
-               th:href="@{/admin/aliases/seed/export}">
-                Export Alias Seed (JSON)
-            </a>
+            <div class="d-flex flex-column gap-1">
+                <a href="/admin/aliases/seed/export" class="btn btn-outline-primary">
+                    Export Alias Seed
+                </a>
+                <small class="text-muted">
+                    Only ACTIVE aliases are included in the export.
+                </small>
+            </div>
 
             <form th:action="@{/admin/aliases/delete-all}"
                   method="post"
