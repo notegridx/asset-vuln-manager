@@ -2,7 +2,7 @@
     th:attr="data-row-id=${r.id}"
     th:id="${'row-' + r.id}"
     th:classappend="
-        ${r.status != null and r.status.toString() == 'RESOLVED'} ? ' row-resolved um-row--resolved' :
+        ${r.status != null and (r.status.toString() == 'RESOLVED' or r.status.toString() == 'VENDOR_LINKED')} ? ' row-resolved um-row--resolved' :
         (${r.status != null and r.status.toString() == 'NEW'} ? ' um-row--new' : '')
     ">
 
@@ -10,10 +10,14 @@
         <span class="badge"
               th:classappend="
                 ${r.status != null and r.status.toString() == 'NEW'} ? ' badge--new' :
-                (${r.status != null and r.status.toString() == 'RESOLVED'} ? ' badge--resolved' : ' badge--neutral')
+                (${r.status != null and (r.status.toString() == 'RESOLVED' or r.status.toString() == 'VENDOR_LINKED')} ? ' badge--resolved' : ' badge--neutral')
               "
-              th:text="${r.status}">
-            NEW
+              th:text="${
+                r.status != null and r.status.toString() == 'NEW' ? 'UNRESOLVED' :
+                (r.status != null and r.status.toString() == 'RESOLVED' ? 'LINKED' :
+                (r.status != null and r.status.toString() == 'VENDOR_LINKED' ? 'VENDOR LINKED' : r.status))
+              }">
+            UNRESOLVED
         </span>
     </td>
 
@@ -30,6 +34,29 @@
                 <span th:text="${r.versionRaw}">version</span>
             </div>
         </div>
+    </td>
+
+    <td>
+        <div class="um-link-stack" th:if="${r.linkedVendorName != null}">
+            <div>
+                <span class="pill" th:text="${r.linkedVendorName}">
+                    canonical-vendor
+                </span>
+            </div>
+
+            <div th:if="${r.linkedProductName != null}">
+                <span class="pill pill--dim" th:text="${r.linkedProductName}">
+                    canonical-product
+                </span>
+            </div>
+
+            <div class="um-link-meta"
+                 th:text="'vendorId=' + ${r.linkedCpeVendorId} + (${r.linkedCpeProductId} != null ? ', productId=' + ${r.linkedCpeProductId} : '')">
+                vendorId=1, productId=2
+            </div>
+        </div>
+
+        <span class="muted" th:if="${r.linkedVendorName == null}">-</span>
     </td>
 
     <td>

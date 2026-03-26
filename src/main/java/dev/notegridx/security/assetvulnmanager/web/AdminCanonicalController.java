@@ -1,8 +1,12 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
 import dev.notegridx.security.assetvulnmanager.domain.Asset;
+import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
+import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
 import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
@@ -24,8 +28,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Controller
 public class AdminCanonicalController {
@@ -40,6 +46,8 @@ public class AdminCanonicalController {
     private final CanonicalCpeLinkingService linker;
     private final AdminCanonicalBackfillService adminCanonicalBackfillService;
     private final DemoModeService demoModeService;
+    private final CpeVendorRepository cpeVendorRepository;
+    private final CpeProductRepository cpeProductRepository;
 
     private volatile CanonicalCpeLinkingService.MappingStats cachedStats;
     private volatile long cachedStatsAtMillis;
@@ -52,13 +60,17 @@ public class AdminCanonicalController {
             SoftwareInstallRepository softwareRepo,
             CanonicalCpeLinkingService linker,
             AdminCanonicalBackfillService adminCanonicalBackfillService,
-            DemoModeService demoModeService
+            DemoModeService demoModeService,
+            CpeVendorRepository cpeVendorRepository,
+            CpeProductRepository cpeProductRepository
     ) {
         this.assetRepo = assetRepo;
         this.softwareRepo = softwareRepo;
         this.linker = linker;
         this.adminCanonicalBackfillService = adminCanonicalBackfillService;
         this.demoModeService = demoModeService;
+        this.cpeVendorRepository = cpeVendorRepository;
+        this.cpeProductRepository = cpeProductRepository;
     }
 
     public enum Filter {
@@ -183,10 +195,7 @@ public class AdminCanonicalController {
                             pageable
                     );
 
-            List<Row> rows = softwarePage.getContent().stream()
-                    .map(s -> Row.from(s, linker.analyze(s)))
-                    .toList();
-
+            List<Row> rows = toRows(softwarePage.getContent());
             rowPage = new PageImpl<>(rows, pageable, softwarePage.getTotalElements());
         } else {
             rowPage = findCanonicalAnalyzedPage(assetId, keyword, filter, pageable);
@@ -302,7 +311,8 @@ public class AdminCanonicalController {
 
         long matchedCount = 0;
         int batchPage = 0;
-        List<Row> pageRows = new ArrayList<>(pageable.getPageSize());
+        List<SoftwareInstall> pageInstalls = new ArrayList<>(pageable.getPageSize());
+        List<CanonicalCpeLinkingService.Analysis> pageAnalyses = new ArrayList<>(pageable.getPageSize());
 
         while (true) {
             Page<SoftwareInstall> batch = softwareRepo.findCanonicalBasePage(
@@ -317,13 +327,16 @@ public class AdminCanonicalController {
             }
 
             for (SoftwareInstall s : batch.getContent()) {
-                Row row = Row.from(s, linker.analyze(s));
+                CanonicalCpeLinkingService.Analysis analysis = linker.analyze(s);
+                Row row = Row.from(s, analysis, null, null);
+
                 if (!matchesFilter(row, filter)) {
                     continue;
                 }
 
-                if (matchedCount >= offset && pageRows.size() < pageable.getPageSize()) {
-                    pageRows.add(row);
+                if (matchedCount >= offset && pageInstalls.size() < pageable.getPageSize()) {
+                    pageInstalls.add(s);
+                    pageAnalyses.add(analysis);
                 }
                 matchedCount++;
             }
@@ -334,7 +347,68 @@ public class AdminCanonicalController {
             batchPage++;
         }
 
+        List<Row> pageRows = toRows(pageInstalls, pageAnalyses);
         return new PageImpl<>(pageRows, pageable, matchedCount);
+    }
+
+    private List<Row> toRows(List<SoftwareInstall> installs) {
+        List<CanonicalCpeLinkingService.Analysis> analyses = installs.stream()
+                .map(linker::analyze)
+                .toList();
+        return toRows(installs, analyses);
+    }
+
+    private List<Row> toRows(
+            List<SoftwareInstall> installs,
+            List<CanonicalCpeLinkingService.Analysis> analyses
+    ) {
+        Map<Long, String> vendorLabelMap = resolveVendorLabelMap(installs);
+        Map<Long, String> productLabelMap = resolveProductLabelMap(installs);
+
+        List<Row> rows = new ArrayList<>(installs.size());
+        for (int i = 0; i < installs.size(); i++) {
+            SoftwareInstall s = installs.get(i);
+            CanonicalCpeLinkingService.Analysis analysis = analyses.get(i);
+
+            String canonicalVendorLabel = s.getCpeVendorId() == null
+                    ? null
+                    : vendorLabelMap.get(s.getCpeVendorId());
+
+            String canonicalProductLabel = s.getCpeProductId() == null
+                    ? null
+                    : productLabelMap.get(s.getCpeProductId());
+
+            rows.add(Row.from(s, analysis, canonicalVendorLabel, canonicalProductLabel));
+        }
+        return rows;
+    }
+
+    private Map<Long, String> resolveVendorLabelMap(List<SoftwareInstall> installs) {
+        List<Long> vendorIds = installs.stream()
+                .map(SoftwareInstall::getCpeVendorId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+
+        Map<Long, String> out = new HashMap<>();
+        for (CpeVendor v : cpeVendorRepository.findAllById(vendorIds)) {
+            out.put(v.getId(), firstNonBlank(v.getDisplayName(), v.getNameNorm(), "#" + v.getId()));
+        }
+        return out;
+    }
+
+    private Map<Long, String> resolveProductLabelMap(List<SoftwareInstall> installs) {
+        List<Long> productIds = installs.stream()
+                .map(SoftwareInstall::getCpeProductId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+
+        Map<Long, String> out = new HashMap<>();
+        for (CpeProduct p : cpeProductRepository.findAllById(productIds)) {
+            out.put(p.getId(), firstNonBlank(p.getDisplayName(), p.getNameNorm(), "#" + p.getId()));
+        }
+        return out;
     }
 
     private CanonicalCpeLinkingService.MappingStats getCachedStats() {
@@ -446,9 +520,16 @@ public class AdminCanonicalController {
             String normalizedVendor,
             String normalizedProduct,
             boolean canonicalLinkDisabled,
+            String canonicalVendorLabel,
+            String canonicalProductLabel,
             CanonicalCpeLinkingService.Analysis analysis
     ) {
-        static Row from(SoftwareInstall s, CanonicalCpeLinkingService.Analysis a) {
+        static Row from(
+                SoftwareInstall s,
+                CanonicalCpeLinkingService.Analysis a,
+                String canonicalVendorLabel,
+                String canonicalProductLabel
+        ) {
             return new Row(
                     s.getId(),
                     s.getAsset() != null ? s.getAsset().getId() : null,
@@ -459,6 +540,8 @@ public class AdminCanonicalController {
                     s.getNormalizedVendor(),
                     s.getNormalizedProduct(),
                     s.isCanonicalLinkDisabled(),
+                    canonicalVendorLabel,
+                    canonicalProductLabel,
                     a
             );
         }
@@ -513,5 +596,20 @@ public class AdminCanonicalController {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null) {
+                String trimmed = value.trim();
+                if (!trimmed.isEmpty()) {
+                    return trimmed;
+                }
+            }
+        }
+        return null;
     }
 }

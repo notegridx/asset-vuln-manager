@@ -1,18 +1,21 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
+import dev.notegridx.security.assetvulnmanager.domain.CpeProduct;
 import dev.notegridx.security.assetvulnmanager.domain.CpeProductAlias;
+import dev.notegridx.security.assetvulnmanager.domain.CpeVendor;
 import dev.notegridx.security.assetvulnmanager.domain.CpeVendorAlias;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AliasReviewState;
 import dev.notegridx.security.assetvulnmanager.domain.enums.AliasSource;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductAliasRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorAliasRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
+import dev.notegridx.security.assetvulnmanager.utility.DbTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 @Service
 public class UnresolvedResolutionService {
@@ -23,19 +26,25 @@ public class UnresolvedResolutionService {
 
     private final CpeVendorAliasRepository vendorAliasRepo;
     private final CpeProductAliasRepository productAliasRepo;
+    private final CpeVendorRepository cpeVendorRepository;
+    private final CpeProductRepository cpeProductRepository;
 
     public UnresolvedResolutionService(
             UnresolvedMappingRepository unresolvedRepo,
             SoftwareInstallRepository softwareRepo,
             VendorProductNormalizer normalizer,
             CpeVendorAliasRepository vendorAliasRepo,
-            CpeProductAliasRepository productAliasRepo
+            CpeProductAliasRepository productAliasRepo,
+            CpeVendorRepository cpeVendorRepository,
+            CpeProductRepository cpeProductRepository
     ) {
         this.unresolvedRepo = unresolvedRepo;
         this.softwareRepo = softwareRepo;
         this.normalizer = normalizer;
         this.vendorAliasRepo = vendorAliasRepo;
         this.productAliasRepo = productAliasRepo;
+        this.cpeVendorRepository = cpeVendorRepository;
+        this.cpeProductRepository = cpeProductRepository;
     }
 
     public record ApplyResult(
@@ -104,10 +113,25 @@ public class UnresolvedResolutionService {
                 : learnProductAlias(vendorId, productId, productRaw, productNorm, mappingId);
 
         // =========================
+        // Resolve linked canonical names for display persistence
+        // =========================
+        CpeVendor vendor = cpeVendorRepository.findById(vendorId).orElseThrow();
+        CpeProduct product = (productId == null)
+                ? null
+                : cpeProductRepository.findById(productId).orElseThrow();
+
+        // =========================
         // Update unresolved queue state
         // =========================
+        um.setLinkedCpeVendorId(vendorId);
+        um.setLinkedCpeProductId(productId);
+        um.setLinkedVendorName(firstNonBlank(vendor.getDisplayName(), vendor.getNameNorm()));
+        um.setLinkedProductName(product != null
+                ? firstNonBlank(product.getDisplayName(), product.getNameNorm())
+                : null);
+
         um.setStatus(status);
-        um.setLastSeenAt(LocalDateTime.now());
+        um.setLastSeenAt(DbTime.now());
         unresolvedRepo.save(um);
 
         return new ApplyResult(mappingId, vendorId, productId, affected, status, vendorAliasOutcome, productAliasOutcome);

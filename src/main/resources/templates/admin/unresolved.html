@@ -51,7 +51,8 @@
     .um-viewing,
     details.um-hint summary,
     details.um-hint .muted,
-    .um-version {
+    .um-version,
+    .um-link-meta {
         font-size: 12px;
     }
 
@@ -59,7 +60,8 @@
     .um-label,
     .um-viewing,
     details.um-hint summary,
-    .um-version {
+    .um-version,
+    .um-link-meta {
         color: var(--muted);
     }
 
@@ -94,6 +96,12 @@
         gap: 6px;
     }
 
+    .um-link-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
     .um-empty {
         padding: 14px;
     }
@@ -104,6 +112,10 @@
 
     .um-th-raw {
         width: 240px;
+    }
+
+    .um-th-link {
+        width: 260px;
     }
 
     .um-th-action {
@@ -181,11 +193,16 @@
 
     .um-table th:nth-child(3),
     .um-table td:nth-child(3) {
-        min-width: 750px;
+        width: 260px !important;
     }
 
     .um-table th:nth-child(4),
     .um-table td:nth-child(4) {
+        min-width: 750px;
+    }
+
+    .um-table th:nth-child(5),
+    .um-table td:nth-child(5) {
         width: 80px !important;
     }
 
@@ -197,9 +214,18 @@
         text-overflow: ellipsis;
     }
 
-    .um-table td:nth-child(3) input,
-    .um-table td:nth-child(3) select,
-    .um-table td:nth-child(3) textarea {
+    .um-table td:nth-child(3) .pill,
+    .um-table td:nth-child(3) .mono {
+        display: inline-block;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .um-table td:nth-child(4) input,
+    .um-table td:nth-child(4) select,
+    .um-table td:nth-child(4) textarea {
         width: 100%;
         box-sizing: border-box;
     }
@@ -485,6 +511,7 @@
                 <tr>
                     <th class="um-th-status">Status</th>
                     <th class="um-th-raw">Raw</th>
+                    <th class="um-th-link">Canonical Link</th>
                     <th>Resolve</th>
                     <th class="um-th-action">Action</th>
                 </tr>
@@ -495,7 +522,7 @@
                     th:attr="data-row-id=${r.id}"
                     th:id="${'row-' + r.id}"
                     th:classappend="
-        ${r.status != null and r.status.toString() == 'RESOLVED'} ? ' row-resolved um-row--resolved' :
+        ${r.status != null and (r.status.toString() == 'RESOLVED' or r.status.toString() == 'VENDOR_LINKED')} ? ' row-resolved um-row--resolved' :
         (${r.status != null and r.status.toString() == 'NEW'} ? ' um-row--new' : '')
     ">
 
@@ -503,11 +530,12 @@
                         <span class="badge"
                               th:classappend="
         ${r.status != null and r.status.toString() == 'NEW'} ? ' badge--new' :
-        (${r.status != null and r.status.toString() == 'RESOLVED'} ? ' badge--resolved' : ' badge--neutral')
+        (${r.status != null and (r.status.toString() == 'RESOLVED' or r.status.toString() == 'VENDOR_LINKED')} ? ' badge--resolved' : ' badge--neutral')
       "
                               th:text="${
         r.status != null and r.status.toString() == 'NEW' ? 'UNRESOLVED' :
-        (r.status != null and r.status.toString() == 'RESOLVED' ? 'LINKED' : r.status)
+        (r.status != null and r.status.toString() == 'RESOLVED' ? 'LINKED' :
+        (r.status != null and r.status.toString() == 'VENDOR_LINKED' ? 'VENDOR LINKED' : r.status))
       }">
     UNRESOLVED
 </span>
@@ -526,6 +554,31 @@
                                 <span th:text="${r.versionRaw}">version</span>
                             </div>
                         </div>
+                    </td>
+
+                    <td>
+                        <div class="um-link-stack" th:if="${r.linkedVendorName != null}">
+                            <div>
+                                <span class="pill"
+                                      th:text="${r.linkedVendorName}">
+                                    canonical-vendor
+                                </span>
+                            </div>
+
+                            <div th:if="${r.linkedProductName != null}">
+                                <span class="pill pill--dim"
+                                      th:text="${r.linkedProductName}">
+                                    canonical-product
+                                </span>
+                            </div>
+
+                            <div class="um-link-meta"
+                                 th:text="'vendorId=' + ${r.linkedCpeVendorId} + (${r.linkedCpeProductId} != null ? ', productId=' + ${r.linkedCpeProductId} : '')">
+                                vendorId=1, productId=2
+                            </div>
+                        </div>
+
+                        <span class="muted" th:if="${r.linkedVendorName == null}">-</span>
                     </td>
 
                     <td>
@@ -597,7 +650,7 @@
                 </tr>
 
                 <tr th:if="${#lists.isEmpty(mappings)}">
-                    <td colspan="4" class="muted um-empty">
+                    <td colspan="5" class="muted um-empty">
                         No unresolved mappings.
                     </td>
                 </tr>

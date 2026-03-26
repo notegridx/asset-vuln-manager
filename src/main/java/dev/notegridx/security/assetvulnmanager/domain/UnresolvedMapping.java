@@ -50,6 +50,18 @@ public class UnresolvedMapping {
     @Column(nullable = false, name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "linked_cpe_vendor_id")
+    private Long linkedCpeVendorId;
+
+    @Column(name = "linked_cpe_product_id")
+    private Long linkedCpeProductId;
+
+    @Column(name = "linked_vendor_name")
+    private String linkedVendorName;
+
+    @Column(name = "linked_product_name")
+    private String linkedProductName;
+
     protected UnresolvedMapping() {
     }
 
@@ -133,5 +145,21 @@ public class UnresolvedMapping {
 
     public void setCandidateProductIds(String candidateProductIds) {
         this.candidateProductIds = candidateProductIds;
+    }
+
+    public void setLinkedCpeVendorId(Long linkedCpeVendorId) {
+        this.linkedCpeVendorId = linkedCpeVendorId;
+    }
+
+    public void setLinkedCpeProductId(Long linkedCpeProductId) {
+        this.linkedCpeProductId = linkedCpeProductId;
+    }
+
+    public void setLinkedVendorName(String linkedVendorName) {
+        this.linkedVendorName = linkedVendorName;
+    }
+
+    public void setLinkedProductName(String linkedProductName) {
+        this.linkedProductName = linkedProductName;
     }
 }

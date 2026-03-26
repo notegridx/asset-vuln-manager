@@ -725,6 +725,11 @@ CREATE TABLE IF NOT EXISTS unresolved_mappings
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
+    linked_cpe_vendor_id BIGINT,
+    linked_cpe_product_id BIGINT,
+    linked_vendor_name VARCHAR(255),
+    linked_product_name VARCHAR(255),
+
     CONSTRAINT uk_um_vendor_product UNIQUE (vendor_raw, product_raw)
     );
 

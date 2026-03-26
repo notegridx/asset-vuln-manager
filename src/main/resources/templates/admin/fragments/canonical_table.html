@@ -89,20 +89,20 @@
                                   }"
                                   th:text="${
                                     r.analysis.vendorLinkedSql()
-                                      ? ('V ' + (res != null and res.vendorId() != null ? res.vendorId() : '?')
-                                           + ':' + (res != null and res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                      ? ('V ' + (r.analysis.resolve != null and r.analysis.resolve.vendorId() != null ? r.analysis.resolve.vendorId() : '?')
+                                           + ':' + (r.canonicalVendorLabel != null ? r.canonicalVendorLabel : '-'))
                                       : (res != null and res.vendorId() != null
                                            ? ('V → ' + res.vendorId()
-                                                + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                                + ':' + (r.canonicalVendorLabel != null ? r.canonicalVendorLabel : (res.vendorNorm() != null ? res.vendorNorm() : '-')))
                                            : 'V-')
                                   }"
                                   th:attr="title=${
                                     r.analysis.vendorLinkedSql()
-                                      ? ('Linked vendor: ' + (res != null and res.vendorId() != null ? res.vendorId() : '?')
-                                          + ':' + (res != null and res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                      ? ('Linked vendor: ' + (r.analysis.resolve != null and r.analysis.resolve.vendorId() != null ? r.analysis.resolve.vendorId() : '?')
+                                          + ':' + (r.canonicalVendorLabel != null ? r.canonicalVendorLabel : '-'))
                                       : (res != null and res.vendorId() != null
                                           ? ('Resolvable vendor: ' + res.vendorId()
-                                              + ':' + (res.vendorNorm() != null ? res.vendorNorm() : '-'))
+                                              + ':' + (r.canonicalVendorLabel != null ? r.canonicalVendorLabel : (res.vendorNorm() != null ? res.vendorNorm() : '-')))
                                           : 'Vendor not linked / not resolvable')
                                   }">V-</span>
 
@@ -114,20 +114,20 @@
                                   }"
                                   th:text="${
                                     r.analysis.productLinkedSql()
-                                      ? ('P ' + (res != null and res.productId() != null ? res.productId() : '?')
-                                           + ':' + (res != null and res.productNorm() != null ? res.productNorm() : '-'))
+                                      ? ('P ' + (r.analysis.resolve != null and r.analysis.resolve.productId() != null ? r.analysis.resolve.productId() : '?')
+                                           + ':' + (r.canonicalProductLabel != null ? r.canonicalProductLabel : '-'))
                                       : (res != null and res.productId() != null
                                            ? ('P → ' + res.productId()
-                                                + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
+                                                + ':' + (r.canonicalProductLabel != null ? r.canonicalProductLabel : (res.productNorm() != null ? res.productNorm() : '-')))
                                            : 'P-')
                                   }"
                                   th:attr="title=${
                                     r.analysis.productLinkedSql()
-                                      ? ('Linked product: ' + (res != null and res.productId() != null ? res.productId() : '?')
-                                          + ':' + (res != null and res.productNorm() != null ? res.productNorm() : '-'))
+                                      ? ('Linked product: ' + (r.analysis.resolve != null and r.analysis.resolve.productId() != null ? r.analysis.resolve.productId() : '?')
+                                          + ':' + (r.canonicalProductLabel != null ? r.canonicalProductLabel : '-'))
                                       : (res != null and res.productId() != null
                                           ? ('Resolvable product: ' + res.productId()
-                                              + ':' + (res.productNorm() != null ? res.productNorm() : '-'))
+                                              + ':' + (r.canonicalProductLabel != null ? r.canonicalProductLabel : (res.productNorm() != null ? res.productNorm() : '-')))
                                           : 'Product not linked / not resolvable')
                                   }">P-</span>
                         </div>

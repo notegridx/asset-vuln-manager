@@ -1106,14 +1106,51 @@ CREATE TABLE IF NOT EXISTS unresolved_mappings
     created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
+    linked_cpe_vendor_id BIGINT,
+    linked_cpe_product_id BIGINT,
+    linked_vendor_name VARCHAR(255),
+    linked_product_name VARCHAR(255),
+
     CONSTRAINT uk_um_vendor_product UNIQUE (vendor_raw, product_raw)
     ) ENGINE=InnoDB;
 
-SET @ddl = IF (EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'unresolved_mappings' AND index_name = 'idx_um_status'), 'SELECT 1', 'CREATE INDEX idx_um_status ON unresolved_mappings(status)');
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'unresolved_mappings'
+          AND index_name = 'idx_um_status'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_um_status ON unresolved_mappings(status)'
+);
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-SET @ddl = IF (EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'unresolved_mappings' AND index_name = 'idx_um_norm'), 'SELECT 1', 'CREATE INDEX idx_um_norm ON unresolved_mappings(normalized_vendor, normalized_product)');
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'unresolved_mappings'
+          AND index_name = 'idx_um_norm'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_um_norm ON unresolved_mappings(normalized_vendor, normalized_product)'
+);
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-SET @ddl = IF (EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'unresolved_mappings' AND index_name = 'idx_um_vendor_product'), 'SELECT 1', 'CREATE INDEX idx_um_vendor_product ON unresolved_mappings(vendor_raw, product_raw)');
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'unresolved_mappings'
+          AND index_name = 'idx_um_vendor_product'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_um_vendor_product ON unresolved_mappings(vendor_raw, product_raw)'
+);
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- =========================================================
