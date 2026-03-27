@@ -336,14 +336,22 @@
 
         <div class="card">
             <div class="table-wrap">
-                <table class="table">
+                <table class="table workspace-table">
+                    <colgroup>
+                        <col class="workspace-col-id" style="width: 8%;">
+                        <col style="width: 24%;">
+                        <col class="workspace-col-vendor-id" style="width: 12%;">
+                        <col style="width: 24%;">
+                        <col class="workspace-col-status" style="width: 12%;">
+                        <col style="width: 20%;">
+                    </colgroup>
                     <thead>
                     <tr>
-                        <th style="width:90px;">ID</th>
+                        <th>ID</th>
                         <th>aliasNorm</th>
-                        <th style="width:120px;">vendorId</th>
+                        <th>vendorId</th>
                         <th>canonical vendor</th>
-                        <th style="width:130px;">Status</th>
+                        <th>Status</th>
                         <th>note</th>
                     </tr>
                     </thead>
@@ -356,10 +364,10 @@
 
                     <tr th:each="r : ${rows}" th:attr="id=${'row-' + r.id}">
                         <td class="mono" th:text="${r.id}">1</td>
-                        <td style="overflow-wrap:anywhere;" th:text="${r.aliasNorm}">alias</td>
+                        <td th:text="${r.aliasNorm}">alias</td>
                         <td class="mono" th:text="${r.cpeVendorId}">123</td>
 
-                        <td style="overflow-wrap:anywhere;">
+                        <td>
                             <a class="link"
                                th:if="${r.cpeVendorId != null}"
                                th:href="@{/admin/synonyms/workspace(vendorId=${r.cpeVendorId}, tab='products', q=${q}, status=${status}, qP=${qP}, statusP=${statusP})}"
@@ -393,7 +401,6 @@
                     </tr>
 
                     </tbody>
-
                 </table>
             </div>
         </div>
@@ -468,15 +475,24 @@
 
             <div class="card">
                 <div class="table-wrap">
-                    <table class="table">
+                    <table class="table workspace-table">
+                        <colgroup>
+                            <col class="workspace-col-id" style="width: 8%;">
+                            <col style="width: 20%;">
+                            <col class="workspace-col-vendor-id" style="width: 10%;">
+                            <col class="workspace-col-product-id" style="width: 12%;">
+                            <col style="width: 22%;">
+                            <col class="workspace-col-status" style="width: 12%;">
+                            <col style="width: 16%;">
+                        </colgroup>
                         <thead>
                         <tr>
-                            <th style="width:90px;">ID</th>
+                            <th>ID</th>
                             <th>aliasNorm</th>
-                            <th style="width:120px;">vendorId</th>
-                            <th style="width:160px;">productId</th>
+                            <th>vendorId</th>
+                            <th>productId</th>
                             <th>canonical product</th>
-                            <th style="width:130px;">Status</th>
+                            <th>Status</th>
                             <th>note</th>
                         </tr>
                         </thead>
@@ -488,7 +504,7 @@
 
                         <tr th:each="r : ${productRows}" th:attr="id=${'row-' + r.id}">
                             <td class="mono" th:text="${r.id}">1</td>
-                            <td class="mono" th:text="${r.aliasNorm}">visual studio code</td>
+                            <td th:text="${r.aliasNorm}">visual studio code</td>
                             <td class="mono" th:text="${r.cpeVendorId}">123</td>
                             <td class="mono" th:text="${r.cpeProductId}">456</td>
                             <td th:text="${productLabels[r.cpeProductId]}">Microsoft Visual Studio Code</td>
