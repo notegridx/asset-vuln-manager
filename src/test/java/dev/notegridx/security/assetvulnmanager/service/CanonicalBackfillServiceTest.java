@@ -155,7 +155,7 @@ class CanonicalBackfillServiceTest {
     }
 
     @Test
-    @DisplayName("backfill: 同じ unresolved key は 1 run 内で 1 回だけ upsert し、missed は software 件数ベースで維持する")
+    @DisplayName("backfill: upsert each unresolved key only once per run, while keeping missed count based on software rows")
     void backfill_dedupesUnresolvedUpsert_butKeepsMissedCount() {
         SoftwareInstall s1 = software(" raw-vendor ", " raw-product ", "1.0");
         SoftwareInstall s2 = software("raw-vendor", "raw-product", "2.0");
@@ -191,7 +191,7 @@ class CanonicalBackfillServiceTest {
     }
 
     @Test
-    @DisplayName("backfillForSoftwareIds: 同じ unresolved key は 1 run 内で 1 回だけ upsert し、missed は software 件数ベースで維持する")
+    @DisplayName("backfillForSoftwareIds: upserts each unresolved key only once per run and keeps missed count based on software rows")
     void backfillForSoftwareIds_dedupesUnresolvedUpsert_butKeepsMissedCount() {
         SoftwareInstall s1 = software(" same-vendor ", " same-product ", "3.1");
         SoftwareInstall s2 = software("same-vendor", "same-product", "3.2");

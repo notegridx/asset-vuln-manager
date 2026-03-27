@@ -44,7 +44,7 @@ class CsvImportServiceTest {
 
     @BeforeEach
     void setUp() {
-        // application-test.yml が永続H2(file)を向いているため、毎回明示的に掃除する
+        // application-test.yml uses persistent H2 (file), so clean it explicitly each time
         softwareInstallRepository.deleteAll();
         unresolvedMappingRepository.deleteAll();
         assetRepository.deleteAll();
