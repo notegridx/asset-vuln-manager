@@ -3,13 +3,21 @@ package dev.notegridx.security.assetvulnmanager.web;
 import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
-import dev.notegridx.security.assetvulnmanager.service.*;
+import dev.notegridx.security.assetvulnmanager.service.AdminCanonicalBackfillService;
+import dev.notegridx.security.assetvulnmanager.service.AdminJobAlreadyRunningException;
+import dev.notegridx.security.assetvulnmanager.service.AdminRunRecorder;
+import dev.notegridx.security.assetvulnmanager.service.CanonicalBackfillService;
+import dev.notegridx.security.assetvulnmanager.service.CanonicalCpeLinkingService;
+import dev.notegridx.security.assetvulnmanager.service.DemoModeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -40,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(controllers = AdminCanonicalController.class)
+@Import(TestSecurityConfig.class)
 @ActiveProfiles("mysqltest")
 @WithMockUser(username = "admin", roles = "ADMIN")
 class AdminCanonicalControllerWebMvcTest {
@@ -64,6 +73,15 @@ class AdminCanonicalControllerWebMvcTest {
 
     @MockitoBean
     private DemoModeService demoModeService;
+
+    @MockitoBean
+    private CpeVendorRepository cpeVendorRepository;
+
+    @MockitoBean
+    private CpeProductRepository cpeProductRepository;
+
+    @MockitoBean
+    private AdminRunRecorder adminRunRecorder;
 
     @BeforeEach
     void setUpControllerCaches() {
@@ -196,16 +214,16 @@ class AdminCanonicalControllerWebMvcTest {
     void runLinking_success() throws Exception {
         CanonicalBackfillService.BackfillResult result =
                 new CanonicalBackfillService.BackfillResult(
-                        100,      // scanned
-                        80,       // linked
-                        10,       // missed
-                        true,     // forceRebuild
-                        90,       // fullyLinked
-                        10,       // vendorOnly
-                        0,        // pureMiss
-                        1234L,    // elapsedMs
-                        "1.234",  // elapsedSec
-                        "81.0"    // rowsPerSec
+                        100,
+                        80,
+                        10,
+                        true,
+                        90,
+                        10,
+                        0,
+                        1234L,
+                        "1.234",
+                        "81.0"
                 );
 
         when(adminCanonicalBackfillService.runBackfill(1000, true)).thenReturn(result);
