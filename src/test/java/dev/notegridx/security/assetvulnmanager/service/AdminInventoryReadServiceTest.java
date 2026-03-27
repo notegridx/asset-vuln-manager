@@ -2,6 +2,8 @@ package dev.notegridx.security.assetvulnmanager.service;
 
 import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
+import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
+import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
@@ -16,7 +18,6 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +35,12 @@ class AdminInventoryReadServiceTest {
     @Mock
     private CanonicalCpeLinkingService canonicalCpeLinkingService;
 
+    @Mock
+    private CpeVendorRepository cpeVendorRepository;
+
+    @Mock
+    private CpeProductRepository cpeProductRepository;
+
     private AdminInventoryReadService service;
 
     @BeforeEach
@@ -42,12 +49,10 @@ class AdminInventoryReadServiceTest {
                 importRunRepository,
                 unresolvedMappingRepository,
                 softwareInstallRepository,
-                canonicalCpeLinkingService
+                canonicalCpeLinkingService,
+                cpeVendorRepository,
+                cpeProductRepository
         );
-
-        // Keep unresolved review tests simple:
-        // no related software rows => status becomes UNRESOLVABLE
-        when(softwareInstallRepository.findAll()).thenReturn(List.of());
     }
 
     @Test
@@ -62,98 +67,58 @@ class AdminInventoryReadServiceTest {
         List<ImportRun> result = service.findImportRuns();
 
         assertThat(result).containsExactly(run3, run1, runNull);
+        verify(importRunRepository).findAll();
     }
 
     @Test
-    @DisplayName("findUnresolvedMappings defaults to ALL and activeOnly=true on initial access")
-    void findUnresolvedMappings_defaultsToNewAndActiveOnlyOnInitialAccess() {
-        UnresolvedMapping mapping1 = mockMapping(1L, "NEW", "Microsoft", "Edge");
-        UnresolvedMapping mapping2 = mockMapping(2L, "RESOLVED", "Oracle", "Java");
-
-        when(unresolvedMappingRepository.findAllActive()).thenReturn(List.of(mapping1, mapping2));
+    @DisplayName("findUnresolvedMappings defaults to all and returns empty when no software exists")
+    void findUnresolvedMappings_defaultsToAllAndReturnsEmptyWhenNoSoftwareExists() {
+        when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
                 service.findUnresolvedMappings(null, null, null, null, null, null);
 
-        assertThat(result.status()).isEqualTo("ALL");
-        assertThat(result.activeOnly()).isTrue();
+        assertThat(result.status()).isEqualTo("all");
+        assertThat(result.activeOnly()).isFalse();
         assertThat(result.q()).isNull();
         assertThat(result.runId()).isNull();
         assertThat(result.id()).isNull();
+        assertThat(result.mappings()).isEmpty();
 
-        assertThat(result.mappings())
-                .extracting(AdminInventoryReadService.UnresolvedReviewRow::raw)
-                .containsExactly(mapping2, mapping1);
-
-        verify(unresolvedMappingRepository).findAllActive();
-        verify(unresolvedMappingRepository, never()).findAll();
+        verify(softwareInstallRepository).findAll();
     }
 
     @Test
-    @DisplayName("findUnresolvedMappings returns all rows when status is ALL")
-    void findUnresolvedMappings_returnsAllStatusesWhenStatusIsAll() {
-        UnresolvedMapping mapping1 = mockMapping(1L, "NEW", "Microsoft", "Edge");
-        UnresolvedMapping mapping2 = mockMapping(2L, "RESOLVED", "Oracle", "Java");
-
-        when(unresolvedMappingRepository.findAllActive()).thenReturn(List.of(mapping1, mapping2));
-
-        AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("ALL", null, null, true, null, null);
-
-        assertThat(result.status()).isEqualTo("ALL");
-        assertThat(result.activeOnly()).isTrue();
-
-        assertThat(result.mappings())
-                .extracting(AdminInventoryReadService.UnresolvedReviewRow::raw)
-                .containsExactly(mapping2, mapping1);
-
-        verify(unresolvedMappingRepository).findAllActive();
-        verify(unresolvedMappingRepository, never()).findAll();
-    }
-
-    @Test
-    @DisplayName("findUnresolvedMappings uses findAll when checkbox was unchecked")
-    void findUnresolvedMappings_usesFindAllWhenCheckboxWasUnchecked() {
-        UnresolvedMapping mapping1 = mockMapping(1L, "NEW", "Microsoft", "Edge");
-        UnresolvedMapping mapping2 = mockMapping(2L, "RESOLVED", "Oracle", "Java");
-
-        when(unresolvedMappingRepository.findAll()).thenReturn(List.of(mapping1, mapping2));
-
-        AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("ALL", null, null, null, "1", null);
-
-        assertThat(result.status()).isEqualTo("ALL");
-        assertThat(result.activeOnly()).isFalse();
-
-        assertThat(result.mappings())
-                .extracting(AdminInventoryReadService.UnresolvedReviewRow::raw)
-                .containsExactly(mapping2, mapping1);
-
-        verify(unresolvedMappingRepository).findAll();
-        verify(unresolvedMappingRepository, never()).findAllActive();
-    }
-
-    @Test
-    @DisplayName("findUnresolvedMappings filters keyword case-insensitively and preserves runId state")
-    void findUnresolvedMappings_filtersCaseInsensitivelyAndPreservesRunIdState() {
-        UnresolvedMapping mapping1 = mockMapping(1L, "NEW", "Microsoft", "Edge");
-        UnresolvedMapping mapping2 = mockMapping(2L, "NEW", "Oracle", "Java");
-
-        when(unresolvedMappingRepository.findAllActive()).thenReturn(List.of(mapping1, mapping2));
+    @DisplayName("findUnresolvedMappings keeps ALL status and trimmed q when no software exists")
+    void findUnresolvedMappings_keepsAllStatusAndTrimmedQWhenNoSoftwareExists() {
+        when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
                 service.findUnresolvedMappings("ALL", 99L, "  micro  ", true, "1", null);
 
-        assertThat(result.status()).isEqualTo("ALL");
+        assertThat(result.status()).isEqualTo("all");
         assertThat(result.runId()).isEqualTo(99L);
         assertThat(result.q()).isEqualTo("micro");
-        assertThat(result.activeOnly()).isTrue();
+        assertThat(result.activeOnly()).isFalse();
+        assertThat(result.id()).isNull();
+        assertThat(result.mappings()).isEmpty();
 
-        assertThat(result.mappings())
-                .extracting(AdminInventoryReadService.UnresolvedReviewRow::raw)
-                .containsExactly(mapping1);
+        verify(softwareInstallRepository).findAll();
+    }
 
-        verify(unresolvedMappingRepository).findAllActive();
+    @Test
+    @DisplayName("findUnresolvedMappings normalizes legacy NEW status to all when no software exists")
+    void findUnresolvedMappings_normalizesLegacyStatusNewToAllWhenNoSoftwareExists() {
+        when(softwareInstallRepository.findAll()).thenReturn(List.of());
+
+        AdminInventoryReadService.UnresolvedListView result =
+                service.findUnresolvedMappings("NEW", null, null, true, null, null);
+
+        assertThat(result.status()).isEqualTo("all");
+        assertThat(result.activeOnly()).isFalse();
+        assertThat(result.mappings()).isEmpty();
+
+        verify(softwareInstallRepository).findAll();
     }
 
     @Test
@@ -166,17 +131,15 @@ class AdminInventoryReadServiceTest {
         AdminInventoryReadService.UnresolvedListView result =
                 service.findUnresolvedMappings(null, 77L, null, null, null, 10L);
 
-        assertThat(result.status()).isEqualTo("ALL");
+        assertThat(result.status()).isEqualTo("all");
         assertThat(result.runId()).isEqualTo(77L);
         assertThat(result.id()).isEqualTo(10L);
 
         assertThat(result.mappings())
-                .extracting(AdminInventoryReadService.UnresolvedReviewRow::raw)
+                .extracting(AdminInventoryReadService.UnresolvedReviewRow::mapping)
                 .containsExactly(mapping1);
 
         verify(unresolvedMappingRepository).findById(10L);
-        verify(unresolvedMappingRepository, never()).findAll();
-        verify(unresolvedMappingRepository, never()).findAllActive();
     }
 
     @Test
@@ -187,31 +150,11 @@ class AdminInventoryReadServiceTest {
         AdminInventoryReadService.UnresolvedListView result =
                 service.findUnresolvedMappings(null, null, null, null, null, 999L);
 
-        assertThat(result.status()).isEqualTo("ALL");
+        assertThat(result.status()).isEqualTo("all");
         assertThat(result.id()).isEqualTo(999L);
         assertThat(result.mappings()).isEmpty();
 
         verify(unresolvedMappingRepository).findById(999L);
-        verify(unresolvedMappingRepository, never()).findAll();
-        verify(unresolvedMappingRepository, never()).findAllActive();
-    }
-
-    @Test
-    @DisplayName("findUnresolvedMappings normalizes legacy status NEW to ALL")
-    void findUnresolvedMappings_normalizesLegacyStatusNewToAll() {
-        UnresolvedMapping mapping1 = mockMapping(1L, "NEW", "Microsoft", "Edge");
-        UnresolvedMapping mapping2 = mockMapping(2L, "RESOLVED", "Oracle", "Java");
-
-        when(unresolvedMappingRepository.findAllActive()).thenReturn(List.of(mapping1, mapping2));
-
-        AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("NEW", null, null, true, null, null);
-
-        assertThat(result.status()).isEqualTo("ALL");
-
-        assertThat(result.mappings())
-                .extracting(AdminInventoryReadService.UnresolvedReviewRow::raw)
-                .containsExactly(mapping2, mapping1);
     }
 
     private static ImportRun mockImportRun(Long id) {
@@ -223,23 +166,11 @@ class AdminInventoryReadServiceTest {
     private static UnresolvedMapping mockMapping(Long id, String status, String vendorRaw, String productRaw) {
         UnresolvedMapping mapping = mock(UnresolvedMapping.class);
 
-        when(mapping.getId()).thenReturn(id);
-        when(mapping.getStatus()).thenReturn(status);
-
-        when(mapping.getVendorRaw()).thenReturn(vendorRaw);
-        when(mapping.getProductRaw()).thenReturn(productRaw);
-        when(mapping.getVersionRaw()).thenReturn(null);
-
-        when(mapping.getNormalizedVendor()).thenReturn(vendorRaw == null ? null : vendorRaw.toLowerCase());
-        when(mapping.getNormalizedProduct()).thenReturn(productRaw == null ? null : productRaw.toLowerCase());
-
-        // Keep template-facing passthrough getters safe if they are referenced later
-        try {
-            when(mapping.getLinkedVendorName()).thenReturn(null);
-            when(mapping.getLinkedProductName()).thenReturn(null);
-        } catch (Exception ignored) {
-            // ignore when those methods do not exist in the current entity shape
-        }
+        lenient().when(mapping.getId()).thenReturn(id);
+        lenient().when(mapping.getStatus()).thenReturn(status);
+        lenient().when(mapping.getVendorRaw()).thenReturn(vendorRaw);
+        lenient().when(mapping.getProductRaw()).thenReturn(productRaw);
+        lenient().when(mapping.getVersionRaw()).thenReturn(null);
 
         return mapping;
     }

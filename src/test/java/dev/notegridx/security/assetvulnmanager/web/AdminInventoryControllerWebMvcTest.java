@@ -74,15 +74,41 @@ class AdminInventoryControllerWebMvcTest {
         when(adminInventoryReadService.findUnresolvedMappings(
                 any(), any(), any(), any(), any(), any()
         )).thenReturn(new AdminInventoryReadService.UnresolvedListView(
-                List.of(
-                        new AdminInventoryReadService.UnresolvedReviewRow(
-                                mapping2,
-                                AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE
-                        ),
-                        new AdminInventoryReadService.UnresolvedReviewRow(
-                                mapping1,
-                                AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE
-                        )
+                        List.of(
+                                new AdminInventoryReadService.UnresolvedReviewRow(
+                                        2L,
+                                        null,
+                                        mapping2,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE,
+                                        null,
+                                        null,
+                                        null,
+                                        null
+                                ),
+                                new AdminInventoryReadService.UnresolvedReviewRow(
+                                        1L,
+                                        null,
+                                        mapping1,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE,
+                                        null,
+                                        null,
+                                        null,
+                                        null
+                                )
                 ),
                 "ALL",
                 null,
@@ -98,10 +124,9 @@ class AdminInventoryControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/unresolved"))
                 .andExpect(model().attributeExists("mappings"))
-                .andExpect(model().attribute("status", "NEW"))
+                .andExpect(model().attribute("status", "ALL"))
                 .andExpect(model().attribute("runId", nullValue()))
-                .andExpect(model().attribute("activeOnly", true))
-                .andExpect(model().attribute("activeOnlyPresent", nullValue()));
+                .andExpect(model().attribute("activeOnly", nullValue()))                .andExpect(model().attribute("activeOnlyPresent", nullValue()));
 
-        verify(adminInventoryReadService).findUnresolvedMappings(eq("ALL"), isNull(), isNull(), isNull(), isNull(), isNull());    }
+        verify(adminInventoryReadService).findUnresolvedMappings(eq("all"), isNull(), isNull(), isNull(), isNull(), isNull());    }
 }
