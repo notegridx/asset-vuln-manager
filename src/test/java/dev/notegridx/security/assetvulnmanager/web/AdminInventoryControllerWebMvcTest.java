@@ -19,7 +19,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -72,61 +75,82 @@ class AdminInventoryControllerWebMvcTest {
         UnresolvedMapping mapping2 = mock(UnresolvedMapping.class);
 
         when(adminInventoryReadService.findUnresolvedMappings(
-                any(), any(), any(), any(), any(), any()
+                any(), any(), any(), any(), any(), any(), anyInt(), anyInt()
         )).thenReturn(new AdminInventoryReadService.UnresolvedListView(
-                        List.of(
-                                new AdminInventoryReadService.UnresolvedReviewRow(
-                                        2L,
-                                        null,
-                                        mapping2,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE,
-                                        null,
-                                        null,
-                                        null,
-                                        null
-                                ),
-                                new AdminInventoryReadService.UnresolvedReviewRow(
-                                        1L,
-                                        null,
-                                        mapping1,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE,
-                                        null,
-                                        null,
-                                        null,
-                                        null
-                                )
+                List.of(
+                        new AdminInventoryReadService.UnresolvedReviewRow(
+                                2L,
+                                null,
+                                mapping2,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE,
+                                null,
+                                null,
+                                null,
+                                null
+                        ),
+                        new AdminInventoryReadService.UnresolvedReviewRow(
+                                1L,
+                                null,
+                                mapping1,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                AdminInventoryReadService.CanonicalStatusView.UNRESOLVABLE,
+                                null,
+                                null,
+                                null,
+                                null
+                        )
                 ),
-                "ALL",
+                "all",
                 null,
                 null,
-                true,
+                false,
                 null,
-                null
+                null,
+                0,
+                50,
+                3,
+                120,
+                List.of(0, 1, 2)
         ));
-
-
 
         mockMvc.perform(get("/admin/unresolved"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/unresolved"))
                 .andExpect(model().attributeExists("mappings"))
-                .andExpect(model().attribute("status", "ALL"))
+                .andExpect(model().attribute("status", "all"))
                 .andExpect(model().attribute("runId", nullValue()))
-                .andExpect(model().attribute("activeOnly", nullValue()))                .andExpect(model().attribute("activeOnlyPresent", nullValue()));
+                .andExpect(model().attribute("q", nullValue()))
+                .andExpect(model().attribute("activeOnly", nullValue()))
+                .andExpect(model().attribute("activeOnlyPresent", nullValue()))
+                .andExpect(model().attribute("id", nullValue()))
+                .andExpect(model().attribute("page", 0))
+                .andExpect(model().attribute("size", 50))
+                .andExpect(model().attribute("totalPages", 3))
+                .andExpect(model().attribute("totalElements", 120L))
+                .andExpect(model().attribute("pagerItems", List.of(0, 1, 2)));
 
-        verify(adminInventoryReadService).findUnresolvedMappings(eq("all"), isNull(), isNull(), isNull(), isNull(), isNull());    }
+        verify(adminInventoryReadService).findUnresolvedMappings(
+                eq("all"),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                eq(0),
+                eq(50)
+        );
+    }
 }

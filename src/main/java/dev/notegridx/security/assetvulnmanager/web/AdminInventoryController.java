@@ -52,6 +52,8 @@ public class AdminInventoryController {
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
             @RequestParam(name = "id", required = false) Long id,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "50") int size,
             Model model
     ) {
         String effectiveStatus = (status == null || status.isBlank()) ? "all" : status;
@@ -62,7 +64,9 @@ public class AdminInventoryController {
                 q,
                 null,
                 null,
-                id
+                id,
+                page,
+                size
         );
 
         model.addAttribute("mappings", view.mappings());
@@ -72,6 +76,12 @@ public class AdminInventoryController {
         model.addAttribute("activeOnly", null);
         model.addAttribute("activeOnlyPresent", null);
         model.addAttribute("id", view.id());
+
+        model.addAttribute("page", view.pageNumber());
+        model.addAttribute("size", view.pageSize());
+        model.addAttribute("totalPages", view.totalPages());
+        model.addAttribute("totalElements", view.totalElements());
+        model.addAttribute("pagerItems", view.pagerItems());
 
         return "admin/unresolved";
     }
@@ -302,7 +312,9 @@ public class AdminInventoryController {
                 q,
                 null,
                 null,
-                mappingId
+                mappingId,
+                0,
+                1
         );
 
         if (rowView.mappings().isEmpty()) {

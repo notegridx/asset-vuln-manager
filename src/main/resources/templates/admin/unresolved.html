@@ -456,6 +456,65 @@
         white-space: normal;
         word-break: break-word;
     }
+
+    /* =========================================================
+       9) Pagination (same style as /vulnerabilities)
+       ========================================================= */
+    .vuln-pagination {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+
+    .vuln-pagination__link,
+    .vuln-pagination__current,
+    .vuln-pagination__ellipsis {
+        min-width: 36px;
+        height: 36px;
+        padding: 0 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        font-size: 13px;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+
+    .vuln-pagination__link {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: inherit;
+    }
+
+    .vuln-pagination__link:hover {
+        background: var(--panel-2);
+    }
+
+    .vuln-pagination__current {
+        border: 1px solid var(--text);
+        background: var(--text);
+        color: var(--bg);
+        font-weight: 600;
+    }
+
+    .vuln-pagination__ellipsis {
+        color: var(--muted);
+    }
+
+    .vuln-pagination__link.is-disabled {
+        pointer-events: none;
+        opacity: 0.5;
+    }
+
+    @media (max-width: 760px) {
+        .vuln-pagination {
+            justify-content: flex-start;
+        }
+    }
 </style>
 
 <body th:replace="~{layout/base :: layout('Unresolved Mappings', 'admin', ~{::main})}">
@@ -487,6 +546,8 @@
         <form id="unresolved-filter-form" class="um-filterbar" method="get" th:action="@{/admin/unresolved}">
             <input th:if="${id != null}" type="hidden" name="id" th:value="${id}"/>
             <input type="hidden" name="runId" th:value="${runId != null ? runId : ''}"/>
+            <input type="hidden" name="page" th:value="${page != null ? page : 0}"/>
+            <input type="hidden" name="size" th:value="${size != null ? size : 50}"/>
 
             <div class="um-filterbar__left">
                 <div class="um-stack-6 um-filter-search">
@@ -523,7 +584,7 @@
             </div>
 
             <div class="um-filterbar__right">
-                <span class="pill" th:text="'Total: ' + ${#lists.size(mappings)}">Total: 0</span>
+                <span class="pill" th:text="'Total: ' + ${totalElements}">Total: 0</span>
 
                 <div class="um-viewing">
     <span th:text="${'Viewing: status=' + ((status != null and !#strings.isEmpty(status)) ? status : 'all')}">
@@ -532,6 +593,10 @@
                     <span th:if="${q != null and !#strings.isEmpty(q)}"
                           th:text="${' / q=' + q}">
         / q=keyword
+    </span>
+                    <span th:if="${totalPages != null and totalPages > 0}"
+                          th:text="${' / page=' + (page + 1) + ' of ' + totalPages}">
+        / page=1 of 1
     </span>
                 </div>
             </div>
@@ -699,6 +764,87 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="vuln-pagination" th:if="${id == null and totalPages != null and totalPages > 1}">
+            <a class="vuln-pagination__link"
+               th:classappend="${page <= 0} ? ' is-disabled' : ''"
+               th:href="${page <= 0} ? '#' : @{/admin/unresolved(
+                    page=${page - 1},
+                    size=${size},
+                    status=${status},
+                    runId=${runId},
+                    q=${q}
+               )}">
+                Prev
+            </a>
+
+            <a class="vuln-pagination__link"
+               th:if="${pagerItems != null and !#lists.isEmpty(pagerItems) and pagerItems[0] > 0}"
+               th:href="@{/admin/unresolved(
+                    page=0,
+                    size=${size},
+                    status=${status},
+                    runId=${runId},
+                    q=${q}
+               )}">
+                1
+            </a>
+
+            <span class="vuln-pagination__ellipsis"
+                  th:if="${pagerItems != null and !#lists.isEmpty(pagerItems) and pagerItems[0] > 1}">
+                …
+            </span>
+
+            <th:block th:each="p : ${pagerItems}">
+                <span class="vuln-pagination__current"
+                      th:if="${p == page}"
+                      th:text="${p + 1}">
+                    1
+                </span>
+                <a class="vuln-pagination__link"
+                   th:if="${p != page}"
+                   th:href="@{/admin/unresolved(
+                        page=${p},
+                        size=${size},
+                        status=${status},
+                        runId=${runId},
+                        q=${q}
+                   )}"
+                   th:text="${p + 1}">
+                    1
+                </a>
+            </th:block>
+
+            <span class="vuln-pagination__ellipsis"
+                  th:if="${pagerItems != null and !#lists.isEmpty(pagerItems) and pagerItems[pagerItems.size() - 1] < totalPages - 2}">
+                …
+            </span>
+
+            <a class="vuln-pagination__link"
+               th:if="${pagerItems != null and !#lists.isEmpty(pagerItems) and pagerItems[pagerItems.size() - 1] < totalPages - 1}"
+               th:href="@{/admin/unresolved(
+                    page=${totalPages - 1},
+                    size=${size},
+                    status=${status},
+                    runId=${runId},
+                    q=${q}
+               )}"
+               th:text="${totalPages}">
+                1
+            </a>
+
+            <a class="vuln-pagination__link"
+               th:classappend="${page >= totalPages - 1} ? ' is-disabled' : ''"
+               th:href="${page >= totalPages - 1} ? '#' : @{/admin/unresolved(
+                    page=${page + 1},
+                    size=${size},
+                    status=${status},
+                    runId=${runId},
+                    q=${q}
+               )}">
+                Next
+            </a>
+        </div>
     </div>
 
     <script th:inline="javascript">
@@ -822,15 +968,23 @@
 
             const q = document.getElementById('q');
             const status = document.getElementById('status');
+            const pageInput = form.querySelector('input[name="page"]');
+
+            function submitFormResetPage() {
+                if (pageInput) {
+                    pageInput.value = '0';
+                }
+                form.requestSubmit();
+            }
 
             status?.addEventListener('change', () => {
-                form.requestSubmit();
+                submitFormResetPage();
             });
 
             q?.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    form.requestSubmit();
+                    submitFormResetPage();
                 }
             });
         })();

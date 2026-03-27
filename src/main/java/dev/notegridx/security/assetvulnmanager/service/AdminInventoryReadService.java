@@ -64,7 +64,9 @@ public class AdminInventoryReadService {
             String q,
             Boolean activeOnly,
             String activeOnlyPresent,
-            Long id
+            Long id,
+            int page,
+            int size
     ) {
         String effectiveQ = normalize(q);
         String effectiveStatus = normalizeStatus(status);
@@ -83,6 +85,14 @@ public class AdminInventoryReadService {
                         .toList();
             }
 
+            int safePage = 0;
+            int safeSize = 1;
+            int totalElements = list.size();
+            int totalPages = totalElements == 0 ? 0 : 1;
+            List<Integer> pagerItems = totalPages > 1
+                    ? buildPagerItems(safePage, totalPages)
+                    : List.of();
+
             return new UnresolvedListView(
                     list,
                     effectiveStatus,
@@ -90,7 +100,12 @@ public class AdminInventoryReadService {
                     effectiveQ,
                     false,
                     null,
-                    id
+                    id,
+                    safePage,
+                    safeSize,
+                    totalPages,
+                    totalElements,
+                    pagerItems
             );
         }
 
@@ -142,14 +157,32 @@ public class AdminInventoryReadService {
                 .sorted((a, b) -> Long.compare(sortId(b), sortId(a)))
                 .toList();
 
+        int safeSize = clamp(size, 10, 500);
+        int totalElements = list.size();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / safeSize);
+        int safePage = totalPages == 0 ? 0 : clamp(page, 0, totalPages - 1);
+
+        int fromIndex = Math.min(safePage * safeSize, totalElements);
+        int toIndex = Math.min(fromIndex + safeSize, totalElements);
+
+        List<UnresolvedReviewRow> paged = list.subList(fromIndex, toIndex);
+        List<Integer> pagerItems = totalPages > 1
+                ? buildPagerItems(safePage, totalPages)
+                : List.of();
+
         return new UnresolvedListView(
-                list,
+                paged,
                 effectiveStatus,
                 runId,
                 effectiveQ,
                 false,
                 null,
-                null
+                null,
+                safePage,
+                safeSize,
+                totalPages,
+                totalElements,
+                pagerItems
         );
     }
 
@@ -596,6 +629,26 @@ public class AdminInventoryReadService {
         }
     }
 
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static List<Integer> buildPagerItems(int currentPage, int totalPages) {
+        if (totalPages <= 0) {
+            return List.of();
+        }
+
+        int last = totalPages - 1;
+        int from = Math.max(0, currentPage - 2);
+        int to = Math.min(last, currentPage + 2);
+
+        List<Integer> items = new ArrayList<>();
+        for (int i = from; i <= to; i++) {
+            items.add(i);
+        }
+        return items;
+    }
+
     public enum CanonicalStatusView {
         LINKED_VALID("linkedValid", "LINKED"),
         LINKED_STALE("linkedStale", "LINKED STALE"),
@@ -723,7 +776,12 @@ public class AdminInventoryReadService {
             String q,
             boolean activeOnly,
             String activeOnlyPresent,
-            Long id
+            Long id,
+            int pageNumber,
+            int pageSize,
+            int totalPages,
+            long totalElements,
+            List<Integer> pagerItems
     ) {
     }
 }

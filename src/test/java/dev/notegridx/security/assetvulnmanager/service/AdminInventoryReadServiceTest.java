@@ -76,7 +76,7 @@ class AdminInventoryReadServiceTest {
         when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings(null, null, null, null, null, null);
+                service.findUnresolvedMappings(null, null, null, null, null, null, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.activeOnly()).isFalse();
@@ -84,6 +84,11 @@ class AdminInventoryReadServiceTest {
         assertThat(result.runId()).isNull();
         assertThat(result.id()).isNull();
         assertThat(result.mappings()).isEmpty();
+        assertThat(result.pageNumber()).isEqualTo(0);
+        assertThat(result.pageSize()).isEqualTo(50);
+        assertThat(result.totalPages()).isEqualTo(0);
+        assertThat(result.totalElements()).isEqualTo(0);
+        assertThat(result.pagerItems()).isEmpty();
 
         verify(softwareInstallRepository).findAll();
     }
@@ -94,7 +99,7 @@ class AdminInventoryReadServiceTest {
         when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("ALL", 99L, "  micro  ", true, "1", null);
+                service.findUnresolvedMappings("ALL", 99L, "  micro  ", true, "1", null, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.runId()).isEqualTo(99L);
@@ -102,6 +107,11 @@ class AdminInventoryReadServiceTest {
         assertThat(result.activeOnly()).isFalse();
         assertThat(result.id()).isNull();
         assertThat(result.mappings()).isEmpty();
+        assertThat(result.pageNumber()).isEqualTo(0);
+        assertThat(result.pageSize()).isEqualTo(50);
+        assertThat(result.totalPages()).isEqualTo(0);
+        assertThat(result.totalElements()).isEqualTo(0);
+        assertThat(result.pagerItems()).isEmpty();
 
         verify(softwareInstallRepository).findAll();
     }
@@ -112,11 +122,16 @@ class AdminInventoryReadServiceTest {
         when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("NEW", null, null, true, null, null);
+                service.findUnresolvedMappings("NEW", null, null, true, null, null, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.activeOnly()).isFalse();
         assertThat(result.mappings()).isEmpty();
+        assertThat(result.pageNumber()).isEqualTo(0);
+        assertThat(result.pageSize()).isEqualTo(50);
+        assertThat(result.totalPages()).isEqualTo(0);
+        assertThat(result.totalElements()).isEqualTo(0);
+        assertThat(result.pagerItems()).isEmpty();
 
         verify(softwareInstallRepository).findAll();
     }
@@ -129,7 +144,7 @@ class AdminInventoryReadServiceTest {
         when(unresolvedMappingRepository.findById(10L)).thenReturn(Optional.of(mapping1));
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings(null, 77L, null, null, null, 10L);
+                service.findUnresolvedMappings(null, 77L, null, null, null, 10L, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.runId()).isEqualTo(77L);
@@ -138,6 +153,12 @@ class AdminInventoryReadServiceTest {
         assertThat(result.mappings())
                 .extracting(AdminInventoryReadService.UnresolvedReviewRow::mapping)
                 .containsExactly(mapping1);
+
+        assertThat(result.pageNumber()).isEqualTo(0);
+        assertThat(result.pageSize()).isEqualTo(1);
+        assertThat(result.totalPages()).isEqualTo(1);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.pagerItems()).isEmpty();
 
         verify(unresolvedMappingRepository).findById(10L);
     }
@@ -148,11 +169,16 @@ class AdminInventoryReadServiceTest {
         when(unresolvedMappingRepository.findById(999L)).thenReturn(Optional.empty());
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings(null, null, null, null, null, 999L);
+                service.findUnresolvedMappings(null, null, null, null, null, 999L, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.id()).isEqualTo(999L);
         assertThat(result.mappings()).isEmpty();
+        assertThat(result.pageNumber()).isEqualTo(0);
+        assertThat(result.pageSize()).isEqualTo(1);
+        assertThat(result.totalPages()).isEqualTo(0);
+        assertThat(result.totalElements()).isEqualTo(0);
+        assertThat(result.pagerItems()).isEmpty();
 
         verify(unresolvedMappingRepository).findById(999L);
     }
@@ -171,6 +197,12 @@ class AdminInventoryReadServiceTest {
         lenient().when(mapping.getVendorRaw()).thenReturn(vendorRaw);
         lenient().when(mapping.getProductRaw()).thenReturn(productRaw);
         lenient().when(mapping.getVersionRaw()).thenReturn(null);
+        lenient().when(mapping.getNormalizedVendor()).thenReturn(vendorRaw);
+        lenient().when(mapping.getNormalizedProduct()).thenReturn(productRaw);
+        lenient().when(mapping.getLinkedCpeVendorId()).thenReturn(null);
+        lenient().when(mapping.getLinkedCpeProductId()).thenReturn(null);
+        lenient().when(mapping.getCandidateVendorIds()).thenReturn(null);
+        lenient().when(mapping.getCandidateProductIds()).thenReturn(null);
 
         return mapping;
     }
