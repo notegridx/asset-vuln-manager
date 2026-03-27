@@ -11,7 +11,19 @@
         <div class="page">
             <div class="page-header">
                 <div class="page-title">
-                    <h1>Login</h1>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span class="brand-mark" aria-hidden="true" style="display:inline-flex; align-items:center; justify-content:center; color:var(--accent, #7aa2ff);">
+                            <svg viewBox="0 0 24 24" class="brand-icon" style="width:20px; height:20px; display:block;">
+                                <circle cx="6" cy="6" r="2" />
+                                <circle cx="18" cy="6" r="2" />
+                                <circle cx="12" cy="18" r="2" />
+                                <line x1="6" y1="6" x2="18" y2="6" />
+                                <line x1="6" y1="6" x2="12" y2="18" />
+                                <line x1="18" y1="6" x2="12" y2="18" />
+                            </svg>
+                        </span>
+                        <h1 style="margin:0;">Login</h1>
+                    </div>
                     <div class="sub muted">asset-vuln-manager</div>
                 </div>
             </div>
@@ -54,15 +66,10 @@
                         <button type="submit" class="btn btn-primary">Login</button>
                     </div>
                 </form>
-
-                <div class="muted" style="margin-top:14px; font-size:12px; line-height:1.6;">
-                    An initial administrator account may be created at startup if bootstrap is enabled.<br>
-                    If enabled, credentials are provided via environment variables
-                    (e.g. <code>AVM_BOOTSTRAP_ADMIN_PASSWORD</code>).<br><br>
-                    After first login, change the password immediately, create a new administrator account
-                    with a non-guessable name, and disable the bootstrap administrator account.
-                </div>
             </div>
+            <p class="sub muted" style="margin:8px 0 0 0;">
+                Sign in to manage assets, software, and vulnerabilities.
+            </p>
         </div>
     </main>
 </div>
