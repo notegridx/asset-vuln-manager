@@ -8,11 +8,15 @@ import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
 import dev.notegridx.security.assetvulnmanager.repository.SystemSettingRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -135,7 +139,22 @@ public class CanonicalCpeLinkingService {
     @Transactional(readOnly = true)
     public MappingStats statsOverall(int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 5000));
-        List<SoftwareInstall> rows = softwareRepo.findAll().stream().limit(safeLimit).toList();
+
+        List<Long> ids = softwareRepo.findAllIds(PageRequest.of(0, safeLimit)).getContent();
+        if (ids.isEmpty()) {
+            return stats(List.of());
+        }
+
+        Map<Long, SoftwareInstall> byId = new HashMap<>();
+        for (SoftwareInstall s : softwareRepo.findAllById(ids)) {
+            byId.put(s.getId(), s);
+        }
+
+        List<SoftwareInstall> rows = ids.stream()
+                .map(byId::get)
+                .filter(Objects::nonNull)
+                .toList();
+
         return stats(rows);
     }
 

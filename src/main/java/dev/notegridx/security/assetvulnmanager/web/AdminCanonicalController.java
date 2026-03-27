@@ -446,7 +446,7 @@ public class AdminCanonicalController {
                 return local;
             }
 
-            CanonicalCpeLinkingService.MappingStats refreshed = linker.stats(softwareRepo.findAll());
+            CanonicalCpeLinkingService.MappingStats refreshed = linker.statsOverall(5000);
             cachedStats = refreshed;
             cachedStatsAtMillis = now;
             return refreshed;

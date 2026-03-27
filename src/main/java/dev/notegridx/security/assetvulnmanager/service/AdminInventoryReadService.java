@@ -71,9 +71,11 @@ public class AdminInventoryReadService {
         String effectiveQ = normalize(q);
         String effectiveStatus = normalizeStatus(status);
 
+        List<SoftwareInstall> allInstalls = softwareInstallRepository.findAll();
+
         if (id != null) {
             List<UnresolvedReviewRow> list = unresolvedMappingRepository.findById(id)
-                    .map(this::toReviewRow)
+                    .map(mapping -> toReviewRow(mapping, allInstalls))
                     .map(List::of)
                     .orElseGet(List::of);
 
@@ -132,7 +134,7 @@ public class AdminInventoryReadService {
             }
         }
 
-        List<UnresolvedReviewRow> list = softwareInstallRepository.findAll().stream()
+        List<UnresolvedReviewRow> list = allInstalls.stream()
                 .map(install -> toReviewRow(
                         install,
                         findBestMappingForInstall(install, mappingByNormalizedPair, mappingByRawPair)
@@ -186,8 +188,8 @@ public class AdminInventoryReadService {
         );
     }
 
-    private UnresolvedReviewRow toReviewRow(UnresolvedMapping mapping) {
-        List<SoftwareInstall> related = loadRelatedSoftware(mapping);
+    private UnresolvedReviewRow toReviewRow(UnresolvedMapping mapping, List<SoftwareInstall> allInstalls) {
+        List<SoftwareInstall> related = loadRelatedSoftware(mapping, allInstalls);
         CanonicalStatusView status = summarizeStatus(mapping, related);
         LinkedCanonicalView linked = summarizeLinkedCanonical(mapping, related);
 
@@ -234,19 +236,20 @@ public class AdminInventoryReadService {
         );
     }
 
-    private List<SoftwareInstall> loadRelatedSoftware(UnresolvedMapping mapping) {
+    private List<SoftwareInstall> loadRelatedSoftware(
+            UnresolvedMapping mapping,
+            List<SoftwareInstall> allInstalls
+    ) {
         String normalizedVendor = normalize(mapping.getNormalizedVendor());
         String normalizedProduct = normalize(mapping.getNormalizedProduct());
         String rawVendor = normalize(mapping.getVendorRaw());
         String rawProduct = normalize(mapping.getProductRaw());
 
-        List<SoftwareInstall> all = softwareInstallRepository.findAll();
-
         if (normalizedVendor == null && normalizedProduct == null && rawVendor == null && rawProduct == null) {
             return List.of();
         }
 
-        List<SoftwareInstall> exactNormalized = all.stream()
+        List<SoftwareInstall> exactNormalized = allInstalls.stream()
                 .filter(s -> Objects.equals(normalize(s.getNormalizedVendor()), normalizedVendor))
                 .filter(s -> Objects.equals(normalize(s.getNormalizedProduct()), normalizedProduct))
                 .toList();
@@ -255,7 +258,7 @@ public class AdminInventoryReadService {
             return exactNormalized;
         }
 
-        List<SoftwareInstall> exactRaw = all.stream()
+        List<SoftwareInstall> exactRaw = allInstalls.stream()
                 .filter(s -> Objects.equals(normalize(s.getVendorRaw()), rawVendor))
                 .filter(s -> Objects.equals(normalize(s.getProductRaw()), rawProduct))
                 .toList();
@@ -265,7 +268,7 @@ public class AdminInventoryReadService {
         }
 
         if (normalizedVendor != null) {
-            List<SoftwareInstall> vendorOnlyNormalized = all.stream()
+            List<SoftwareInstall> vendorOnlyNormalized = allInstalls.stream()
                     .filter(s -> Objects.equals(normalize(s.getNormalizedVendor()), normalizedVendor))
                     .toList();
             if (!vendorOnlyNormalized.isEmpty()) {
@@ -274,7 +277,7 @@ public class AdminInventoryReadService {
         }
 
         if (rawVendor != null) {
-            List<SoftwareInstall> vendorOnlyRaw = all.stream()
+            List<SoftwareInstall> vendorOnlyRaw = allInstalls.stream()
                     .filter(s -> Objects.equals(normalize(s.getVendorRaw()), rawVendor))
                     .toList();
             if (!vendorOnlyRaw.isEmpty()) {
@@ -283,7 +286,7 @@ public class AdminInventoryReadService {
         }
 
         if (normalizedProduct != null) {
-            List<SoftwareInstall> productOnlyNormalized = all.stream()
+            List<SoftwareInstall> productOnlyNormalized = allInstalls.stream()
                     .filter(s -> Objects.equals(normalize(s.getNormalizedProduct()), normalizedProduct))
                     .toList();
             if (!productOnlyNormalized.isEmpty()) {
@@ -292,7 +295,7 @@ public class AdminInventoryReadService {
         }
 
         if (rawProduct != null) {
-            return all.stream()
+            return allInstalls.stream()
                     .filter(s -> Objects.equals(normalize(s.getProductRaw()), rawProduct))
                     .toList();
         }
