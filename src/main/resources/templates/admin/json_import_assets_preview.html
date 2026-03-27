@@ -31,8 +31,8 @@
                 type="submit"
                 th:disabled="${demoMode}"
                 th:title="${demoMode ? 'Disabled in demo mode' : null}"
-                onclick="return confirm('Import valid rows? This will upsert assets and update last_seen_at.');">
-          Import Assets (Upsert)
+                onclick="return confirm('Import all valid rows?\n\nThis will create new assets or update existing ones, and refresh their last seen timestamp.');">
+          Import Valid Assets
         </button>
       </form>
     </div>
