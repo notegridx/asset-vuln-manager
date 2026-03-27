@@ -212,6 +212,7 @@ public class AdminCanonicalController {
 
         model.addAttribute("rows", rowPage.getContent());
         model.addAttribute("rowPage", rowPage);
+        model.addAttribute("pagerItems", buildPagerItems(rowPage));
 
         model.addAttribute("asset", assetId);
 
@@ -636,5 +637,39 @@ public class AdminCanonicalController {
             }
         }
         return null;
+    }
+
+    private static List<Integer> buildPagerItems(Page<?> page) {
+        List<Integer> items = new ArrayList<>();
+        int totalPages = page.getTotalPages();
+        if (totalPages <= 1) {
+            return items;
+        }
+
+        int current = page.getNumber();
+        int start = Math.max(0, current - 2);
+        int end = Math.min(totalPages - 1, current + 2);
+
+        if (start > 0) {
+            items.add(0);
+        }
+
+        if (start > 1) {
+            items.add(-1);
+        }
+
+        for (int i = start; i <= end; i++) {
+            items.add(i);
+        }
+
+        if (end < totalPages - 2) {
+            items.add(-1);
+        }
+
+        if (end < totalPages - 1) {
+            items.add(totalPages - 1);
+        }
+
+        return items;
     }
 }
