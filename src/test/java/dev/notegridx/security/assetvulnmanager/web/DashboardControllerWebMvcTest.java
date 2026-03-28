@@ -129,8 +129,8 @@ class DashboardControllerWebMvcTest {
                 .andExpect(model().attribute("criticalNoCpeCount", 2L))
                 .andExpect(model().attribute("criticalNoCpe", hasSize(2)))
 
-                .andExpect(model().attribute("topRange", "ALL"))
-                .andExpect(model().attribute("topRangeLabel", "All time"))
+                .andExpect(model().attribute("topRange", "D30"))
+                .andExpect(model().attribute("topRangeLabel", "Last 30 days"))
                 .andExpect(model().attribute("from", nullValue()))
                 .andExpect(model().attribute("to", nullValue()))
 
