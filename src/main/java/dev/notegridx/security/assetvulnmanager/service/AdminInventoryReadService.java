@@ -1,8 +1,10 @@
 package dev.notegridx.security.assetvulnmanager.service;
 
+import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.SoftwareInstall;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
+import dev.notegridx.security.assetvulnmanager.repository.AssetRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
 import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
 import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -28,6 +31,7 @@ public class AdminInventoryReadService {
     private final CanonicalCpeLinkingService canonicalCpeLinkingService;
     private final CpeVendorRepository cpeVendorRepository;
     private final CpeProductRepository cpeProductRepository;
+    private final AssetRepository assetRepository;
 
     public AdminInventoryReadService(
             ImportRunRepository importRunRepository,
@@ -35,7 +39,8 @@ public class AdminInventoryReadService {
             SoftwareInstallRepository softwareInstallRepository,
             CanonicalCpeLinkingService canonicalCpeLinkingService,
             CpeVendorRepository cpeVendorRepository,
-            CpeProductRepository cpeProductRepository
+            CpeProductRepository cpeProductRepository,
+            AssetRepository assetRepository
     ) {
         this.importRunRepository = importRunRepository;
         this.unresolvedMappingRepository = unresolvedMappingRepository;
@@ -43,6 +48,7 @@ public class AdminInventoryReadService {
         this.canonicalCpeLinkingService = canonicalCpeLinkingService;
         this.cpeVendorRepository = cpeVendorRepository;
         this.cpeProductRepository = cpeProductRepository;
+        this.assetRepository = assetRepository;
     }
 
     @Transactional(readOnly = true)
@@ -58,12 +64,22 @@ public class AdminInventoryReadService {
     }
 
     @Transactional(readOnly = true)
+    public List<Asset> findAllAssets() {
+        List<Asset> assets = new ArrayList<>(assetRepository.findAll());
+        assets.sort(Comparator
+                .comparing((Asset a) -> normalize(a.getName()), Comparator.nullsLast(String::compareToIgnoreCase))
+                .thenComparing(a -> a.getId() == null ? Long.MAX_VALUE : a.getId()));
+        return assets;
+    }
+
+    @Transactional(readOnly = true)
     public UnresolvedListView findUnresolvedMappings(
             String status,
             Long runId,
             String q,
             Boolean activeOnly,
             String activeOnlyPresent,
+            Long assetId,
             Long id,
             int page,
             int size
@@ -71,7 +87,14 @@ public class AdminInventoryReadService {
         String effectiveQ = normalize(q);
         String effectiveStatus = normalizeStatus(status);
 
-        List<SoftwareInstall> allInstalls = softwareInstallRepository.findAll();
+        List<SoftwareInstall> baseInstalls = softwareInstallRepository.findAll();
+
+        List<SoftwareInstall> allInstalls = assetId == null
+                ? baseInstalls
+                : baseInstalls.stream()
+                .filter(s -> s.getAsset() != null && Objects.equals(s.getAsset().getId(), assetId))
+                .toList();
+
 
         if (id != null) {
             List<UnresolvedReviewRow> list = unresolvedMappingRepository.findById(id)

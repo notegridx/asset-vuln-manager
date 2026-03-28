@@ -17,9 +17,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Controller
 public class AdminInventoryController {
+
+    private static final List<Integer> SIZE_OPTIONS = List.of(50, 100, 200, 500);
 
     private final AdminInventoryReadService adminInventoryReadService;
     private final UnresolvedResolutionService unresolvedResolutionService;
@@ -51,6 +54,7 @@ public class AdminInventoryController {
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
+            @RequestParam(name = "asset", required = false) Long asset,
             @RequestParam(name = "id", required = false) Long id,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "50") int size,
@@ -64,6 +68,7 @@ public class AdminInventoryController {
                 q,
                 null,
                 null,
+                asset,
                 id,
                 page,
                 size
@@ -75,10 +80,13 @@ public class AdminInventoryController {
         model.addAttribute("q", view.q());
         model.addAttribute("activeOnly", null);
         model.addAttribute("activeOnlyPresent", null);
+        model.addAttribute("asset", asset);
+        model.addAttribute("assets", adminInventoryReadService.findAllAssets());
         model.addAttribute("id", view.id());
 
         model.addAttribute("page", view.pageNumber());
         model.addAttribute("size", view.pageSize());
+        model.addAttribute("sizeOptions", SIZE_OPTIONS);
         model.addAttribute("totalPages", view.totalPages());
         model.addAttribute("totalElements", view.totalElements());
         model.addAttribute("pagerItems", view.pagerItems());
@@ -96,7 +104,9 @@ public class AdminInventoryController {
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
+            @RequestParam(name = "asset", required = false) Long asset,
             @RequestParam(name = "id", required = false) Long id,
+            @RequestParam(name = "size", defaultValue = "50") int size,
             RedirectAttributes ra,
             HttpServletRequest request,
             Model model
@@ -114,7 +124,7 @@ public class AdminInventoryController {
                 return htmxError("Invalid mappingId.");
             }
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, asset, id, size);
         }
 
         if (vendorId == null) {
@@ -122,7 +132,7 @@ public class AdminInventoryController {
                 return htmxError("Vendor ID is required. Please select from candidates (chips).");
             }
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates (chips).");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, asset, id, size);
         }
 
         try {
@@ -143,6 +153,7 @@ public class AdminInventoryController {
                         status,
                         runId,
                         q,
+                        asset,
                         id,
                         successMessage,
                         model
@@ -160,14 +171,16 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", errorMessage);
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, asset, id, size);
     }
 
     private static String redirectQuery(
             String status,
             Long runId,
             String q,
-            Long id
+            Long asset,
+            Long id,
+            int size
     ) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
@@ -184,8 +197,16 @@ public class AdminInventoryController {
             sb.append(first ? "?" : "&").append("q=").append(url(q));
             first = false;
         }
+        if (asset != null) {
+            sb.append(first ? "?" : "&").append("asset=").append(asset);
+            first = false;
+        }
         if (id != null) {
             sb.append(first ? "?" : "&").append("id=").append(id);
+            first = false;
+        }
+        if (size > 0) {
+            sb.append(first ? "?" : "&").append("size=").append(size);
         }
 
         return sb.toString();
@@ -226,7 +247,9 @@ public class AdminInventoryController {
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "activeOnly", required = false) Boolean activeOnly,
             @RequestParam(name = "activeOnlyPresent", required = false) String activeOnlyPresent,
+            @RequestParam(name = "asset", required = false) Long asset,
             @RequestParam(name = "id", required = false) Long id,
+            @RequestParam(name = "size", defaultValue = "50") int size,
             RedirectAttributes ra,
             HttpServletRequest request,
             Model model
@@ -244,7 +267,7 @@ public class AdminInventoryController {
                 return htmxError("Invalid mappingId.");
             }
             ra.addFlashAttribute("error", "Invalid mappingId.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, asset, id, size);
         }
 
         if (vendorId == null) {
@@ -252,7 +275,7 @@ public class AdminInventoryController {
                 return htmxError("Vendor ID is required. Please select from candidates.");
             }
             ra.addFlashAttribute("error", "Vendor ID is required. Please select from candidates.");
-            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
+            return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, asset, id, size);
         }
 
         try {
@@ -273,6 +296,7 @@ public class AdminInventoryController {
                         status,
                         runId,
                         q,
+                        asset,
                         id,
                         successMessage,
                         model
@@ -290,7 +314,7 @@ public class AdminInventoryController {
             ra.addFlashAttribute("error", errorMessage);
         }
 
-        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, id);
+        return "redirect:/admin/unresolved" + redirectQuery(status, runId, q, asset, id, size);
     }
 
     private Object buildHtmxSuccessResponse(
@@ -298,6 +322,7 @@ public class AdminInventoryController {
             String status,
             Long runId,
             String q,
+            Long asset,
             Long id,
             String successMessage,
             Model model
@@ -312,6 +337,7 @@ public class AdminInventoryController {
                 q,
                 null,
                 null,
+                asset,
                 mappingId,
                 0,
                 1
@@ -327,6 +353,7 @@ public class AdminInventoryController {
         model.addAttribute("q", rowView.q());
         model.addAttribute("activeOnly", null);
         model.addAttribute("activeOnlyPresent", null);
+        model.addAttribute("asset", asset);
         model.addAttribute("id", rowView.id());
 
         return "admin/fragments/unresolved_row :: row";

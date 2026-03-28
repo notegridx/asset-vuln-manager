@@ -90,6 +90,14 @@
         min-width: 260px;
     }
 
+    .um-filter-asset {
+        min-width: 220px;
+    }
+
+    .um-filter-rows {
+        min-width: 110px;
+    }
+
     .um-raw-stack {
         display: flex;
         flex-direction: column;
@@ -163,6 +171,12 @@
 
         .um-filter-search,
         .um-filter-search input {
+            min-width: 100%;
+            width: 100%;
+        }
+
+        .um-filter-asset,
+        .um-filter-rows {
             min-width: 100%;
             width: 100%;
         }
@@ -396,28 +410,23 @@
        Unresolved status visibility
        ========================================= */
 
-    /* Needs action / not resolved */
     .um-row--danger {
         border-left: 4px solid #ff4d4f;
     }
 
-    /* Resolvable / normalization needed */
     .um-row--warning {
         border-left: 4px solid #faad14;
     }
 
-    /* Partially linked */
     .um-row--info {
         border-left: 4px solid #1677ff;
     }
 
-    /* Linked / completed */
     .um-row--resolved {
         border-left: 4px solid #52c41a;
         opacity: 0.75;
     }
 
-    /* Linked but stale */
     .um-row--stale {
         border-left: 4px solid #8c8c8c;
         opacity: 0.75;
@@ -547,7 +556,6 @@
             <input th:if="${id != null}" type="hidden" name="id" th:value="${id}"/>
             <input type="hidden" name="runId" th:value="${runId != null ? runId : ''}"/>
             <input type="hidden" name="page" th:value="${page != null ? page : 0}"/>
-            <input type="hidden" name="size" th:value="${size != null ? size : 50}"/>
 
             <div class="um-filterbar__left">
                 <div class="um-stack-6 um-filter-search">
@@ -562,22 +570,40 @@
                 <div class="um-stack-6">
                     <label for="status">Status</label>
                     <select id="status" name="status">
-                        <option value="all" th:selected="${status == null or status == '' or status == 'all'}">ALL
-                        </option>
+                        <option value="all" th:selected="${status == null or status == '' or status == 'all'}">ALL</option>
                         <option value="fullyLinked" th:selected="${status == 'fullyLinked'}">FULLY LINKED</option>
-                        <option value="vendorOnlyLinked" th:selected="${status == 'vendorOnlyLinked'}">VENDOR ONLY
-                            LINKED
-                        </option>
+                        <option value="vendorOnlyLinked" th:selected="${status == 'vendorOnlyLinked'}">VENDOR ONLY LINKED</option>
                         <option value="notLinked" th:selected="${status == 'notLinked'}">NOT LINKED</option>
                         <option value="linkedValid" th:selected="${status == 'linkedValid'}">LINKED</option>
                         <option value="linkedStale" th:selected="${status == 'linkedStale'}">LINKED STALE</option>
                         <option value="fullyResolvable" th:selected="${status == 'fullyResolvable'}">FULLY RESOLVABLE</option>
-                        <option value="vendorResolvableOnly" th:selected="${status == 'vendorResolvableOnly'}">VENDOR
-                            RESOLVABLE
-                        </option>
+                        <option value="vendorResolvableOnly" th:selected="${status == 'vendorResolvableOnly'}">VENDOR RESOLVABLE</option>
                         <option value="unresolvable" th:selected="${status == 'unresolvable'}">UNRESOLVABLE</option>
-                        <option value="needsNormalization" th:selected="${status == 'needsNormalization'}">NOT
-                            NORMALIZED
+                        <option value="needsNormalization" th:selected="${status == 'needsNormalization'}">NOT NORMALIZED</option>
+                    </select>
+                </div>
+
+                <div class="um-stack-6 um-filter-asset">
+                    <label for="asset">Asset</label>
+                    <select id="asset" name="asset">
+                        <option value="">All assets</option>
+                        <option th:each="a : ${assets}"
+                                th:value="${a.id}"
+                                th:selected="${asset != null and asset == a.id}"
+                                th:text="${a.name != null and !#strings.isEmpty(a.name) ? a.name + ' (#' + a.id + ')' : '#' + a.id}">
+                            asset
+                        </option>
+                    </select>
+                </div>
+
+                <div class="um-stack-6 um-filter-rows">
+                    <label for="size">Rows</label>
+                    <select id="size" name="size">
+                        <option th:each="opt : ${sizeOptions}"
+                                th:value="${opt}"
+                                th:selected="${size == opt}"
+                                th:text="${opt}">
+                            50
                         </option>
                     </select>
                 </div>
@@ -587,17 +613,23 @@
                 <span class="pill" th:text="'Total: ' + ${totalElements}">Total: 0</span>
 
                 <div class="um-viewing">
-    <span th:text="${'Viewing: status=' + ((status != null and !#strings.isEmpty(status)) ? status : 'all')}">
-        Viewing: status=all
-    </span>
+                    <span th:text="${'Viewing: status=' + ((status != null and !#strings.isEmpty(status)) ? status : 'all')}">
+                        Viewing: status=all
+                    </span>
+                    <span th:if="${asset != null}" th:text="${' / asset=#' + asset}">
+                        / asset=#1
+                    </span>
                     <span th:if="${q != null and !#strings.isEmpty(q)}"
                           th:text="${' / q=' + q}">
-        / q=keyword
-    </span>
+                        / q=keyword
+                    </span>
+                    <span th:if="${size != null}" th:text="${' / rows=' + size}">
+                        / rows=50
+                    </span>
                     <span th:if="${totalPages != null and totalPages > 0}"
                           th:text="${' / page=' + (page + 1) + ' of ' + totalPages}">
-        / page=1 of 1
-    </span>
+                        / page=1 of 1
+                    </span>
                 </div>
             </div>
         </form>
@@ -605,7 +637,13 @@
         <div th:if="${id != null}" class="um-id-scope">
             <span class="pill" th:text="'Reviewing unresolved ID: ' + ${id}">Reviewing unresolved ID: 1</span>
             <a class="btn btn-soft"
-               th:href="@{/admin/unresolved(status='all')}">
+               th:href="@{/admin/unresolved(
+                    status=${status != null ? status : 'all'},
+                    runId=${runId},
+                    q=${q},
+                    asset=${asset},
+                    size=${size}
+               )}">
                 Clear ID Filter
             </a>
         </div>
@@ -702,7 +740,9 @@
                             <input type="hidden" name="status" th:value="${status}"/>
                             <input type="hidden" name="runId" th:value="${runId}"/>
                             <input type="hidden" name="q" th:value="${q}"/>
+                            <input type="hidden" name="asset" th:value="${asset}"/>
                             <input type="hidden" name="id" th:value="${id}"/>
+                            <input type="hidden" name="size" th:value="${size}"/>
 
                             <input type="hidden" class="js-submit-vendor-id" name="cpeVendorId" value=""/>
                             <input type="hidden" class="js-submit-product-id" name="cpeProductId" value=""/>
@@ -773,7 +813,8 @@
                     size=${size},
                     status=${status},
                     runId=${runId},
-                    q=${q}
+                    q=${q},
+                    asset=${asset}
                )}">
                 Prev
             </a>
@@ -785,7 +826,8 @@
                     size=${size},
                     status=${status},
                     runId=${runId},
-                    q=${q}
+                    q=${q},
+                    asset=${asset}
                )}">
                 1
             </a>
@@ -808,7 +850,8 @@
                         size=${size},
                         status=${status},
                         runId=${runId},
-                        q=${q}
+                        q=${q},
+                        asset=${asset}
                    )}"
                    th:text="${p + 1}">
                     1
@@ -827,7 +870,8 @@
                     size=${size},
                     status=${status},
                     runId=${runId},
-                    q=${q}
+                    q=${q},
+                    asset=${asset}
                )}"
                th:text="${totalPages}">
                 1
@@ -840,7 +884,8 @@
                     size=${size},
                     status=${status},
                     runId=${runId},
-                    q=${q}
+                    q=${q},
+                    asset=${asset}
                )}">
                 Next
             </a>
@@ -968,6 +1013,8 @@
 
             const q = document.getElementById('q');
             const status = document.getElementById('status');
+            const asset = document.getElementById('asset');
+            const size = document.getElementById('size');
             const pageInput = form.querySelector('input[name="page"]');
 
             function submitFormResetPage() {
@@ -978,6 +1025,14 @@
             }
 
             status?.addEventListener('change', () => {
+                submitFormResetPage();
+            });
+
+            asset?.addEventListener('change', () => {
+                submitFormResetPage();
+            });
+
+            size?.addEventListener('change', () => {
                 submitFormResetPage();
             });
 
