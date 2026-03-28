@@ -190,8 +190,8 @@
         </div>
 
         <div class="actions" style="margin-top:14px;">
-            <button class="btn" type="submit" th:disabled="${demoMode}">Save</button>
             <a class="btn btn-ghost" th:href="@{/assets/{id}(id=${asset.id})}">Cancel</a>
+            <button class="btn" type="submit" th:disabled="${demoMode}">Save</button>
         </div>
 
     </form>
