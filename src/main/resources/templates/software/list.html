@@ -274,13 +274,28 @@
                                 </span>
                             </div>
 
+                            <div th:if="${a != null and a.vendorOnlyLinkedSql}"
+                                 style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+
+                                <span class="badge badge--warn"
+                                      th:title="${s.cpeVendorId}"
+                                      th:text="${(s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null) ? vendorNameMap[s.cpeVendorId] : 'VENDOR LINKED'}">
+                                    microsoft
+                                </span>
+
+                                <span class="badge"
+                                      th:title="${a.reason}">
+                                    PRODUCT NOT LINKED
+                                </span>
+                            </div>
+
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"
-                                 th:if="${a != null and a.result != null and a.result.name() == 'RESOLVED'}">
+                                 th:if="${a != null and a.result != null and a.result.name() == 'RESOLVED' and !a.vendorOnlyLinkedSql}">
                                 <span class="badge" th:title="${a.reason}">RESOLVABLE</span>
                             </div>
 
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"
-                                 th:if="${a != null and a.result != null and a.result.name() == 'UNRESOLVED'}">
+                                 th:if="${a != null and a.result != null and a.result.name() == 'UNRESOLVED' and !a.vendorOnlyLinkedSql}">
                                 <span class="badge badge--danger" th:title="${a.reason}">UNRESOLVABLE</span>
                             </div>
 
