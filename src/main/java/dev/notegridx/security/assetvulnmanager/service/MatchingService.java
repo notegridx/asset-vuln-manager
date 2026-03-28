@@ -506,13 +506,7 @@ public class MatchingService {
 					continue;
 				}
 
-				VersionRangeMatcher.Verdict verdict = versionMatcher.verdict(
-						softwareVersion,
-						a.getVersionStartIncluding(),
-						a.getVersionStartExcluding(),
-						a.getVersionEndIncluding(),
-						a.getVersionEndExcluding()
-				);
+				VersionRangeMatcher.Verdict verdict = evaluateAffectedVersionVerdict(a, softwareVersion);
 
 				if (verdict == VersionRangeMatcher.Verdict.NO_MATCH) {
 					logVersionEvaluation(
@@ -555,6 +549,48 @@ public class MatchingService {
 		}
 
 		return best;
+	}
+
+	private VersionRangeMatcher.Verdict evaluateAffectedVersionVerdict(
+			VulnerabilityAffectedCpe affected,
+			String softwareVersion
+	) {
+		if (affected == null) {
+			return VersionRangeMatcher.Verdict.NO_MATCH;
+		}
+
+		boolean hasRange =
+				normalize(affected.getVersionStartIncluding()) != null
+						|| normalize(affected.getVersionStartExcluding()) != null
+						|| normalize(affected.getVersionEndIncluding()) != null
+						|| normalize(affected.getVersionEndExcluding()) != null;
+
+		if (hasRange) {
+			return versionMatcher.verdict(
+					softwareVersion,
+					affected.getVersionStartIncluding(),
+					affected.getVersionStartExcluding(),
+					affected.getVersionEndIncluding(),
+					affected.getVersionEndExcluding()
+			);
+		}
+
+		String affectedVersion = normalize(extractVersionFromCpe23(affected.getCpeName()));
+		if (affectedVersion == null) {
+			return VersionRangeMatcher.Verdict.NO_VERSION_CONSTRAINT;
+		}
+
+		if (softwareVersion == null) {
+			return VersionRangeMatcher.Verdict.UNKNOWN_VERSION;
+		}
+
+		try {
+			return versionMatcher.compare(softwareVersion, affectedVersion) == 0
+					? VersionRangeMatcher.Verdict.MATCH
+					: VersionRangeMatcher.Verdict.NO_MATCH;
+		} catch (Exception e) {
+			return VersionRangeMatcher.Verdict.UNPARSABLE_VERSION;
+		}
 	}
 
 	private void logVersionEvaluation(

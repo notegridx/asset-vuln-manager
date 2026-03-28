@@ -886,4 +886,54 @@ class MatchingServiceSqlDatasetIntegrationTest {
     private void assertNoAlert(long softwareInstallId, long vulnerabilityId) {
         assertThat(findAlert(softwareInstallId, vulnerabilityId)).isNull();
     }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case32_dict_id_fixed_cpe_version_exact_match.sql"
+    })
+    void case32_dictId_fixedCpeVersion_exactMatch_generatesConfirmedAlert() {
+        assertSeedPresent(94001L, 95001L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(94001L, 95001L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getUncertainReason()).isNull();
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+        assertThat(alert.getCloseReason()).isNull();
+        assertThat(alert.getClosedAt()).isNull();
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case33_dict_id_fixed_cpe_version_no_match.sql"
+    })
+    void case33_dictId_fixedCpeVersion_differentVersion_generatesNoAlert() {
+        assertSeedPresent(94002L, 95002L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(94002L, 95002L);
+        assertThat(alert).isNull();
+        assertThat(alertRepository.findAll()).isEmpty();
+    }
 }

@@ -198,13 +198,7 @@ public class CriteriaEvaluator {
             softwareVersion = normalize(extractVersionFromCpe23(si.getCpeName()));
         }
 
-        VersionRangeMatcher.Verdict verdict = versionMatcher.verdict(
-                softwareVersion,
-                predicate.versionStartIncluding(),
-                predicate.versionStartExcluding(),
-                predicate.versionEndIncluding(),
-                predicate.versionEndExcluding()
-        );
+        VersionRangeMatcher.Verdict verdict = evaluateVersionVerdict(predicate, softwareVersion);
 
         if (verdict == VersionRangeMatcher.Verdict.NO_MATCH) {
             logPredicateVersionEvaluation(
@@ -245,6 +239,48 @@ public class CriteriaEvaluator {
         }
 
         return PredicateEvalOutcome.matched(PredicateEvalStatus.MATCH, result);
+    }
+
+    private VersionRangeMatcher.Verdict evaluateVersionVerdict(
+            CriteriaTreeLoader.CriteriaCpePredicate predicate,
+            String softwareVersion
+    ) {
+        if (predicate == null) {
+            return VersionRangeMatcher.Verdict.NO_MATCH;
+        }
+
+        boolean hasRange =
+                normalize(predicate.versionStartIncluding()) != null
+                        || normalize(predicate.versionStartExcluding()) != null
+                        || normalize(predicate.versionEndIncluding()) != null
+                        || normalize(predicate.versionEndExcluding()) != null;
+
+        if (hasRange) {
+            return versionMatcher.verdict(
+                    softwareVersion,
+                    predicate.versionStartIncluding(),
+                    predicate.versionStartExcluding(),
+                    predicate.versionEndIncluding(),
+                    predicate.versionEndExcluding()
+            );
+        }
+
+        String predicateVersion = normalize(extractVersionFromCpe23(predicate.cpeName()));
+        if (predicateVersion == null) {
+            return VersionRangeMatcher.Verdict.NO_VERSION_CONSTRAINT;
+        }
+
+        if (softwareVersion == null) {
+            return VersionRangeMatcher.Verdict.UNKNOWN_VERSION;
+        }
+
+        try {
+            return versionMatcher.compare(softwareVersion, predicateVersion) == 0
+                    ? VersionRangeMatcher.Verdict.MATCH
+                    : VersionRangeMatcher.Verdict.NO_MATCH;
+        } catch (Exception e) {
+            return VersionRangeMatcher.Verdict.UNPARSABLE_VERSION;
+        }
     }
 
     private void logPredicateSkip(
