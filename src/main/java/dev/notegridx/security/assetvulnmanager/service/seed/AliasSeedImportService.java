@@ -204,8 +204,7 @@ public class AliasSeedImportService {
                     continue;
                 }
 
-                Optional<CpeVendorAlias> existing =
-                        vendorAliasRepo.findFirstByAliasNormAndStatusIgnoreCase(aliasNorm, ACTIVE);
+                Optional<CpeVendorAlias> existing = resolveExistingVendorAlias(aliasNorm);
 
                 if (existing.isPresent()) {
                     if (Objects.equals(existing.get().getCpeVendorId(), vendorId)) {
@@ -215,12 +214,14 @@ public class AliasSeedImportService {
                                 canonicalVendorNorm,
                                 aliasNorm,
                                 safe(raw),
-                                "Already exists for the same canonical vendor. vendorId=" + vendorId
+                                buildVendorExistingDetail(existing.get(), vendorId)
                         ));
                     } else {
                         vConflict++;
                         String detail = "Alias already points to a different vendor. existingVendorId="
-                                + existing.get().getCpeVendorId() + ", wantedVendorId=" + vendorId;
+                                + existing.get().getCpeVendorId()
+                                + ", wantedVendorId=" + vendorId
+                                + ", existingStatus=" + safe(existing.get().getStatus());
                         notes.add("Vendor conflict: canonical=" + canonicalVendorNorm + ", alias=" + aliasNorm);
                         vendorConflictedRows.add(new ResultRow(
                                 "Vendor",
@@ -352,8 +353,7 @@ public class AliasSeedImportService {
                     continue;
                 }
 
-                Optional<CpeProductAlias> existing =
-                        productAliasRepo.findFirstByCpeVendorIdAndAliasNormAndStatusIgnoreCase(vendorId, aliasNorm, ACTIVE);
+                Optional<CpeProductAlias> existing = resolveExistingProductAlias(vendorId, aliasNorm);
 
                 if (existing.isPresent()) {
                     if (Objects.equals(existing.get().getCpeProductId(), productId)) {
@@ -363,13 +363,14 @@ public class AliasSeedImportService {
                                 canonicalVendorNorm + " / " + canonicalProductNorm,
                                 aliasNorm,
                                 safe(raw),
-                                "Already exists for the same canonical product. vendorId="
-                                        + vendorId + ", productId=" + productId
+                                buildProductExistingDetail(existing.get(), vendorId, productId)
                         ));
                     } else {
                         pConflict++;
                         String detail = "Alias already points to a different product. existingProductId="
-                                + existing.get().getCpeProductId() + ", wantedProductId=" + productId;
+                                + existing.get().getCpeProductId()
+                                + ", wantedProductId=" + productId
+                                + ", existingStatus=" + safe(existing.get().getStatus());
                         notes.add("Product conflict: canonical=" + canonicalVendorNorm + "/" + canonicalProductNorm
                                 + ", alias=" + aliasNorm);
                         productConflictedRows.add(new ResultRow(
@@ -445,6 +446,43 @@ public class AliasSeedImportService {
                         dedupedAliasRows
                 )
         );
+    }
+
+    private Optional<CpeVendorAlias> resolveExistingVendorAlias(String aliasNorm) {
+        Optional<CpeVendorAlias> active =
+                vendorAliasRepo.findFirstByAliasNormAndStatusIgnoreCase(aliasNorm, ACTIVE);
+        if (active.isPresent()) {
+            return active;
+        }
+        return vendorAliasRepo.findByAliasNorm(aliasNorm);
+    }
+
+    private Optional<CpeProductAlias> resolveExistingProductAlias(Long vendorId, String aliasNorm) {
+        Optional<CpeProductAlias> active =
+                productAliasRepo.findFirstByCpeVendorIdAndAliasNormAndStatusIgnoreCase(vendorId, aliasNorm, ACTIVE);
+        if (active.isPresent()) {
+            return active;
+        }
+        return productAliasRepo.findFirstByCpeVendorIdAndAliasNorm(vendorId, aliasNorm);
+    }
+
+    private static String buildVendorExistingDetail(CpeVendorAlias existing, Long vendorId) {
+        String status = safe(existing.getStatus());
+        if (ACTIVE.equalsIgnoreCase(status)) {
+            return "Already exists for the same canonical vendor. vendorId=" + vendorId;
+        }
+        return "Already exists for the same canonical vendor but is not ACTIVE. vendorId="
+                + vendorId + ", existingStatus=" + status;
+    }
+
+    private static String buildProductExistingDetail(CpeProductAlias existing, Long vendorId, Long productId) {
+        String status = safe(existing.getStatus());
+        if (ACTIVE.equalsIgnoreCase(status)) {
+            return "Already exists for the same canonical product. vendorId="
+                    + vendorId + ", productId=" + productId;
+        }
+        return "Already exists for the same canonical product but is not ACTIVE. vendorId="
+                + vendorId + ", productId=" + productId + ", existingStatus=" + status;
     }
 
     private static int sanitizeConfidence(Integer value) {

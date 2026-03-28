@@ -13,6 +13,8 @@ public interface CpeProductAliasRepository extends JpaRepository<CpeProductAlias
 
     Optional<CpeProductAlias> findByCpeVendorIdAndAliasNorm(Long cpeVendorId, String aliasNorm);
 
+    Optional<CpeProductAlias> findFirstByCpeVendorIdAndAliasNorm(Long cpeVendorId, String aliasNorm);
+
     Optional<CpeProductAlias> findFirstByCpeVendorIdAndAliasNormAndStatusIgnoreCase(Long cpeVendorId, String aliasNorm, String status);
 
     @Query("""
