@@ -64,7 +64,7 @@
                 <div class="actions" style="gap:10px; align-items:flex-end; flex-wrap:wrap;">
                     <div>
                         <label class="muted" style="display:block; font-size:12px; margin-bottom:6px;">Close reason</label>
-                        <select th:field="*{closeReason}">
+                        <select th:field="*{closeReason}" th:disabled="${demoMode}">
                             <option value="" disabled selected>Select a reason</option>
                             <option th:each="r : ${closeReasons}"
                                     th:value="${r}"
@@ -81,7 +81,12 @@
                     </div>
 
                     <div>
-                        <button type="submit" class="btn btn-danger">Close Alert</button>
+                        <button type="submit"
+                                class="btn btn-danger"
+                                th:disabled="${demoMode}"
+                                th:title="${demoMode} ? 'Disabled in demo mode' : ''">
+                            Close Alert
+                        </button>
                     </div>
                 </div>
 
