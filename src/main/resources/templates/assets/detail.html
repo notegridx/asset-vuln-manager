@@ -138,164 +138,156 @@
         </div>
     </div>
 
-    <div class="card card--section">
-        <div class="actions" style="margin:0 0 12px 0;">
-            <h2 style="margin:0;">Asset Information</h2>
-            <div class="muted text-12">
-                Full asset metadata currently stored in the inventory record.
-            </div>
-        </div>
+    <div class="kv"
+         style="margin-top:12px; grid-template-columns: 180px 1fr 180px 1fr; gap:10px 14px;">
 
-        <div class="kv" style="grid-template-columns: 180px 1fr 180px 1fr; gap:10px 14px;">
+        <b>ID</b>
+        <span th:text="${asset.id}">1</span>
 
-            <b>ID</b>
-            <span th:text="${asset.id}">1</span>
+        <b>Name</b>
+        <span th:text="${asset.name != null && !#strings.isEmpty(asset.name) ? asset.name : '-'}">WIN11</span>
 
-            <b>Name</b>
-            <span th:text="${asset.name != null && !#strings.isEmpty(asset.name) ? asset.name : '-'}">WIN11</span>
-
-            <b>External Key</b>
-            <span style="overflow-wrap:anywhere;"
-                  th:text="${asset.externalKey != null && !#strings.isEmpty(asset.externalKey) ? asset.externalKey : '-'}">
+        <b>External Key</b>
+        <span style="overflow-wrap:anywhere;"
+              th:text="${asset.externalKey != null && !#strings.isEmpty(asset.externalKey) ? asset.externalKey : '-'}">
             EEE03154-0166-4159-ACCA-00F55F875C24
         </span>
 
-            <b>Asset Type</b>
-            <span th:text="${asset.assetType != null && !#strings.isEmpty(asset.assetType) ? asset.assetType : '-'}">endpoint</span>
+        <b>Asset Type</b>
+        <span th:text="${asset.assetType != null && !#strings.isEmpty(asset.assetType) ? asset.assetType : '-'}">endpoint</span>
 
-            <b>Owner</b>
-            <span th:text="${asset.owner != null && !#strings.isEmpty(asset.owner) ? asset.owner : '-'}">vboxuser</span>
+        <b>Owner</b>
+        <span th:text="${asset.owner != null && !#strings.isEmpty(asset.owner) ? asset.owner : '-'}">vboxuser</span>
 
-            <b>Source</b>
-            <span th:text="${asset.source != null && !#strings.isEmpty(asset.source) ? asset.source : '-'}">JSON_UPLOAD</span>
+        <b>Source</b>
+        <span th:text="${asset.source != null && !#strings.isEmpty(asset.source) ? asset.source : '-'}">JSON_UPLOAD</span>
 
-            <b>Note</b>
-            <span th:text="${asset.note != null && !#strings.isEmpty(asset.note) ? asset.note : '-'}">-</span>
+        <b>Note</b>
+        <span th:text="${asset.note != null && !#strings.isEmpty(asset.note) ? asset.note : '-'}">-</span>
 
-            <b>Platform</b>
-            <span th:text="${asset.platform != null && !#strings.isEmpty(asset.platform) ? asset.platform : '-'}">windows</span>
+        <b>Platform</b>
+        <span th:text="${asset.platform != null && !#strings.isEmpty(asset.platform) ? asset.platform : '-'}">windows</span>
 
-            <b>OS Version</b>
-            <span th:text="${asset.osVersion != null && !#strings.isEmpty(asset.osVersion) ? asset.osVersion : '-'}">
+        <b>OS Version</b>
+        <span th:text="${asset.osVersion != null && !#strings.isEmpty(asset.osVersion) ? asset.osVersion : '-'}">
             Microsoft Windows 11 Pro 10.0.26200
         </span>
 
-            <b>System UUID</b>
-            <span style="overflow-wrap:anywhere;"
-                  th:text="${asset.systemUuid != null && !#strings.isEmpty(asset.systemUuid) ? asset.systemUuid : '-'}">
+        <b>System UUID</b>
+        <span style="overflow-wrap:anywhere;"
+              th:text="${asset.systemUuid != null && !#strings.isEmpty(asset.systemUuid) ? asset.systemUuid : '-'}">
             uuid
         </span>
 
-            <b>Serial Number</b>
-            <span style="overflow-wrap:anywhere;"
-                  th:text="${asset.serialNumber != null && !#strings.isEmpty(asset.serialNumber) ? asset.serialNumber : '-'}">
+        <b>Serial Number</b>
+        <span style="overflow-wrap:anywhere;"
+              th:text="${asset.serialNumber != null && !#strings.isEmpty(asset.serialNumber) ? asset.serialNumber : '-'}">
             serial
         </span>
 
-            <b>Hardware Vendor</b>
-            <span th:text="${asset.hardwareVendor != null && !#strings.isEmpty(asset.hardwareVendor) ? asset.hardwareVendor : '-'}">
+        <b>Hardware Vendor</b>
+        <span th:text="${asset.hardwareVendor != null && !#strings.isEmpty(asset.hardwareVendor) ? asset.hardwareVendor : '-'}">
             vendor
         </span>
 
-            <b>Hardware Model</b>
-            <span th:text="${asset.hardwareModel != null && !#strings.isEmpty(asset.hardwareModel) ? asset.hardwareModel : '-'}">
+        <b>Hardware Model</b>
+        <span th:text="${asset.hardwareModel != null && !#strings.isEmpty(asset.hardwareModel) ? asset.hardwareModel : '-'}">
             model
         </span>
 
-            <b>Hardware Version</b>
-            <span th:text="${asset.hardwareVersion != null && !#strings.isEmpty(asset.hardwareVersion) ? asset.hardwareVersion : '-'}">
+        <b>Hardware Version</b>
+        <span th:text="${asset.hardwareVersion != null && !#strings.isEmpty(asset.hardwareVersion) ? asset.hardwareVersion : '-'}">
             version
         </span>
 
-            <b>Computer Name</b>
-            <span th:text="${asset.computerName != null && !#strings.isEmpty(asset.computerName) ? asset.computerName : '-'}">
+        <b>Computer Name</b>
+        <span th:text="${asset.computerName != null && !#strings.isEmpty(asset.computerName) ? asset.computerName : '-'}">
             computer-name
         </span>
 
-            <b>Local Hostname</b>
-            <span th:text="${asset.localHostname != null && !#strings.isEmpty(asset.localHostname) ? asset.localHostname : '-'}">
+        <b>Local Hostname</b>
+        <span th:text="${asset.localHostname != null && !#strings.isEmpty(asset.localHostname) ? asset.localHostname : '-'}">
             local-hostname
         </span>
 
-            <b>Hostname</b>
-            <span th:text="${asset.hostname != null && !#strings.isEmpty(asset.hostname) ? asset.hostname : '-'}">
+        <b>Hostname</b>
+        <span th:text="${asset.hostname != null && !#strings.isEmpty(asset.hostname) ? asset.hostname : '-'}">
             hostname
         </span>
 
-            <b>CPU Brand</b>
-            <span th:text="${asset.cpuBrand != null && !#strings.isEmpty(asset.cpuBrand) ? asset.cpuBrand : '-'}">
+        <b>CPU Brand</b>
+        <span th:text="${asset.cpuBrand != null && !#strings.isEmpty(asset.cpuBrand) ? asset.cpuBrand : '-'}">
             Intel
         </span>
 
-            <b>CPU Physical Cores</b>
-            <span th:text="${asset.cpuPhysicalCores != null ? asset.cpuPhysicalCores : '-'}">4</span>
+        <b>CPU Physical Cores</b>
+        <span th:text="${asset.cpuPhysicalCores != null ? asset.cpuPhysicalCores : '-'}">4</span>
 
-            <b>CPU Logical Cores</b>
-            <span th:text="${asset.cpuLogicalCores != null ? asset.cpuLogicalCores : '-'}">8</span>
+        <b>CPU Logical Cores</b>
+        <span th:text="${asset.cpuLogicalCores != null ? asset.cpuLogicalCores : '-'}">8</span>
 
-            <b>CPU Sockets</b>
-            <span th:text="${asset.cpuSockets != null ? asset.cpuSockets : '-'}">1</span>
+        <b>CPU Sockets</b>
+        <span th:text="${asset.cpuSockets != null ? asset.cpuSockets : '-'}">1</span>
 
-            <b>Physical Memory</b>
-            <span th:text="${asset.physicalMemory != null ? asset.physicalMemory : '-'}">17179869184</span>
+        <b>Physical Memory</b>
+        <span th:text="${asset.physicalMemory != null ? asset.physicalMemory : '-'}">17179869184</span>
 
-            <b>Architecture</b>
-            <span th:text="${asset.arch != null && !#strings.isEmpty(asset.arch) ? asset.arch : '-'}">x64</span>
+        <b>Architecture</b>
+        <span th:text="${asset.arch != null && !#strings.isEmpty(asset.arch) ? asset.arch : '-'}">x64</span>
 
-            <b>Board Vendor</b>
-            <span th:text="${asset.boardVendor != null && !#strings.isEmpty(asset.boardVendor) ? asset.boardVendor : '-'}">
+        <b>Board Vendor</b>
+        <span th:text="${asset.boardVendor != null && !#strings.isEmpty(asset.boardVendor) ? asset.boardVendor : '-'}">
             vendor
         </span>
 
-            <b>Board Model</b>
-            <span th:text="${asset.boardModel != null && !#strings.isEmpty(asset.boardModel) ? asset.boardModel : '-'}">
+        <b>Board Model</b>
+        <span th:text="${asset.boardModel != null && !#strings.isEmpty(asset.boardModel) ? asset.boardModel : '-'}">
             model
         </span>
 
-            <b>Board Version</b>
-            <span th:text="${asset.boardVersion != null && !#strings.isEmpty(asset.boardVersion) ? asset.boardVersion : '-'}">
+        <b>Board Version</b>
+        <span th:text="${asset.boardVersion != null && !#strings.isEmpty(asset.boardVersion) ? asset.boardVersion : '-'}">
             version
         </span>
 
-            <b>Board Serial</b>
-            <span th:text="${asset.boardSerial != null && !#strings.isEmpty(asset.boardSerial) ? asset.boardSerial : '-'}">
+        <b>Board Serial</b>
+        <span th:text="${asset.boardSerial != null && !#strings.isEmpty(asset.boardSerial) ? asset.boardSerial : '-'}">
             serial
         </span>
 
-            <b>OS Name</b>
-            <span th:text="${asset.osName != null && !#strings.isEmpty(asset.osName) ? asset.osName : '-'}">
+        <b>OS Name</b>
+        <span th:text="${asset.osName != null && !#strings.isEmpty(asset.osName) ? asset.osName : '-'}">
             Microsoft Windows
         </span>
 
-            <b>OS Build</b>
-            <span th:text="${asset.osBuild != null && !#strings.isEmpty(asset.osBuild) ? asset.osBuild : '-'}">
+        <b>OS Build</b>
+        <span th:text="${asset.osBuild != null && !#strings.isEmpty(asset.osBuild) ? asset.osBuild : '-'}">
             26200
         </span>
 
-            <b>OS Major</b>
-            <span th:text="${asset.osMajor != null ? asset.osMajor : '-'}">11</span>
+        <b>OS Major</b>
+        <span th:text="${asset.osMajor != null ? asset.osMajor : '-'}">11</span>
 
-            <b>OS Minor</b>
-            <span th:text="${asset.osMinor != null ? asset.osMinor : '-'}">0</span>
+        <b>OS Minor</b>
+        <span th:text="${asset.osMinor != null ? asset.osMinor : '-'}">0</span>
 
-            <b>OS Patch</b>
-            <span th:text="${asset.osPatch != null ? asset.osPatch : '-'}">0</span>
+        <b>OS Patch</b>
+        <span th:text="${asset.osPatch != null ? asset.osPatch : '-'}">0</span>
 
-            <b>Last Seen</b>
-            <span th:text="${asset.lastSeenAt != null ? #temporals.format(asset.lastSeenAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
+        <b>Last Seen</b>
+        <span th:text="${asset.lastSeenAt != null ? #temporals.format(asset.lastSeenAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
             2026-03-08 16:44:02
         </span>
 
-            <b>Created At</b>
-            <span th:text="${asset.createdAt != null ? #temporals.format(asset.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
+        <b>Created At</b>
+        <span th:text="${asset.createdAt != null ? #temporals.format(asset.createdAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
             2026-03-08 16:44:02
         </span>
 
-            <b>Updated At</b>
-            <span th:text="${asset.updatedAt != null ? #temporals.format(asset.updatedAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
+        <b>Updated At</b>
+        <span th:text="${asset.updatedAt != null ? #temporals.format(asset.updatedAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">
             2026-03-08 16:44:02
         </span>
-        </div>
     </div>
 
     <hr/>
