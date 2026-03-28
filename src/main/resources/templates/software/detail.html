@@ -8,6 +8,65 @@
 <body th:replace="~{layout/base :: layout('Software Details', 'assets', ~{::main})}">
 <main>
 
+  <style>
+    .software-detail-card {
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .software-detail-summary {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      flex-wrap: wrap;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .software-detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px 24px;
+    }
+
+    .software-detail-col {
+      min-width: 0;
+    }
+
+    .software-detail-row {
+      display: grid;
+      grid-template-columns: 160px minmax(0, 1fr);
+      gap: 8px 12px;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+
+    .software-detail-key {
+      color: var(--muted);
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .software-detail-value {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    @media (max-width: 960px) {
+      .software-detail-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .software-detail-row {
+        grid-template-columns: 120px minmax(0, 1fr);
+      }
+    }
+  </style>
+
   <div class="actions">
     <div>
       <h1 style="margin:0;">Software Details</h1>
@@ -41,8 +100,8 @@
     </div>
   </div>
 
-  <div class="card" style="padding:12px; margin-top:12px;">
-    <div style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
+  <div class="card software-detail-card">
+    <div class="software-detail-summary">
       <div>
         <b th:text="${software.product}">product</b>
         <span class="muted"
@@ -52,110 +111,181 @@
             th:text="${software.vendor != null && !software.vendor.isBlank() ? software.vendor : '(vendor not set)'}">vendor</span>
       <span class="pill" th:text="'installId: ' + ${software.id}">installId</span>
     </div>
-  </div>
 
-  <div class="card" style="padding:12px; margin-top:12px;">
-    <div class="kv" style="grid-template-columns: 160px 1fr 160px 1fr; gap:8px 12px;">
+    <div class="software-detail-layout">
 
-      <div class="k">ID</div>
-      <div class="v" th:text="${software.id}">1</div>
+      <div class="software-detail-col">
+        <div class="software-detail-row">
+          <div class="software-detail-key">ID</div>
+          <div class="software-detail-value" th:text="${software.id}">1</div>
+        </div>
 
-      <div class="k">Asset</div>
-      <div class="v">
-        <a th:href="@{/assets/{id}(id=${assetId})}"
-           th:text="${software.asset != null ? software.asset.name : '(unknown)'}">asset</a>
-        <span class="muted" th:text="' (assetId: ' + ${assetId} + ')'">(assetId: 1)</span>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Vendor</div>
+          <div class="software-detail-value"
+               th:text="${software.vendor != null && !software.vendor.isBlank() ? software.vendor : '-'}">vendor</div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Version</div>
+          <div class="software-detail-value"
+               th:text="${software.version != null && !software.version.isBlank() ? software.version : '-'}">1.0</div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Canonical IDs</div>
+          <div class="software-detail-value">
+            <span class="muted"
+                  th:text="'vendorId: ' + ${software.cpeVendorId != null ? software.cpeVendorId : '-'} + ', productId: ' + ${software.cpeProductId != null ? software.cpeProductId : '-'}">
+              vendorId: - , productId: -
+            </span>
+          </div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Source</div>
+          <div class="software-detail-value"
+               th:text="${software.source != null && !software.source.isBlank() ? software.source : '-'}">osquery</div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Last Seen</div>
+          <div class="software-detail-value"
+               th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.lastSeenAt)}">
+            2026-02-26 00:00:00
+          </div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Install Location</div>
+          <div class="software-detail-value"
+               th:text="${software.installLocation != null && !software.installLocation.isBlank() ? software.installLocation : '-'}">
+            /Applications
+          </div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Arch</div>
+          <div class="software-detail-value"
+               th:text="${software.arch != null && !software.arch.isBlank() ? software.arch : '-'}">x86_64</div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Bundle ID</div>
+          <div class="software-detail-value"
+               th:text="${software.bundleId != null && !software.bundleId.isBlank() ? software.bundleId : '-'}">bundleId</div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Install Source</div>
+          <div class="software-detail-value"
+               th:text="${software.installSource != null && !software.installSource.isBlank() ? software.installSource : '-'}">store</div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Channel</div>
+          <div class="software-detail-value"
+               th:text="${software.channel != null && !software.channel.isBlank() ? software.channel : '-'}">stable</div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">PURL</div>
+          <div class="software-detail-value"
+               th:text="${software.purl != null && !software.purl.isBlank() ? software.purl : '-'}">pkg:...</div>
+        </div>
+
+        <div class="software-detail-row">
+          <div class="software-detail-key">Updated At</div>
+          <div class="software-detail-value"
+               th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.updatedAt)}">
+            updatedAt
+          </div>
+        </div>
       </div>
 
-      <div class="k">Vendor</div>
-      <div class="v" th:text="${software.vendor != null && !software.vendor.isBlank() ? software.vendor : '-'}">vendor</div>
+      <div class="software-detail-col">
+        <div class="software-detail-row">
+          <div class="software-detail-key">Asset</div>
+          <div class="software-detail-value">
+            <a th:href="@{/assets/{id}(id=${assetId})}"
+               th:text="${software.asset != null ? software.asset.name : '(unknown)'}">asset</a>
+            <span class="muted" th:text="' (assetId: ' + ${assetId} + ')'">(assetId: 1)</span>
+          </div>
+        </div>
 
-      <div class="k">Product</div>
-      <div class="v" th:text="${software.product != null && !software.product.isBlank() ? software.product : '-'}">product</div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Product</div>
+          <div class="software-detail-value"
+               th:text="${software.product != null && !software.product.isBlank() ? software.product : '-'}">product</div>
+        </div>
 
-      <div class="k">Version</div>
-      <div class="v" th:text="${software.version != null && !software.version.isBlank() ? software.version : '-'}">1.0</div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">CPE 2.3 Name</div>
+          <div class="software-detail-value">
+            <span th:if="${software.cpeName != null && !software.cpeName.isBlank()}"
+                  th:text="${software.cpeName}">cpe:2.3:...</span>
+            <span th:unless="${software.cpeName != null && !software.cpeName.isBlank()}"
+                  class="badge badge--unmapped">UNMAPPED (CPE)</span>
+          </div>
+        </div>
 
-      <div class="k">CPE 2.3 Name</div>
-      <div class="v">
-        <span th:if="${software.cpeName != null && !software.cpeName.isBlank()}"
-              th:text="${software.cpeName}">cpe:2.3:...</span>
-        <span th:unless="${software.cpeName != null && !software.cpeName.isBlank()}"
-              class="badge badge--unmapped">UNMAPPED (CPE)</span>
-      </div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Source Type</div>
+          <div class="software-detail-value"
+               th:text="${software.sourceType != null && !software.sourceType.isBlank() ? software.sourceType : '-'}">JSON_UPLOAD</div>
+        </div>
 
-      <div class="k">Canonical IDs</div>
-      <div class="v">
-        <span class="muted"
-              th:text="'vendorId: ' + ${software.cpeVendorId != null ? software.cpeVendorId : '-'} + ', productId: ' + ${software.cpeProductId != null ? software.cpeProductId : '-'}">
-          vendorId: - , productId: -
-        </span>
-      </div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Type</div>
+          <div class="software-detail-value"
+               th:text="${software.type != null ? software.type : '-'}">APPLICATION</div>
+        </div>
 
-      <div class="k">Source Type</div>
-      <div class="v" th:text="${software.sourceType != null && !software.sourceType.isBlank() ? software.sourceType : '-'}">JSON_UPLOAD</div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Installed At</div>
+          <div class="software-detail-value"
+               th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.installedAt)}">
+            2026-02-01 00:00:00
+          </div>
+        </div>
 
-      <div class="k">Source</div>
-      <div class="v" th:text="${software.source != null && !software.source.isBlank() ? software.source : '-'}">osquery</div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Package Identifier</div>
+          <div class="software-detail-value"
+               th:text="${software.packageIdentifier != null && !software.packageIdentifier.isBlank() ? software.packageIdentifier : '-'}">com.example.app</div>
+        </div>
 
-      <div class="k">Type</div>
-      <div class="v" th:text="${software.type != null ? software.type : '-'}">APPLICATION</div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Publisher</div>
+          <div class="software-detail-value"
+               th:text="${software.publisher != null && !software.publisher.isBlank() ? software.publisher : '-'}">publisher</div>
+        </div>
 
-      <div class="k">Last Seen</div>
-      <div class="v"
-           th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.lastSeenAt)}">
-        2026-02-26 00:00:00
-      </div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Package Manager</div>
+          <div class="software-detail-value"
+               th:text="${software.packageManager != null && !software.packageManager.isBlank() ? software.packageManager : '-'}">brew</div>
+        </div>
 
-      <div class="k">Installed At</div>
-      <div class="v"
-           th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.installedAt)}">
-        2026-02-01 00:00:00
-      </div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Edition</div>
+          <div class="software-detail-value"
+               th:text="${software.edition != null && !software.edition.isBlank() ? software.edition : '-'}">edition</div>
+        </div>
 
-      <div class="k">Install Location</div>
-      <div class="v" th:text="${software.installLocation != null && !software.installLocation.isBlank() ? software.installLocation : '-'}">/Applications</div>
+        <div class="software-detail-row">
+          <div class="software-detail-key">Release</div>
+          <div class="software-detail-value"
+               th:text="${software.release != null && !software.release.isBlank() ? software.release : '-'}">release</div>
+        </div>
 
-      <div class="k">Package Identifier</div>
-      <div class="v" th:text="${software.packageIdentifier != null && !software.packageIdentifier.isBlank() ? software.packageIdentifier : '-'}">com.example.app</div>
-
-      <div class="k">Arch</div>
-      <div class="v" th:text="${software.arch != null && !software.arch.isBlank() ? software.arch : '-'}">x86_64</div>
-
-      <div class="k">Publisher</div>
-      <div class="v" th:text="${software.publisher != null && !software.publisher.isBlank() ? software.publisher : '-'}">publisher</div>
-
-      <div class="k">Bundle ID</div>
-      <div class="v" th:text="${software.bundleId != null && !software.bundleId.isBlank() ? software.bundleId : '-'}">bundleId</div>
-
-      <div class="k">Package Manager</div>
-      <div class="v" th:text="${software.packageManager != null && !software.packageManager.isBlank() ? software.packageManager : '-'}">brew</div>
-
-      <div class="k">Install Source</div>
-      <div class="v" th:text="${software.installSource != null && !software.installSource.isBlank() ? software.installSource : '-'}">store</div>
-
-      <div class="k">Edition</div>
-      <div class="v" th:text="${software.edition != null && !software.edition.isBlank() ? software.edition : '-'}">edition</div>
-
-      <div class="k">Channel</div>
-      <div class="v" th:text="${software.channel != null && !software.channel.isBlank() ? software.channel : '-'}">stable</div>
-
-      <div class="k">Release</div>
-      <div class="v" th:text="${software.release != null && !software.release.isBlank() ? software.release : '-'}">release</div>
-
-      <div class="k">PURL</div>
-      <div class="v" th:text="${software.purl != null && !software.purl.isBlank() ? software.purl : '-'}">pkg:...</div>
-
-      <div class="k">Created At</div>
-      <div class="v"
-           th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.createdAt)}">
-        createdAt
-      </div>
-
-      <div class="k">Updated At</div>
-      <div class="v"
-           th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.updatedAt)}">
-        updatedAt
+        <div class="software-detail-row">
+          <div class="software-detail-key">Created At</div>
+          <div class="software-detail-value"
+               th:text="${T(dev.notegridx.security.assetvulnmanager.utility.UiDateTime).format(software.createdAt)}">
+            createdAt
+          </div>
+        </div>
       </div>
 
     </div>
