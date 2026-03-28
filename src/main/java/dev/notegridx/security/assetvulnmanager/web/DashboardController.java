@@ -53,7 +53,7 @@ public class DashboardController {
         }
 
         static TopRange parse(String raw) {
-            if (raw == null) return ALL;
+            if (raw == null) return D30;
             String t = raw.trim().toUpperCase(Locale.ROOT);
             return switch (t) {
                 case "7D", "D7" -> D7;
