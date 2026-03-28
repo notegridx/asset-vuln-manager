@@ -2,11 +2,7 @@ package dev.notegridx.security.assetvulnmanager.service;
 
 import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
-import dev.notegridx.security.assetvulnmanager.repository.CpeProductRepository;
-import dev.notegridx.security.assetvulnmanager.repository.CpeVendorRepository;
-import dev.notegridx.security.assetvulnmanager.repository.ImportRunRepository;
-import dev.notegridx.security.assetvulnmanager.repository.SoftwareInstallRepository;
-import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
+import dev.notegridx.security.assetvulnmanager.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,6 +39,9 @@ class AdminInventoryReadServiceTest {
 
     private AdminInventoryReadService service;
 
+    @Mock
+    private AssetRepository assetRepository;
+
     @BeforeEach
     void setUp() {
         service = new AdminInventoryReadService(
@@ -51,8 +50,10 @@ class AdminInventoryReadServiceTest {
                 softwareInstallRepository,
                 canonicalCpeLinkingService,
                 cpeVendorRepository,
-                cpeProductRepository
+                cpeProductRepository,
+                assetRepository
         );
+
     }
 
     @Test
@@ -76,7 +77,7 @@ class AdminInventoryReadServiceTest {
         when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings(null, null, null, null, null, null, 0, 50);
+                service.findUnresolvedMappings(null, null, null, null, null, null, null, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.activeOnly()).isFalse();
@@ -99,7 +100,7 @@ class AdminInventoryReadServiceTest {
         when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("ALL", 99L, "  micro  ", true, "1", null, 0, 50);
+                service.findUnresolvedMappings("ALL", 99L, "  micro  ", true, "1", null, null, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.runId()).isEqualTo(99L);
@@ -122,7 +123,7 @@ class AdminInventoryReadServiceTest {
         when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings("NEW", null, null, true, null, null, 0, 50);
+                service.findUnresolvedMappings("NEW", null, null, true, null, null, null, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.activeOnly()).isFalse();
@@ -142,9 +143,10 @@ class AdminInventoryReadServiceTest {
         UnresolvedMapping mapping1 = mockMapping(10L, "NEW", "Microsoft", "Edge");
 
         when(unresolvedMappingRepository.findById(10L)).thenReturn(Optional.of(mapping1));
+        when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings(null, 77L, null, null, null, 10L, 0, 50);
+                service.findUnresolvedMappings(null, 77L, null, null, null, null, 10L, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.runId()).isEqualTo(77L);
@@ -167,9 +169,10 @@ class AdminInventoryReadServiceTest {
     @DisplayName("findUnresolvedMappings id review mode returns empty when mapping is missing")
     void findUnresolvedMappings_idReviewMode_returnsEmptyWhenMissing() {
         when(unresolvedMappingRepository.findById(999L)).thenReturn(Optional.empty());
+        when(softwareInstallRepository.findAll()).thenReturn(List.of());
 
         AdminInventoryReadService.UnresolvedListView result =
-                service.findUnresolvedMappings(null, null, null, null, null, 999L, 0, 50);
+                service.findUnresolvedMappings(null, null, null, null, null, null, 999L, 0, 50);
 
         assertThat(result.status()).isEqualTo("all");
         assertThat(result.id()).isEqualTo(999L);

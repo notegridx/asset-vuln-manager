@@ -1,5 +1,6 @@
 package dev.notegridx.security.assetvulnmanager.web;
 
+import dev.notegridx.security.assetvulnmanager.domain.Asset;
 import dev.notegridx.security.assetvulnmanager.domain.ImportRun;
 import dev.notegridx.security.assetvulnmanager.domain.UnresolvedMapping;
 import dev.notegridx.security.assetvulnmanager.repository.UnresolvedMappingRepository;
@@ -73,9 +74,11 @@ class AdminInventoryControllerWebMvcTest {
     void unresolved_ok() throws Exception {
         UnresolvedMapping mapping1 = mock(UnresolvedMapping.class);
         UnresolvedMapping mapping2 = mock(UnresolvedMapping.class);
+        Asset asset1 = mock(Asset.class);
+        Asset asset2 = mock(Asset.class);
 
         when(adminInventoryReadService.findUnresolvedMappings(
-                any(), any(), any(), any(), any(), any(), anyInt(), anyInt()
+                any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()
         )).thenReturn(new AdminInventoryReadService.UnresolvedListView(
                 List.of(
                         new AdminInventoryReadService.UnresolvedReviewRow(
@@ -126,6 +129,8 @@ class AdminInventoryControllerWebMvcTest {
                 List.of(0, 1, 2)
         ));
 
+        when(adminInventoryReadService.findAllAssets()).thenReturn(List.of(asset1, asset2));
+
         mockMvc.perform(get("/admin/unresolved"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/unresolved"))
@@ -135,9 +140,12 @@ class AdminInventoryControllerWebMvcTest {
                 .andExpect(model().attribute("q", nullValue()))
                 .andExpect(model().attribute("activeOnly", nullValue()))
                 .andExpect(model().attribute("activeOnlyPresent", nullValue()))
+                .andExpect(model().attribute("asset", nullValue()))
+                .andExpect(model().attribute("assets", List.of(asset1, asset2)))
                 .andExpect(model().attribute("id", nullValue()))
                 .andExpect(model().attribute("page", 0))
                 .andExpect(model().attribute("size", 50))
+                .andExpect(model().attribute("sizeOptions", List.of(50, 100, 200, 500)))
                 .andExpect(model().attribute("totalPages", 3))
                 .andExpect(model().attribute("totalElements", 120L))
                 .andExpect(model().attribute("pagerItems", List.of(0, 1, 2)));
@@ -149,8 +157,10 @@ class AdminInventoryControllerWebMvcTest {
                 isNull(),
                 isNull(),
                 isNull(),
+                isNull(),
                 eq(0),
                 eq(50)
         );
+        verify(adminInventoryReadService).findAllAssets();
     }
 }
