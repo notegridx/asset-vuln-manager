@@ -17,8 +17,6 @@
     </div>
 
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <a th:href="@{/assets/{id}(id=${assetId})}">← Back to Asset</a>
-      <a class="btn" th:href="@{/software}">Back to Software list</a>
 
       <a class="btn"
          th:href="@{/alerts(view='FLAT', status='OPEN', certainty='ALL', softwareId=${software.id})}">
