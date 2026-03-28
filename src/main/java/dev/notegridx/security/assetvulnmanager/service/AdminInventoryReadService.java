@@ -657,7 +657,7 @@ public class AdminInventoryReadService {
         LINKED_STALE("linkedStale", "LINKED STALE"),
         VENDOR_ONLY_LINKED("vendorOnlyLinked", "VENDOR ONLY LINKED"),
         NOT_LINKED("notLinked", "NOT LINKED"),
-        RESOLVABLE("fullyResolvable", "RESOLVABLE"),
+        RESOLVABLE("fullyResolvable", "FULLY RESOLVABLE"),
         VENDOR_RESOLVABLE_ONLY("vendorResolvableOnly", "VENDOR RESOLVABLE"),
         UNRESOLVABLE("unresolvable", "UNRESOLVABLE"),
         NEEDS_NORMALIZATION("needsNormalization", "NOT NORMALIZED");
