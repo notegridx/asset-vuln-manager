@@ -216,16 +216,13 @@
                     <td th:text="${s.id}">1</td>
 
                     <td class="cell-break">
-                        <span th:if="${s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null}"
-                              th:text="${vendorNameMap[s.cpeVendorId]}"
+                        <span th:text="${(s.normalizedVendor != null and !#strings.isEmpty(#strings.trim(s.normalizedVendor)))
+                                ? s.normalizedVendor
+                                : ((s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)))
+                                    ? s.vendorRaw
+                                    : (s.vendor != null and !#strings.isEmpty(#strings.trim(s.vendor)) ? s.vendor : '-'))}"
                               th:title="${s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)) ? s.vendorRaw : s.vendor}">
-                            Canonical Vendor
-                        </span>
-
-                        <span th:unless="${s.cpeVendorId != null and vendorNameMap != null and vendorNameMap[s.cpeVendorId] != null}"
-                              th:text="${(s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw))) ? s.vendorRaw : (s.vendor != null and !#strings.isEmpty(#strings.trim(s.vendor)) ? s.vendor : '-')}"
-                              th:title="${s.vendorRaw != null and !#strings.isEmpty(#strings.trim(s.vendorRaw)) ? s.vendorRaw : s.vendor}">
-                            Raw Vendor
+                            normalized vendor
                         </span>
                     </td>
 
@@ -233,8 +230,8 @@
                         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                             <a th:href="@{/software/{id}(id=${s.id})}"
                                th:title="${s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)) ? s.productRaw : s.product}">
-                                <b th:text="${(s.cpeProductId != null and productNameMap != null and productNameMap[s.cpeProductId] != null)
-                  ? productNameMap[s.cpeProductId]
+                                <b th:text="${(s.normalizedProduct != null and !#strings.isEmpty(#strings.trim(s.normalizedProduct)))
+                  ? s.normalizedProduct
                   : ((s.productRaw != null and !#strings.isEmpty(#strings.trim(s.productRaw)))
                       ? s.productRaw
                       : (s.product != null and !#strings.isEmpty(#strings.trim(s.product)) ? s.product : '-'))}">
