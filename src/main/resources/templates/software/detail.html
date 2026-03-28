@@ -107,9 +107,7 @@
         <span class="muted"
               th:text="${software.version != null && !software.version.isBlank() ? ' ' + software.version : ''}"></span>
       </div>
-      <span class="pill"
-            th:text="${software.vendor != null && !software.vendor.isBlank() ? software.vendor : '(vendor not set)'}">vendor</span>
-      <span class="pill" th:text="'installId: ' + ${software.id}">installId</span>
+
     </div>
 
     <div class="software-detail-layout">
