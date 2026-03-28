@@ -42,6 +42,27 @@
     }
 
     /* =========================================================
+       Actions column (align with asset detail)
+       ========================================================= */
+
+    .asset-sw-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    .asset-sw-actions .btn,
+    .asset-sw-actions form,
+    .asset-sw-actions button {
+        width: 100%;
+    }
+
+    .asset-sw-actions form {
+        margin: 0;
+    }
+
+    /* =========================================================
        Pagination
        ========================================================= */
 
@@ -293,35 +314,28 @@
 
                     <td>
                         <div sec:authorize="hasAnyRole('ADMIN','OPERATOR')"
-                             class="actions"
-                             style="margin:0; justify-content:flex-start; gap:6px; flex-wrap:wrap;">
+                             class="asset-sw-actions">
 
                             <th:block th:if="${!demoMode}">
-                                <a class="btn btn--small" th:href="@{/software/{id}/edit(id=${s.id})}">Edit</a>
+                                <a th:href="@{/software/{id}/edit(id=${s.id})}" class="btn btn-sm">Edit</a>
 
                                 <form th:action="@{/software/{id}/delete(id=${s.id})}" method="post"
-                                      style="display:inline;"
                                       onsubmit="return confirm('Delete this software install? Related alerts will also be deleted.');">
                                     <input type="hidden" name="assetId" th:value="${s.asset.id}">
                                     <input type="hidden" name="returnTo" value="software">
-                                    <button class="btn btn--small btn--danger" type="submit">Delete</button>
+                                    <button class="btn btn-danger btn-sm" type="submit">Delete</button>
                                 </form>
                             </th:block>
 
                             <th:block th:if="${demoMode}">
-                                <a class="btn btn--small"
-                                   href="#"
-                                   aria-disabled="true"
-                                   tabindex="-1"
-                                   onclick="return false;">
-                                    Edit
-                                </a>
+                                <a href="#"
+                                   onclick="return false;"
+                                   class="btn btn-sm">Edit</a>
 
                                 <form action="#"
                                       method="post"
-                                      style="display:inline;"
                                       onsubmit="return false;">
-                                    <button class="btn btn--small btn--danger" type="submit" disabled>Delete</button>
+                                    <button class="btn btn-danger btn-sm" type="submit" disabled>Delete</button>
                                 </form>
                             </th:block>
                         </div>
