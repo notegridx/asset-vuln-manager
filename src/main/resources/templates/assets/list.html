@@ -2,7 +2,7 @@
 <html lang="en"
       xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{layout/base :: head('Asset Inventory')}"></head>
+<head th:replace="~{layout/base :: head('Asset List')}"></head>
 
 <style>
     .asset-pagination {
@@ -62,13 +62,13 @@
     }
 </style>
 
-<body th:replace="~{layout/base :: layout('Asset Inventory', 'assets', ~{::main})}">
+<body th:replace="~{layout/base :: layout('Asset List', 'assets', ~{::main})}">
 <main>
 
     <div class="page-header"
          style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;">
         <div class="page-header__left">
-            <h1>Asset Inventory</h1>
+            <h1>Asset List</h1>
             <div class="muted" style="margin-top:6px;">
                 Registered assets under monitoring. Click an asset name to view installed software and related alerts.
             </div>
