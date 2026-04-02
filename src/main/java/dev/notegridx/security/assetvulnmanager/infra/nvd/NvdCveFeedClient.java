@@ -10,9 +10,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import reactor.core.publisher.Mono;
 
@@ -78,19 +80,37 @@ public class NvdCveFeedClient {
     public CveFeedMetaParser.FeedMeta fetchMeta(FeedKind kind, Integer year, CveFeedMetaParser parser) throws IOException {
         String path = resolveMetaPath(kind, year);
 
-        byte[] bytes = webClient.get()
-                .uri(path)
-                .accept(MediaType.TEXT_PLAIN)
-                .retrieve()
-                .bodyToMono(byte[].class)
-                .block();
+        try {
+            byte[] bytes = webClient.get()
+                    .uri(path)
+                    .accept(MediaType.TEXT_PLAIN)
+                    .retrieve()
+                    .bodyToMono(byte[].class)
+                    .block();
 
-        if (bytes == null) {
-            throw new IOException("meta download returned null. kind=" + kind + " year=" + year);
-        }
+            if (bytes == null) {
+                throw new IOException("meta download returned null. kind=" + kind + " year=" + year);
+            }
 
-        try (InputStream in = new java.io.ByteArrayInputStream(bytes)) {
-            return parser.parse(in);
+            try (InputStream in = new java.io.ByteArrayInputStream(bytes)) {
+                return parser.parse(in);
+            }
+
+        } catch (WebClientResponseException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND && kind == FeedKind.YEAR && year != null) {
+                throw new IOException("No CVE feed is available for the selected year: " + year, ex);
+            }
+            throw new IOException(
+                    "Failed to fetch meta. kind=" + kind + " year=" + year + " status=" + ex.getStatusCode().value(),
+                    ex
+            );
+        } catch (IOException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IOException(
+                    "Failed to fetch meta. kind=" + kind + " year=" + year + " err=" + ex.getMessage(),
+                    ex
+            );
         }
     }
 
