@@ -56,10 +56,8 @@ import java.util.stream.Collectors;
  * <p>
  * Upsert policy aligned with current domain:
  * - Vulnerability unique: (source, external_id) -> update via applyNvdDetails()
- * - VulnerabilityAffectedCpe unique:
- * (vulnerability_id, cpe_name, version_start_including, version_start_excluding,
- * version_end_including, version_end_excluding)
- * -> insert-only, duplicates ignored
+ * - VulnerabilityAffectedCpe:
+ *   replaced per vulnerability on each sync so removed CPEs are reflected too
  */
 @Service
 public class CveFeedSyncService {
@@ -799,9 +797,8 @@ public class CveFeedSyncService {
 
             replaceCriteriaTree(v, pv.criteriaRoots);
 
-            if (pv.affected != null && !pv.affected.isEmpty()) {
-                affectedInserted += upsertAffectedBatch(v, pv.affected);
-            }
+            // Replace affected CPEs per vulnerability so removed CPEs are reflected too.
+            affectedInserted += replaceAffectedCpes(v, pv.affected);
 
             processedInTx++;
             if (processedInTx % FLUSH_EVERY == 0) {
@@ -940,15 +937,32 @@ public class CveFeedSyncService {
         }
     }
 
-    private int upsertAffectedBatch(Vulnerability v, List<ParsedAffectedCpe> items) {
-        if (v == null || v.getId() == null || items == null || items.isEmpty()) {
+    private int replaceAffectedCpes(Vulnerability vulnerability, List<ParsedAffectedCpe> items) {
+        if (vulnerability == null || vulnerability.getId() == null) {
+            return 0;
+        }
+
+        Long vulnerabilityId = vulnerability.getId();
+
+        affectedCpeRepository.deleteByVulnerabilityId(vulnerabilityId);
+
+        try {
+            em.flush();
+            em.clear();
+        } catch (Exception e) {
+            log.warn("flush/clear after affected delete failed. vulnerabilityId={}, err={}",
+                    vulnerabilityId, safeMsg(e));
+            throw e;
+        }
+
+        if (items == null || items.isEmpty()) {
             return 0;
         }
 
         int inserted = 0;
         int pending = 0;
 
-        Vulnerability managedV = v;
+        Vulnerability managedV = em.getReference(Vulnerability.class, vulnerabilityId);
         Set<String> seenNaturalKeys = new HashSet<>();
 
         for (ParsedAffectedCpe a : items) {
@@ -966,22 +980,8 @@ public class CveFeedSyncService {
             String vei = nullToEmpty(a.versionEndIncluding);
             String vee = nullToEmpty(a.versionEndExcluding);
 
-            String naturalKey = managedV.getId() + "|" + criteria + "|" + vsi + "|" + vse + "|" + vei + "|" + vee;
-
+            String naturalKey = vulnerabilityId + "|" + criteria + "|" + vsi + "|" + vse + "|" + vei + "|" + vee;
             if (!seenNaturalKeys.add(naturalKey)) {
-                continue;
-            }
-
-            boolean exists = affectedCpeRepository
-                    .existsByVulnerabilityIdAndCpeNameAndVersionStartIncludingAndVersionStartExcludingAndVersionEndIncludingAndVersionEndExcluding(
-                            managedV.getId(),
-                            criteria,
-                            vsi,
-                            vse,
-                            vei,
-                            vee
-                    );
-            if (exists) {
                 continue;
             }
 
@@ -1019,7 +1019,7 @@ public class CveFeedSyncService {
             }
 
             String dedupeKey = vulnerabilityKeyService.buildAffectedCpeKey(
-                    managedV.getId(),
+                    vulnerabilityId,
                     criteria,
                     vsi,
                     vse,
@@ -1052,7 +1052,7 @@ public class CveFeedSyncService {
                 pending++;
             } catch (DataIntegrityViolationException ex) {
                 if (isDuplicateConstraint(ex)) {
-                    log.debug("Duplicate vulnerability_affected_cpes ignored. vulnerabilityId={}, cpeName={}", managedV.getId(), criteria);
+                    log.debug("Duplicate vulnerability_affected_cpes ignored. vulnerabilityId={}, cpeName={}", vulnerabilityId, criteria);
                     continue;
                 }
                 throw ex;
@@ -1062,9 +1062,9 @@ public class CveFeedSyncService {
                 try {
                     em.flush();
                     em.clear();
-                    managedV = em.getReference(Vulnerability.class, v.getId());
+                    managedV = em.getReference(Vulnerability.class, vulnerabilityId);
                 } catch (Exception e) {
-                    log.warn("flush/clear failed during affected batch. err={}", safeMsg(e));
+                    log.warn("flush/clear failed during affected replace. err={}", safeMsg(e));
                     throw e;
                 }
                 pending = 0;
@@ -1076,7 +1076,7 @@ public class CveFeedSyncService {
                 em.flush();
                 em.clear();
             } catch (Exception e) {
-                log.warn("flush/clear failed at affected batch tail. err={}", safeMsg(e));
+                log.warn("flush/clear failed at affected replace tail. err={}", safeMsg(e));
                 throw e;
             }
         }
