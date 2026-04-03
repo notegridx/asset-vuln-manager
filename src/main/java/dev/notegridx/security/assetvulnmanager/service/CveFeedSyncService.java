@@ -68,8 +68,8 @@ public class CveFeedSyncService {
 
     // tune
     private static final int LOG_EVERY_VULN = 200;
-    private static final int FLUSH_EVERY = 100;     // JPA flush/clear frequency within chunk
-    private static final int TX_CHUNK_VULN = 100;   // number of vulnerabilities per chunkTx
+    private static final int FLUSH_EVERY = 250;     // JPA flush/clear frequency within chunk
+    private static final int TX_CHUNK_VULN = 250;   // number of vulnerabilities per chunkTx
 
     private final NvdCveFeedClient feedClient;
 
