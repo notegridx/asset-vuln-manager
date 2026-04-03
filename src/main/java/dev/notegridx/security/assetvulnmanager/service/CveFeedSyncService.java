@@ -779,6 +779,13 @@ public class CveFeedSyncService {
             }
 
             Vulnerability v = existingByExternalId.get(pv.cveId);
+            boolean isNew = (v == null);
+
+            LocalDateTime oldLastModifiedAt = null;
+            if (!isNew) {
+                oldLastModifiedAt = v.getLastModifiedAt();
+            }
+
             if (v == null) {
                 v = new Vulnerability(SOURCE_NVD, pv.cveId);
                 existingByExternalId.put(pv.cveId, v);
@@ -795,10 +802,14 @@ public class CveFeedSyncService {
             v = vulnerabilityRepository.save(v);
             vulnUpserted++;
 
-            replaceCriteriaTree(v, pv.criteriaRoots);
+            boolean structureChanged = isNew || !Objects.equals(oldLastModifiedAt, pv.lastModifiedAt);
 
-            // Replace affected CPEs per vulnerability so removed CPEs are reflected too.
-            affectedInserted += replaceAffectedCpes(v, pv.affected);
+            if (structureChanged) {
+                replaceCriteriaTree(v, pv.criteriaRoots);
+
+                // Replace affected CPEs per vulnerability so removed CPEs are reflected too.
+                affectedInserted += replaceAffectedCpes(v, pv.affected);
+            }
 
             processedInTx++;
             if (processedInTx % FLUSH_EVERY == 0) {
