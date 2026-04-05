@@ -58,6 +58,8 @@ public record NvdCveResponse(
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public record Configurations(
+			String operator,
+			Boolean negate,
 			List<Node> nodes
 	) {}
 

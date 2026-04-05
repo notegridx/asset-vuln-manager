@@ -584,14 +584,29 @@ public class CveFeedSyncService {
                 continue;
             }
 
+            CriteriaOperator rootOperator = parseCriteriaOperator(configurations.operator());
+            boolean rootNegate = Boolean.TRUE.equals(configurations.negate());
+
             ParsedCriteriaNode rootNode;
             if (topNodes.size() == 1) {
-                rootNode = topNodes.get(0);
+                ParsedCriteriaNode only = topNodes.get(0);
+
+                if (rootOperator != null || rootNegate) {
+                    rootNode = new ParsedCriteriaNode(
+                            CriteriaNodeType.OPERATOR,
+                            rootOperator == null ? CriteriaOperator.OR : rootOperator,
+                            rootNegate,
+                            List.of(only),
+                            List.of()
+                    );
+                } else {
+                    rootNode = only;
+                }
             } else {
                 rootNode = new ParsedCriteriaNode(
                         CriteriaNodeType.OPERATOR,
-                        CriteriaOperator.OR,
-                        false,
+                        rootOperator == null ? CriteriaOperator.OR : rootOperator,
+                        rootNegate,
                         topNodes,
                         List.of()
                 );
