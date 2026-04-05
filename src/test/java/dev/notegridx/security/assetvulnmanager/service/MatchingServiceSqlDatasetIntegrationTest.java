@@ -936,4 +936,54 @@ class MatchingServiceSqlDatasetIntegrationTest {
         assertThat(alert).isNull();
         assertThat(alertRepository.findAll()).isEmpty();
     }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case34_dict_id_criteria_and_negate_match.sql"
+    })
+    void case34_dictId_criteriaAndNegateMatch_generatesConfirmedAlert() {
+        assertSeedPresent(3411L, 3491L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isEqualTo(1);
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        Alert alert = findAlert(3411L, 3491L);
+        assertThat(alert).isNotNull();
+        assertThat(alert.getStatus()).isEqualTo(AlertStatus.OPEN);
+        assertThat(alert.getCertainty()).isEqualTo(AlertCertainty.CONFIRMED);
+        assertThat(alert.getUncertainReason()).isNull();
+        assertThat(alert.getMatchedBy()).isEqualTo(AlertMatchMethod.DICT_ID);
+
+        assertThat(alertRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @Sql(scripts = {
+            "/sql/matching/cleanup.sql",
+            "/sql/matching/common-master.sql",
+            "/sql/matching/case35_dict_id_criteria_and_negate_block.sql"
+    })
+    void case35_dictId_criteriaAndNegateBlock_generatesNoAlert() {
+        assertSeedPresent(3511L, 3591L);
+        assertSeedPresent(3512L, 3591L);
+
+        var result = matchingService.matchAndUpsertAlerts();
+
+        assertThat(result).isNotNull();
+        assertThat(result.pairsFound()).isEqualTo(1);
+        assertThat(result.alertsInserted()).isZero();
+        assertThat(result.alertsTouched()).isZero();
+        assertThat(result.alertsAutoClosed()).isZero();
+
+        assertNoAlert(3511L, 3591L);
+        assertNoAlert(3512L, 3591L);
+        assertThat(alertRepository.findAll()).isEmpty();
+    }
 }

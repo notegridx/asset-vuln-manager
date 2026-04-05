@@ -61,8 +61,35 @@ public class CriteriaEvaluator {
             return EvalResult.noMatch();
         }
 
-        // Negation handling is a future enhancement; currently treated conservatively as no match.
-        if (expr.negate()) {
+        if (expr instanceof CriteriaTreeLoader.CriteriaOperatorExpr op) {
+            return evaluateOperator(op, installIndex, emittedPredicateSummaries);
+        }
+
+        if (expr instanceof CriteriaTreeLoader.CriteriaLeafExpr leaf) {
+            // Negated leaf by itself does not generate a positive match.
+            // It is only interpreted as an exclusion when consumed by AND parent.
+            if (leaf.negate()) {
+                return EvalResult.noMatch();
+            }
+            return evaluateLeaf(leaf, installIndex, emittedPredicateSummaries);
+        }
+
+        return EvalResult.noMatch();
+    }
+
+    /**
+     * Evaluates subtree ignoring expr.negate().
+     *
+     * WHY:
+     * Negated criteria are treated as exclusion constraints inside AND.
+     * To decide whether the exclusion "hits", we need the subtree's raw positive result.
+     */
+    private EvalResult evaluateExprRaw(
+            CriteriaTreeLoader.CriteriaExpr expr,
+            AssetInstallIndex installIndex,
+            Set<String> emittedPredicateSummaries
+    ) {
+        if (expr == null) {
             return EvalResult.noMatch();
         }
 
@@ -71,13 +98,20 @@ public class CriteriaEvaluator {
         }
 
         if (expr instanceof CriteriaTreeLoader.CriteriaOperatorExpr op) {
-            return evaluateOperator(op, installIndex, emittedPredicateSummaries);
+            return evaluateOperatorRaw(op, installIndex, emittedPredicateSummaries);
         }
 
         return EvalResult.noMatch();
     }
 
-    private EvalResult evaluateOperator(
+    /**
+     * Raw operator evaluation that ignores op.negate() and child.negate().
+     *
+     * WHY:
+     * Used only by AND-parent exclusion handling so we can ask
+     * "would this subtree match positively if negate were ignored?"
+     */
+    private EvalResult evaluateOperatorRaw(
             CriteriaTreeLoader.CriteriaOperatorExpr op,
             AssetInstallIndex installIndex,
             Set<String> emittedPredicateSummaries
@@ -93,12 +127,9 @@ public class CriteriaEvaluator {
             AlertMatchMethod bestMethod = null;
 
             for (CriteriaTreeLoader.CriteriaExpr child : op.children()) {
-                EvalResult r = evaluateExpr(child, installIndex, emittedPredicateSummaries);
-
-                logOperatorChildResult(op, r);
+                EvalResult r = evaluateExprRaw(child, installIndex, emittedPredicateSummaries);
 
                 if (!r.matched()) {
-                    logOperatorFinalResult(op, EvalResult.noMatch(), "short-circuit-no-match");
                     return EvalResult.noMatch();
                 }
 
@@ -116,6 +147,85 @@ public class CriteriaEvaluator {
                 bestPrimary = better(bestPrimary, r);
             }
 
+            return EvalResult.matched(
+                    anyUnconfirmed ? AlertCertainty.UNCONFIRMED : AlertCertainty.CONFIRMED,
+                    anyUnconfirmed ? firstReason : null,
+                    bestPrimary.primarySoftwareInstallId(),
+                    bestMethod
+            );
+        }
+
+        EvalResult best = EvalResult.noMatch();
+        for (CriteriaTreeLoader.CriteriaExpr child : op.children()) {
+            EvalResult r = evaluateExprRaw(child, installIndex, emittedPredicateSummaries);
+            best = better(best, r);
+        }
+        return best;
+    }
+
+    private EvalResult evaluateOperator(
+            CriteriaTreeLoader.CriteriaOperatorExpr op,
+            AssetInstallIndex installIndex,
+            Set<String> emittedPredicateSummaries
+    ) {
+        if (op.children() == null || op.children().isEmpty()) {
+            return EvalResult.noMatch();
+        }
+
+        // Negated operator by itself does not generate a positive match.
+        // It is only interpreted as an exclusion when consumed by AND parent.
+        if (op.negate()) {
+            return EvalResult.noMatch();
+        }
+
+        if (op.operator() == dev.notegridx.security.assetvulnmanager.domain.enums.CriteriaOperator.AND) {
+            EvalResult bestPrimary = EvalResult.noMatch();
+            boolean anyPositive = false;
+            boolean anyUnconfirmed = false;
+            AlertUncertainReason firstReason = null;
+            AlertMatchMethod bestMethod = null;
+
+            for (CriteriaTreeLoader.CriteriaExpr child : op.children()) {
+                EvalResult r = evaluateExprRaw(child, installIndex, emittedPredicateSummaries);
+
+                logOperatorChildResult(op, r);
+
+                if (child.negate()) {
+                    // Negated child acts as exclusion constraint:
+                    // if the raw subtree matches, AND fails.
+                    if (r.matched()) {
+                        logOperatorFinalResult(op, EvalResult.noMatch(), "short-circuit-negated-child-hit");
+                        return EvalResult.noMatch();
+                    }
+                    continue;
+                }
+
+                if (!r.matched()) {
+                    logOperatorFinalResult(op, EvalResult.noMatch(), "short-circuit-no-match");
+                    return EvalResult.noMatch();
+                }
+
+                anyPositive = true;
+
+                if (r.certainty() == AlertCertainty.UNCONFIRMED) {
+                    anyUnconfirmed = true;
+                    if (firstReason == null) {
+                        firstReason = r.reason();
+                    }
+                }
+
+                if (bestMethod == null || methodScore(r.method()) > methodScore(bestMethod)) {
+                    bestMethod = r.method();
+                }
+
+                bestPrimary = better(bestPrimary, r);
+            }
+
+            if (!anyPositive) {
+                logOperatorFinalResult(op, EvalResult.noMatch(), "and-no-positive-child");
+                return EvalResult.noMatch();
+            }
+
             EvalResult finalResult = EvalResult.matched(
                     anyUnconfirmed ? AlertCertainty.UNCONFIRMED : AlertCertainty.CONFIRMED,
                     anyUnconfirmed ? firstReason : null,
@@ -129,7 +239,11 @@ public class CriteriaEvaluator {
 
         EvalResult best = EvalResult.noMatch();
         for (CriteriaTreeLoader.CriteriaExpr child : op.children()) {
-            EvalResult r = evaluateExpr(child, installIndex, emittedPredicateSummaries);
+            // Keep conservative behavior for negate under OR:
+            // negated child does not create positive match by itself.
+            EvalResult r = child.negate()
+                    ? EvalResult.noMatch()
+                    : evaluateExpr(child, installIndex, emittedPredicateSummaries);
             logOperatorChildResult(op, r);
             best = better(best, r);
         }
