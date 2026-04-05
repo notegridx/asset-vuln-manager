@@ -69,10 +69,8 @@
     <div class="card p-12 mt-12">
       <div class="fw-600 mb-6">About these counts</div>
       <div class="muted help-text--tight">
-        Matches found shows how many candidate software/vulnerability pairs were identified before full evaluation.
-        Candidate pairs may later be filtered out by criteria or version checks.
-        Multiple candidate matches can also still lead to a single alert for the same software and vulnerability.
-        Therefore, New alerts created and Alerts updated may be smaller than Matches found.
+        Candidate pairs found before final criteria evaluation.
+        Final alert counts may be lower due to version checks, criteria trees, and exclusion conditions.
       </div>
     </div>
 
@@ -86,19 +84,21 @@
         </thead>
         <tbody>
         <tr>
-          <td>matches found</td>
+          <td title="This number represents software/vulnerability pairs identified during initial matching. Final alerts are generated after applying version constraints and criteria trees (including exclusion conditions).">
+            Candidate pairs found
+          </td>
           <td th:text="${matchResult.pairsFound}">0</td>
         </tr>
         <tr>
-          <td>new alerts created</td>
+          <td>Alerts inserted</td>
           <td th:text="${matchResult.alertsInserted}">0</td>
         </tr>
         <tr>
-          <td>alerts updated</td>
+          <td>Alerts touched</td>
           <td th:text="${matchResult.alertsTouched}">0</td>
         </tr>
         <tr>
-          <td>auto closed</td>
+          <td>Alerts auto-closed</td>
           <td th:text="${matchResult.alertsAutoClosed}">0</td>
         </tr>
         </tbody>

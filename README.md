@@ -69,6 +69,59 @@ AVM emphasizes **transparency over black-box automation**.
 
 ---
 
+## Matching Logic
+
+AVM performs vulnerability matching in two stages:
+
+1.  Candidate Selection\
+    Candidate software/vulnerability pairs are identified using
+    `vulnerability_affected_cpes`.\
+    This step is optimized for performance and may include pairs that
+    are not ultimately applicable.
+
+2.  Criteria Evaluation\
+    If a vulnerability contains a criteria tree, AVM evaluates the tree
+    to determine final applicability.\
+    This includes version constraints, AND/OR logic, and exclusion
+    conditions.
+
+As a result, the number of candidate pairs found may be higher than the
+number of alerts generated.
+
+---
+
+## Criteria and Negation
+
+Negated criteria (`negate=true`) are currently supported as exclusion
+conditions within AND expressions.
+
+For example:
+
+A AND NOT(B)
+
+means:
+
+-   A must be present\
+-   B must NOT be present
+
+Negated conditions do not generate matches by themselves.\
+They only act as filters that remove otherwise valid matches.
+
+---
+
+## Design Principles
+
+AVM prioritizes **transparency and traceability over opaque matching
+logic**.
+
+Candidate selection is intentionally separated from final applicability
+evaluation, allowing users to understand:
+
+-   why a candidate was considered\
+-   why it was ultimately accepted or rejected
+
+---
+
 ## Notes
 
 * This is the first public release (0.1.0)  
