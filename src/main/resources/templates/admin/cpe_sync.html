@@ -56,12 +56,6 @@
             <span th:text="${error}">Product dictionary update failed.</span>
         </div>
 
-        <!-- Success -->
-        <div th:if="${success != null}" class="admin-success-box">
-            <strong>✓ Success</strong>
-            <span th:text="${success}">Product dictionary updated successfully.</span>
-        </div>
-
         <form id="cpeSyncForm"
               th:action="@{/admin/cpe/sync}"
               method="post"

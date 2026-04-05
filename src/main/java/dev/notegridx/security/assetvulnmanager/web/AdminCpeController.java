@@ -52,11 +52,9 @@ public class AdminCpeController {
             if ("UPLOAD".equals(safeMode)) {
                 CpeFeedSyncService.SyncResult result = adminCpeSyncService.runSyncFromUpload(file, maxItems);
                 model.addAttribute("result", result);
-                model.addAttribute("success", buildUploadSuccessMessage(file, result));
             } else {
                 CpeFeedSyncService.SyncResult result = adminCpeSyncService.runSync(force, maxItems);
                 model.addAttribute("result", result);
-                model.addAttribute("success", buildDownloadSuccessMessage(force, result));
             }
 
         } catch (AdminJobAlreadyRunningException | IllegalArgumentException ex) {
