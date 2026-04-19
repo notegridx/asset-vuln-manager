@@ -855,6 +855,8 @@ public class CveFeedSyncService {
         Long vulnerabilityId = vulnerability.getId();
 
         criteriaCpeRepository.deleteByVulnerabilityId(vulnerabilityId);
+
+        criteriaNodeRepository.clearParentByVulnerabilityId(vulnerabilityId);
         criteriaNodeRepository.deleteByVulnerabilityId(vulnerabilityId);
 
         try {
