@@ -10,7 +10,7 @@
     </parent>
     <groupId>dev.notegridx.security</groupId>
     <artifactId>asset-vuln-manager</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2-SNAPSHOT</version>
     <name>asset-vuln-manager</name>
     <description>
         Open-source asset and vulnerability manager with CPE-based normalization,
