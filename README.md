@@ -39,7 +39,7 @@ AVM is designed for:
 ### Run
 
 ```bash
-java -jar asset-vuln-manager-0.1.0.jar \
+java -jar asset-vuln-manager-0.1.1.jar \
   --spring.datasource.url="jdbc:mysql://localhost:3306/avm" \
   --spring.datasource.username="avm" \
   --spring.datasource.password="your-password" \
@@ -124,7 +124,6 @@ evaluation, allowing users to understand:
 
 ## Notes
 
-* This is the first public release (0.1.0)  
 * APIs and data model may evolve in future versions  
 * Not intended as a full replacement for enterprise-grade solutions  
 * Do not expose AVM directly to the internet without proper access control  
